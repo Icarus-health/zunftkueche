@@ -1,0 +1,48 @@
+ZUNFTKÜCHE – ARBEITSSTAND UND PRÜFUNG
+14. Oktober 2026
+
+STATUS
+Die lokale App ist bedienbar. Der Dataverse-Server ist tatsächlich kompiliert und als Plug-in-Package gebaut. Power Apps und Teams sind noch nicht eingerichtet oder veröffentlicht. Eine Freigabe für den produktiven Vereinsbetrieb wird damit nicht behauptet.
+Die unabhängige Gesamtprüfung und die gezielten Nachprüfungen sind abgeschlossen. Es bestehen keine offenen kritischen oder wichtigen Codebefunde für diesen lokalen Arbeitsstand. Auch der abschließende kleinere Befund zur historischen Bestellüberschrift wurde korrigiert und nachgeprüft.
+
+AUSPROBIEREN
+Die Vorschau auf diesem Rechner läuft unter http://127.0.0.1:4182/.
+Zum späteren Neustart den entpackten App-Ordner verwenden: npm ci, danach npm run dev -- --host 127.0.0.1 --port 4182 --strictPort.
+Node >=22.12 ist für den verwendeten lokalen Aufbau geeignet; die Abschlussprüfung lief mit Node 22.22.3. Der lokale Datenstand liegt in .local-state, die ursprüngliche Ausgangskopie in import/2026.json. Beides ist vom öffentlichen Frontend-Build getrennt.
+
+BEDIENUNG
+Veranstaltung wählen → Stammdaten und Rezepturen pflegen → Freitag/Samstag planen → Anfangsbestand erfassen → Einkaufsbedarf prüfen und ausdrücklich übernehmen → Lieferant/Liefertag auswählen → Bestellung vorbereiten → tatsächlich Geliefertes, Verbrauch und Rückgaben erfassen → Belege ergänzen → Verkäufe und Restzählung abschließen.
+Die vorbereitete Bestellversion bewahrt Mengen, Preise, Lieferanten-/Veranstaltungsnamen und den damals bekannten Liefertermin. Ein damals offenes Datum bleibt offen. Ältere Versionen ohne gespeicherte Überschrift kennzeichnen ausdrücklich, dass dafür aktuelle Angaben angezeigt werden. Der Versand bleibt ein gesonderter Schritt durch den Verantwortlichen. Frühere Veranstaltungen bleiben vollständig auswählbar.
+Offen bleibt offen: fehlende Mengen sind keine Nullwerte. Entwurfsrezepturen erzeugen keinen angeblich vollständigen Bedarf. Bestellungen sind keine Lieferungen; Verkäufe buchen keinen angenommenen Verbrauch. Berechneter Bestand und Zählung werden getrennt angezeigt. Unvollständige Belege und Verkaufszahlen ergeben Teilsummen, keinen behaupteten Gewinn.
+
+VERIFIKATION AM ABSCHLUSSSTAND
+- 95 automatisierte Node-Prüfungen, 0 fehlgeschlagen.
+- 65 portable C#-Prüfungen, 0 fehlgeschlagen. Sie führen die echten Validatoren, den Protokollcode und den Write-Guard mit künstlichen SDK-Kontexten aus.
+- TypeScript-Prüfung und Vite-Produktions-Build erfolgreich.
+- Echter .NET-Framework-4.6.2-Plug-in-Build: 0 Compilerwarnungen, 0 Fehler.
+- Paket automatisch geprüft: ausschließlich Kitchen.Dataverse.dll und Newtonsoft.Json.dll als Laufzeitassemblies; keine Microsoft-SDK-DLLs, Originaldaten oder Testfixtures.
+- Öffentlicher Build geprüft: keine privaten JSON-Importdateien, absoluten lokalen Herkunftspfade oder lokalen Dateilesefunktionen.
+- 62 Originaldateien mit ihren zuvor erfassten SHA-256-Werten verglichen: 0 Inhaltsänderungen.
+
+PRÜFUNG MIT AGENTEN
+Fachmodell, Oberfläche und Microsoft-Anbindung erhielten getrennte Implementierungen und unabhängige Reviews. Gefundene Fehler wurden reproduziert, korrigiert und gezielt erneut geprüft: unvollständige Planung, ausdrückliche Nullmengen, geschützte Artikeleinheiten/Quellbelege, Gebinderundung, Wochenendbedarf bei Mittwochslieferungen und die Wiederherstellung nach dauerhafter Serverablehnung.
+Eine zusätzliche Gegenprüfung der Geldrechnung verwendete 10.000 unabhängig berechnete Zahlenbeispiele. Die App summiert nun exakt und rundet erst den Gesamtwert auf Cent.
+
+TATSÄCHLICHE BROWSERPRÜFUNG
+Ein vollständiger Ablauf wurde ausschließlich in der ausdrücklich markierten lokalen Testveranstaltung 2099 geprüft. Beispiel: 100/50 Portionen, eine Einheit pro Portion, Anfangsbestand 10, Gebinde 25 → Einkauf 150. Gespeicherte Lieferzeit 17:00, Bestellvorschau, Lieferung 150, Testbeleg 15 Euro brutto / 12,29 Euro netto mit Datum und Position. 80/40 Testverkäufe zu 5 Euro → 600 Euro erfasster Teilumsatz. Verbrauch 120 → rechnerischer Bestand 40; gezählt 38 bleibt daneben stehen. Neuladen bewahrt den Datenstand.
+Ein weiterer Einkauf von 100 Stück mit Mittwochslieferung bleibt dem Wochenende zugeordnet. Bereits eingeplante 250 Stück lösen beim nächsten Lauf keinen zusätzlichen Einkauf aus. Importierte unmarkierte Mittwochspositionen werden dabei nicht als Wochenenddeckung erfunden.
+Alle sieben Ansichten wurden bei 390 × 844 Pixeln auf globalen Überlauf geprüft; Tabellen können innerhalb ihrer Karten scrollen. Native Datums-/Zeitfelder wurden nach dem Bearbeiten weiterer Formulareingaben nochmals geprüft. Die letzte frische Browsersitzung lädt Zunftabende 2026 und zeigt keine Konsolenwarnungen/-fehler. Beim Formatieren verursachte der Entwicklungsserver vorübergehend einen HMR-Verbindungsfehler; dieser betraf das Aktualisieren während der Codebearbeitung, nicht die geprüfte frische Sitzung.
+Die neue Bestellversion wurde ebenfalls tatsächlich geprüft: vorbereitet für 6.2.2099 unter „UI-Prüflieferant“, danach Veranstaltungsdatum auf 13.2.2099 gesetzt und Lieferant umbenannt. Die Version zeigt weiterhin 6.2.2099 und den ursprünglichen Namen; die ältere Version zeigt den verständlichen Hinweis auf fehlende historische Angaben. Anschließend wurde wieder der echte Ausgangsstand 2026 ausgewählt.
+
+GRENZEN UND AUSSTEHENDE ABNAHME
+Die tatsächliche Dataverse-Transaktion, registrierte Rollen, generierten Microsoft-Dienste, Lizenzzuordnung, SharePoint-Belege und Teams-Oberfläche sind nicht live abgenommen. Dafür muss zuerst die konkrete Zugriffsgruppe freigegeben sein. Kein Tenant wurde durch diesen Ausbau verändert, keine Lieferantenkommunikation versendet.
+Die native Druck-/PDF-Vorschau konnte wegen einer Computer-Use-Beschränkung für die Codex-App nicht visuell geprüft werden; die Druckregeln sind im Code vorhanden. Eine erfolgreiche Druckausgabe wird nicht behauptet.
+Der 2026-Ausgangsstand enthält offene Portionen, Rezepturen, tatsächliche Verkäufe und fehlende Belege. Diese bleiben zu ergänzen. Die markierten lokalen Testdaten werden nicht im Quellpaket oder späteren Cloud-Import mitgeliefert.
+
+ENTSCHEIDUNGEN UND IHRE KOSTEN
+1. Der Einkauf wird für das Wochenende gemeinsam berechnet; Anfangsbestand wird einmal abgezogen. Dadurch müssen Liefertage anschließend gesondert zugeteilt werden.
+2. Für zwei gleichberechtigte Bearbeiter wird zunächst ein gemeinsames, auf 512 KiB begrenztes Dataverse-Dokument verwendet. Das vermeidet zwei unterschiedliche Fachberechnungen im Browser und Server. Gleichzeitige Änderungen können sich auch über Veranstaltungsgrenzen hinweg blockieren; größere Datenmengen und feinere Bearbeiterrechte erfordern einen späteren Ausbau des Speichermodells.
+3. Der Code wurde trotz offener Zugriffsgruppenentscheidung vollständig lokal entwickelt und kompiliert. So ist der nächste Schritt konkret prüfbar; die Abnahme mit echten Microsoft-Benutzern bleibt bis zur freigegebenen Einrichtung offen.
+
+PAKET
+Der Quellcode, die private Ausgangskopie 2026, die Bedienungsanleitung, Tests und der kompilierte Dataverse-Server werden gemeinsam bereitgestellt. Original-PDFs, .local-state, Zugangsdaten, .git, Abhängigkeitencaches und Compilerinstallationen sind ausgeschlossen. Das Plug-in-Package und die Registrierungsspezifikation sind kein bereits importiertes Power-Platform-Solution-ZIP.
