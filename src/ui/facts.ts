@@ -1,3 +1,4 @@
+import type { OrderSnapshot } from "../domain/kitchen.ts";
 import type { KitchenState, Receipt } from "../domain/state.ts";
 export const kitchenDays = ["Freitag", "Samstag"] as const;
 export const deliveryDays = [
@@ -77,6 +78,9 @@ export function articleReferenced(state: KitchenState, id: string) {
 }
 export function eventDate(state: KitchenState, day: string) {
   const value = state.event.dates[day];
+  return formatDeliveryDate(value);
+}
+export function formatDeliveryDate(value: string | null | undefined) {
   return value
     ? new Date(`${value}T12:00:00`).toLocaleDateString("de-DE")
     : "Datum offen";
@@ -96,4 +100,28 @@ export function deriveReadView(
         archivedEvents: state.archivedEvents,
       }
     : state;
+}
+
+export function orderPreviewHeader(
+  state: KitchenState,
+  order: Pick<OrderSnapshot, "context"> & {
+    supplierId: string;
+    day: string;
+    status: string;
+  },
+) {
+  if (order.status === "Vorbereitet" && order.context)
+    return { ...order.context, notice: null };
+  return {
+    supplierName:
+      state.suppliers.find((s) => s.id === order.supplierId)?.name ??
+      "Lieferant offen",
+    eventName: state.event.name,
+    eventYear: state.event.year,
+    deliveryDate: state.event.dates[order.day] ?? null,
+    notice:
+      order.status === "Vorbereitet"
+        ? "Lieferant, Veranstaltung und Datum wurden in dieser älteren Version nicht gespeichert. Die angezeigten Angaben sind aktuell; der damalige Stand ist unbekannt."
+        : null,
+  };
 }

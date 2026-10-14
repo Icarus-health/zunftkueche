@@ -91,6 +91,50 @@ if (args.Length > 1)
         archived["archivedEvents"]![0]!["orders"]![0]!["createdAt"] = "2026-01-01T00:00:00Z";
         ExpectReject(() => StatePolicy.Validate(archived, (JObject)corpus[7]!));
     });
+if (args.Length > 1)
+{
+    using var reader = new Newtonsoft.Json.JsonTextReader(new StringReader(File.ReadAllText(args[1]))) { DateParseHandling = Newtonsoft.Json.DateParseHandling.None };
+    var corpus = JArray.Load(reader);
+    var original = (JObject)corpus[2]!;
+    Check("legacy order context remains optional", () => {
+        var legacy = (JObject)original.DeepClone();
+        ((JObject)legacy["orders"]![0]!).Remove("context");
+        StatePolicy.Validate(legacy, (JObject)corpus[1]!);
+    });
+    foreach (var field in new[] { "supplierName", "eventName", "eventYear", "deliveryDate" })
+    {
+        Check("snapshot context field required: " + field, () => {
+            var candidate = (JObject)original.DeepClone();
+            ((JObject)candidate["orders"]![0]!["context"]!).Remove(field);
+            ExpectReject(() => StatePolicy.Validate(candidate, (JObject)corpus[1]!));
+        });
+        Check("snapshot context field bounded: " + field, () => {
+            var candidate = (JObject)original.DeepClone();
+            candidate["orders"]![0]!["context"]![field] = field == "eventYear" ? new JValue(2201) : new JValue(field == "deliveryDate" ? "2026-02-30" : new string('x', 201));
+            ExpectReject(() => StatePolicy.Validate(candidate, (JObject)corpus[1]!));
+        });
+        Check("snapshot context immutable: " + field, () => {
+            var candidate = (JObject)original.DeepClone();
+            candidate["orders"]![0]!["context"]![field] = field == "eventYear" ? new JValue(2099) : new JValue(field == "deliveryDate" ? "2099-02-06" : "Other name");
+            ExpectReject(() => StatePolicy.Validate(candidate, original));
+        });
+        Check("new snapshot context agrees with current facts: " + field, () => {
+            var candidate = (JObject)original.DeepClone();
+            candidate["orders"]![0]!["context"]![field] = field == "eventYear" ? new JValue(2099) : new JValue(field == "deliveryDate" ? "2099-02-06" : "Other name");
+            ExpectReject(() => StatePolicy.Validate(candidate, (JObject)corpus[1]!));
+        });
+    }
+    Check("snapshot context cannot be null", () => {
+        var candidate = (JObject)original.DeepClone();
+        candidate["orders"]![0]!["context"] = null;
+        ExpectReject(() => StatePolicy.Validate(candidate, (JObject)corpus[1]!));
+    });
+    Check("archived snapshot context cannot be altered", () => {
+        var candidate = (JObject)corpus[8]!.DeepClone();
+        candidate["archivedEvents"]![0]!["orders"]![0]!["context"]!["supplierName"] = "Changed historic name";
+        ExpectReject(() => StatePolicy.Validate(candidate, (JObject)corpus[7]!));
+    });
+}
 JObject Request(JObject s, string id = "new-op") { var candidate = (JObject)s.DeepClone(); candidate["revision"] = (int)s["revision"]! + 1; ((JArray)candidate["operationIds"]!).Add(id); ((JObject)candidate["operationRequests"]!)[id] = "client-untrusted"; candidate["articles"]![0]!["unitPriceCents"] = 12.34; return new JObject { { "protocolVersion", 1 }, { "workspaceId", FakeStore.WorkspaceId.ToString() }, { "operationId", id }, { "expectedRevision", (int)s["revision"]! }, { "operation", new JObject { { "type", "article.price" }, { "payload", new JObject { { "articleId", "a-1" }, { "priceCents", 12.34 } } } } }, { "candidateState", candidate } }; }
 void ExpectReject(Action action) { try { action(); } catch (ArgumentException) { return; } throw new Exception("request accepted"); }
 var actor = Guid.Parse("77777777-8888-4999-aaaa-bbbbbbbbbbbb");

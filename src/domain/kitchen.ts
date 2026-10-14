@@ -35,7 +35,14 @@ export interface PlanLine {
   purchaseGenerated?: boolean;
   purchaseForWeekend?: boolean;
 }
+export interface OrderContext {
+  supplierName: string;
+  eventName: string;
+  eventYear: number;
+  deliveryDate: string | null;
+}
 export interface OrderSnapshot {
+  context?: Readonly<OrderContext>;
   lines: ReadonlyArray<Readonly<PlanLine>>;
   groups: Array<{
     time: string | null;

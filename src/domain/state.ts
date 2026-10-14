@@ -664,8 +664,8 @@ export function applyOperation(
       break;
     }
     case "order.prepare": {
-      if (!next.suppliers.some((s) => s.id === p.supplierId))
-        throw new Error("Lieferant nicht gefunden.");
+      const supplier = next.suppliers.find((s) => s.id === p.supplierId);
+      if (!supplier) throw new Error("Lieferant nicht gefunden.");
       const day = validDay(p.day),
         snapshot = prepareOrder(next.planLines, p.supplierId, day);
       if (!snapshot.lines.length)
@@ -687,6 +687,12 @@ export function applyOperation(
         status: "Vorbereitet",
         createdAt: new Date().toISOString(),
         ...snapshot,
+        context: {
+          supplierName: supplier.name,
+          eventName: next.event.name,
+          eventYear: next.event.year,
+          deliveryDate: next.event.dates[day] ?? null,
+        },
       });
       break;
     }

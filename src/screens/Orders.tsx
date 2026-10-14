@@ -23,7 +23,11 @@ import {
   formatOrderHint,
 } from "../domain/kitchen.ts";
 import type { OrderSnapshot, PlanLine } from "../domain/kitchen.ts";
-import { eventDate, deliveryDays } from "../ui/facts.ts";
+import {
+  orderPreviewHeader,
+  formatDeliveryDate,
+  deliveryDays,
+} from "../ui/facts.ts";
 export default function Orders({
   state,
   busy,
@@ -39,7 +43,7 @@ export default function Orders({
     [day, setDay] = useState("Freitag"),
     [prices, setPrices] = useState(false),
     [preview, setPreview] = useState<
-      | (OrderSnapshot & { supplierName: string; day: string; status: string })
+      | (OrderSnapshot & { supplierId: string; day: string; status: string })
       | null
     >(null),
     [tab, setTab] = useState("Planung"),
@@ -55,6 +59,7 @@ export default function Orders({
     supplierName =
       state.suppliers.find((s) => s.id === supplier)?.name ?? "Lieferant offen";
   const prepared = state.orders.filter((o) => o.supplierId === supplier);
+  const previewHeader = preview ? orderPreviewHeader(state, preview) : null;
   return (
     <section className="orders-screen">
       <Heading title="Bestellung erstellen">
@@ -209,7 +214,7 @@ export default function Orders({
                 disabled={!snapshot.lines.length}
                 onClick={() =>
                   setPreview({
-                    supplierName,
+                    supplierId: supplier,
                     day,
                     status: "Vorschau",
                     ...snapshot,
@@ -253,7 +258,7 @@ export default function Orders({
                 <button
                   className="prepared-row"
                   key={o.id}
-                  onClick={() => setPreview({ ...o, supplierName })}
+                  onClick={() => setPreview(o)}
                 >
                   <ClipboardText size={25} />
                   <span>
@@ -290,20 +295,21 @@ export default function Orders({
           onClose={() => setAdding(false)}
         />
       )}
-      {preview && (
+      {preview && previewHeader && (
         <Modal
-          title={`${preview.supplierName} · ${preview.day}`}
+          title={`${previewHeader.supplierName} · ${preview.day}`}
           onClose={() => setPreview(null)}
         >
           <div className="print-area">
             <div className="print-heading">
               <h2>
-                Zunftküche · {state.event.name} {state.event.year}
+                Zunftküche · {previewHeader.eventName} {previewHeader.eventYear}
               </h2>
               <p>
-                {preview.supplierName} · {preview.day} · {preview.status}
+                {previewHeader.supplierName} · {preview.day} · {preview.status}
               </p>
             </div>
+            {previewHeader.notice && <p>{previewHeader.notice}</p>}
             <table>
               <thead>
                 <tr>
@@ -325,7 +331,8 @@ export default function Orders({
               </tbody>
             </table>
             <p className="muted">
-              {eventDate(state, preview.day)} · Versandstatus: offen.
+              {formatDeliveryDate(previewHeader.deliveryDate)} · Versandstatus:
+              offen.
             </p>
           </div>
           <div className="modal-actions">

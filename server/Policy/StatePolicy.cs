@@ -310,10 +310,30 @@ namespace Zunftkueche
                 OptionalString(m, "note", 1000);
                 Require(new[] { "Anfangsbestand", "Lieferung", "Zählung", "Verbrauch", "Abfall", "Rückgabe" }.Contains(Str(m["type"], 50)), "Invalid movement type.");
             }
+            var previousOrders = previous == null ? null : Index(previous["orders"]);
             foreach (var o in maps["orders"].Values)
             {
                 Ref(o, "supplierId", suppliers);
                 Day(o["day"]);
+                // Absent context is a legacy snapshot; never reconstruct its history.
+                if (o["context"] != null)
+                {
+                    var context = Obj(o["context"]);
+                    Require(context.Count == 4, "Invalid order context fields.");
+                    Str(context["supplierName"]);
+                    Str(context["eventName"]);
+                    Require(Number(context["eventYear"], 2200) >= 1900, "Invalid order event year.");
+                    Require(context["deliveryDate"] != null, "Order delivery date must be explicit, including null.");
+                    Date(context["deliveryDate"]);
+                    if (previousOrders != null && !previousOrders.ContainsKey((string)o["id"]!))
+                    {
+                        var supplier = suppliers[(string)o["supplierId"]!];
+                        Same(context["supplierName"], supplier["name"], "New order supplier context mismatch.");
+                        Same(context["eventName"], ev["name"], "New order event context mismatch.");
+                        Same(context["eventYear"], ev["year"], "New order year context mismatch.");
+                        Same(context["deliveryDate"], ev["dates"]![(string)o["day"]!] ?? JValue.CreateNull(), "New order date context mismatch.");
+                    }
+                }
                 Require((string?)o["status"] == "Vorbereitet", "Invalid order status.");
                 DateTimeOffset dt;
                 Require(DateTimeOffset.TryParse(Str(o["createdAt"], 50), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out dt), "Invalid snapshot timestamp.");

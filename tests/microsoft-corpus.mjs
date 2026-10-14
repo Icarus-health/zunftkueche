@@ -36,6 +36,13 @@ apply("event.create", {
   copyPlan: true,
 });
 apply("event.switch", { id: old });
+apply("event.dates", { dates: { Mittwoch: "2026-02-11" } });
+apply("supplier.save", {
+  id: "s-wiggenhauser",
+  name: "Synthetic renamed supplier",
+  email: null,
+});
+apply("order.prepare", { supplierId: "s-wiggenhauser", day: "Mittwoch" });
 mkdirSync("server/Tests/obj", { recursive: true });
 writeFileSync("server/Tests/obj/reducer-corpus.json", JSON.stringify(states));
 console.log(
