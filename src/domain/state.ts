@@ -149,6 +149,14 @@ export function applyOperation(state:KitchenState,op:Operation):CommitResult {
       if(line.purchaseGenerated)line.purchaseGenerated=false;
       break;
     }
+    case 'plan.schedule': {
+      const line=next.planLines.find(l=>l.id===p.id);if(!line)throw new Error('Planposition nicht gefunden.');
+      const day=validDay(p.day),time=text(p.time,'Lieferzeit',5,true)||null;
+      if(time&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))throw new Error('Lieferzeit ist ungültig.');
+      line.day=day;line.time=time;if(p.note!==undefined)line.note=text(p.note,'Notiz',1000,true);
+      if(line.purchaseGenerated)line.purchaseGenerated=false;
+      break;
+    }
     case 'plan.add': {
       const article=next.articles.find(a=>a.id===p.articleId&&a.supplierId===p.supplierId);
       if(!article)throw new Error('Artikel gehört nicht zu diesem Lieferanten.');
