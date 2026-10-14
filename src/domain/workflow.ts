@@ -37,7 +37,9 @@ export function purchasingNeeds(state:KitchenState,day:string):{rows:PurchasingR
     if(!article)issues.push('Artikel fehlt.');
     if(opening===null)issues.push('Anfangsbestand fehlt.');
     if(packSize===null||packSize<=0||!Number.isFinite(packSize))issues.push('Gebindegröße fehlt oder ist ungültig.');
-    const coverage=state.planLines.filter(l=>l.articleId===articleId&&!l.purchaseGenerated&&days.concat('Allgemein').includes(l.day)&&(!l.location||l.location==='Küche'));
+    // Explicit weekend procurement purpose survives delivery-day/quantity ownership.
+    // Imported Wednesday/Sunday lines remain excluded unless explicitly marked.
+    const coverage=state.planLines.filter(l=>l.articleId===articleId&&!l.purchaseGenerated&&(days.concat('Allgemein').includes(l.day)||l.purchaseForWeekend===true)&&(!l.location||l.location==='Küche'));
     if(coverage.some(l=>l.quantity===null))issues.push('Manuelle Einkaufsmenge ist offen.');
     if(coverage.some(l=>l.unit!==article?.unit||l.supplierId!==article?.supplierId))issues.push('Manuelle Einkaufsposition passt nicht zu Einheit/Lieferant.');
     const plannedUnits=coverage.some(l=>l.quantity===null)?null:coverage.reduce((n,l)=>n+units(l.quantity!),0n);

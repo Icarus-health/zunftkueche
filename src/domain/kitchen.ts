@@ -1,6 +1,6 @@
 export type Day = 'Mittwoch'|'Freitag'|'Samstag'|'Sonntag'|'Allgemein'|'Alle Orte'|'Halle Küche'|'Zunftabende'|'Küche'|'Mitwirkende/Aufbau/Probe'|string;
 export interface Source { file: string; hash: string; sheet?: string; cells?: string; page?:number; }
-export interface PlanLine {id:string; supplierId:string; articleId:string; name:string; quantity:number|null; unit:string; day:Day; time:string|null; unitPriceCents:number|null; note?:string; lesson?:string; category?:string; location?:string; source?:Source;purchaseGenerated?:boolean;}
+export interface PlanLine {id:string; supplierId:string; articleId:string; name:string; quantity:number|null; unit:string; day:Day; time:string|null; unitPriceCents:number|null; note?:string; lesson?:string; category?:string; location?:string; source?:Source;purchaseGenerated?:boolean;purchaseForWeekend?:boolean;}
 export interface OrderSnapshot {lines:ReadonlyArray<Readonly<PlanLine>>; groups:Array<{time:string|null;lines:ReadonlyArray<Readonly<PlanLine>>}>;totalCents:number|null;}
 export function parseQuantity(raw:string):number|null {
   const value=raw.trim();

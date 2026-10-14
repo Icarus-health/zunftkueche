@@ -144,7 +144,7 @@ export function applyOperation(state:KitchenState,op:Operation):CommitResult {
       for(const row of needs.rows){
         const article=next.articles.find(a=>a.id===row.articleId)!;
         const existing=next.planLines.find(l=>l.purchaseGenerated&&l.articleId===article.id&&l.day==='Allgemein');
-        const values={articleId:article.id,supplierId:article.supplierId,name:article.name,quantity:row.suggested,unit:article.unit,day:'Allgemein',time:null,unitPriceCents:article.unitPriceCents,category:article.category,location:'Küche',purchaseGenerated:true};
+        const values={articleId:article.id,supplierId:article.supplierId,name:article.name,quantity:row.suggested,unit:article.unit,day:'Allgemein',time:null,unitPriceCents:article.unitPriceCents,category:article.category,location:'Küche',purchaseGenerated:true,purchaseForWeekend:true};
         if(existing)Object.assign(existing,values);else if(row.suggested!==0)next.planLines.push({id:`${op.id}:${article.id}`,...values});
       }
       for(const line of next.planLines)if(line.purchaseGenerated&&line.day==='Allgemein'&&!needs.rows.some(r=>r.articleId===line.articleId))line.quantity=0;
@@ -179,7 +179,7 @@ export function applyOperation(state:KitchenState,op:Operation):CommitResult {
       if(!line)throw new Error('Planposition nicht gefunden.');
       line.quantity=quantity(p.quantity,true);
       // Explicit edits take ownership: a later calculation must preserve this amount.
-      if(line.purchaseGenerated)line.purchaseGenerated=false;
+      if(line.purchaseGenerated){line.purchaseForWeekend=true;line.purchaseGenerated=false;}
       break;
     }
     case 'plan.schedule': {
@@ -187,7 +187,7 @@ export function applyOperation(state:KitchenState,op:Operation):CommitResult {
       const day=validDay(p.day),time=text(p.time,'Lieferzeit',5,true)||null;
       if(time&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))throw new Error('Lieferzeit ist ungültig.');
       line.day=day;line.time=time;if(p.note!==undefined)line.note=text(p.note,'Notiz',1000,true);
-      if(line.purchaseGenerated)line.purchaseGenerated=false;
+      if(line.purchaseGenerated){line.purchaseForWeekend=true;line.purchaseGenerated=false;}
       break;
     }
     case 'plan.add': {
