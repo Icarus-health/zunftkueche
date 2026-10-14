@@ -6,3 +6,4 @@ import/*.json
 *.local
 .local-state/
 qa/
+.DS_Store

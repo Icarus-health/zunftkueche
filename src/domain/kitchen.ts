@@ -32,3 +32,13 @@ export function salesRevenue(lines:Array<{quantity:number|null;priceCents:number
   const missing=lines.filter(l=>l.quantity===null||l.priceCents===null).length;
   return {totalCents:!lines.length||missing?null:lines.reduce((sum,l)=>sum+Math.round(l.quantity!*l.priceCents!),0),missing};
 }
+export function summarizeSales(lines:Array<{quantity:number|null;priceCents:number|null}>):{totalCents:number|null;knownCents:number;entered:number;missingPrices:number}{
+ const entered=lines.filter(l=>l.quantity!==null),missingPrices=entered.filter(l=>l.priceCents===null).length;
+ const knownCents=entered.filter(l=>l.priceCents!==null).reduce((sum,l)=>sum+Math.round(l.quantity!*l.priceCents!),0);
+ return {totalCents:!entered.length||missingPrices?null:knownCents,knownCents,entered:entered.length,missingPrices};
+}
+export function formatOrderHint(line:Pick<PlanLine,'time'|'note'>):string{
+ const note=line.note?.trim()??'';
+ if(line.time&&note&&!note.includes(line.time))return `${line.time} Uhr · ${note}`;
+ return note||(line.time?`${line.time} Uhr`:'—');
+}

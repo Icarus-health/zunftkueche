@@ -21,9 +21,10 @@ export function localKitchenApi(root:string):Plugin {
          const id=decodeURIComponent(req.url.slice('/api/kitchen/receipt/'.length));
          const receipt=(await store.load()).invoices.find(i=>i.id===id) as any;
          if(!receipt?.localPath||receipt.status!=='Original vorhanden')throw new Error('Originaldatei nicht verfügbar.');
+         const pdf=await fs.promises.readFile(receipt.localPath);
          res.setHeader('Content-Type','application/pdf');
          res.setHeader('Content-Disposition','inline');
-         return fs.createReadStream(receipt.localPath).pipe(res);
+         return res.end(pdf);
        }
        if(req.method==='GET'&&req.url==='/api/kitchen')return res.end(JSON.stringify({mode:'local',state:await store.load()}));
        if(req.method==='POST'&&req.url==='/api/kitchen/commit'){

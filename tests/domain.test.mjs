@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseQuantity, prepareOrder, recipeCost, stockBalance, salesRevenue } from '../src/domain/kitchen.ts';
+import { parseQuantity, prepareOrder, recipeCost, stockBalance, salesRevenue,formatOrderHint } from '../src/domain/kitchen.ts';
 
 test('Mengen akzeptieren deutsches Dezimalkomma und unterscheiden offen von null', () => {
   assert.equal(parseQuantity('2,5'), 2.5);
@@ -43,4 +43,8 @@ test('Verkaufszahlen bleiben von fehlenden Erfassungen unterscheidbar', () => {
   assert.equal(salesRevenue([{quantity:null,priceCents:500}]).totalCents,null);
   assert.equal(salesRevenue([{quantity:0,priceCents:500}]).totalCents,0);
   assert.equal(salesRevenue([{quantity:2,priceCents:500}]).totalCents,1000);
+});
+test('Bestellvorschau bewahrt eine Lieferzeit zusätzlich zu einem eigenen Hinweis',()=>{
+ assert.equal(formatOrderHint({time:'19:00',note:'Bitte warm liefern'}),'19:00 Uhr · Bitte warm liefern');
+ assert.equal(formatOrderHint({time:'17:00',note:'10x1kg, 17:00 Uhr'}),'10x1kg, 17:00 Uhr');
 });

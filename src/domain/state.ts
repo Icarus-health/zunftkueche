@@ -68,6 +68,13 @@ export function applyOperation(state:KitchenState,op:Operation):CommitResult {
       else next.sales.push({id:op.id,menuId:p.menuId,day,quantity:q,priceCents:item.priceCents});
       break;
     }
+    case 'sales.price': {
+      const sale=next.sales.find(s=>s.menuId===p.menuId&&s.day===p.day);
+      if(!sale)throw new Error('Verkaufsposition nicht gefunden.');
+      if(sale.priceCents!==null)throw new Error('Bereits erfasster Verkaufspreis bleibt erhalten.');
+      if(typeof p.priceCents!=='number'||!Number.isInteger(p.priceCents)||p.priceCents<0||p.priceCents>100000000)throw new Error('Verkaufspreis ist ungültig.');
+      sale.priceCents=p.priceCents;break;
+    }
     case 'recipe.save': {
       const item=next.menu.find(m=>m.id===p.menuId);
       if(!item)throw new Error('Speise/Getränk nicht gefunden.');
