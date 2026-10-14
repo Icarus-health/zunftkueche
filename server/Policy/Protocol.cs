@@ -63,6 +63,35 @@ namespace Zunftkueche
             return new JObject { { "protocolVersion", 1 }, { "workspaceId", row.Id.ToString("D") }, { "canWrite", row.CanWrite }, { "state", row.State.DeepClone() } };
         }
         static JObject Response(Workspace row, string operationId, string status, int? appliedRevision) => new JObject { { "protocolVersion", 1 }, { "workspaceId", row.Id.ToString("D") }, { "operationId", operationId }, { "status", status }, { "appliedRevision", appliedRevision.HasValue ? new JValue(appliedRevision.Value) : JValue.CreateNull() }, { "state", row.State.DeepClone() } };
+        static JObject PrepareCandidate(JToken? proposed, Workspace row, string operationId, string signature)
+        {
+            var candidate = (JObject)StatePolicy.Obj(proposed).DeepClone();
+            StatePolicy.Validate(candidate, row.State);
+            var ids = (JArray)row.State["operationIds"]!.DeepClone();
+            ids.Add(operationId);
+            var signatures = (JObject)(row.State["operationRequests"]?.DeepClone() ?? new JObject());
+            signatures[operationId] = signature;
+            candidate["revision"] = checked(row.Revision + 1);
+            candidate["operationIds"] = ids;
+            candidate["operationRequests"] = signatures;
+            // Newly appended receipt corrections belong to this commit, irrespective of browser metadata.
+            var oldEvents = StatePolicy.Events(row.State);
+            foreach (var e in StatePolicy.Events(candidate))
+                if (oldEvents.TryGetValue(e.Key, out var prior))
+                    foreach (var invoice in StatePolicy.Arr(e.Value["invoices"]).OfType<JObject>())
+                    {
+                        var oldInvoice = StatePolicy.Arr(prior["invoices"]).OfType<JObject>().FirstOrDefault(v => (string?)v["id"] == (string?)invoice["id"]);
+                        var history = invoice["corrections"] as JArray;
+                        int count = (oldInvoice?["corrections"] as JArray)?.Count ?? 0;
+                        if (history != null && history.Count > count)
+                        {
+                            history[count]["operationId"] = operationId;
+                            history[count]["revision"] = row.Revision + 1;
+                        }
+                    }
+            StatePolicy.Validate(candidate, row.State);
+            return candidate;
+        }
         public static JObject Commit(string raw, Guid actor, bool inTransaction, IKitchenStore store)
         {
             StatePolicy.Require(actor != Guid.Empty, "Authenticated caller required.");
@@ -90,31 +119,20 @@ namespace Zunftkueche
             if (expected != row.Revision)
                 return Response(row, operationId, "conflict", null);
             StatePolicy.Require(!StatePolicy.Arr(row.State["operationIds"]).Any(v => (string?)v == operationId), "Operation ID already exists without matching receipt.");
-            var candidate = (JObject)StatePolicy.Obj(q["candidateState"]).DeepClone();
-            StatePolicy.Validate(candidate, row.State);
-            var ids = (JArray)row.State["operationIds"]!.DeepClone();
-            ids.Add(operationId);
-            var signatures = (JObject)(row.State["operationRequests"]?.DeepClone() ?? new JObject());
-            signatures[operationId] = signature;
-            candidate["revision"] = checked(row.Revision + 1);
-            candidate["operationIds"] = ids;
-            candidate["operationRequests"] = signatures;
-            // Newly appended receipt corrections belong to this commit, irrespective of browser metadata.
-            var oldEvents = StatePolicy.Events(row.State);
-            foreach (var e in StatePolicy.Events(candidate))
-                if (oldEvents.TryGetValue(e.Key, out var prior))
-                    foreach (var invoice in StatePolicy.Arr(e.Value["invoices"]).OfType<JObject>())
-                    {
-                        var oldInvoice = StatePolicy.Arr(prior["invoices"]).OfType<JObject>().FirstOrDefault(v => (string?)v["id"] == (string?)invoice["id"]);
-                        var history = invoice["corrections"] as JArray;
-                        int count = (oldInvoice?["corrections"] as JArray)?.Count ?? 0;
-                        if (history != null && history.Count > count)
-                        {
-                            history[count]["operationId"] = operationId;
-                            history[count]["revision"] = row.Revision + 1;
-                        }
-                    }
-            StatePolicy.Validate(candidate, row.State);
+            JObject candidate;
+            try
+            {
+                // No storage calls in this validation-only boundary. Receipts and caller checks above
+                // MUST remain outside it: their failure cannot prove an earlier attempt did not commit.
+                candidate = PrepareCandidate(q["candidateState"], row, operationId, signature);
+            }
+            catch (ArgumentException)
+            {
+                var rejected = Response(row, operationId, "rejected", null);
+                rejected["rejectionCode"] = "candidate_validation";
+                rejected["requestHash"] = hash;
+                return rejected;
+            }
             StatePolicy.Require(inTransaction, "Synchronous Dataverse transaction required.");
             StatePolicy.Require(!string.IsNullOrWhiteSpace(row.RowVersion), "RowVersion required.");
             store.Commit(row, candidate, operationId, hash, actor, DateTime.UtcNow);

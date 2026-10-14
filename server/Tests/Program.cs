@@ -101,6 +101,17 @@ Check("receipt rejects changed bytes and wrong actor", () => { var store = new F
 Check("stale version is conflict without write", () => { var store = new FakeStore(seed); var q = Request(seed); store.Row.Revision = 2; store.Row.State["revision"] = 2; var result = Protocol.Commit(q.ToString(), actor, true, store); if ((string?)result["status"] != "conflict" || store.Writes != 0) throw new Exception("conflict wrote"); });
 Check("transaction and reader guards deny mutation", () => { var store = new FakeStore(seed); ExpectReject(() => Protocol.Commit(Request(seed).ToString(), actor, false, store)); store.Row.CanWrite = false; ExpectReject(() => Protocol.Commit(Request(seed).ToString(), actor, true, store)); if (store.Writes != 0) throw new Exception("unauthorized write"); });
 Check("race failure escapes without success", () => { var store = new FakeStore(seed) { FailCas = true }; try { Protocol.Commit(Request(seed).ToString(), actor, true, store); } catch (InvalidOperationException) { return; } throw new Exception("race swallowed"); });
+Check("candidate validation has an exact-hash pre-write rejection envelope", () => {
+    var store=new FakeStore(seed);var q=Request(seed);q["candidateState"]!["menu"]![0]!["priceCents"]=1.23;var raw=q.ToString();
+    var result=Protocol.Commit(raw,actor,true,store);
+    if((string?)result["status"]!="rejected"||(string?)result["rejectionCode"]!="candidate_validation"||(string?)result["requestHash"]!=Protocol.Hash(raw)||result["appliedRevision"]!.Type!=JTokenType.Null||store.Writes!=0)throw new Exception("rejection contract invalid");
+    if((string?)Protocol.Commit(Request(seed,"corrected").ToString(),actor,true,store)["status"]!="saved")throw new Exception("correction blocked");
+});
+Check("post-write validation-shaped storage faults must escape", () => {
+    var store=new FakeStore(seed){FailAfterWrite=true};
+    try {Protocol.Commit(Request(seed).ToString(),actor,true,store);}catch(ArgumentException){if(store.Writes!=1)throw new Exception("test did not cross storage boundary");return;}
+    throw new Exception("storage failure became definitive rejection");
+});
 GuardTests.Run(Check);
 Console.WriteLine($"Policy tests: {passed} passed, {failed} failed");
 return failed == 0 ? 0 : 1;
@@ -108,7 +119,7 @@ return failed == 0 ? 0 : 1;
 sealed class FakeStore : IKitchenStore
 {
     public static readonly Guid WorkspaceId = Guid.Parse("11111111-2222-4333-8444-555555555555");
-    public Workspace Row; public ReceiptRecord? Receipt; public int Writes; public string? CasVersion; public bool FailCas;
+    public Workspace Row; public ReceiptRecord? Receipt; public int Writes; public string? CasVersion; public bool FailCas; public bool FailAfterWrite;
     public FakeStore(JObject seed)
     {
         Row = new Workspace { Id = WorkspaceId, State = (JObject)seed.DeepClone(), Revision = 0, RowVersion = "original-rowversion", CanWrite = true };
@@ -120,6 +131,7 @@ sealed class FakeStore : IKitchenStore
         if (FailCas)
             throw new InvalidOperationException("CAS race");
         Writes++;
+        if(FailAfterWrite)throw new ArgumentException("storage fault after write began");
         CasVersion = prior.RowVersion;
         Row.State = next;
         Row.Revision = (int)next["revision"]!;

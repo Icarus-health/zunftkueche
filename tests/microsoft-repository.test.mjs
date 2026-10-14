@@ -51,7 +51,7 @@ test('failed reload revokes cached write capability and unsuccessful commits sta
 test('metadata-generated service wrapper returns one stable configured repository',async()=>{
  const {configureMicrosoftRuntime,getMicrosoftRepository}=await import('../src/data/microsoft-runtime.ts');
  const {getRepository}=await import('../src/data/repository.ts');
- const instance=configureMicrosoftRuntime(workspaceId,{load:{zk_KitchenLoad:async()=>loaded()},commit:{zk_KitchenCommit:async q=>saved(q)}});
+ const instance=configureMicrosoftRuntime(workspaceId,{load:{zk_KitchenLoad:async()=>loaded()},commit:{zk_KitchenCommit:async q=>saved(q)}},{getItem:()=>null,setItem:()=>{},removeItem:()=>{}});
  assert.equal(getMicrosoftRepository(),instance);assert.equal(getRepository(),instance);await instance.load();assert.equal(instance.canWrite,true);
  assert.throws(()=>configureMicrosoftRuntime(workspaceId,{load:{},commit:{}}),/bereits/);
 });

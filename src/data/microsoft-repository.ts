@@ -20,6 +20,40 @@ interface PendingRequest {operation: Operation; request: string}
 const invalid = () => new Error('Microsoft-Antwort ist ungültig; Speicherung nicht bestätigt.');
 const object = (x: unknown): x is Record<string, any> => !!x && typeof x === 'object' && !Array.isArray(x);
 
+const utf8Bytes = (value: string) => new TextEncoder().encode(value);
+function preflight(candidate: KitchenState, request: string): void {
+  if (utf8Bytes(JSON.stringify(candidate)).length > 524288) {
+    throw new RejectedError('Der Küchenbestand überschreitet 512 KiB. Diese Änderung wurde nicht übertragen.');
+  }
+  if (utf8Bytes(request).length > 655360) {
+    throw new RejectedError('Die Anfrage überschreitet 640 KiB. Diese Änderung wurde nicht übertragen.');
+  }
+  const bounded = (value: unknown, depth = 0): void => {
+    if (depth > 32) throw new RejectedError('Die Änderung ist zu tief verschachtelt.');
+    if (typeof value === 'string' && value.length > 50000) throw new RejectedError('Ein Text der Änderung ist zu lang.');
+    if (typeof value === 'number' && !Number.isFinite(value)) throw new RejectedError('Die Änderung enthält eine ungültige Zahl.');
+    if (Array.isArray(value)) {
+      if (value.length > 10000) throw new RejectedError('Der Küchenbestand enthält zu viele Einträge.');
+      for (const item of value) bounded(item, depth + 1);
+    } else if (object(value)) {
+      const entries = Object.entries(value);
+      if (entries.length > 10000) throw new RejectedError('Der Küchenbestand enthält zu viele Angaben.');
+      for (const [name, item] of entries) {
+        if (name.length > 200) throw new RejectedError('Eine Kennung der Änderung ist zu lang.');
+        bounded(item, depth + 1);
+      }
+    }
+  };
+  bounded(JSON.parse(request));
+  if (candidate.operationIds.some(id => !id.trim() || id.length > 100)) {
+    throw new RejectedError('Eine Vorgangs-ID ist ungültig.');
+  }
+}
+async function requestHash(request: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', utf8Bytes(request));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
 // This protects the UI boundary. The server separately validates persisted-state invariants.
 function stateValue(x: unknown): KitchenState {
   if (!object(x) || x.schemaVersion !== 2 || !Number.isSafeInteger(x.revision) || x.revision < 0 ||
@@ -87,7 +121,12 @@ export function createMicrosoftRepository(api: KitchenApi, workspaceId: string, 
       // A browser reload resumes the exact persisted request, including its original revision.
       if (pending) {
         if (!canWrite) throw new Error('Eine offene Änderung benötigt Schreibberechtigung.');
-        return (await repo.commit(pending.operation)).state;
+        try {return (await repo.commit(pending.operation)).state;}
+        catch (error) {
+          // Only a checked server rejection clears pending; unknown errors still block replay.
+          if (error instanceof RejectedError && pending === null) return structuredClone(current!);
+          throw error;
+        }
       }
       return structuredClone(current);
     },
@@ -105,6 +144,7 @@ export function createMicrosoftRepository(api: KitchenApi, workspaceId: string, 
           protocolVersion: 1, workspaceId, operationId: op.id, expectedRevision: op.baseRevision,
           operation: {type: op.type, payload: op.payload}, candidateState: result.state,
         });
+        preflight(result.state, request);
         pending = {operation: structuredClone(op), request};
         try {store?.setItem(key, JSON.stringify(pending));}
         catch {
@@ -113,8 +153,17 @@ export function createMicrosoftRepository(api: KitchenApi, workspaceId: string, 
         }
       }
       const response = await envelope(await api.commit(pending.request));
-      if (response.operationId !== op.id || (response.status !== 'saved' && response.status !== 'conflict')) throw invalid();
+      if (response.operationId !== op.id || !['saved', 'conflict', 'rejected'].includes(response.status)) throw invalid();
       const next = stateValue(response.state);
+      if (response.status === 'rejected') {
+        if (response.rejectionCode !== 'candidate_validation' || response.appliedRevision !== null ||
+            response.requestHash !== await requestHash(pending.request) || next.revision !== op.baseRevision ||
+            next.operationIds.includes(op.id)) throw invalid();
+        store?.removeItem(key);
+        pending = null;
+        current = next;
+        throw new RejectedError('Der Server hat diese Änderung vor dem Speichern abgelehnt. Bitte die Eingabe korrigieren.');
+      }
       if (response.status === 'saved') {
         if (!Number.isSafeInteger(response.appliedRevision) || response.appliedRevision !== op.baseRevision + 1 ||
             response.appliedRevision > next.revision || !next.operationIds.includes(op.id) ||
