@@ -1,5 +1,7 @@
 # Zunftküche – vorläufige UI-Prüfung
 
+Historischer Bericht zum ersten lokalen Arbeitsstand. Der nachfolgende Ausbau mit vollständigem Küchenablauf, weiteren Browser- und Mobilprüfungen sowie kompiliertem Dataverse-Server wird in README.md und docs/acceptance-2026-10-14.txt dokumentiert. Aussagen zum damals gesperrten Mac und 22 Tests sind frühere Beobachtungen, kein aktueller Status.
+
 final result: blocked
 
 Die lokale Desktopprüfung ist dokumentiert. Die endgültige Abnahme der beauftragten Microsoft-/Teams-App ist offen: Umgebung und Veröffentlichung fehlen, die konkrete Gruppenzuordnung wartet auf Bestätigung und der Mac ist inzwischen gesperrt. Eine native Teams- und weitere Mobilprüfung konnte daher nicht abgeschlossen werden. Dieser Bericht erklärt die lokale Arbeitsversion nicht zur fertigen App.

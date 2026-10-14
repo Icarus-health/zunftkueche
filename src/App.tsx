@@ -1,47 +1,455 @@
-import {useEffect,useState} from 'react';
-import {ChefHat,House,ForkKnife,ClipboardText,Truck,Receipt,ChartBar,ArrowClockwise,CheckCircle,WarningCircle,Database,CalendarBlank,Plus} from '@phosphor-icons/react';
-import type {KitchenState} from './domain/state.ts';
-import {getRepository} from './data/repository.ts';
-import type {Repository} from './data/repository.ts';
-import {SaveController} from './data/save-controller.ts';
-import type {SaveStatus} from './data/save-controller.ts';
-import {Modal} from './components/shared.tsx';
-import {eventDate,kitchenDays,deriveReadView} from './ui/facts.ts';
-import Home from './screens/Home.tsx';
-import Planning from './screens/Planning.tsx';
-import Orders from './screens/Orders.tsx';
-import Deliveries from './screens/Deliveries.tsx';
-import Receipts from './screens/Receipts.tsx';
-import Analysis from './screens/Analysis.tsx';
-import Masters from './screens/Masters.tsx';
-export type Screen='Übersicht'|'Stammdaten'|'Planung'|'Bestellungen'|'Lieferungen'|'Belege'|'Auswertung';
-export interface ScreenProps{state:KitchenState;busy:boolean;readOnly:boolean;mode:'local'|'microsoft';saveError:string;commit:(type:string,payload:unknown)=>Promise<boolean>;go:(screen:Screen,supplier?:string)=>void}
-const nav=[['Übersicht',House],['Planung',ForkKnife],['Bestellungen',ClipboardText],['Lieferungen',Truck],['Belege',Receipt],['Auswertung',ChartBar],['Stammdaten',Database]] as const;
-export default function App(){
- const [state,setState]=useState<KitchenState|null>(null),[screen,setScreen]=useState<Screen>('Übersicht'),[supplier,setSupplier]=useState(''),[viewEvent,setViewEvent]=useState<string|null>(null);
- const [refreshing,setRefreshing]=useState(false),[loadError,setLoadError]=useState(''),[eventDialog,setEventDialog]=useState<'create'|'dates'|null>(null);
- const [repository]=useState<{repo:Repository|null;error:string}>(()=>{try{return {repo:getRepository(),error:''};}catch(e){return {repo:null,error:(e as Error).message};}});
- const [saveStatus,setSaveStatus]=useState<SaveStatus>({busy:false,pending:null,error:'',message:''});
- const [controller]=useState(()=>new SaveController(()=>{if(!repository.repo)throw new Error(repository.error);return repository.repo;},setState,setSaveStatus));
- const {pending,message}=saveStatus, saving=saveStatus.busy||refreshing, error=saveStatus.error||loadError,mode=repository.repo?.mode??'microsoft';
- const readOnly=repository.repo?.canWrite!==true;
- useEffect(()=>{if(!repository.repo){setLoadError(repository.error);return;}repository.repo.load().then(setState).catch(e=>setLoadError(e.message));},[repository]);
- useEffect(()=>{if(!pending)return;const handler=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue='';};window.addEventListener('beforeunload',handler);return()=>window.removeEventListener('beforeunload',handler);},[pending]);
- async function commit(type:string,payload:unknown){if(!state||refreshing||readOnly)return false;return controller.save({id:crypto.randomUUID(),baseRevision:state.revision??0,type,payload});}
- function go(target:Screen,supplierId?:string){if(supplierId)setSupplier(supplierId);setScreen(target);controller.clearNotice();setLoadError('');}
- async function refresh(){if(controller.status.pending)return;setRefreshing(true);try{if(!repository.repo)throw new Error(repository.error);setState(await repository.repo.load());setLoadError('');controller.clearNotice();}catch(e){setLoadError((e as Error).message);}finally{setRefreshing(false);}}
- if(!state)return <div className="loading-shell"><ChefHat size={42}/><h1>Zunftküche</h1><p role={error?'alert':'status'}>{error||'Deine Küche wird geladen …'}</p>{error&&<button className="button secondary" disabled={refreshing} onClick={refresh}>Erneut laden</button>}</div>;
- const viewState=readOnly?deriveReadView(state,viewEvent):state;
- const props:ScreenProps={state:viewState,busy:saving||Boolean(pending)||readOnly,readOnly,mode,saveError:error,commit,go};
- const events=[state.event,...(state.archivedEvents??[]).map(a=>a.event)];
- return <div className="app-shell"><aside className="sidebar"><div className="brand"><ChefHat size={34}/><strong>Zunftküche</strong></div><nav aria-label="Küchenverwaltung">{nav.map(([name,Icon])=><button key={name} className={screen===name?'nav-item active':'nav-item'} title={name} aria-label={name==='Lieferungen'?'Lieferungen und Lager':name} aria-current={screen===name?'page':undefined} onClick={()=>go(name)}><Icon size={23}/><span>{name==='Lieferungen'?'Lieferungen & Lager':name}</span></button>)}</nav><div className="sidebar-footer"><span>{viewState.event.name}</span><small>Schelmenzunft Staufen</small></div></aside>
- <div className="main-shell"><div className={mode==='local'?'local-banner':'connection-banner'}><span>{mode==='local'?'Lokale Arbeitsversion · Daten werden auf diesem Rechner gespeichert.':'Microsoft-Arbeitsversion · Speicherung über die eingerichtete Datenverbindung.'}</span></div>{readOnly&&<div className="reader-banner" role="status">Leseansicht · Für diese Sitzung ist keine Schreibberechtigung bestätigt.</div>}<div className="context-bar"><label className="event-select">Veranstaltung<select value={viewState.event.id} disabled={saving||Boolean(pending)} onChange={e=>{if(readOnly)setViewEvent(e.target.value);else void commit('event.switch',{id:e.target.value});}}>{events.map(event=><option key={event.id} value={event.id}>{event.name} {event.year}</option>)}</select></label><div className="context-right"><button className="button secondary small" disabled={props.busy} onClick={()=>setEventDialog('dates')}><CalendarBlank size={18}/>Termine</button><button className="button secondary small" disabled={props.busy} onClick={()=>setEventDialog('create')}><Plus size={18}/>Neue Veranstaltung</button><button className="icon-button" aria-label="Daten neu laden" disabled={saving||Boolean(pending)} onClick={refresh}><ArrowClockwise size={21}/></button></div></div>
- <main>{error&&<div className="alert" role="alert"><WarningCircle size={23}/><div>{error}{pending&&<button className="button secondary small" disabled={saving} onClick={()=>controller.retry()}>Erneut übertragen</button>}</div></div>}{message&&<div className="save-status" role="status"><CheckCircle size={17}/>{mode==='microsoft'&&message==='Lokal gespeichert'?'Gespeichert':message}</div>}
- {screen==='Übersicht'&&<Home key={viewState.event.id} {...props}/>}{screen==='Stammdaten'&&<Masters key={viewState.event.id} {...props}/>}{screen==='Planung'&&<Planning key={viewState.event.id} {...props}/>}{screen==='Bestellungen'&&<Orders key={viewState.event.id} {...props} initialSupplier={supplier}/>}{screen==='Lieferungen'&&<Deliveries key={viewState.event.id} {...props}/>}{screen==='Belege'&&<Receipts key={viewState.event.id} {...props}/>}{screen==='Auswertung'&&<Analysis key={viewState.event.id} {...props}/>}
- </main></div>{eventDialog&&<EventEditor key={`${eventDialog}:${state.event.id}`} {...props} kind={eventDialog} onClose={()=>setEventDialog(null)}/>}</div>;
+import { useEffect, useState } from "react";
+import {
+  ChefHat,
+  House,
+  ForkKnife,
+  ClipboardText,
+  Truck,
+  Receipt,
+  ChartBar,
+  ArrowClockwise,
+  CheckCircle,
+  WarningCircle,
+  Database,
+  CalendarBlank,
+  Plus,
+} from "@phosphor-icons/react";
+import type { KitchenState } from "./domain/state.ts";
+import { getRepository } from "./data/repository.ts";
+import type { Repository } from "./data/repository.ts";
+import { SaveController } from "./data/save-controller.ts";
+import type { SaveStatus } from "./data/save-controller.ts";
+import { Modal } from "./components/shared.tsx";
+import { eventDate, kitchenDays, deriveReadView } from "./ui/facts.ts";
+import Home from "./screens/Home.tsx";
+import Planning from "./screens/Planning.tsx";
+import Orders from "./screens/Orders.tsx";
+import Deliveries from "./screens/Deliveries.tsx";
+import Receipts from "./screens/Receipts.tsx";
+import Analysis from "./screens/Analysis.tsx";
+import Masters from "./screens/Masters.tsx";
+export type Screen =
+  | "Übersicht"
+  | "Stammdaten"
+  | "Planung"
+  | "Bestellungen"
+  | "Lieferungen"
+  | "Belege"
+  | "Auswertung";
+export interface ScreenProps {
+  state: KitchenState;
+  busy: boolean;
+  readOnly: boolean;
+  mode: "local" | "microsoft";
+  saveError: string;
+  commit: (type: string, payload: unknown) => Promise<boolean>;
+  go: (screen: Screen, supplier?: string) => void;
 }
-function EventEditor({state,busy,commit,saveError,kind,onClose}:ScreenProps&{kind:'create'|'dates';onClose:()=>void}){
- const [name,setName]=useState(state.event.name),[year,setYear]=useState(String(state.event.year+1)),[copyPlan,setCopyPlan]=useState(false),[error,setError]=useState('');
- async function save(e:React.FormEvent<HTMLFormElement>){e.preventDefault();try{const ok=await commit(kind==='create'?'event.create':'event.dates',kind==='create'?{name,year:Number(year),copyPlan}:{dates:Object.fromEntries(kitchenDays.map(day=>[day,String(new FormData(e.currentTarget).get(`date-${day}`)??'')||null]))});if(ok)onClose();else setError('Änderung nicht gespeichert. Bitte den Hinweis oben beachten.');}catch(e){setError((e as Error).message);}}
- return <Modal title={kind==='create'?'Neue Veranstaltung starten':'Veranstaltungstermine'} onClose={onClose}><form onSubmit={save}><fieldset disabled={busy}>{kind==='create'?<><p>Stammdaten und Rezepturen werden übernommen. Die aktuelle Veranstaltung bleibt vollständig auswählbar. Neue Verkäufe, Bestände, Bestellversionen und Rechnungen beginnen leer; Einkaufspreise müssen neu bestätigt werden.</p><label>Name<input required value={name} onChange={e=>setName(e.target.value)} maxLength={200}/></label><label>Jahr<input required type="number" min="1900" max="2200" value={year} onChange={e=>setYear(e.target.value)}/></label><label className="checkbox-label"><input type="checkbox" checked={copyPlan} onChange={e=>setCopyPlan(e.target.checked)}/>Bisherige Speisen- und Einkaufsmengen als Planung übernehmen</label></>:<><p>Die Termine erscheinen in der Planung und in Bestellvorschauen.</p><div className="form-row">{kitchenDays.map(day=><label key={day}>{day} · bisher {eventDate(state,day)}<input name={`date-${day}`} type="date" defaultValue={state.event.dates[day]??''}/></label>)}</div></>}{(saveError||error)&&<p className="field-error" role="alert">{saveError||error}</p>}<div className="modal-actions"><button className="button primary" type="submit">{kind==='create'?'Veranstaltung anlegen':'Termine speichern'}</button></div></fieldset></form></Modal>;
+const nav = [
+  ["Übersicht", House],
+  ["Planung", ForkKnife],
+  ["Bestellungen", ClipboardText],
+  ["Lieferungen", Truck],
+  ["Belege", Receipt],
+  ["Auswertung", ChartBar],
+  ["Stammdaten", Database],
+] as const;
+export default function App() {
+  const [state, setState] = useState<KitchenState | null>(null),
+    [screen, setScreen] = useState<Screen>("Übersicht"),
+    [supplier, setSupplier] = useState(""),
+    [viewEvent, setViewEvent] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false),
+    [loadError, setLoadError] = useState(""),
+    [eventDialog, setEventDialog] = useState<"create" | "dates" | null>(null);
+  const [repository] = useState<{ repo: Repository | null; error: string }>(
+    () => {
+      try {
+        return { repo: getRepository(), error: "" };
+      } catch (e) {
+        return { repo: null, error: (e as Error).message };
+      }
+    },
+  );
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>({
+    busy: false,
+    pending: null,
+    error: "",
+    message: "",
+  });
+  const [controller] = useState(
+    () =>
+      new SaveController(
+        () => {
+          if (!repository.repo) throw new Error(repository.error);
+          return repository.repo;
+        },
+        setState,
+        setSaveStatus,
+      ),
+  );
+  const { pending, message } = saveStatus,
+    saving = saveStatus.busy || refreshing,
+    error = saveStatus.error || loadError,
+    mode = repository.repo?.mode ?? "microsoft";
+  const readOnly = repository.repo?.canWrite !== true;
+  useEffect(() => {
+    if (!repository.repo) {
+      setLoadError(repository.error);
+      return;
+    }
+    repository.repo
+      .load()
+      .then(setState)
+      .catch((e) => setLoadError(e.message));
+  }, [repository]);
+  useEffect(() => {
+    if (!pending) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [pending]);
+  async function commit(type: string, payload: unknown) {
+    if (!state || refreshing || readOnly) return false;
+    return controller.save({
+      id: crypto.randomUUID(),
+      baseRevision: state.revision ?? 0,
+      type,
+      payload,
+    });
+  }
+  function go(target: Screen, supplierId?: string) {
+    if (supplierId) setSupplier(supplierId);
+    setScreen(target);
+    controller.clearNotice();
+    setLoadError("");
+  }
+  async function refresh() {
+    if (controller.status.pending) return;
+    setRefreshing(true);
+    try {
+      if (!repository.repo) throw new Error(repository.error);
+      setState(await repository.repo.load());
+      setLoadError("");
+      controller.clearNotice();
+    } catch (e) {
+      setLoadError((e as Error).message);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+  if (!state)
+    return (
+      <div className="loading-shell">
+        <ChefHat size={42} />
+        <h1>Zunftküche</h1>
+        <p role={error ? "alert" : "status"}>
+          {error || "Deine Küche wird geladen …"}
+        </p>
+        {error && (
+          <button
+            className="button secondary"
+            disabled={refreshing}
+            onClick={refresh}
+          >
+            Erneut laden
+          </button>
+        )}
+      </div>
+    );
+  const viewState = readOnly ? deriveReadView(state, viewEvent) : state;
+  const props: ScreenProps = {
+    state: viewState,
+    busy: saving || Boolean(pending) || readOnly,
+    readOnly,
+    mode,
+    saveError: error,
+    commit,
+    go,
+  };
+  const events = [
+    state.event,
+    ...(state.archivedEvents ?? []).map((a) => a.event),
+  ];
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <ChefHat size={34} />
+          <strong>Zunftküche</strong>
+        </div>
+        <nav aria-label="Küchenverwaltung">
+          {nav.map(([name, Icon]) => (
+            <button
+              key={name}
+              className={screen === name ? "nav-item active" : "nav-item"}
+              title={name}
+              aria-label={
+                name === "Lieferungen" ? "Lieferungen und Lager" : name
+              }
+              aria-current={screen === name ? "page" : undefined}
+              onClick={() => go(name)}
+            >
+              <Icon size={23} />
+              <span>
+                {name === "Lieferungen" ? "Lieferungen & Lager" : name}
+              </span>
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-footer">
+          <span>{viewState.event.name}</span>
+          <small>Schelmenzunft Staufen</small>
+        </div>
+      </aside>
+      <div className="main-shell">
+        <div
+          className={mode === "local" ? "local-banner" : "connection-banner"}
+        >
+          <span>
+            {mode === "local"
+              ? "Lokale Arbeitsversion · Daten werden auf diesem Rechner gespeichert."
+              : "Microsoft-Arbeitsversion · Speicherung über die eingerichtete Datenverbindung."}
+          </span>
+        </div>
+        {readOnly && (
+          <div className="reader-banner" role="status">
+            Leseansicht · Für diese Sitzung ist keine Schreibberechtigung
+            bestätigt.
+          </div>
+        )}
+        <div className="context-bar">
+          <label className="event-select">
+            Veranstaltung
+            <select
+              value={viewState.event.id}
+              disabled={saving || Boolean(pending)}
+              onChange={(e) => {
+                if (readOnly) setViewEvent(e.target.value);
+                else void commit("event.switch", { id: e.target.value });
+              }}
+            >
+              {events.map((event) => (
+                <option key={event.id} value={event.id}>
+                  {event.name} {event.year}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="context-right">
+            <button
+              className="button secondary small"
+              disabled={props.busy}
+              onClick={() => setEventDialog("dates")}
+            >
+              <CalendarBlank size={18} />
+              Termine
+            </button>
+            <button
+              className="button secondary small"
+              disabled={props.busy}
+              onClick={() => setEventDialog("create")}
+            >
+              <Plus size={18} />
+              Neue Veranstaltung
+            </button>
+            <button
+              className="icon-button"
+              aria-label="Daten neu laden"
+              disabled={saving || Boolean(pending)}
+              onClick={refresh}
+            >
+              <ArrowClockwise size={21} />
+            </button>
+          </div>
+        </div>
+        <main>
+          {error && (
+            <div className="alert" role="alert">
+              <WarningCircle size={23} />
+              <div>
+                {error}
+                {pending && (
+                  <button
+                    className="button secondary small"
+                    disabled={saving}
+                    onClick={() => controller.retry()}
+                  >
+                    Erneut übertragen
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+          {message && (
+            <div className="save-status" role="status">
+              <CheckCircle size={17} />
+              {mode === "microsoft" && message === "Lokal gespeichert"
+                ? "Gespeichert"
+                : message}
+            </div>
+          )}
+          {screen === "Übersicht" && (
+            <Home key={viewState.event.id} {...props} />
+          )}
+          {screen === "Stammdaten" && (
+            <Masters key={viewState.event.id} {...props} />
+          )}
+          {screen === "Planung" && (
+            <Planning key={viewState.event.id} {...props} />
+          )}
+          {screen === "Bestellungen" && (
+            <Orders
+              key={viewState.event.id}
+              {...props}
+              initialSupplier={supplier}
+            />
+          )}
+          {screen === "Lieferungen" && (
+            <Deliveries key={viewState.event.id} {...props} />
+          )}
+          {screen === "Belege" && (
+            <Receipts key={viewState.event.id} {...props} />
+          )}
+          {screen === "Auswertung" && (
+            <Analysis key={viewState.event.id} {...props} />
+          )}
+        </main>
+      </div>
+      {eventDialog && (
+        <EventEditor
+          key={`${eventDialog}:${state.event.id}`}
+          {...props}
+          kind={eventDialog}
+          onClose={() => setEventDialog(null)}
+        />
+      )}
+    </div>
+  );
+}
+function EventEditor({
+  state,
+  busy,
+  commit,
+  saveError,
+  kind,
+  onClose,
+}: ScreenProps & { kind: "create" | "dates"; onClose: () => void }) {
+  const [name, setName] = useState(state.event.name),
+    [year, setYear] = useState(String(state.event.year + 1)),
+    [copyPlan, setCopyPlan] = useState(false),
+    [error, setError] = useState("");
+  async function save(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    try {
+      const ok = await commit(
+        kind === "create" ? "event.create" : "event.dates",
+        kind === "create"
+          ? { name, year: Number(year), copyPlan }
+          : {
+              dates: Object.fromEntries(
+                kitchenDays.map((day) => [
+                  day,
+                  String(
+                    new FormData(e.currentTarget).get(`date-${day}`) ?? "",
+                  ) || null,
+                ]),
+              ),
+            },
+      );
+      if (ok) onClose();
+      else
+        setError(
+          "Änderung nicht gespeichert. Bitte den Hinweis oben beachten.",
+        );
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  return (
+    <Modal
+      title={
+        kind === "create"
+          ? "Neue Veranstaltung starten"
+          : "Veranstaltungstermine"
+      }
+      onClose={onClose}
+    >
+      <form onSubmit={save}>
+        <fieldset disabled={busy}>
+          {kind === "create" ? (
+            <>
+              <p>
+                Stammdaten und Rezepturen werden übernommen. Die aktuelle
+                Veranstaltung bleibt vollständig auswählbar. Neue Verkäufe,
+                Bestände, Bestellversionen und Rechnungen beginnen leer;
+                Einkaufspreise müssen neu bestätigt werden.
+              </p>
+              <label>
+                Name
+                <input
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  maxLength={200}
+                />
+              </label>
+              <label>
+                Jahr
+                <input
+                  required
+                  type="number"
+                  min="1900"
+                  max="2200"
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                />
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={copyPlan}
+                  onChange={(e) => setCopyPlan(e.target.checked)}
+                />
+                Bisherige Speisen- und Einkaufsmengen als Planung übernehmen
+              </label>
+            </>
+          ) : (
+            <>
+              <p>
+                Die Termine erscheinen in der Planung und in Bestellvorschauen.
+              </p>
+              <div className="form-row">
+                {kitchenDays.map((day) => (
+                  <label key={day}>
+                    {day} · bisher {eventDate(state, day)}
+                    <input
+                      name={`date-${day}`}
+                      type="date"
+                      defaultValue={state.event.dates[day] ?? ""}
+                    />
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+          {(saveError || error) && (
+            <p className="field-error" role="alert">
+              {saveError || error}
+            </p>
+          )}
+          <div className="modal-actions">
+            <button className="button primary" type="submit">
+              {kind === "create"
+                ? "Veranstaltung anlegen"
+                : "Termine speichern"}
+            </button>
+          </div>
+        </fieldset>
+      </form>
+    </Modal>
+  );
 }

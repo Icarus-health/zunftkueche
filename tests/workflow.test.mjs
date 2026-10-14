@@ -1,20 +1,308 @@
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
-import { applyOperation } from '../src/domain/state.ts';
-import { purchasingNeeds, stockSummary } from '../src/domain/workflow.ts';
-import { recipeCost } from '../src/domain/kitchen.ts';
-const empty=()=>({schemaVersion:2,event:{id:'event-1',name:'Test',year:2026,status:'Planung',dates:{}},suppliers:[],articles:[],menu:[],planLines:[],dishPlan:[],invoices:[],sales:[],movements:[],orders:[],lessons:[],sourceNotice:'',revision:0,operationIds:[]});
-let serial=0;
-const apply=(state,type,payload)=>applyOperation(state,{id:`test-${++serial}`,baseRevision:state.revision,type,payload}).state;
-function setup(){let s=empty();s=apply(s,'supplier.save',{id:'s',name:'Lieferant',email:'mail@example.org'});s=apply(s,'article.save',{id:'a',name:'Zutat',supplierId:'s',unit:'kg',category:'Lebensmittel',packSize:2,unitPriceCents:123.45});s=apply(s,'menu.save',{id:'m',name:'Essen',category:'Speise',priceCents:500});s=apply(s,'recipe.save',{menuId:'m',lines:[{articleId:'a',quantity:.2}],confirmed:true});s=apply(s,'dish.quantity',{menuId:'m',day:'Freitag',quantity:10});s=apply(s,'dish.quantity',{menuId:'m',day:'Samstag',quantity:20});return s;}
-test('Bedarf hält unbekannten Anfangsbestand offen und rechnet gemeinsamen Bestand nur einmal an',()=>{let s=setup();assert.equal(purchasingNeeds(s,'Gesamt').complete,false);assert.equal(purchasingNeeds(s,'Gesamt').rows[0].suggested,null);s=apply(s,'stock.opening',{articleId:'a',quantity:1});assert.equal(purchasingNeeds(s,'Freitag').rows[0].opening,0);assert.equal(purchasingNeeds(s,'Samstag').rows[0].opening,0);const needs=purchasingNeeds(s,'Gesamt');assert.equal(needs.complete,true);assert.equal(needs.rows[0].required,6);assert.equal(needs.rows[0].suggested,6);assert.throws(()=>apply(s,'purchase.apply',{day:'Freitag'}),/Gesamt/);s=apply(s,'purchase.apply',{day:'Gesamt'});assert.equal(s.planLines[0].day,'Allgemein');assert.equal(s.planLines[0].quantity,6);s=apply(s,'purchase.apply',{day:'Gesamt'});assert.equal(s.planLines.length,1);});
-test('Manuelle/importierte Einkaufsdeckung wird erhalten und nicht doppelt gekauft',()=>{let s=apply(setup(),'stock.opening',{articleId:'a',quantity:0});s=apply(s,'plan.add',{articleId:'a',supplierId:'s',day:'Freitag',quantity:2});const id=s.planLines[0].id;s=apply(s,'purchase.apply',{day:'Gesamt'});assert.equal(s.planLines.find(l=>l.id===id).quantity,2);assert.equal(s.planLines.find(l=>l.purchaseGenerated).quantity,4);s=apply(s,'plan.quantity',{id,quantity:null});assert.equal(purchasingNeeds(s,'Gesamt').complete,false);assert.throws(()=>apply(s,'purchase.apply',{day:'Gesamt'}),/offen/);});
-test('Rezeptkosten summieren präzise Einkaufspreise vor der Rundung',()=>{assert.equal(recipeCost([{quantity:.5,unitPriceCents:1},{quantity:.5,unitPriceCents:1}]).totalCents,1);assert.equal(setup().articles[0].unitPriceCents,123.45);});
-test('Ereigniswechsel archiviert alle Fakten/Preisrezept-Snapshots ohne Verschachtelung und bewahrt CAS',()=>{let s=setup();s=apply(s,'delivery.record',{articleId:'a',day:'Freitag',quantity:4});s=apply(s,'sales.quantity',{menuId:'m',day:'Freitag',quantity:3});s=apply(s,'event.dates',{dates:{Freitag:'2026-10-16',Samstag:'2026-10-17'}});const revision=s.revision;s=apply(s,'event.create',{name:'Nächstes',year:2027,copyPlan:true});assert.equal(s.sales.length,0);assert.equal(s.movements.length,0);assert.equal(s.dishPlan.length,2);assert.equal(s.event.dates.Freitag,undefined);s=apply(s,'menu.price',{menuId:'m',priceCents:900});s=apply(s,'event.switch',{id:'event-1'});assert.equal(s.menu[0].priceCents,500);assert.equal(s.sales[0].quantity,3);assert.equal(s.movements.length,1);assert.ok(s.archivedEvents.every(a=>!('archivedEvents' in a)));assert.equal(applyOperation(s,{id:'stale',baseRevision:revision,type:'menu.price',payload:{menuId:'m',priceCents:1}}).status,'conflict');});
-test('Bestand unterscheidet Verbrauch/Rückgabe/Abfall und bucht Verkauf nicht automatisch',()=>{let s=setup();assert.equal(stockSummary(s,'a').balance,null);s=apply(s,'stock.opening',{articleId:'a',quantity:10});s=apply(s,'stock.consume',{articleId:'a',day:'Freitag',quantity:3});s=apply(s,'stock.return',{articleId:'a',day:'Freitag',quantity:2});s=apply(s,'stock.waste',{articleId:'a',day:'Freitag',quantity:1});s=apply(s,'sales.quantity',{menuId:'m',day:'Freitag',quantity:5});assert.equal(stockSummary(s,'a').balance,4);const op={id:'repeat',baseRevision:s.revision,type:'delivery.record',payload:{articleId:'a',day:'Freitag',quantity:2}};s=applyOperation(s,op).state;s=applyOperation(s,op).state;assert.equal(stockSummary(s,'a').received,2);});
-test('Belege lassen sich ergänzen/ändern, verweigern doppelte Nummern und ungültige Eingaben',()=>{let s=setup();const p={supplierId:'s',number:'R-1',date:'2026-10-16',grossCents:1190,netCents:1000,scope:'Küche',lines:[{articleId:'a',name:'Zutat',quantity:1,unit:'kg',netCents:1000}]};s=apply(s,'invoice.save',p);const id=s.invoices[0].id;s=apply(s,'invoice.update',{...p,id,grossCents:2380,netCents:2000});assert.equal(s.invoices.length,1);assert.equal(s.invoices[0].grossCents,2380);assert.throws(()=>apply(s,'invoice.save',p),/bereits/);for(const [type,payload] of [['dish.quantity',{menuId:'m',day:'Freitag',quantity:.5}],['article.save',{...s.articles[0],packSize:0}],['recipe.save',{menuId:'m',confirmed:true,lines:[{articleId:'a',quantity:0}]}],['invoice.save',{...p,number:'other',netCents:2000}],['event.dates',{dates:{Freitag:'2026-02-30'}}],['supplier.save',{name:'x'.repeat(201),email:null}]])assert.throws(()=>apply(s,type,payload));});
-test('Neue Vorgangs-IDs dürfen nicht für andere Buchungen wiederverwendet werden',()=>{let s=setup();const op={id:'same-id',baseRevision:s.revision,type:'stock.opening',payload:{articleId:'a',quantity:1}};s=applyOperation(s,op).state;assert.equal(applyOperation(s,{...op,payload:{quantity:1,articleId:'a'}}).state,s);assert.throws(()=>applyOperation(s,{...op,payload:{articleId:'a',quantity:2}}),/Vorgangs-ID/);});
-test('Manuell geänderte abgeleitete Mengen werden bei erneutem Übernehmen als feste Deckung respektiert',()=>{let s=apply(setup(),'stock.opening',{articleId:'a',quantity:0});s=apply(s,'purchase.apply',{day:'Gesamt'});const id=s.planLines[0].id;s=apply(s,'plan.quantity',{id,quantity:8});s=apply(s,'purchase.apply',{day:'Gesamt'});assert.equal(s.planLines.find(l=>l.id===id).quantity,8);assert.equal(s.planLines.filter(l=>l.quantity>0).length,1);});
-test('Andere Orte zählen nicht als Küchendeckung; fehlende Gebinde und Entwurfsrezepte sperren Übernahme',()=>{let s=apply(setup(),'stock.opening',{articleId:'a',quantity:0});s.planLines.push({id:'hall',articleId:'a',supplierId:'s',name:'Zutat',quantity:100,unit:'kg',day:'Freitag',time:null,unitPriceCents:null,location:'Halle'});assert.equal(purchasingNeeds(s,'Gesamt').rows[0].planned,0);s.articles[0].packSize=null;assert.equal(purchasingNeeds(s,'Gesamt').complete,false);s.articles[0].packSize=2;s.menu[0].recipeStatus='Entwurf';assert.equal(purchasingNeeds(s,'Gesamt').rows[0].required,null);assert.throws(()=>apply(s,'purchase.apply',{day:'Gesamt'}),/offen/);});
-test('Leerzustand, Mengenpräzision und gemessene Bestände bleiben ausdrücklich begrenzt',()=>{assert.deepEqual(purchasingNeeds(empty(),'Gesamt').rows,[]);assert.equal(purchasingNeeds(empty(),'Gesamt').complete,false);let s=setup();assert.throws(()=>apply(s,'article.save',{...s.articles[0],packSize:1e-100}),/Menge/);s=apply(s,'stock.opening',{articleId:'a',quantity:10});s=apply(s,'stock.count',{articleId:'a',day:'Freitag',quantity:7});assert.equal(stockSummary(s,'a').counted,7);assert.equal(stockSummary(s,'a').balance,10);s=apply(s,'event.create',{name:'2027',year:2027,copyPlan:false});assert.equal(s.articles[0].unitPriceCents,null);assert.equal(s.articles[0].previousUnitPriceCents,123.45);assert.equal(s.articles[0].priceReferenceYear,2026);assert.equal(s.dishPlan.length,0);});
-test('Abgeleiteter Wochenendeinkauf lässt sich einem echten Liefertag zuordnen und bleibt anschließend erhalten',()=>{let s=apply(setup(),'stock.opening',{articleId:'a',quantity:0});s=apply(s,'purchase.apply',{day:'Gesamt'});const id=s.planLines[0].id;s=apply(s,'plan.schedule',{id,day:'Freitag',time:'17:00',note:'Küche'});assert.equal(s.planLines[0].purchaseGenerated,false);s=apply(s,'order.prepare',{supplierId:'s',day:'Freitag'});s=apply(s,'purchase.apply',{day:'Gesamt'});assert.equal(s.planLines.length,1);assert.equal(s.planLines[0].day,'Freitag');assert.equal(s.orders[0].lines[0].time,'17:00');assert.throws(()=>apply(s,'plan.schedule',{id,day:'Samstag',time:'25:00'}),/Lieferzeit/);});
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { applyOperation } from "../src/domain/state.ts";
+import { purchasingNeeds, stockSummary } from "../src/domain/workflow.ts";
+import { recipeCost } from "../src/domain/kitchen.ts";
+const empty = () => ({
+  schemaVersion: 2,
+  event: {
+    id: "event-1",
+    name: "Test",
+    year: 2026,
+    status: "Planung",
+    dates: {},
+  },
+  suppliers: [],
+  articles: [],
+  menu: [],
+  planLines: [],
+  dishPlan: [],
+  invoices: [],
+  sales: [],
+  movements: [],
+  orders: [],
+  lessons: [],
+  sourceNotice: "",
+  revision: 0,
+  operationIds: [],
+});
+let serial = 0;
+const apply = (state, type, payload) =>
+  applyOperation(state, {
+    id: `test-${++serial}`,
+    baseRevision: state.revision,
+    type,
+    payload,
+  }).state;
+function setup() {
+  let s = empty();
+  s = apply(s, "supplier.save", {
+    id: "s",
+    name: "Lieferant",
+    email: "mail@example.org",
+  });
+  s = apply(s, "article.save", {
+    id: "a",
+    name: "Zutat",
+    supplierId: "s",
+    unit: "kg",
+    category: "Lebensmittel",
+    packSize: 2,
+    unitPriceCents: 123.45,
+  });
+  s = apply(s, "menu.save", {
+    id: "m",
+    name: "Essen",
+    category: "Speise",
+    priceCents: 500,
+  });
+  s = apply(s, "recipe.save", {
+    menuId: "m",
+    lines: [{ articleId: "a", quantity: 0.2 }],
+    confirmed: true,
+  });
+  s = apply(s, "dish.quantity", { menuId: "m", day: "Freitag", quantity: 10 });
+  s = apply(s, "dish.quantity", { menuId: "m", day: "Samstag", quantity: 20 });
+  return s;
+}
+test("Bedarf hält unbekannten Anfangsbestand offen und rechnet gemeinsamen Bestand nur einmal an", () => {
+  let s = setup();
+  assert.equal(purchasingNeeds(s, "Gesamt").complete, false);
+  assert.equal(purchasingNeeds(s, "Gesamt").rows[0].suggested, null);
+  s = apply(s, "stock.opening", { articleId: "a", quantity: 1 });
+  assert.equal(purchasingNeeds(s, "Freitag").rows[0].opening, 0);
+  assert.equal(purchasingNeeds(s, "Samstag").rows[0].opening, 0);
+  const needs = purchasingNeeds(s, "Gesamt");
+  assert.equal(needs.complete, true);
+  assert.equal(needs.rows[0].required, 6);
+  assert.equal(needs.rows[0].suggested, 6);
+  assert.throws(() => apply(s, "purchase.apply", { day: "Freitag" }), /Gesamt/);
+  s = apply(s, "purchase.apply", { day: "Gesamt" });
+  assert.equal(s.planLines[0].day, "Allgemein");
+  assert.equal(s.planLines[0].quantity, 6);
+  s = apply(s, "purchase.apply", { day: "Gesamt" });
+  assert.equal(s.planLines.length, 1);
+});
+test("Manuelle/importierte Einkaufsdeckung wird erhalten und nicht doppelt gekauft", () => {
+  let s = apply(setup(), "stock.opening", { articleId: "a", quantity: 0 });
+  s = apply(s, "plan.add", {
+    articleId: "a",
+    supplierId: "s",
+    day: "Freitag",
+    quantity: 2,
+  });
+  const id = s.planLines[0].id;
+  s = apply(s, "purchase.apply", { day: "Gesamt" });
+  assert.equal(s.planLines.find((l) => l.id === id).quantity, 2);
+  assert.equal(s.planLines.find((l) => l.purchaseGenerated).quantity, 4);
+  s = apply(s, "plan.quantity", { id, quantity: null });
+  assert.equal(purchasingNeeds(s, "Gesamt").complete, false);
+  assert.throws(() => apply(s, "purchase.apply", { day: "Gesamt" }), /offen/);
+});
+test("Rezeptkosten summieren präzise Einkaufspreise vor der Rundung", () => {
+  assert.equal(
+    recipeCost([
+      { quantity: 0.5, unitPriceCents: 1 },
+      { quantity: 0.5, unitPriceCents: 1 },
+    ]).totalCents,
+    1,
+  );
+  assert.equal(setup().articles[0].unitPriceCents, 123.45);
+});
+test("Ereigniswechsel archiviert alle Fakten/Preisrezept-Snapshots ohne Verschachtelung und bewahrt CAS", () => {
+  let s = setup();
+  s = apply(s, "delivery.record", {
+    articleId: "a",
+    day: "Freitag",
+    quantity: 4,
+  });
+  s = apply(s, "sales.quantity", { menuId: "m", day: "Freitag", quantity: 3 });
+  s = apply(s, "event.dates", {
+    dates: { Freitag: "2026-10-16", Samstag: "2026-10-17" },
+  });
+  const revision = s.revision;
+  s = apply(s, "event.create", {
+    name: "Nächstes",
+    year: 2027,
+    copyPlan: true,
+  });
+  assert.equal(s.sales.length, 0);
+  assert.equal(s.movements.length, 0);
+  assert.equal(s.dishPlan.length, 2);
+  assert.equal(s.event.dates.Freitag, undefined);
+  s = apply(s, "menu.price", { menuId: "m", priceCents: 900 });
+  s = apply(s, "event.switch", { id: "event-1" });
+  assert.equal(s.menu[0].priceCents, 500);
+  assert.equal(s.sales[0].quantity, 3);
+  assert.equal(s.movements.length, 1);
+  assert.ok(s.archivedEvents.every((a) => !("archivedEvents" in a)));
+  assert.equal(
+    applyOperation(s, {
+      id: "stale",
+      baseRevision: revision,
+      type: "menu.price",
+      payload: { menuId: "m", priceCents: 1 },
+    }).status,
+    "conflict",
+  );
+});
+test("Bestand unterscheidet Verbrauch/Rückgabe/Abfall und bucht Verkauf nicht automatisch", () => {
+  let s = setup();
+  assert.equal(stockSummary(s, "a").balance, null);
+  s = apply(s, "stock.opening", { articleId: "a", quantity: 10 });
+  s = apply(s, "stock.consume", {
+    articleId: "a",
+    day: "Freitag",
+    quantity: 3,
+  });
+  s = apply(s, "stock.return", { articleId: "a", day: "Freitag", quantity: 2 });
+  s = apply(s, "stock.waste", { articleId: "a", day: "Freitag", quantity: 1 });
+  s = apply(s, "sales.quantity", { menuId: "m", day: "Freitag", quantity: 5 });
+  assert.equal(stockSummary(s, "a").balance, 4);
+  const op = {
+    id: "repeat",
+    baseRevision: s.revision,
+    type: "delivery.record",
+    payload: { articleId: "a", day: "Freitag", quantity: 2 },
+  };
+  s = applyOperation(s, op).state;
+  s = applyOperation(s, op).state;
+  assert.equal(stockSummary(s, "a").received, 2);
+});
+test("Belege lassen sich ergänzen/ändern, verweigern doppelte Nummern und ungültige Eingaben", () => {
+  let s = setup();
+  const p = {
+    supplierId: "s",
+    number: "R-1",
+    date: "2026-10-16",
+    grossCents: 1190,
+    netCents: 1000,
+    scope: "Küche",
+    lines: [
+      {
+        articleId: "a",
+        name: "Zutat",
+        quantity: 1,
+        unit: "kg",
+        netCents: 1000,
+      },
+    ],
+  };
+  s = apply(s, "invoice.save", p);
+  const id = s.invoices[0].id;
+  s = apply(s, "invoice.update", {
+    ...p,
+    id,
+    grossCents: 2380,
+    netCents: 2000,
+  });
+  assert.equal(s.invoices.length, 1);
+  assert.equal(s.invoices[0].grossCents, 2380);
+  assert.throws(() => apply(s, "invoice.save", p), /bereits/);
+  for (const [type, payload] of [
+    ["dish.quantity", { menuId: "m", day: "Freitag", quantity: 0.5 }],
+    ["article.save", { ...s.articles[0], packSize: 0 }],
+    [
+      "recipe.save",
+      {
+        menuId: "m",
+        confirmed: true,
+        lines: [{ articleId: "a", quantity: 0 }],
+      },
+    ],
+    ["invoice.save", { ...p, number: "other", netCents: 2000 }],
+    ["event.dates", { dates: { Freitag: "2026-02-30" } }],
+    ["supplier.save", { name: "x".repeat(201), email: null }],
+  ])
+    assert.throws(() => apply(s, type, payload));
+});
+test("Neue Vorgangs-IDs dürfen nicht für andere Buchungen wiederverwendet werden", () => {
+  let s = setup();
+  const op = {
+    id: "same-id",
+    baseRevision: s.revision,
+    type: "stock.opening",
+    payload: { articleId: "a", quantity: 1 },
+  };
+  s = applyOperation(s, op).state;
+  assert.equal(
+    applyOperation(s, { ...op, payload: { quantity: 1, articleId: "a" } })
+      .state,
+    s,
+  );
+  assert.throws(
+    () =>
+      applyOperation(s, { ...op, payload: { articleId: "a", quantity: 2 } }),
+    /Vorgangs-ID/,
+  );
+});
+test("Manuell geänderte abgeleitete Mengen werden bei erneutem Übernehmen als feste Deckung respektiert", () => {
+  let s = apply(setup(), "stock.opening", { articleId: "a", quantity: 0 });
+  s = apply(s, "purchase.apply", { day: "Gesamt" });
+  const id = s.planLines[0].id;
+  s = apply(s, "plan.quantity", { id, quantity: 8 });
+  s = apply(s, "purchase.apply", { day: "Gesamt" });
+  assert.equal(s.planLines.find((l) => l.id === id).quantity, 8);
+  assert.equal(s.planLines.filter((l) => l.quantity > 0).length, 1);
+});
+test("Andere Orte zählen nicht als Küchendeckung; fehlende Gebinde und Entwurfsrezepte sperren Übernahme", () => {
+  let s = apply(setup(), "stock.opening", { articleId: "a", quantity: 0 });
+  s.planLines.push({
+    id: "hall",
+    articleId: "a",
+    supplierId: "s",
+    name: "Zutat",
+    quantity: 100,
+    unit: "kg",
+    day: "Freitag",
+    time: null,
+    unitPriceCents: null,
+    location: "Halle",
+  });
+  assert.equal(purchasingNeeds(s, "Gesamt").rows[0].planned, 0);
+  s.articles[0].packSize = null;
+  assert.equal(purchasingNeeds(s, "Gesamt").complete, false);
+  s.articles[0].packSize = 2;
+  s.menu[0].recipeStatus = "Entwurf";
+  assert.equal(purchasingNeeds(s, "Gesamt").rows[0].required, null);
+  assert.throws(() => apply(s, "purchase.apply", { day: "Gesamt" }), /offen/);
+});
+test("Leerzustand, Mengenpräzision und gemessene Bestände bleiben ausdrücklich begrenzt", () => {
+  assert.deepEqual(purchasingNeeds(empty(), "Gesamt").rows, []);
+  assert.equal(purchasingNeeds(empty(), "Gesamt").complete, false);
+  let s = setup();
+  assert.throws(
+    () => apply(s, "article.save", { ...s.articles[0], packSize: 1e-100 }),
+    /Menge/,
+  );
+  s = apply(s, "stock.opening", { articleId: "a", quantity: 10 });
+  s = apply(s, "stock.count", { articleId: "a", day: "Freitag", quantity: 7 });
+  assert.equal(stockSummary(s, "a").counted, 7);
+  assert.equal(stockSummary(s, "a").balance, 10);
+  s = apply(s, "event.create", { name: "2027", year: 2027, copyPlan: false });
+  assert.equal(s.articles[0].unitPriceCents, null);
+  assert.equal(s.articles[0].previousUnitPriceCents, 123.45);
+  assert.equal(s.articles[0].priceReferenceYear, 2026);
+  assert.equal(s.dishPlan.length, 0);
+});
+test("Abgeleiteter Wochenendeinkauf lässt sich einem echten Liefertag zuordnen und bleibt anschließend erhalten", () => {
+  let s = apply(setup(), "stock.opening", { articleId: "a", quantity: 0 });
+  s = apply(s, "purchase.apply", { day: "Gesamt" });
+  const id = s.planLines[0].id;
+  s = apply(s, "plan.schedule", {
+    id,
+    day: "Freitag",
+    time: "17:00",
+    note: "Küche",
+  });
+  assert.equal(s.planLines[0].purchaseGenerated, false);
+  s = apply(s, "order.prepare", { supplierId: "s", day: "Freitag" });
+  s = apply(s, "purchase.apply", { day: "Gesamt" });
+  assert.equal(s.planLines.length, 1);
+  assert.equal(s.planLines[0].day, "Freitag");
+  assert.equal(s.orders[0].lines[0].time, "17:00");
+  assert.throws(
+    () => apply(s, "plan.schedule", { id, day: "Samstag", time: "25:00" }),
+    /Lieferzeit/,
+  );
+});
