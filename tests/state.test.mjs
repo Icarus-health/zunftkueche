@@ -44,6 +44,41 @@ test('Vorbereitete Bestellung ändert sich nach späterer Planung nicht',()=>{
   assert.equal(edited.state.orders[0].status,'Vorbereitet');
 });
 
+function preparePricedOrder(costLines) {
+  const state={...structuredClone(seed),revision:0,operationIds:[]};
+  state.planLines=costLines.map((line,index)=>({
+    ...seed.planLines.find(l=>l.supplierId==='s-wiggenhauser'&&l.day==='Freitag'),
+    id:`rounding-${index}`,...line,
+  }));
+  return applyOperation(state,{id:'rounded-order',baseRevision:0,type:'order.prepare',payload:{supplierId:'s-wiggenhauser',day:'Freitag'}}).state.orders.at(-1);
+}
+
+test('Bestellvorbereitung speichert exakte gerundete Cent und wahrt die Server-Wertgrenze',()=>{
+  assert.equal(preparePricedOrder([{quantity:50,unitPriceCents:.29}]).totalCents,15);
+  assert.equal(preparePricedOrder([
+    {quantity:1,unitPriceCents:100000000},{quantity:.0001,unitPriceCents:4999.99},
+  ]).totalCents,100000000);
+  assert.throws(()=>preparePricedOrder([
+    {quantity:1,unitPriceCents:100000000},{quantity:.0001,unitPriceCents:5000},
+  ]),/Bestellwert/);
+});
+
+test('Bestellvorbereitung verweigert übergroße bekannte Werte auch bei offenen anderen Preisen',()=>{
+  const excessive=[{quantity:2,unitPriceCents:100000000}];
+  const unsafe=Array.from({length:10},()=>({quantity:10000000,unitPriceCents:100000000}));
+  for(const lines of [excessive,unsafe]) {
+    assert.throws(()=>preparePricedOrder(lines),/Bestellwert/);
+    assert.throws(()=>preparePricedOrder([...lines,{quantity:1,unitPriceCents:null}]),/Bestellwert/);
+  }
+});
+
+test('Bestellvorbereitung bewahrt unbekannte Preise innerhalb der bekannten Wertgrenze',()=>{
+  assert.equal(preparePricedOrder([{quantity:1,unitPriceCents:null}]).totalCents,null);
+  assert.equal(preparePricedOrder([
+    {quantity:50,unitPriceCents:.29},{quantity:1,unitPriceCents:null},
+  ]).totalCents,null);
+});
+
 test('Verkäufe speichern ausdrücklich null oder 0 und bewahren den Preis zum Erfassungszeitpunkt',()=>{
   const state={...structuredClone(seed),revision:0,operationIds:[]};
   const first=applyOperation(state,{id:'s-1',baseRevision:0,type:'sales.quantity',payload:{menuId:'m-1',day:'Freitag',quantity:0}});

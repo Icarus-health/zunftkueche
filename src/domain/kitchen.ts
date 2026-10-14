@@ -10,19 +10,29 @@ export function parseQuantity(raw:string):number|null {
   if (!Number.isFinite(quantity)||quantity>10000000) throw new Error('Menge liegt außerhalb des zulässigen Bereichs.');
   return quantity;
 }
+function roundedCost(lines:ReadonlyArray<{quantity:number|null;unitPriceCents:number|null}>):number|null {
+  if(!lines.length||lines.some(l=>l.quantity===null||l.unitPriceCents===null))return null;
+  // Inputs allow four quantity decimals and two cent-price decimals. Convert
+  // those decimal values before multiplying; products are millionths of a cent.
+  const total=lines.reduce((sum,l)=>sum+
+    BigInt(l.quantity!.toFixed(4).replace('.',''))*
+    BigInt(l.unitPriceCents!.toFixed(2).replace('.','')),0n);
+  const cents=(total+500000n)/1000000n;
+  // The public model uses numbers: do not publish an inexact monetary total.
+  return cents>BigInt(Number.MAX_SAFE_INTEGER)?null:Number(cents);
+}
 export function prepareOrder(lines:PlanLine[],supplierId:string,day:Day):OrderSnapshot {
   const selected=lines.filter(l=>l.supplierId===supplierId&&l.day===day).map(l=>Object.freeze(structuredClone(l)));
   const times=[...new Set(selected.map(l=>l.time))].sort((a,b)=>(a??'99:99').localeCompare(b??'99:99'));
-  const priced=selected.every(l=>l.quantity!==null&&l.unitPriceCents!==null);
   return {
     lines:Object.freeze(selected),
     groups:times.map(time=>({time,lines:Object.freeze(selected.filter(l=>l.time===time))})),
-    totalCents: selected.length&&priced? Math.round(selected.reduce((sum,l)=>sum+l.quantity!*l.unitPriceCents!,0)):null,
+    totalCents:roundedCost(selected),
   };
 }
 export function recipeCost(lines:Array<{quantity:number|null;unitPriceCents:number|null}>):{totalCents:number|null;missing:number} {
   const missing=lines.filter(l=>l.quantity===null||l.unitPriceCents===null).length;
-  return {totalCents:!lines.length||missing?null:Math.round(lines.reduce((sum,l)=>sum+l.quantity!*l.unitPriceCents!,0)),missing};
+  return {totalCents:roundedCost(lines),missing};
 }
 export function stockBalance(opening:number|null,movements:Array<{type:string;quantity:number}>):number|null {
   if (opening===null) return null;

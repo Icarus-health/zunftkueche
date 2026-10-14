@@ -1,4 +1,4 @@
-import { prepareOrder } from './kitchen.ts';
+import { prepareOrder, recipeCost } from './kitchen.ts';
 import type {PlanLine,Source} from './kitchen.ts';
 import { purchasingNeeds } from './workflow.ts';
 export interface Supplier {id:string;name:string;email:string|null}
@@ -212,6 +212,8 @@ export function applyOperation(state:KitchenState,op:Operation):CommitResult {
       const day=validDay(p.day), snapshot=prepareOrder(next.planLines,p.supplierId,day);
       if(!snapshot.lines.length)throw new Error('Bestellung enthält keine Positionen.');
       if(snapshot.lines.some(l=>l.quantity===null))throw new Error('Bestellmengen sind noch offen.');
+      const knownLines=snapshot.lines.filter(l=>l.unitPriceCents!==null),knownTotal=recipeCost(knownLines).totalCents;
+      if(knownLines.length&&(knownTotal===null||knownTotal>100000000))throw new Error('Bestellwert überschreitet den zulässigen Höchstbetrag von 1.000.000 Euro. Bitte Mengen und Preise prüfen.');
       next.orders.push({id:op.id,supplierId:p.supplierId,day,status:'Vorbereitet',createdAt:new Date().toISOString(),...snapshot}); break;
     }
     case 'stock.opening': {

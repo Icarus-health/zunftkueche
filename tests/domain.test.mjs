@@ -33,6 +33,55 @@ test('Unbekannte Portionsgrößen verhindern scheinbar vollständige Rezeptkoste
   assert.equal(recipeCost([]).totalCents,null);
 });
 
+// Both consumers must preserve decimal input precision and round only the total.
+const costConsumers = {
+  Rezeptkosten: lines => recipeCost(lines).totalCents,
+  Bestellwert: lines => prepareOrder(lines.map((line, index) => ({
+    id:String(index),supplierId:'supplier',articleId:String(index),name:'Testartikel',
+    unit:'Stück',day:'Freitag',time:null,...line,
+  })), 'supplier', 'Freitag').totalCents,
+};
+
+for (const [name, total] of Object.entries(costConsumers)) {
+  test(`${name}: exakte halbe Cent werden aufgerundet`, () => {
+    assert.equal(total([{quantity:50,unitPriceCents:.29}]), 15);
+    assert.equal(total([{quantity:50,unitPriceCents:1.15}]), 58);
+    assert.equal(total([{quantity:.0001,unitPriceCents:5000}]), 1);
+  });
+
+  test(`${name}: nur die Summe wird gerundet, mit voller Mengen- und Preispräzision`, () => {
+    assert.equal(total(Array.from({length:50}, () => ({quantity:1,unitPriceCents:.29}))), 15);
+    assert.equal(total([{quantity:.0001,unitPriceCents:4999.99}]), 0);
+    assert.equal(total([{quantity:.0001,unitPriceCents:5000.01}]), 1);
+    assert.equal(total([{quantity:1,unitPriceCents:.5},{quantity:1,unitPriceCents:.5}]), 1);
+    assert.equal(total([{quantity:9999999.9999,unitPriceCents:99999999.99}]), 999999999890000);
+  });
+
+  test(`${name}: offene Werte bleiben offen, ausdrücklich null bleibt null Cent`, () => {
+    assert.equal(total([]), null);
+    assert.equal(total([{quantity:50,unitPriceCents:.29},{quantity:null,unitPriceCents:1}]), null);
+    assert.equal(total([{quantity:50,unitPriceCents:.29},{quantity:1,unitPriceCents:null}]), null);
+    assert.equal(total([{quantity:0,unitPriceCents:.29}]), 0);
+    assert.equal(total([{quantity:50,unitPriceCents:0}]), 0);
+  });
+
+  test(`${name}: nicht sicher darstellbare Cent-Summen bleiben unverfügbar`, () => {
+    const maximumLine = {quantity:10000000,unitPriceCents:100000000};
+    assert.equal(total(Array.from({length:9}, () => maximumLine)), 9000000000000000);
+    assert.equal(total(Array.from({length:10}, () => maximumLine)), null);
+  });
+}
+
+test('Rezeptkosten bewahren die Anzahl fehlender Angaben', () => {
+  assert.deepEqual(recipeCost([
+    {quantity:50,unitPriceCents:.29},
+    {quantity:null,unitPriceCents:1},
+    {quantity:1,unitPriceCents:null},
+    {quantity:null,unitPriceCents:null},
+  ]), {totalCents:null,missing:3});
+  assert.deepEqual(recipeCost([{quantity:0,unitPriceCents:0}]), {totalCents:0,missing:0});
+});
+
 test('Bestellungen sind kein Lagerzugang und fehlender Anfangsbestand bleibt offen', () => {
   const movements=[{type:'Bestellung',quantity:200},{type:'Lieferung',quantity:150},{type:'Verbrauch',quantity:100},{type:'Abfall',quantity:2}];
   assert.equal(stockBalance(0,movements),48);
