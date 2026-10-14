@@ -1,6 +1,6 @@
-# Zunftküche – lokaler Arbeitsstand
+# Zunftküche – bedienbare lokale App
 
-Stand 14.10.2026. Diese bedienbare Arbeitsversion ist der vorbereitete Teil des beauftragten Microsoft-Aufbaus. Noch keine Power-Apps-App, Dataverse-Umgebung oder Teams-Registerkarte veröffentlicht. Die Microsoft-Anmeldung wurde erfolgreich geprüft; das Anlegen der Umgebung wartet auf die ausdrückliche Zugriffsgruppenfreigabe und einen entsperrten Mac.
+Stand 14.10.2026. Planung, Einkauf, Lieferungen, Bestand, Belege und Auswertung sind als zusammenhängende React-App umgesetzt. Der Dataverse-Server ist lokal kompiliert und paketiert. **Eine Veröffentlichung in Power Apps oder Teams und die Abnahme mit echten Microsoft-Benutzern stehen aus.** Die konkrete Zugriffsgruppe muss vor der Einrichtung freigegeben sein.
 
 ## Öffnen
 
@@ -10,26 +10,39 @@ Für einen späteren Neustart in diesem Ordner:
 
 ```sh
 npm ci
-npm run dev -- --port 4182
+npm run dev -- --host 127.0.0.1 --port 4182 --strictPort
 ```
 
-Die Vorschau ist nur auf dem eigenen Mac erreichbar. Sie speichert Änderungen privat in `.local-state/state.json`. Originaldateien werden gelesen, nicht verändert. Im Paket fehlen Original-PDFs; die lokalen Herkunftspfade werden verwendet, wenn die Dateien am ursprünglichen Ort liegen.
+Voraussetzung ist eine aktuelle Node-Version mit TypeScript-Strip-Unterstützung. Die Vorschau ist nur auf dem eigenen Mac erreichbar. Änderungen liegen privat in `.local-state/state.json` mit Änderungshistorie. Ein Serverprozess bedient diese lokale Arbeitsversion. Sie ist noch kein abgenommenes Mehrbenutzersystem.
 
-## Vorhanden
+## Bedienung
 
-Startseite, Planung Freitag/Samstag, Lieferant und Liefertag, Bestellmengen und zusätzliche Positionen, getrennte Bestellversionen, Preise und Entwurfsrezepturen, Lieferungen/Restzählungen/Abfall, vorhandene Belege und ihre Herkunft, SharePoint-Verknüpfung, Stückzahlen je Abend, begrenzte Auswertung und Erfahrungen aus 2026.
+1. Veranstaltung oben wählen. „Neue Veranstaltung“ übernimmt Stammdaten und Rezepturen, auf Wunsch die Einkaufsplanung. Frühere Veranstaltungen bleiben auswählbar. Lieferungen, Verkäufe, Belege und Bestellversionen werden separat aufbewahrt.
+2. In „Stammdaten“ Lieferanten, Artikel, Einheiten, Gebinde und Speisen pflegen. Nettopreise können vier Euro-Nachkommastellen haben. Einheiten bereits verwendeter Artikel bleiben geschützt.
+3. Unter „Planung“ Freitag und Samstag nebeneinander planen, Zutaten und Portionsmengen bestätigen. Leer bedeutet offen; ausdrücklich 0 bedeutet kein Bedarf. Ohne vollständige Mengen und bestätigte Rezepturen wird kein vollständiger Einkauf behauptet.
+4. Anfangsbestand in „Lieferungen & Lager“ erfassen. Der gemeinsame Einkaufsbedarf zieht ihn einmal ab, berücksichtigt vorhandene Einkaufspositionen und rundet zusätzliche Mengen auf Gebinde. Erst die Vorschau prüfen und ausdrücklich übernehmen; importierte und manuelle Positionen bleiben erhalten.
+5. „Bestellungen“ beginnt mit dem Lieferanten, danach folgt der Liefertag. Zeiten und Hinweise lassen sich in der Einkaufsplanung festlegen. Vorbereitete Versionen bewahren den damaligen Inhalt. Eine Lieferantenbestellung wird nicht automatisch verschickt.
+6. Lieferungen, Verbrauch, Rückgaben und Abfall ausdrücklich erfassen. Eine Bestellung ist keine Lieferung; Verkäufe buchen keinen angenommenen Verbrauch. Berechneter Bestand und tatsächliche Zählung bleiben getrennt.
+7. Belege ergänzen, zuordnen und mit SharePoint-Originalen verknüpfen. Originaldaten bleiben geschützt; Korrekturen von Listenbelegen haben eine Historie. Die Auswertung zeigt erfasste Stückzahlen, Planvergleich und Teilsummen mit ihrem Umfang.
 
-`import/2026.json` enthält den belegten Ausgangsstand, offene Werte als null. Das ist kein veröffentlichbares Frontend-Asset. Vite nimmt diese Datei nicht in `dist/` auf. Das lokale Daten- und Dateilesemodul wird ebenfalls nicht in den Produktions-Build übernommen. Ohne eingerichteten Microsoft-Adapter verweigert der Produktions-Build den Datenzugriff.
+## Herkunft und Daten
 
-## Prüfung und verbleibende Arbeit
+`import/2026.json` ist die private, quellenbezogene Ausgangskopie. Die Originaldateien bleiben unverändert. Fehlende Portionen, Preise, Verkäufe und Belege werden nicht erfunden. Der Quellimport enthält Schema 1; neue lokale Vorgänge normalisieren auf Schema 2. Eine kontrollierte Cloud-Kopie muss vor der späteren Bereitstellung gesondert normalisiert werden.
 
-22 Fach-/Speicher-/Fehlerprüfungen bestanden. Build erfolgreich. Browser hat Speicherung/Neuladen, Bestellvorschau, Planungsvergleich, Belegumfang und Wiederholung bei unterbrochener Verbindung geprüft. 62 Originaldateien haben unveränderte Inhaltshashes. Ein markierter lokaler Testdatensatz und die Teständerungshistorie werden nicht mitgeliefert und gehören nicht in den späteren Cloud-Import.
+Die Original-PDFs sind im Quellpaket nicht enthalten. Lokale Beleglinks funktionieren, wenn die Originale an ihren bisherigen Pfaden erreichbar sind. Markierte lokale Prüfdaten und `.local-state` werden nicht im Paket mitgeliefert und gehören nicht in den späteren Cloud-Import.
 
-Noch erforderlich: tatsächlicher Dataverse-Datenspeicher und Datenadapter, Rollen für Bearbeiter/Leser, App-Lizenzzuordnung, SharePoint-Belege, Power-Apps-Bereitstellung und Teams-Integration, weitere Stammdaten-/Jahres- und Belegpflege. Eine endgültige UI/UX-Prüfung in Microsoft/Teams steht aus. Vollständige Küchenkennzahlen benötigen fehlende Belege, bestätigte Portionsgrößen und tatsächliche Mengen.
+Der Produktions-Build enthält weder den privaten Import noch das lokale Dateilesemodul. Ohne tatsächliche Microsoft-Dienste verweigert er den Datenzugriff. Ein Produktions-Build allein erzeugt daher noch keine bedienbare Cloud-App.
 
-Keine Lieferantenbestellung wird automatisch versendet. Bekannte Teilausgaben verschiedener Orte werden nicht als Küchengewinn ausgegeben. Die private lokale Umsetzung unterstützt einen Serverprozess; sie ist kein freigegebenes Mehrbenutzersystem.
+## Technische Prüfung und Microsoft-Aufbau
 
 ```sh
 npm test
 npm run build
+npm run build:server
 ```
+
+Der Serverlauf benötigt Python 3 und .NET SDK 8.0.426 oder kompatibel. `KITCHEN_DOTNET` kann auf einen vorhandenen Compiler zeigen. [Bereitstellungsanleitung](docs/deployment.md), `server/deployment/registration.json` und der Prüfbericht beschreiben den echten API-/Rollen-/Transaktionsvertrag. Die Registrierungsspezifikation ist noch kein importierbares Power-Platform-Solution-ZIP.
+
+Der Dataverse-Server prüft Leser/Bearbeiter über den tatsächlichen Aufrufer, Versionen und unveränderliche Wiederholungsbelege. Beide Bearbeiter erhalten vollständige Küchenbearbeitung. Der Datenbestand ist zunächst ein gemeinsames, auf 512 KiB begrenztes Dokument; parallele Änderungen können auch über Veranstaltungsgrenzen hinweg konfligieren. Größere oder feiner berechtigte Nutzung benötigt eine Weiterentwicklung dieses Speichermodells.
+
+Lokale Prüfungen bestätigen Code und simulierte Speichergrenzen. Dataverse-Transaktionen, tatsächliche Rollen, App-Lizenzzuordnung, SharePoint-Verknüpfung und Teams-UI müssen nach der freigegebenen Einrichtung separat mit gewöhnlichen Benutzerkonten abgenommen werden. Die native Druck-/PDF-Vorschau ist ebenfalls noch nicht visuell abgenommen.
