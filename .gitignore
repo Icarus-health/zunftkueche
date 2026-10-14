@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.superpowers/
+import/*.json
+.env*
+*.local
+.local-state/
+qa/

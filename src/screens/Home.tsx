@@ -1,0 +1,13 @@
+import {ArrowRight,Truck,Bread,ShoppingCart,Wine,ForkKnife,Receipt,ChartBar} from '@phosphor-icons/react';
+import type {ScreenProps} from '../App.tsx';
+import {Heading,Jump} from '../components/shared.tsx';
+const descriptions:Record<string,string>={'s-wiggenhauser':'Speisen und Leihgeräte','s-faller':'Brot, Brötchen und Berliner','s-rewe':'Lebensmittel und Verbrauchsmaterial','s-weingut-wiesler':'Getränke und Gläser'};
+const icons:Record<string,typeof Truck>={'s-wiggenhauser':Truck,'s-faller':Bread,'s-rewe':ShoppingCart,'s-weingut-wiesler':Wine};
+export default function Home({state,go}:ScreenProps){
+ const primary=['s-wiggenhauser','s-faller','s-rewe','s-weingut-wiesler'];
+ const openRecipes=state.menu.filter(m=>m.recipeStatus!=='Bestätigt').length,missingReceipts=state.invoices.filter(i=>i.status==='Original fehlt').length;
+ return <><Heading title="Deine Küche im Überblick" action={<button className="button primary" onClick={()=>go('Planung')}><ForkKnife size={24}/>Planung öffnen<ArrowRight size={19}/></button>}>Planung, Bestellungen und offene Angaben für euren Zunftabend.</Heading>
+ <div className="overview-grid"><section><h2>Bestellungen</h2><p className="muted">Lieferant auswählen, danach Liefertag.</p><div className="supplier-list">{primary.map(id=>{const s=state.suppliers.find(s=>s.id===id);if(!s)return null;const Icon=icons[id];return <button className="supplier-row" key={id} onClick={()=>go('Bestellungen',id)}><Icon size={33}/><span><strong>{s.name}</strong><small>{descriptions[id]}</small></span><ArrowRight size={22}/></button>;})}</div><button className="text-button" onClick={()=>go('Bestellungen')}>Alle {state.suppliers.length} Lieferanten anzeigen<ArrowRight size={19}/></button></section>
+ <section className="open-tasks"><h2>Noch zu klären</h2><p className="muted">Diese Angaben werden noch benötigt.</p><div className="task-row"><div className="task-icon"><ForkKnife size={30}/></div><div><h3>Portionsgrößen bestätigen</h3><p>{openRecipes} Rezepturen sind noch Entwürfe.</p></div><Jump onClick={()=>go('Planung')}>Zur Planung</Jump></div><div className="task-row"><div className="task-icon"><Receipt size={30}/></div><div><h3>Fehlende Belege ergänzen</h3><p>Wiggenhauser, Faller und {missingReceipts} REWE-Originale fehlen.</p></div><Jump onClick={()=>go('Belege')}>Zu den Belegen</Jump></div><div className="task-row"><div className="task-icon"><ChartBar size={30}/></div><div><h3>Verkäufe und Reste erfassen</h3><p>Grundlage für die spätere Auswertung.</p></div><Jump onClick={()=>go('Auswertung')}>Zum Abschluss</Jump></div></section></div>
+ <div className="source-footer"><span>{state.planLines.length} Planpositionen aus euren Unterlagen</span><span>Lieferungen und Verkäufe werden getrennt erfasst.</span></div></>;
+}
