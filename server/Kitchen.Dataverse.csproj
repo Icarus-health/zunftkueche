@@ -1,0 +1,31 @@
+<?xml version="1.0" ?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net462</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <Deterministic>true</Deterministic>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <PackageId>Zunftkueche.Dataverse</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Schelmenzunft</Authors>
+    <Description>Kitchen workspace CAS and immutable operation receipts.</Description>
+    <SuppressDependenciesWhenPacking>false</SuppressDependenciesWhenPacking>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeJsonDependency</TargetsForTfmSpecificBuildOutput>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/"/>
+    <Compile Include="Policy/**/*.cs"/>
+    <Compile Include="Plugins.cs"/>
+    <PackageReference Include="Microsoft.CrmSdk.CoreAssemblies" Version="9.0.2.60" PrivateAssets="all"/>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all"/>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" PrivateAssets="all" GeneratePathProperty="true"/>
+  </ItemGroup>
+  <Target Name="IncludeJsonDependency">
+    <ItemGroup>
+      <BuildOutputInPackage Include="$(PkgNewtonsoft_Json)/lib/net45/Newtonsoft.Json.dll"/>
+    </ItemGroup>
+  </Target>
+</Project>

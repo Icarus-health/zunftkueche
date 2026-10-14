@@ -1,0 +1,368 @@
+{
+  "definitionVersion": 1,
+  "status": "Local deployment specification; NOT imported or live validated",
+  "publisherPrefix": "zk",
+  "pluginPackage": "Zunftkueche.Dataverse.1.0.0.nupkg",
+  "isolationMode": "Sandbox",
+  "tables": [
+    {
+      "logicalName": "zk_kitchenworkspace",
+      "ownershipType": "UserOwned",
+      "isElastic": false,
+      "isOptimisticConcurrencyEnabled": true,
+      "primaryNameAttribute": "zk_name",
+      "attributes": [
+        {
+          "name": "zk_name",
+          "type": "String",
+          "maxLength": 200
+        },
+        {
+          "name": "zk_state",
+          "type": "Memo",
+          "maxLength": 1048576,
+          "required": true
+        },
+        {
+          "name": "zk_revision",
+          "type": "Integer",
+          "minValue": 0,
+          "maxValue": 2147483647,
+          "required": true
+        }
+      ],
+      "systemAttributes": [
+        "zk_kitchenworkspaceid",
+        "ownerid",
+        "versionnumber"
+      ],
+      "deleteBehavior": "Blocked by guard; do not configure cascade deletion from other business records"
+    },
+    {
+      "logicalName": "zk_kitchenoperation",
+      "ownershipType": "OrganizationOwned",
+      "isElastic": false,
+      "primaryNameAttribute": "zk_name",
+      "attributes": [
+        {
+          "name": "zk_name",
+          "type": "String",
+          "maxLength": 200
+        },
+        {
+          "name": "zk_workspace",
+          "type": "Lookup",
+          "target": "zk_kitchenworkspace",
+          "required": true,
+          "cascadeDelete": "Restrict"
+        },
+        {
+          "name": "zk_operationid",
+          "type": "String",
+          "maxLength": 100,
+          "required": true
+        },
+        {
+          "name": "zk_requesthash",
+          "type": "String",
+          "maxLength": 64,
+          "required": true
+        },
+        {
+          "name": "zk_actor",
+          "type": "String",
+          "maxLength": 36,
+          "required": true,
+          "description": "Authenticated initiating-user GUID, written by plugin; not a user lookup"
+        },
+        {
+          "name": "zk_appliedrevision",
+          "type": "Integer",
+          "minValue": 1,
+          "maxValue": 2147483647,
+          "required": true
+        },
+        {
+          "name": "zk_recordedat",
+          "type": "DateTime",
+          "behavior": "UserLocal",
+          "format": "DateAndTime",
+          "required": true,
+          "description": "Server UTC timestamp"
+        }
+      ],
+      "alternateKeys": [
+        {
+          "name": "zk_workspace_operation",
+          "columns": [
+            "zk_workspace",
+            "zk_operationid"
+          ],
+          "requiredStatusBeforeEnable": "Active"
+        }
+      ]
+    }
+  ],
+  "customApis": [
+    {
+      "uniqueName": "zk_KitchenLoad",
+      "bindingType": 0,
+      "isFunction": false,
+      "isPrivate": false,
+      "allowedCustomProcessingStepType": 0,
+      "workflowSdkStepEnabled": false,
+      "executePrivilegeName": "prvReadzk_kitchenworkspace",
+      "pluginType": "Zunftkueche.KitchenLoadPlugin",
+      "input": [
+        {
+          "uniqueName": "RequestJson",
+          "type": "String",
+          "isOptional": false
+        }
+      ],
+      "output": [
+        {
+          "uniqueName": "ResultJson",
+          "type": "String"
+        }
+      ],
+      "execution": "Synchronous main operation / stage 30; calling user; no impersonation"
+    },
+    {
+      "uniqueName": "zk_KitchenCommit",
+      "bindingType": 0,
+      "isFunction": false,
+      "isPrivate": false,
+      "allowedCustomProcessingStepType": 0,
+      "workflowSdkStepEnabled": false,
+      "executePrivilegeName": "prvWritezk_kitchenworkspace",
+      "pluginType": "Zunftkueche.KitchenCommitPlugin",
+      "input": [
+        {
+          "uniqueName": "RequestJson",
+          "type": "String",
+          "isOptional": false
+        }
+      ],
+      "output": [
+        {
+          "uniqueName": "ResultJson",
+          "type": "String"
+        }
+      ],
+      "execution": "Synchronous main operation / stage 30; calling user; no impersonation"
+    }
+  ],
+  "guardSteps": [
+    {
+      "primaryEntity": "zk_kitchenworkspace",
+      "message": "Create",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    },
+    {
+      "primaryEntity": "zk_kitchenworkspace",
+      "message": "Update",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    },
+    {
+      "primaryEntity": "zk_kitchenworkspace",
+      "message": "Delete",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    },
+    {
+      "primaryEntity": "zk_kitchenworkspace",
+      "message": "Upsert",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    },
+    {
+      "primaryEntity": "zk_kitchenworkspace",
+      "message": "CreateMultiple",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    },
+    {
+      "primaryEntity": "zk_kitchenworkspace",
+      "message": "UpdateMultiple",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    },
+    {
+      "primaryEntity": "zk_kitchenworkspace",
+      "message": "UpsertMultiple",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    },
+    {
+      "primaryEntity": "zk_kitchenworkspace",
+      "message": "DeleteMultiple",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    },
+    {
+      "primaryEntity": "zk_kitchenoperation",
+      "message": "Create",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    },
+    {
+      "primaryEntity": "zk_kitchenoperation",
+      "message": "Update",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    },
+    {
+      "primaryEntity": "zk_kitchenoperation",
+      "message": "Delete",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    },
+    {
+      "primaryEntity": "zk_kitchenoperation",
+      "message": "Upsert",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    },
+    {
+      "primaryEntity": "zk_kitchenoperation",
+      "message": "CreateMultiple",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    },
+    {
+      "primaryEntity": "zk_kitchenoperation",
+      "message": "UpdateMultiple",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    },
+    {
+      "primaryEntity": "zk_kitchenoperation",
+      "message": "UpsertMultiple",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    },
+    {
+      "primaryEntity": "zk_kitchenoperation",
+      "message": "DeleteMultiple",
+      "stage": 20,
+      "mode": 0,
+      "rank": 1,
+      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
+      "runInUserContext": "CallingUser",
+      "filteringAttributes": null,
+      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+    }
+  ],
+  "roles": {
+    "reader": {
+      "zk_kitchenworkspace": {
+        "Read": "Basic via kitchen owning team"
+      }
+    },
+    "editor": {
+      "zk_kitchenworkspace": {
+        "Read": "Basic via kitchen owning team",
+        "Write": "Basic via kitchen owning team",
+        "AppendTo": "Basic via kitchen owning team"
+      },
+      "zk_kitchenoperation": {
+        "Read": "Organization",
+        "Create": "Organization",
+        "Append": "Organization"
+      }
+    },
+    "denyForOrdinaryUsers": [
+      "Workspace Create/Delete/Assign/Share",
+      "Receipt Write/Delete/Assign/Share",
+      "BypassCustomPluginExecution",
+      "BypassBusinessLogicExecution"
+    ],
+    "scope": "Both editors can edit the entire kitchen workspace. No per-operation restricted-editor promise."
+  },
+  "preconditions": [
+    "Approved environment and access group; no default/developer environment workaround",
+    "Confirm generated privilege names from Privilege metadata",
+    "Seed reviewed schema2 workspace before activating guards and before sharing",
+    "Both tables standard/nonelastic; unique key Active; optimistic concurrency enabled",
+    "Register APIs and every supported guard before assigning editor roles",
+    "No alternate storage write plugin or provisioning API open to ordinary users"
+  ]
+}

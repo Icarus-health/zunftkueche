@@ -7,3 +7,7 @@ import/*.json
 .local-state/
 qa/
 .DS_Store
+
+server/**/bin/
+server/**/obj/
+server/artifacts/

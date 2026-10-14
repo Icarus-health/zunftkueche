@@ -19,6 +19,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:microsoft": "node --experimental-strip-types --test tests/microsoft*.test.mjs",
+    "build:server": "bash server/build.sh"
   }
 }

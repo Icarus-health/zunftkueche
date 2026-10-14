@@ -1,3 +1,4 @@
+import {getMicrosoftRepository} from './microsoft-runtime.ts';
 import type {KitchenState,Operation,CommitResult} from '../domain/state.ts';
 export interface Repository {mode:'local'|'microsoft';canWrite?:boolean;load:()=>Promise<KitchenState>;commit:(op:Operation)=>Promise<CommitResult>}
 export class RejectedError extends Error {}
@@ -12,6 +13,7 @@ export function createLocalRepository(fetcher:typeof fetch=fetch):Repository {
  }};
 }
 export function getRepository():Repository {
+ const microsoft=getMicrosoftRepository();if(microsoft)return microsoft;
  if(!import.meta.env.DEV)throw new Error('Die Microsoft-Datenverbindung ist noch nicht eingerichtet.');
  return createLocalRepository();
 }
