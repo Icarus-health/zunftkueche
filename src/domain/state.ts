@@ -5,7 +5,8 @@ export interface Supplier {id:string;name:string;email:string|null}
 export interface Article {id:string;name:string;supplierId:string;unit:string;category:string;unitPriceCents:number|null;packSize?:number|null;previousUnitPriceCents?:number|null;priceReferenceYear?:number}
 export interface Menu {id:string;name:string;priceCents:number|null;category:string;recipe:Array<{articleId:string;quantity:number|null}>;recipeStatus:string;source?:Source}
 export interface ReceiptLine {articleId?:string;name:string;quantity:number|null;unit:string;netCents:number|null}
-export interface Receipt {id:string;supplierId:string;number:string;date?:string|null;grossCents:number|null;netCents:number|null;scope:string;status:string;documentUrl:string|null;source?:Source;lines:ReceiptLine[]}
+export interface Receipt {id:string;supplierId:string;number:string;date?:string|null;grossCents:number|null;netCents:number|null;scope:string;status:string;documentUrl:string|null;source?:Source;lines:ReceiptLine[];sourceBaseline?:ReceiptSnapshot;corrected?:boolean;corrections?:Array<{operationId:string;revision:number;before:ReceiptSnapshot}>}
+export type ReceiptSnapshot=Omit<Receipt,'sourceBaseline'|'corrected'|'corrections'>;
 export interface DishPlan {id:string;menuId:string;day:string;quantity:number|null}
 export interface KitchenState {schemaVersion:number;event:{id:string;name:string;year:number;status:string;dates:Record<string,string|null>};suppliers:Supplier[];articles:Article[];planLines:(PlanLine&{location?:string})[];menu:Menu[];invoices:Receipt[];sales:Array<{id:string;menuId:string;day:string;quantity:number|null;priceCents:number|null}>;movements:Array<{id:string;articleId:string;day:string;type:string;quantity:number;location:string;note?:string}>;orders:any[];dishPlan:DishPlan[];lessons:any[];sourceNotice:string;revision:number;operationIds:string[];operationRequests?:Record<string,string>;archivedEvents?:EventArchive[]}
 export type EventArchive=Omit<KitchenState,'archivedEvents'|'revision'|'operationIds'|'operationRequests'>;
@@ -46,6 +47,16 @@ function sharepoint(value:unknown):string|null {
 function archive(state:KitchenState):EventArchive {
   const {archivedEvents:_archives,revision:_revision,operationIds:_ids,operationRequests:_requests,...snapshot}=structuredClone(state);return snapshot;
 }
+function economicFacts(receipt:Pick<Receipt,'supplierId'|'number'|'date'|'grossCents'|'netCents'|'lines'>):string {
+  return JSON.stringify([receipt.supplierId,receipt.number,receipt.date??null,receipt.grossCents,receipt.netCents,receipt.lines.map(l=>[l.articleId??null,l.name,l.quantity,l.unit,l.netCents])]);
+}
+function preserveSourceHistory(receipt:Receipt,op:Operation):void {
+  if(!receipt.source)return;
+  const {sourceBaseline:_baseline,corrected:_corrected,corrections:_history,...before}=structuredClone(receipt);
+  receipt.sourceBaseline??=structuredClone(before);
+  receipt.corrections=[...(receipt.corrections??[]),{operationId:op.id,revision:op.baseRevision+1,before}];
+  receipt.corrected=true;
+}
 function requestSignature(op:Operation):string {
   const canonical=(value:any,depth=0):any=>{
     if(depth>20)throw new Error('Vorgang ist zu umfangreich.');
@@ -78,7 +89,12 @@ export function applyOperation(state:KitchenState,op:Operation):CommitResult {
       const packSize=p.packSize===null||p.packSize===undefined?null:quantity(p.packSize);
       if(packSize===0)throw new Error('Gebindegröße muss positiv sein.');
       const values={name:text(p.name,'Name'),supplierId:p.supplierId,unit:text(p.unit,'Einheit',50),category:text(p.category,'Kategorie',100),packSize,unitPriceCents:money(p.unitPriceCents,true)};
-      const item=next.articles.find(a=>a.id===id);if(item)Object.assign(item,values);else next.articles.push({id,...values});break;
+      const item=next.articles.find(a=>a.id===id);
+      const referenced=next.menu.some(m=>m.recipe.some(l=>l.articleId===id))||next.planLines.some(l=>l.articleId===id)||next.movements.some(m=>m.articleId===id)||next.invoices.some(i=>i.lines.some(l=>l.articleId===id))||next.orders.some(o=>(o.lines??[]).some((l:PlanLine)=>l.articleId===id));
+      if(item&&referenced&&(item.unit!==values.unit||item.supplierId!==values.supplierId))throw new Error('Einheit oder Lieferant eines verwendeten Artikels kann nicht geändert werden. Bitte einen neuen Artikel anlegen.');
+      if(item)Object.assign(item,values);else next.articles.push({id,...values});
+      for(const line of next.planLines)if(line.articleId===id)line.unitPriceCents=values.unitPriceCents;
+      break;
     }
     case 'menu.save': {
       const id=p.id===undefined?op.id:text(p.id,'ID',100),values={name:text(p.name,'Name'),category:text(p.category,'Kategorie',100),priceCents:money(p.priceCents)};
@@ -90,6 +106,16 @@ export function applyOperation(state:KitchenState,op:Operation):CommitResult {
       const q=quantity(p.quantity,true);if(q!==null&&!Number.isInteger(q))throw new Error('Speisenmenge muss ganzzahlig sein.');
       next.dishPlan??=[];const item=next.dishPlan.find(d=>d.menuId===p.menuId&&d.day===day);
       if(item)item.quantity=q;else next.dishPlan.push({id:op.id,menuId:p.menuId,day,quantity:q});break;
+    }
+    case 'dish.fillMissing': {
+      if(p.quantity!==0)throw new Error('Übrige Speisen können nur ausdrücklich mit 0 erfasst werden.');
+      next.dishPlan??=[];
+      for(const menu of next.menu)for(const day of ['Freitag','Samstag']){
+        const item=next.dishPlan.find(d=>d.menuId===menu.id&&d.day===day);
+        if(item&&item.quantity===null)item.quantity=0;
+        else if(!item)next.dishPlan.push({id:`${op.id}:${menu.id}:${day}`,menuId:menu.id,day,quantity:0});
+      }
+      break;
     }
     case 'event.create': {
       const name=text(p.name,'Veranstaltungsname');if(!Number.isInteger(p.year)||p.year<1900||p.year>2200||typeof p.copyPlan!=='boolean')throw new Error('Veranstaltung ist ungültig.');
@@ -130,7 +156,8 @@ export function applyOperation(state:KitchenState,op:Operation):CommitResult {
       if(!next.suppliers.some(s=>s.id===p.supplierId))throw new Error('Lieferant nicht gefunden.');
       const number=text(p.number,'Belegnummer',100),grossCents=money(p.grossCents),netCents=money(p.netCents);
       if(grossCents!==null&&netCents!==null&&netCents>grossCents)throw new Error('Netto darf Brutto nicht übersteigen.');
-      if(next.invoices.some(i=>i.id!==id&&i.supplierId===p.supplierId&&i.number.trim().toLocaleLowerCase()===number.toLocaleLowerCase()))throw new Error('Diese Belegnummer ist beim Lieferanten bereits vorhanden.');
+      const sameIdentity=existing?.supplierId===p.supplierId&&existing?.number.trim().toLocaleLowerCase()===number.toLocaleLowerCase();
+      if(!sameIdentity&&next.invoices.some(i=>i.id!==id&&i.supplierId===p.supplierId&&i.number.trim().toLocaleLowerCase()===number.toLocaleLowerCase()))throw new Error('Diese Belegnummer ist beim Lieferanten bereits vorhanden.');
       const inputLines=p.lines??[];
       if(!Array.isArray(inputLines)||inputLines.length>200)throw new Error('Belegpositionen sind ungültig.');
       const lines=inputLines.map((l:any):ReceiptLine=>{
@@ -139,7 +166,13 @@ export function applyOperation(state:KitchenState,op:Operation):CommitResult {
         return {...(l.articleId?{articleId:l.articleId}:{}),name:text(l.name,'Positionsname'),quantity:quantity(l.quantity,true),unit:text(l.unit,'Einheit',50),netCents:money(l.netCents)};
       });
       const values={supplierId:p.supplierId,number,date:date(p.date),grossCents,netCents,scope:text(p.scope,'Zuordnung',100),documentUrl:sharepoint(p.documentUrl),lines};
-      if(existing)Object.assign(existing,values);else next.invoices.push({id,...values,status:'Erfasst'});break;
+      if(existing){
+        const changedFacts=economicFacts(existing)!==economicFacts(values);
+        const original=!!existing.source&&existing.status==='Original vorhanden';
+        if(original&&changedFacts)throw new Error('Wirtschaftliche Angaben des Originalbelegs bleiben unveränderbar. Zuordnung und Dokumentlink können ergänzt werden.');
+        if(changedFacts||existing.scope!==values.scope||existing.documentUrl!==values.documentUrl)preserveSourceHistory(existing,op);
+        if(original)Object.assign(existing,{scope:values.scope,documentUrl:values.documentUrl});else Object.assign(existing,values);
+      }else next.invoices.push({id,...values,status:'Erfasst'});break;
     }
     case 'plan.quantity': {
       const line=next.planLines.find(l=>l.id===p.id);
@@ -183,7 +216,7 @@ export function applyOperation(state:KitchenState,op:Operation):CommitResult {
     }
     case 'stock.opening': {
       if(!next.articles.some(a=>a.id===p.articleId))throw new Error('Artikel nicht gefunden.');
-      next.movements.push({id:op.id,articleId:p.articleId,day:'Allgemein',type:'Anfangsbestand',quantity:quantity(p.quantity)!,location:'Küche'});break;
+      next.movements.push({id:op.id,articleId:p.articleId,day:'Allgemein',type:'Anfangsbestand',quantity:quantity(p.quantity)!,location:text(p.location??'Küche','Ort',100)});break;
     }
     case 'delivery.record':case 'stock.count':case 'stock.waste':case 'stock.return':case 'stock.consume': {
       if(!next.articles.some(a=>a.id===p.articleId))throw new Error('Artikel nicht gefunden.');
@@ -224,7 +257,7 @@ export function applyOperation(state:KitchenState,op:Operation):CommitResult {
     case 'invoice.link': {
       const receipt=next.invoices.find(i=>i.id===p.id);
       if(!receipt)throw new Error('Beleg nicht gefunden.');
-      const url=sharepoint(p.url);if(!url)throw new Error('Link fehlt.');receipt.documentUrl=url;break;
+      const url=sharepoint(p.url);if(!url)throw new Error('Link fehlt.');if(receipt.documentUrl!==url)preserveSourceHistory(receipt,op);receipt.documentUrl=url;break;
     }
     default: throw new Error('Unbekannter Vorgang.');
   }
