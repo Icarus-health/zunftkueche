@@ -216,6 +216,51 @@ Assert(receipt.Single(a=>a!["name"]!.GetValue<string>()=="zk_operationid")!["max
 Assert(receipt.Single(a=>a!["name"]!.GetValue<string>()=="zk_requesthash")!["maxLength"]!.GetValue<int>()==64);
 Assert(receipt.Single(a=>a!["name"]!.GetValue<string>()=="zk_actor")!["maxLength"]!.GetValue<int>()==36);
 });
+await Test("relationship deep insert omits existing lookup reference and reuses verified result",()=>CheckRelationship("zk_workspace",true));
+await Test("relationship readback still rejects missing or wrong referencing attribute",async()=>{
+await CheckRelationship(null,false);await CheckRelationship("zk_other",false);
+});
+async Task CheckRelationship(string? referencingAttribute,bool create) {
+var contract=Provisioner.LoadContract("server/deployment/registration.json");
+var relationship=Parse("""
+{"SchemaName":"zk_kitchenworkspace_operations","ReferencedEntity":"zk_kitchenworkspace","ReferencedAttribute":"zk_kitchenworkspaceid","ReferencingEntity":"zk_kitchenoperation","ReferencingEntityNavigationPropertyName":"zk_workspace","CascadeConfiguration":{"Assign":"NoCascade","Delete":"Restrict","Merge":"NoCascade","Reparent":"NoCascade","Share":"NoCascade","Unshare":"NoCascade"}}
+""");
+if(referencingAttribute!=null)relationship["ReferencingAttribute"]=referencingAttribute;
+bool exists=!create;int lookupReads=0,keyReads=0;
+JsonNode Rows(JsonObject? row)=>new JsonObject{["value"]=row==null?new JsonArray():new JsonArray(row.DeepClone())};
+var f=Fixture(null,(method,path,body)=>{
+if(method==HttpMethod.Post){
+var payload=body!.AsObject();
+Assert(path=="RelationshipDefinitions"&&!payload.ContainsKey("ReferencingAttribute"));
+Assert(payload["Lookup"]!["SchemaName"]!.GetValue<string>()=="zk_workspace"&&payload["Lookup"]!["@odata.type"]!.GetValue<string>()=="Microsoft.Dynamics.CRM.LookupAttributeMetadata");
+Assert(payload["Lookup"]!["RequiredLevel"]!["Value"]!.GetValue<string>()=="ApplicationRequired");
+var endpoints=relationship.DeepClone().AsObject();endpoints.Remove("ReferencingAttribute");
+ResourceEngine.RequireMatch(payload,endpoints);
+exists=true;return Task.FromResult<JsonNode?>(null);
+}
+JsonObject row;
+if(path.StartsWith("publishers?"))row=Parse("""{"publisherid":"00000000-0000-0000-0000-000000000020","uniquename":"zk_Zunftkueche","customizationprefix":"zk","customizationoptionvalueprefix":72700}""");
+else if(path.StartsWith("solutions?"))row=new JsonObject{["solutionid"]="00000000-0000-0000-0000-000000000021",["uniquename"]=Target.Solution,["version"]="1.0.0.0",["ismanaged"]=false,["_publisherid_value"]="00000000-0000-0000-0000-000000000020"};
+else if(path.StartsWith("solutioncomponents?"))row=new JsonObject();
+else if(path.StartsWith("RelationshipDefinitions/"))return Task.FromResult<JsonNode?>(Rows(exists?relationship:null));
+else {
+var table=contract["tables"]!.AsArray().Single(t=>path.Contains("'"+t!["logicalName"]!.GetValue<string>()+"'"))!;
+var name=table["logicalName"]!.GetValue<string>();
+if(path.StartsWith("EntityDefinitions?$filter="))row=new JsonObject{["MetadataId"]="00000000-0000-0000-0000-000000000022",["SchemaName"]=name,["LogicalName"]=name,["OwnershipType"]=table["ownershipType"]!.DeepClone(),["IsActivity"]=false,["IsOptimisticConcurrencyEnabled"]=true,["TableType"]="Standard",["PrimaryNameAttribute"]="zk_name",["PrimaryIdAttribute"]=name+"id"};
+else if(path.Contains("/Keys?")){keyReads++;row=Parse("""{"SchemaName":"zk_workspace_operation","KeyAttributes":["zk_workspace","zk_operationid"],"EntityKeyIndexStatus":"Active"}""");}
+else {
+var attr=table["attributes"]!.AsArray().Single(a=>path.EndsWith("'"+a!["name"]!.GetValue<string>()+"'"))!;
+if(attr["type"]!.GetValue<string>()=="Lookup")lookupReads++;
+row=Metadata.AttributeExpected(attr,attr["name"]!.GetValue<string>()=="zk_name");
+}
+}
+return Task.FromResult<JsonNode?>(Rows(row));
+});
+var engine=new ResourceEngine(f);await engine.AuthenticateTargetAsync();var provisioner=new Provisioner(engine,f,contract);
+if(create){await provisioner.Tables(true);await provisioner.Tables(true);Assert(provisioner.Gaps.Count==0&&f.Writes==1&&lookupReads==2&&keyReads==2);}
+else {await Reject(()=>provisioner.Tables(true));Assert(f.Writes==0&&lookupReads==0&&keyReads==0);
+Assert(System.Text.Json.JsonSerializer.Serialize(engine.Resources).Contains("$.ReferencingAttribute"));}
+}
 Console.WriteLine($"{passed} passed; {failed} failed");return failed==0?0:1;
 Fake Fixture(JsonObject? data, Func<HttpMethod,string,JsonNode?,Task<JsonNode?>>? other=null)=>new((m,p,b)=>{
  if(p=="WhoAmI")return Task.FromResult<JsonNode?>(Parse($"{{\"OrganizationId\":\"{Target.Organization}\",\"UserId\":\"00000000-0000-0000-0000-000000000002\"}}"));

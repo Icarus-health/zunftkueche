@@ -70,6 +70,8 @@ public sealed class Provisioner(ResourceEngine engine, IDataverseTransport trans
         var relationship = Metadata.Relationship();
         var expected = relationship.DeepClone().AsObject();
         expected.Remove("@odata.type"); expected.Remove("Lookup"); expected.Remove("AssociatedMenuConfiguration");
+        // Lookup deep-insert supplies the new column; readback must still confirm its exact logical name.
+        expected["ReferencingAttribute"] = "zk_workspace";
         await Ensure("receipt_relationship", "RelationshipDefinitions/Microsoft.Dynamics.CRM.OneToManyRelationshipMetadata?$filter=SchemaName eq 'zk_kitchenworkspace_operations'", "RelationshipDefinitions", relationship, expected, create);
         var lookupSpec = contract["tables"]![1]!["attributes"]![1]!;
         await Ensure("receipt_lookup", "EntityDefinitions(LogicalName='zk_kitchenoperation')/Attributes/Microsoft.Dynamics.CRM.LookupAttributeMetadata?$filter=LogicalName eq 'zk_workspace'", "", new JsonObject(), Metadata.AttributeExpected(lookupSpec), false);

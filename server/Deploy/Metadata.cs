@@ -41,7 +41,7 @@ public static class Metadata {
         ["@odata.type"] = "Microsoft.Dynamics.CRM.OneToManyRelationshipMetadata",
         ["SchemaName"] = "zk_kitchenworkspace_operations",
         ["ReferencedEntity"] = "zk_kitchenworkspace", ["ReferencedAttribute"] = "zk_kitchenworkspaceid",
-        ["ReferencingEntity"] = "zk_kitchenoperation", ["ReferencingAttribute"] = "zk_workspace",
+        ["ReferencingEntity"] = "zk_kitchenoperation",
         ["ReferencingEntityNavigationPropertyName"] = "zk_workspace",
         ["AssociatedMenuConfiguration"] = new JsonObject { ["Behavior"] = "DoNotDisplay", ["Group"] = "Details", ["Order"] = 10000, ["Label"] = Label("Küchenvorgänge") },
         ["CascadeConfiguration"] = new JsonObject { ["Assign"] = "NoCascade", ["Delete"] = "Restrict", ["Merge"] = "NoCascade", ["Reparent"] = "NoCascade", ["Share"] = "NoCascade", ["Unshare"] = "NoCascade" },
