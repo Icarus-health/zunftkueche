@@ -1,0 +1,30 @@
+ZUNFTKÜCHE – STAND UND BEDIENUNG
+15. Oktober 2026
+
+AKTUELLER STATUS
+Die App ist noch nicht veröffentlicht oder für den Vereinsbetrieb freigegeben. Die Microsoft-Umgebung, Tabellen, Schnittstellen und Schreibschutz-Registrierungen sind vorhanden. Die Daten von 2026 lassen sich im Vorstand-Konto laden und speichern. Der fachlich unveränderte Livevorgang wurde genau einmal gespeichert; die identische Wiederholung erzeugte keine zweite Änderung, und eine veraltete Anfrage wurde als Konflikt erkannt. Die Nachkontrolle bestätigt Revision 1 und den zugehörigen Änderungsbeleg. Zwölf unterstützte direkte Schreibwege am Küchenbestand wurden bereits abgewiesen. Die vollständige Schutzprüfung beider Tabellen ist noch offen; die nicht verfügbare Standardtabellen-Sammellöschung wird getrennt ausgewiesen.
+
+VORGESEHENER ARBEITSABLAUF
+1. Veranstaltung auswählen und Stammdaten/Rezepturen prüfen.
+2. Freitag und Samstag nebeneinander planen; offene Mengen bleiben als offen erkennbar.
+3. Anfangsbestand einmal für das Wochenende erfassen und Einkaufsbedarf ausdrücklich übernehmen.
+4. Lieferant und anschließend Liefertag auswählen. Bestellversion vorbereiten und prüfen.
+5. Tatsächlich Geliefertes, Verbrauch und Rückgaben erfassen. Eine Bestellung gilt noch nicht als Lieferung.
+6. Rechnungsangaben und gegebenenfalls SharePoint-Dokumentlinks ergänzen.
+7. Verkaufte Stückzahlen je Abend erfassen und Restbestände zählen. Verkäufe ersetzen keine Verbrauchsbuchung.
+8. Auswertung lesen; fehlende Angaben ergeben Teilsummen und keinen behaupteten Gewinn.
+
+BESTELLUNGEN UND ORIGINALBELEGE
+Vorbereitete Bestellversionen bewahren den damaligen Stand. Versand und native Druckausgabe sind gesonderte Schritte und werden nicht als automatisch erledigt dargestellt. Originalrechnungen wurden nicht nach SharePoint migriert. Die vorhandenen PDF-, Word- und Excel-Originale bleiben unverändert; 62 Originaldateien wurden am 15.10.2026 erneut per Prüfsumme verglichen, alle stimmen überein.
+
+ZUGRIFF
+Zunächst ist ausschließlich Vorstand@Schelmenzunft.onmicrosoft.com vorgesehen. Die Microsoft-365-Teamgruppe begrenzt den Zugang zur Umgebung; sie ist keine pauschale Schreib- oder App-Freigabe für alle Teammitglieder. Weitere Bearbeiter und Leser sind noch nicht eingerichtet oder live geprüft.
+
+PRÜFSTAND
+Der eingefrorene Korrekturstand 703f6c0 besteht 86 Server-, 74 Bereitstellungs-, 35 Abnahme- und 36 Paketupdate-Prüfungen. Der erfolgreiche Microsoft-Speichervorgang, seine Wiederholung und der Konflikt wurden separat live nachgewiesen. Die Oberfläche und die tatsächlich erzeugten Microsoft-Dienste wurden separat geprüft; die veröffentlichte App, tatsächliche Lizenznutzung und Teams-Einbindung sind noch offen.
+
+DATEN UND GRENZEN
+Der gemeinsame Datenstand umfasst auch frühere Veranstaltungen. Gleichzeitige Änderungen werden durch Versionsprüfung geschützt; bei einem Konflikt wird kein fremder Stand still überschrieben. Die Größe des gemeinsamen Dokuments ist begrenzt. Fehlende Rechnungen, tatsächliche Verkäufe und offene Rezepturen/Mengen müssen weiterhin ergänzt werden. Gewollte Ergänzungen werden nicht aus unvollständigen Quellen erfunden.
+
+NÄCHSTER NACHWEIS
+Die ausstehenden unterstützten Schreibschutzprüfungen werden von dem exakt bestätigten Datenstand aus fortgesetzt, ohne den gespeicherten Vorgang erneut anzulegen. Danach folgen private Veröffentlichung und echte Bedienprüfung im Vorstand-Konto. Link und endgültiger Abnahmestand werden anschließend ergänzt.

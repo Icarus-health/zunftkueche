@@ -1,16 +1,16 @@
-# Zunftküche – bedienbare lokale App
+# Zunftküche – Planung und Küchenverwaltung
 
-Stand 14.10.2026. Planung, Einkauf, Lieferungen, Bestand, Belege und Auswertung sind als zusammenhängende React-App umgesetzt. Der Dataverse-Server ist lokal kompiliert und paketiert. **Eine Veröffentlichung in Power Apps oder Teams und die Abnahme mit echten Microsoft-Benutzern stehen aus.** Die konkrete Zugriffsgruppe muss vor der Einrichtung freigegeben sein.
+Stand 15.10.2026. Planung, Einkauf, Lieferungen, Bestand, Belege und Auswertung sind als zusammenhängende React-App umgesetzt. Die freigegebene Microsoft-Umgebung „Zunftküche“ enthält Dataverse, Küchentabellen, Schnittstellen, Schutzregistrierungen und die geprüfte Kopie der Daten von 2026 (EU/EFTA, zugeteilte Region Schweiz). Die echten generierten Microsoft-Dienste sind vor dem App-Start angeschlossen. Im Vorstand-Konto wurden Laden, ein fachlich unveränderter Speichervorgang, identische Wiederholung und Versionskonflikt live nachgewiesen. **Die vollständige Schutzprüfung, private Code-App-Veröffentlichung, Browserabnahme und Teams-Einbindung sind noch offen.** Zunächst ist ausschließlich Vorstand@Schelmenzunft.onmicrosoft.com freigegeben; andere Teammitglieder haben keine App-Freigabe. Aktueller Einrichtungsstand: docs/deployment-status-2026-10-15.json.
 
 ## Öffnen
 
-Die Vorschau läuft im aktuellen Arbeitsordner auf http://127.0.0.1:4182/.
+Für die eigenständige lokale Vorschau http://127.0.0.1:4173/ verwenden, nachdem der folgende Prozess gestartet wurde. Der Microsoft-Entwicklungsmodus ist separat für Port 4182 konfiguriert und benötigt den echten Microsoft-Hostkontext.
 
 Für einen späteren Neustart in diesem Ordner:
 
 ```sh
 npm ci
-npm run dev -- --host 127.0.0.1 --port 4182 --strictPort
+npm run dev -- --host 127.0.0.1 --port 4173 --strictPort
 ```
 
 Voraussetzung ist eine aktuelle Node-Version mit TypeScript-Strip-Unterstützung. Die Vorschau ist nur auf dem eigenen Mac erreichbar. Änderungen liegen privat in `.local-state/state.json` mit Änderungshistorie. Ein Serverprozess bedient diese lokale Arbeitsversion. Sie ist noch kein abgenommenes Mehrbenutzersystem.
@@ -27,11 +27,11 @@ Voraussetzung ist eine aktuelle Node-Version mit TypeScript-Strip-Unterstützung
 
 ## Herkunft und Daten
 
-`import/2026.json` ist die private, quellenbezogene Ausgangskopie. Die Originaldateien bleiben unverändert. Fehlende Portionen, Preise, Verkäufe und Belege werden nicht erfunden. Der Quellimport enthält Schema 1; neue lokale Vorgänge normalisieren auf Schema 2. Eine kontrollierte Cloud-Kopie muss vor der späteren Bereitstellung gesondert normalisiert werden.
+`import/2026.json` ist die private, quellenbezogene Ausgangskopie. Die Originaldateien bleiben unverändert. Fehlende Portionen, Preise, Verkäufe und Belege werden nicht erfunden. Der Quellimport enthält Schema 1; neue lokale Vorgänge normalisieren auf Schema 2. Die kontrollierte Cloud-Kopie wurde separat auf Schema 2 normalisiert; nur dort wurden absolute lokale Herkunftspfade entfernt. Original-Identitäten, Wirtschaftsdaten und die ursprüngliche lokale Kopie blieben erhalten.
 
 Die Original-PDFs sind im Quellpaket nicht enthalten. Lokale Beleglinks funktionieren, wenn die Originale an ihren bisherigen Pfaden erreichbar sind. Markierte lokale Prüfdaten und `.local-state` werden nicht im Paket mitgeliefert und gehören nicht in den späteren Cloud-Import.
 
-Der Produktions-Build enthält weder den privaten Import noch das lokale Dateilesemodul. Ohne tatsächliche Microsoft-Dienste verweigert er den Datenzugriff. Ein Produktions-Build allein erzeugt daher noch keine bedienbare Cloud-App.
+Der Produktions-Build enthält weder den privaten Import noch das lokale Dateilesemodul. Der vorhandene Microsoft-Bootstrap prüft die richtige Umgebung und verweigert bei fehlendem Hostkontext oder Datenverbindung den Zugriff. Ein Produktions-Build allein veröffentlicht keine Cloud-App.
 
 ## Technische Prüfung und Microsoft-Aufbau
 
@@ -43,6 +43,6 @@ npm run build:server
 
 Der Serverlauf benötigt Python 3 und .NET SDK 8.0.426 oder kompatibel. `KITCHEN_DOTNET` kann auf einen vorhandenen Compiler zeigen. [Bereitstellungsanleitung](docs/deployment.md), `server/deployment/registration.json` und der Prüfbericht beschreiben den echten API-/Rollen-/Transaktionsvertrag. Die Registrierungsspezifikation ist noch kein importierbares Power-Platform-Solution-ZIP.
 
-Der Dataverse-Server prüft Leser/Bearbeiter über den tatsächlichen Aufrufer, Versionen und unveränderliche Wiederholungsbelege. Beide Bearbeiter erhalten vollständige Küchenbearbeitung. Der Datenbestand ist zunächst ein gemeinsames, auf 512 KiB begrenztes Dokument; parallele Änderungen können auch über Veranstaltungsgrenzen hinweg konfligieren. Größere oder feiner berechtigte Nutzung benötigt eine Weiterentwicklung dieses Speichermodells.
+Der Dataverse-Server prüft Leser/Bearbeiter über den tatsächlichen Aufrufer, Versionen und unveränderliche Wiederholungsbelege. Eine spätere Bearbeiterrolle würde vollständige Küchenbearbeitung erlauben; aktuell wird nur der genehmigte Vorstand-Zugang genutzt. Der Datenbestand ist zunächst ein gemeinsames, auf 512 KiB begrenztes Dokument; parallele Änderungen können auch über Veranstaltungsgrenzen hinweg konfligieren. Größere oder feiner berechtigte Nutzung benötigt eine Weiterentwicklung dieses Speichermodells.
 
-Lokale Prüfungen bestätigen Code und simulierte Speichergrenzen. Dataverse-Transaktionen, tatsächliche Rollen, App-Lizenzzuordnung, SharePoint-Verknüpfung und Teams-UI müssen nach der freigegebenen Einrichtung separat mit gewöhnlichen Benutzerkonten abgenommen werden. Die native Druck-/PDF-Vorschau ist ebenfalls noch nicht visuell abgenommen.
+Lokale Prüfungen bestätigen Code und simulierte Speichergrenzen. Erfolgreiches Speichern und Wiederholen mit dem Administrator beweist weder gewöhnliche Leser-/Bearbeiterrollen noch erzwungene Transaktionsrücknahme, App-Lizenznutzung, SharePoint-Verknüpfung oder Teams-UI. Diese Grenzen bleiben getrennt dokumentiert. Die native Druck-/PDF-Vorschau ist ebenfalls noch nicht visuell abgenommen.

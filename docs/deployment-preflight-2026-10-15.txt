@@ -1,0 +1,138 @@
+Zunftküche deployment preflight — 2026-10-15
+
+Scope: read-only local inspection and official Microsoft documentation. No tenant,
+authentication, credential, group, role or app changes; no install/build/test run.
+The user NOW approves the EU/EFTA Dataverse environment, German, EUR, with the
+existing Zunft Team as environment access group. Older “unapproved group” text in
+deployment.md and microsoft-research.md is stale. Environment creation/status is
+being handled separately by the root agent; this report does not assert it exists.
+
+LOCAL READINESS
+- HEAD inspected: 05db45834ac60aea2aaf06399fc56adacc421876; working tree clean on entry.
+- server/deployment/registration.json defines two standard tables, one composite
+  receipt key, two global Custom API Actions, three plug-in types and 16 possible
+  guard registrations. It is a SPECIFICATION, not a Dataverse solution ZIP or an
+  executable provisioning script. Display labels, schema metadata payloads, actual
+  privilege/message/filter IDs, publisher/solution IDs and role assignments still
+  need provisioning and readback.
+- Real package: server/artifacts/Zunftkueche.Dataverse.1.0.0.nupkg, 290280 bytes.
+  SHA256: 215fb97e2a374a4e621719c3c04cc9b21fc55686ca94fe67cc0d2a221c5bdf73.
+  Its only DLLs are Kitchen.Dataverse.dll (43520 bytes) and Newtonsoft.Json.dll
+  (711952 bytes), under lib/net462. No SDK DLL, source JSON or test fixture present.
+  The plug-in DLL equals server/bin/Release/net462/Kitchen.Dataverse.dll exactly.
+  nuspec records a2bc2c3176654ff9a4e97ca096da0f4cac90b9c0; no server/src/data changes
+  between that commit and inspected HEAD. No compile/package gap found by this
+  inspection. Runtime import/dependency resolution remains unproven.
+- SDK-style net462 is appropriate. Unsigned assembly is valid INSIDE the dependent
+  assembly package; do not upload its DLL alone. Microsoft supports this package
+  mechanism and excludes sandbox-provided CoreAssemblies. [1]
+- Installed pa CLI 1.3.0 help confirms app init, find-dataverse-api and add
+  dataverse-api. Installed SDK is 1.5.0. pa manages code apps, not table/plugin
+  provisioning. No power.config.json or real generated services exist yet.
+- pac is not on this shell PATH; no workspace-local PAC tool manifest was found.
+  This is not a machine-wide assertion. Official PAC supports macOS via .NET tool;
+  current docs recommend .NET 10, while workspace SDK is 8.0.426. Verify chosen
+  PAC package/runtime compatibility before an approved install. PRT is Windows.
+  pac data and pac package deploy/show are Windows-only; they are not this Mac's
+  provisioning route. No tool/auth installation was attempted. [2]
+
+NEXT STEPS, IN ORDER (NOT EXECUTED)
+1. Finish authorized environment creation and record environment ID, Dataverse URL,
+   region, German base language, EUR and exact existing Zunft group object ID.
+   Confirm >=1 GB available Dataverse database capacity and creation privilege.
+   Security AND Microsoft 365 groups are supported environment gates. Group
+   membership alone grants no kitchen data role. Do not create a replacement
+   group or switch to unrestricted Default/Developer/Dataverse-for-Teams. [3][4]
+2. Confirm the deployment identity has the required Dataverse customization and
+   registration rights (Microsoft package guide lists System Administrator or
+   System Customizer). Power Platform tenant-admin status does not itself prove
+   Dataverse System Administrator assignment. Role administration needs its own
+   privilege. Enable Code Apps in this environment and verify each intended
+   user's eligible entitlement: Premium, app pass, pay-as-you-go or auto-claim.
+   Microsoft 365 membership alone is insufficient. Do not purchase/auto-assign
+   licenses as part of this preflight. [4][5][6]
+3. Create publisher prefix zk and a dedicated unmanaged solution. Use Maker portal
+   or supported Dataverse Web API metadata with MSCRM.SolutionUniqueName header:
+   POST /api/data/v9.2/EntityDefinitions (EntityMetadata including primary-name
+   StringAttributeMetadata), /EntityDefinitions(<id>)/Attributes, and relationship
+   metadata for the required workspace lookup with Restrict deletion. Set labels
+   for German (1031), correct ownership and standard/nonelastic behavior. Read
+   back IsOptimisticConcurrencyEnabled on workspace. registration.json must be
+   translated into official metadata shapes, not sent as-is. [7]
+4. Create receipt key on zk_workspace + zk_operationid with EntityKeyMetadata
+   (official SDK CreateEntityKeyRequest is documented; Web API Keys navigation
+   also exposes the metadata). Poll EntityKeyIndexStatus until Active; key creation
+   alone is not readiness. Lookup+100-character string are valid key types. [8]
+5. Provision the reviewed schema-2 seed while only the deployer has access and
+   BEFORE guards are active. Keep a stable workspace GUID, original IDs/economics/
+   provenance, revision 0 and empty operation tracking. Remove localPath only in
+   the reviewed cloud copy. No tenant seed payload exists yet. Choose ownership
+   and record-specific editor grants without giving all Zunft members Write.
+6. Register the nupkg in the solution. Official Windows PRT supports first package
+   registration. The supported Web API pluginpackages entity set exposes POST,
+   GET and PATCH plus content, and Dataverse registers included IPlugin types.
+   A Mac provisioning implementation must still prepare/validate its upload body
+   and authentication path; none exists locally. Do not equate endpoint support
+   with a tested first-registration command. pac plugin push --pluginId <existing
+   package-id> --pluginFile <nupkg> --environment <url> is documented, but requires
+   a package/assembly ID and is not a verified first-create shortcut. Query the
+   resulting plugintypes and retain IDs for Load, Commit and Guard. [1][6][9][10]
+7. Create /customapis with nested CustomAPIRequestParameters and
+   CustomAPIResponseProperties (or corresponding SDK records): String is type 10;
+   RequestJson required, ResultJson output, bindingtype 0, isfunction false,
+   isprivate false, allowedcustomprocessingsteptype 0, workflowsdkstepenabled
+   false, PluginTypeId bound to actual imported type. Read actual Privilege.Name
+   values before setting ExecutePrivilegeName. Main operation is linked via
+   PluginTypeId; do not create an ordinary Stage-30 processing step. Verify both
+   Actions and ResultJson in the environment's $metadata. [11]
+8. Query sdkmessages/sdkmessagefilters for EACH table/message pair specified in
+   registration.json. Create sdkmessageprocessingsteps bound to actual message,
+   filter and eventhandler_plugintype IDs: stage 20, mode 0, rank 1,
+   supporteddeployment 0, no impersonating user and no attribute filter. The Web
+   API supports these records; include every step in the solution. Do not blindly
+   create 16 steps if some bulk messages are unavailable. Record unavailable paths
+   and prove they cannot bypass guards. No ordinary editor access until every
+   supported mutation path is protected. [12][13]
+9. Assign only explicit kitchen roles/record rights. Existing broad Zunft group is
+   admission/read scope, NOT the two-person editor scope. Keep full kitchen write
+   access restricted to the two approved editors via specific user grants or an
+   explicitly approved restricted owner team. Reader gets workspace Read only;
+   editors need workspace Read/Write/AppendTo plus receipt Read/Create/Append as
+   specified. No workspace Create/Delete/Assign/Share, receipt Write/Delete or
+   bypass privileges for ordinary users. Validate effective access separately.
+10. After deployment and approved interactive authentication, installed pa supports:
+    pa app init --environment-id <actual-id> --display-name "Zunftküche"
+    pa app find-dataverse-api --search zk_Kitchen --json
+    pa app add dataverse-api --api-name zk_KitchenLoad
+    pa app add dataverse-api --api-name zk_KitchenCommit
+    Generation reads real $metadata, writes schemas/power.config.json/
+    dataSourcesInfo.ts/generated service classes. Inspect actual signatures and
+    wire them into configureMicrosoftRuntime before React mount, with the stable
+    workspace GUID and required pending store. No fabricated service metadata.
+    Then build, publish/share only within approved scope, and verify with ordinary
+    accounts. Generating services does not deploy tables or server logic. [14]
+
+REMAINING RELEASE GATES
+Environment/group readback; capacity/entitlement; authorized deployment identity;
+first package registration route; executable metadata/solution provisioning;
+reviewed seed and ownership; actual keys/privileges/guard coverage; generated
+services/bootstrap; live reader/editor/outsider permissions, CAS race, rollback,
+idempotence and timeout/reload tests. These are deployment gaps, not a missing C#
+compiler artifact. Existing local test evidence was not rerun during preflight.
+
+OFFICIAL PRIMARY SOURCES (checked 2026-10-15)
+[1] https://learn.microsoft.com/en-us/power-apps/developer/data-platform/build-and-package
+[2] https://learn.microsoft.com/en-us/power-apps/developer/data-platform/powerapps-cli
+    https://learn.microsoft.com/en-us/power-platform/developer/howto/install-cli-net-tool
+[3] https://learn.microsoft.com/power-platform/admin/create-environment
+[4] https://learn.microsoft.com/en-us/power-platform/admin/control-user-access
+[5] https://learn.microsoft.com/en-us/power-apps/developer/code-apps/overview
+[6] https://learn.microsoft.com/en-us/power-platform/developer/howto/cli-create-package
+[7] https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/create-update-entity-definitions-using-web-api
+[8] https://learn.microsoft.com/en-us/power-apps/developer/data-platform/define-alternate-keys-entity
+[9] https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/reference/pluginpackage
+[10] https://learn.microsoft.com/en-us/power-platform/developer/cli/reference/plugin
+[11] https://learn.microsoft.com/en-us/power-apps/developer/data-platform/create-custom-api-with-code
+[12] https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/reference/sdkmessageprocessingstep
+[13] https://learn.microsoft.com/en-us/power-apps/developer/data-platform/register-plug-in
+[14] https://learn.microsoft.com/en-us/power-apps/developer/code-apps/how-to/add-dataverse-action-function
