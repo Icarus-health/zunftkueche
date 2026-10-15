@@ -62,3 +62,36 @@ DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home
 Tests were added and actually executed before changing production code for this fix. RED: **44 passed, 9 failed**, exit1; failures were the nine missing effective-enforcement behaviors. GREEN: **53 passed, 0 failed**, exit0. Both builds exit0, **0 errors / 3 existing NU1900 feed warnings / no compiler warnings**. No restore, broad suites, provider, authentication, browser or package operations. No build remains active.
 
 Self-review: both inspect and execute readiness require the six effective IDs; every call to InspectAccess rejects forbidden kitchen IDs; missing post-assignment rights stop before further grants; missing uncommitted assignment still retains the original unconfirmed-write stop. No effective-depth inference added. Only FixedAccess.cs, its focused tests and this report are included in this corrective commit. Root's newly observed Schreiber AAD ID is left for Root's read-only identity cross-check rather than expanding this review fix. All original target, workspace/owner/revision, role/depth, additive-only, no-retry and package contracts remain unchanged. Ready for scoped rereview; no provider execution has occurred.
+
+## One-shot preparation of the observed unassigned role (base 40b17d7)
+
+Root's explicit ruling follows actual inspect96431, stopped execute70969 and read-only diagnostic70897. The exact unassigned role `660a97b9-a8c8-f111-a05c-7ced8d5f6c91` contains nine defaults. Their IDs/names match Microsoft's [Web API functions/actions sample](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/web-api-functions-actions-sample#section-8-bound-action-addprivilegesrole); this establishes observed defaults, not that they are necessary or harmless. The documented [ReplacePrivilegesRole](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/reference/replaceprivilegesrole) action supplies the separately approved one-shot replacement.
+
+Added isolated `RolePreparation` and exact `--prepare-existing-role` routing. The original `FixedAccess` implementation remains byte-identical from its class declaration onward, including strict six-right `--execute` behavior. The new mode pins Schreiber AAD/DV/BU and exact existing role, authenticates the unchanged target/admin, requires owner Vorstand/exact revision2, empty direct/team role assignments, effective privileges and workspace rights. Exact role identity, nine IDs/names/depths/BU/unfiltered definitions, reverse user/team assignments and derived roles are checked. Desired six privileges come from actual fixed-table metadata; API execute privilege names must match workspace Read/Write.
+
+Only one fixed bound Replace POST is available. No create, association, sharing, delete, retry or fallback. After any response or exception, canonical privilege readback plus repeated identity/workspace/assignment checks must confirm exactly six and zero assignments. Unchanged/readded defaults, partial/filtered/wrong-depth/wrong-BU outcomes stop. An already-six initial state also stops without rewriting. Success explicitly says rolePrepared only and kitchenAccessReady=false. The subsequent inspect/execute remains a separate Root operation after review.
+
+### Focused red/green evidence
+
+New tests are in `server/Access/Tests/PreparationTests.cs`; the existing runner includes them. Against a compileable no-op preparation scaffold, actual RED was **53 passed / 51 failed**, exit1. Before that behavioral RED, an initial tests-only no-dependencies build failed because the new class was not yet in Access.dll; corrected by building Access first. That compile error is not counted as RED. The first real implementation build then found one JsonNode/ContainsKey type error; fixed by requiring/casting the canonical row to JsonObject, without weakening any assertion.
+
+Final serial commands (repository cwd; no restore or dependency rebuild):
+
+```sh
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home ../dotnet10/dotnet build server/Access --no-restore --no-dependencies --disable-build-servers -p:UseSharedCompilation=false -m:1
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home ../dotnet10/dotnet build server/Access/Tests --no-restore --no-dependencies --disable-build-servers -p:UseSharedCompilation=false -m:1
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home ../dotnet10/dotnet server/Access/Tests/bin/Debug/net10.0/Kitchen.Access.Tests.dll
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home ../dotnet10/dotnet server/Access/bin/Debug/net10.0/Kitchen.Access.dll
+```
+
+Final builds: exit0, 0 errors, respectively 2/3 existing NU1900 inaccessible audit-feed warnings, no compiler warnings. GREEN: **104 passed / 0 failed**, exit0 (53 existing +51 new). Offline executable exit0, mode=offline_plan, providerCalls=0, writes=0, ready=false. No authentication/provider/browser action or build stall. No unrelated tests, package/source-manifest/updater/registry/frontend changes.
+
+Tests cover exact payload/route/metadata resolution, explicit mode isolation, recipient/role/workspace/organization drift, direct/team/effective/record/reverse assignments and child roles, every baseline component including name/filter/duplicates, committed ambiguous writes, unchanged/readded/partial/drifted postreads, postwrite assignment/owner changes, repeated-instance refusal and before/after read ordering. The original 53 tests remain unchanged in behavior.
+
+### Self-review, hashes and limitation
+
+The new class contains one mutation dispatch only; all other operations use existing bounded read helpers. Facts contain own labels, fixed role ID and counts, no remote errors or workspace state. Original FixedAccess class and Deploy source are unchanged. Builds explicitly skipped dependencies: copied Deploy.dll SHA256 remains `63ea6476534bc59273c1d1a94ccf47c534b1c62e7414476ae053b1884fe8b41d`, PDB `82e3493e1d839be7f922ecdd2256975a459bcb2deb37e6b8fdc42ca7459ab973`.
+
+Built Access.dll SHA256 `ad7c2ce0be8dffe443b7082b180b27677744c497938f5c38d4a3afbaa7496cdf`; RolePreparation.cs SHA256 `7eac9740ccd8d913291dad376fa2bd2c59c53ef3d4747ae4e86b3fd085ab34fa`; PreparationTests.cs SHA256 `e35d214e286cf25241199ce4452bbf22fa368c5cc3fe3192a54d2c2229c62043`. SDK informational version embeds precommit source revision; no postcommit rebuild is claimed. Root should freeze these reviewed bytes with sources before provider use.
+
+Role preparation is not atomic CAS and cannot exclude an external administrator racing between reads and POST. Root's controlled sole-writer window is a prerequisite; any visible postread drift fails. If Dataverse re-adds defaults, the exact-six proof fails and nobody receives the role. No claim of successful provider preparation or Schreiber app acceptance is made. Only Access code/tests, this report and docs/Schreiber-access.md belong to this commit; Root-owned documents remain unstaged.

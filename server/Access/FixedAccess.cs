@@ -3,16 +3,18 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 namespace Kitchen.Access;
 
-public enum AccessMode { Offline, Inspect, Execute }
+public enum AccessMode { Offline, Inspect, Execute, PrepareExistingRole }
 public static class AccessProgram {
     public static AccessMode Parse(string[] args) => args switch {
         [] => AccessMode.Offline,
         ["--inspect"] => AccessMode.Inspect,
         ["--execute"] => AccessMode.Execute,
+        ["--prepare-existing-role"] => AccessMode.PrepareExistingRole,
         _ => throw new DeploymentException("unsupported_access_arguments")
     };
     public static async Task<int> Run(string[] args) {
         FixedAccess? helper=null;
+        RolePreparation? preparation=null;
         try {
             var mode=Parse(args);
             if(mode==AccessMode.Offline) {
@@ -22,12 +24,18 @@ public static class AccessProgram {
             var auth=new InteractiveAuthentication();
             await auth.SignInAsync();
             using var transport=new WebApiTransport(Target.Url,auth.TokenAsync);
+            if(mode==AccessMode.PrepareExistingRole) {
+                preparation=new RolePreparation(transport,auth.ObjectId);
+                bool prepared=await preparation.Run();
+                Console.WriteLine(JsonSerializer.Serialize(new{mode=mode.ToString(),facts=preparation.Facts,rolePrepared=prepared,kitchenAccessReady=false,schreiberAppAcceptance="not_performed"}));
+                return prepared?0:2;
+            }
             helper=new FixedAccess(transport,auth.ObjectId);
             bool ready=await helper.Run(mode==AccessMode.Execute);
             Console.WriteLine(JsonSerializer.Serialize(new{mode=mode.ToString(),facts=helper.Facts,kitchenAccessReady=ready,schreiberAppAcceptance="not_performed"}));
             return mode==AccessMode.Execute&&!ready?2:0;
         } catch(Exception e) {
-            Console.WriteLine(JsonSerializer.Serialize(new{error=SafeOutput.Error(e),facts=helper?.Facts,kitchenAccessReady=false}));
+            Console.WriteLine(JsonSerializer.Serialize(new{error=SafeOutput.Error(e),facts=preparation?.Facts??helper?.Facts,kitchenAccessReady=false}));
             return 1;
         }
     }

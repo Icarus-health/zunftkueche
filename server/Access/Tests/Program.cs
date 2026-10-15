@@ -52,6 +52,7 @@ await Test("missing effective privilege after new assignment stops further grant
 await Test("effective privilege disappears after share cannot claim final ready",()=>Refuses(new Fake{EffectiveMissingFromStep=4},"effective_kitchen_privileges_incomplete",4));
 await Test("normalized effective team depths do not replace actual role depths",async()=>{var f=new Fake{RoleExists=true,ExactPrivileges=true,Assigned=true,Shared=true,TeamRole=true,NormalizeEffectiveDepth=true};Check(await new FixedAccess(f,Fake.ObjectId).Run(true));Check(f.Writes.Count==0);});
 await Test("unrelated effective platform privilege is preserved",async()=>{var f=new Fake{RoleExists=true,ExactPrivileges=true,Assigned=true,Shared=true,OtherEffectivePrivilege=true};Check(await new FixedAccess(f,Fake.ObjectId).Run(true));Check(f.Writes.Count==0);});
+var preparation=await PreparationTests.Run();passed+=preparation.Passed;failed+=preparation.Failed;
 Console.WriteLine($"{passed} passed, {failed} failed");return failed==0?0:1;
 
 sealed class Fake : IDataverseTransport {

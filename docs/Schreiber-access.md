@@ -41,7 +41,21 @@ Erst nach Bewertung dieses Ergebnisses freigeben:
 
 Die Anmeldung gibt ausschließlich eine öffentliche `AUTH_URL` aus; Root öffnet diese normal in DuckDuckGo. Kein Browser wird automatisch geöffnet. Tokens bleiben im Arbeitsspeicher. Es gibt keine alternativen Ziel-, Benutzer-, Rollen- oder Privilegienargumente.
 
-## Verhalten und Grenzen
+## Einmalige Vorbereitung der gemessenen unzugewiesenen Rolle
+
+Der tatsächliche erste Rollen-POST legte Rolle `660a97b9-a8c8-f111-a05c-7ced8d5f6c91` mit neun Plattform-Standardprivilegien an. Der normale Ausführungsmodus stoppte vor Zuweisung und Workspace-Freigabe. Für genau diesen gemessenen Zustand gibt es nach unabhängiger Prüfung einen getrennten Aufruf:
+
+```sh
+../dotnet10/dotnet server/Access/bin/Debug/net10.0/Kitchen.Access.dll --prepare-existing-role
+```
+
+Dieser Modus prüft die festen Schreiber-AAD-/Dataverse-/Geschäftsbereich-IDs, Vorstand als Workspace-Eigentümer und exakt Revision 2. Schreiber muss weiterhin keine direkten oder über Teams zugewiesenen Rollen, effektiven Privilegien oder Workspace-Rechte haben. Die feste Rolle muss unverwaltet, ohne Vorlage und übergeordnete Rolle, ihre eigene Wurzel sowie keinem Benutzer oder Team zugewiesen sein; abgeleitete Rollen sind ebenfalls ausgeschlossen. Alle neun beobachteten Standardprivilegien müssen mit ID, Name, Global-Tiefe, Geschäftsbereich und leerem Datensatzfilter exakt übereinstimmen.
+
+Erst dann erfolgt **ein** [ReplacePrivilegesRole](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/reference/replaceprivilegesrole)-POST mit genau den sechs oben genannten, aus tatsächlichen Tabellenmetadaten aufgelösten Rechten. Danach werden Privilegien, Identitäten, Eigentümer/Revision und fehlende Zuweisungen unabhängig gelesen. Ein unklarer Schreibausgang erlaubt nur diese Lesekontrolle, keinen Wiederholungsversuch. Verbleibende oder erneut hinzugefügte Standardrechte, Teilmengen, Drift oder unbekannte Ergebnisse stoppen. Eine bereits vorbereitete Sechs-Rechte-Rolle wird durch diesen Modus nicht erneut geschrieben.
+
+Der Vorbereitungsschritt erstellt und löscht nichts, weist niemanden zu und teilt keinen Workspace. `rolePrepared=true` bedeutet ausschließlich eine exakt zurückgelesene unzugewiesene Rolle; `kitchenAccessReady` bleibt false. Root prüft anschließend separat mit `--inspect` und nutzt erst danach den ursprünglichen `--execute`-Modus für die freigegebenen Zuweisungs-/Freigabeschritte. Es gibt keine atomare Sperre gegen externe Administratoren; Root benötigt ein kontrolliertes Fenster ohne weitere Rollenverwaltung.
+
+## Verhalten und Grenzen des ursprünglichen Ausführungsmodus
 
 - Identität, Geschäftsbereich, vorhandene direkte Rollen und Teamrollen, deren tatsächliche Privilegientiefen sowie effektiver Recordzugriff werden vor jeder ersten Mutation gelesen. API-Ausführungsprivilegien werden mit tatsächlichen Read-/Write-Privilegien aus Tabellenmetadaten verglichen.
 - Eine vorhandene passende Rolle muss bereits exakt sechs Rechte enthalten. Eine leere oder abweichende vorhandene Rolle wird nicht verändert. Eine neu angelegte Rolle muss zuerst leer zurückgelesen werden; unerwartete Plattform-Standardprivilegien führen zum Stopp und erfordern eine neue Bewertung.
