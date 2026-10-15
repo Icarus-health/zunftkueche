@@ -177,9 +177,10 @@ public sealed class Provisioner(ResourceEngine engine, IDataverseTransport trans
             if(privilege==null)throw new DeploymentException("required_execute_privilege_missing");
             string privilegeName=S(privilege,"Name");
             var type=types[S(api!,"pluginType")];
-            var expected=new JsonObject { ["uniquename"]=name,["bindingtype"]=0,["isfunction"]=false,["isprivate"]=false,["allowedcustomprocessingsteptype"]=0,["workflowsdkstepenabled"]=false,["executeprivilegename"]=privilegeName,["_plugintypeid_value"]=type,["boundentitylogicalname"]=null };
-            var input=new JsonObject{["uniquename"]="RequestJson",["type"]=10,["isoptional"]=false,["logicalentityname"]=null};
-            var output=new JsonObject{["uniquename"]="ResultJson",["type"]=10,["logicalentityname"]=null};
+            var expected=new JsonObject { ["uniquename"]=name,["bindingtype"]=0,["isfunction"]=false,["isprivate"]=false,["allowedcustomprocessingsteptype"]=0,["workflowsdkstepenabled"]=false,["executeprivilegename"]=privilegeName,["_plugintypeid_value"]=type,["boundentitylogicalname"]=null,
+                ["description"]=verb=="Read"?"Lädt den gemeinsamen Küchenbestand.":"Speichert eine geprüfte Änderung am Küchenbestand.",["iscustomizable"]=new JsonObject{["Value"]=false} };
+            var input=new JsonObject{["uniquename"]="RequestJson",["type"]=10,["isoptional"]=false,["logicalentityname"]=null,["description"]="JSON-Anfrage für den Küchenbestand.",["iscustomizable"]=new JsonObject{["Value"]=false}};
+            var output=new JsonObject{["uniquename"]="ResultJson",["type"]=10,["logicalentityname"]=null,["description"]="JSON-Ergebnis des Küchenvorgangs.",["iscustomizable"]=new JsonObject{["Value"]=false}};
             expected["CustomAPIRequestParameters"]=new JsonArray(input.DeepClone()); expected["CustomAPIResponseProperties"]=new JsonArray(output.DeepClone());
             var payload=expected.DeepClone().AsObject();payload.Remove("_plugintypeid_value");payload["PluginTypeId@odata.bind"]=$"/plugintypes({type})";payload["name"]=name;payload["displayname"]=name;
             foreach(var nav in new[]{"CustomAPIRequestParameters","CustomAPIResponseProperties"})foreach(var item in payload[nav]!.AsArray()) {item!["name"]=name+"."+S(item,"uniquename");item["displayname"]=S(item,"uniquename");}

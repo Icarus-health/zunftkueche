@@ -339,6 +339,37 @@ if(path.StartsWith("pluginassemblies?")){assemblyReads++;return new JsonObject{[
 throw new Exception("Unexpected backend test request");
 });
 }
+await Test("both APIs deep insert required descriptions and managed properties then reuse exact readback",()=>CheckApis(true));
+await Test("both APIs reject each missing or drifted required field without writes",async()=>{
+foreach(var api in new[]{"zk_KitchenLoad","zk_KitchenCommit"})foreach(var row in new[]{0,1,2})foreach(var field in new[]{"description","iscustomizable"})foreach(var missing in new[]{false,true})await CheckApis(false,api,row,field,missing);
+});
+async Task CheckApis(bool create,string? driftApi=null,int driftRow=0,string driftField="",bool missing=false) {
+const string typeId="00000000-0000-0000-0000-000000000040";int posts=0,apiReads=0;
+var bytes=File.ReadAllBytes("server/artifacts/Zunftkueche.Dataverse.1.0.0.nupkg");
+JsonObject Api(string name)=>new(){["customapiid"]="00000000-0000-0000-0000-000000000041",["uniquename"]=name,["name"]=name,["displayname"]=name,["description"]=name=="zk_KitchenLoad"?"Lädt den gemeinsamen Küchenbestand.":"Speichert eine geprüfte Änderung am Küchenbestand.",["iscustomizable"]=new JsonObject{["Value"]=false},["bindingtype"]=0,["isfunction"]=false,["isprivate"]=false,["allowedcustomprocessingsteptype"]=0,["workflowsdkstepenabled"]=false,["executeprivilegename"]=name=="zk_KitchenLoad"?"prvReadzk_kitchenworkspace":"prvWritezk_kitchenworkspace",["_plugintypeid_value"]=typeId,["boundentitylogicalname"]=null,["CustomAPIRequestParameters"]=new JsonArray(new JsonObject{["uniquename"]="RequestJson",["name"]=name+".RequestJson",["displayname"]="RequestJson",["type"]=10,["isoptional"]=false,["logicalentityname"]=null,["description"]="JSON-Anfrage für den Küchenbestand.",["iscustomizable"]=new JsonObject{["Value"]=false}}),["CustomAPIResponseProperties"]=new JsonArray(new JsonObject{["uniquename"]="ResultJson",["name"]=name+".ResultJson",["displayname"]="ResultJson",["type"]=10,["logicalentityname"]=null,["description"]="JSON-Ergebnis des Küchenvorgangs.",["iscustomizable"]=new JsonObject{["Value"]=false}})};
+var stored=new Dictionary<string,JsonObject>();
+if(!create)foreach(var name in new[]{"zk_KitchenLoad","zk_KitchenCommit"})stored[name]=Api(name);
+if(driftApi!=null){var api=stored[driftApi];var row=driftRow==0?api:api[driftRow==1?"CustomAPIRequestParameters":"CustomAPIResponseProperties"]![0]!.AsObject();if(missing)row.Remove(driftField);else if(driftField=="description")row[driftField]="Ungeprüfte Beschreibung";else row[driftField]!["Value"]=true;}
+JsonObject Rows(JsonObject? row)=>new(){["value"]=row==null?new JsonArray():new JsonArray(row.DeepClone())};
+await CheckRelationship("zk_workspace",false,afterTables:async(p,f,e)=>{
+f.PackageFile=_=>Task.FromResult(bytes);
+async Task ThroughApis(){try{await p.Backend(bytes,true);throw new Exception("Expected boundary");}catch(DeploymentException error){Assert(error.Message=="test_after_apis");}}
+if(driftApi!=null){try{await p.Backend(bytes,true);throw new Exception("Expected drift");}catch(DeploymentException error){Assert(error.Message is "resource_definition_drift" or "resource_definition_missing_field");}Assert(f.Writes==0&&posts==0&&apiReads==(driftApi=="zk_KitchenLoad"?1:2));}
+else{await ThroughApis();await ThroughApis();Assert(posts==2&&f.Writes==2&&apiReads==6&&stored.Count==2);}
+},backendTransport:(method,path,body)=>{
+if(path.StartsWith("zk_kitchenworkspaces?"))return Rows(new JsonObject{["zk_kitchenworkspaceid"]=Seed.WorkspaceId,["zk_revision"]=0});
+if(path.StartsWith("pluginpackages?"))return Rows(new JsonObject{["pluginpackageid"]="00000000-0000-0000-0000-000000000030",["uniquename"]="zk_Zunftkueche.Dataverse",["name"]="zk_Zunftkueche.Dataverse",["version"]="1.0.0",["statecode"]=0,["content"]=null,["package"]="00000000-0000-0000-0000-000000000031"});
+if(path.StartsWith("pluginassemblies?"))return Rows(new JsonObject{["pluginassemblyid"]="00000000-0000-0000-0000-000000000032",["name"]="Kitchen.Dataverse",["isolationmode"]=2});
+if(path.StartsWith("plugintypes?"))return Rows(new JsonObject{["plugintypeid"]=typeId});
+if(path=="EntityDefinitions(LogicalName='zk_kitchenworkspace')?$select=Privileges")return new JsonObject{["Privileges"]=new JsonArray(new JsonObject{["PrivilegeType"]="Read",["Name"]="prvReadzk_kitchenworkspace"},new JsonObject{["PrivilegeType"]="Write",["Name"]="prvWritezk_kitchenworkspace"})};
+if(path.StartsWith("customapis")){
+if(method==HttpMethod.Post){Assert(path=="customapis");var name=body!["uniquename"]!.GetValue<string>();var expected=Api(name);expected.Remove("customapiid");expected.Remove("_plugintypeid_value");expected["PluginTypeId@odata.bind"]="/plugintypes("+typeId+")";Assert(JsonNode.DeepEquals(body,expected));posts++;stored[name]=Api(name);return null;}
+var selected=path.Contains("'zk_KitchenLoad'")?"zk_KitchenLoad":"zk_KitchenCommit";Assert(path=="customapis?$filter=uniquename eq '"+selected+"'&$expand=CustomAPIRequestParameters,CustomAPIResponseProperties");apiReads++;return Rows(stored.GetValueOrDefault(selected));
+}
+if(path.StartsWith("sdkmessages?"))throw new DeploymentException("test_after_apis");
+throw new Exception("Unexpected API fixture route");
+});
+}
 async Task CheckRelationship(string? referencingAttribute,bool create,JsonObject? keyOverride=null,bool rejectKey=false,bool inactiveKey=false,Func<Provisioner,Fake,ResourceEngine,Task>? afterTables=null,Func<HttpMethod,string,JsonNode?,JsonNode?>? backendTransport=null) {
 var contract=Provisioner.LoadContract("server/deployment/registration.json");
 var relationship=Parse("""
@@ -348,7 +379,7 @@ if(referencingAttribute!=null)relationship["ReferencingAttribute"]=referencingAt
 bool exists=!create;int lookupReads=0,keyReads=0;
 JsonNode Rows(JsonObject? row)=>new JsonObject{["value"]=row==null?new JsonArray():new JsonArray(row.DeepClone())};
 var f=Fixture(null,(method,path,body)=>{
-if(backendTransport!=null&&(path.StartsWith("plugin")||path.StartsWith("zk_kitchenworkspaces?")))return Task.FromResult(backendTransport(method,path,body));
+if(backendTransport!=null&&(path.StartsWith("plugin")||path.StartsWith("zk_kitchenworkspaces?")||path.StartsWith("customapis")||path.StartsWith("sdkmessages?")||path=="EntityDefinitions(LogicalName='zk_kitchenworkspace')?$select=Privileges"))return Task.FromResult(backendTransport(method,path,body));
 if(method==HttpMethod.Post){
 var payload=body!.AsObject();
 Assert(path=="RelationshipDefinitions"&&!payload.ContainsKey("ReferencingAttribute"));

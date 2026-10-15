@@ -166,3 +166,25 @@ DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home
 ```
 
 No build stalled this round. `git diff --check` passed. Self-review checked download routing, GUID parsing before token acquisition, exact HTTP status/length/byte gates, sentinel-bound loop, safe errors, fail-closed default, Acceptance delegation and ordering before any further backend handling. Only Deploy implementation/tests, Acceptance transport/delegation test and this report changed. No source, nupkg, nuspec/DLL, domain, runtime, registration/hash, guards, API contracts or parent-owned documentation changed. No provider/auth/browser actions or helpers/agents were used. Independent review is required before Root resumes; this commit claims local checks, with the live file evidence explicitly attributed to Root.
+
+## Required Custom API creation metadata
+
+Base: 66103fc. Root backend 48746 verified package bytes, assembly and all three plug-in types, then the first zk_KitchenLoad POST returned HTTP 400 / 0x80040200 (RequiredFieldMissing); canonical API readback was missing and execution stopped before guard registration. The current deep insert omitted description and iscustomizable on the API and both child records. Microsoft's [creation example](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/create-custom-api-with-code) supplies both properties on all three objects. The [CustomAPI reference](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/reference/entities/customapi#description) marks parent description SystemRequired (max300); [request](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/reference/entities/customapirequestparameter#description) and [response](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/reference/entities/customapiresponseproperty#description) descriptions are ApplicationRequired (max300/max100). All three iscustomizable properties are SystemRequired ManagedProperty. This proves a payload gap, not which individual omission produced the generic provider error.
+
+Following Root's explicit ruling, both APIs now supply fixed German descriptions and iscustomizable:{Value:false} on the API, RequestJson parameter and ResultJson property. Every description is under100 characters. The same values are included in exact canonical readback, so missing/changed descriptions and missing/true managed properties stop rather than overwriting an existing API. Generic comparison remains unchanged. Names, global action binding, all existing flags, metadata-derived execute privilege, type10, required RequestJson, ResultJson, plug-in binding, deep-insert navigation, package/source/contracts, guards and runtime semantics remain unchanged. No update/delete/retry or logging expansion was added.
+
+Two focused tests in server/Deploy.Tests/Program.cs use real Tables→Backend→Apis control flow with independently defined readback fixtures. The successful case verifies the entire POST for both APIs, independent readback, then repeats the flow to prove exact reuse with exactly two total writes. A deliberate fake boundary stops after API processing before guard registration; no full backend-readiness claim is made. The negative matrix covers both APIs × all three rows × description/iscustomizable × missing/drift (24 cases), requiring resource drift/missing-field rejection and zero writes. It cannot mistake the fake post-API boundary for rejection. Existing package/file, seed and guard tests remain green. Acceptance contains no API readback fixture or changed signature; no Acceptance edits or redundant compatibility rebuild was needed this round.
+
+Red before production change: **72 passed; 2 failed**. Green after the six-field addition: **74 passed; 0 failed**. Exact command:
+
+```sh
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home DOTNET_GENERATE_ASPNET_CERTIFICATE=false ../dotnet10/dotnet run --project server/Deploy.Tests --no-restore --disable-build-servers -p:UseSharedCompilation=false -m:1
+```
+
+Final build:
+
+```sh
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home DOTNET_GENERATE_ASPNET_CERTIFICATE=false ../dotnet10/dotnet build server/Deploy --no-restore --disable-build-servers -p:UseSharedCompilation=false -m:1
+```
+
+Build succeeded, **0 warnings, 0 errors**. `git diff --check` passed. Self-review confirmed only the three expected objects gain the two documented fields; cloning still supplies the exact create payload, and matching still fails closed at any changed nested value. No privilege relaxation, payload-shape rewrite, guard/protocol changes, cosmetic resource-ID fix, provider/auth/browser actions or helper agents occurred. Only Provisioner.cs, its covering tests and this report are committed; parent files are unstaged. Independent review and Root's later live readback remain required before claiming the provider failure resolved.
