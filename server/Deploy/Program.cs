@@ -42,12 +42,12 @@ try {
         }
         Console.WriteLine(JsonSerializer.Serialize(new {
             phase = options.Phase, workspaceId = Seed.WorkspaceId, resources = engine.Resources,
-            gaps = provisioner.Gaps, metadataReady = options.Phase == "verify" && provisioner.Gaps.Count == 0,
+            gaps = provisioner.Gaps, packageCreateDiagnostics = transport.PackageCreateDiagnostics, metadataReady = options.Phase == "verify" && provisioner.Gaps.Count == 0,
             liveRuntimeAcceptance = "pending_root_tests", ordinaryUserAcceptance = "not_authorized_or_tested"
         }));
         return options.Phase != "inspect" && provisioner.Gaps.Count > 0 ? 2 : 0;
     } catch (Exception e) {
-        Console.WriteLine(JsonSerializer.Serialize(new { phase = options.Phase, resources = engine.Resources, gaps = provisioner.Gaps, error = SafeOutput.Error(e), metadataReady = false }));
+        Console.WriteLine(JsonSerializer.Serialize(new { phase = options.Phase, resources = engine.Resources, gaps = provisioner.Gaps, packageCreateDiagnostics = transport.PackageCreateDiagnostics, error = SafeOutput.Error(e), metadataReady = false }));
         return 1;
     }
 } catch (Exception e) {

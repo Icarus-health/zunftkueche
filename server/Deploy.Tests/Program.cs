@@ -58,6 +58,56 @@ using var handler=new ResponseHandler(()=>new HttpResponseMessage(System.Net.Htt
 using var transport=new WebApiTransport(Target.Url,()=>Task.FromResult("synthetic-token"),handler);
 try{await transport.SendAsync(HttpMethod.Get,"pluginpackages?$select=pluginpackageid");throw new Exception("Expected refusal");}catch(DeploymentException error){return SafeOutput.Error(error);}
 }
+await Test("package create reports only fixed lexical facts and validated numeric details",async()=>{
+var body=Parse("""{"error":{"code":"0x80040265","message":"Invalid NuGet package: unique name must contain publisher prefix; manifest version mismatch. Bearer private-token https://private.example/password=secret","innererror":{"message":"Assembly not supported; dependency references missing. Newtonsoft SDK unsigned signature"},"@Microsoft.PowerApps.CDS.ErrorDetails.OperationStatus":"1","@Microsoft.PowerApps.CDS.ErrorDetails.SubErrorCode":-2147220891,"@Microsoft.PowerApps.CDS.TraceText":"private-trace"}}""");
+var result=await PackageError(body.ToJsonString());Assert(result.Error=="http_400_dataverse_0x80040265"&&result.Facts.Count==1);
+var fact=result.Facts[0]!;var flags=fact["Flags"]!.AsArray().Select(f=>f!.GetValue<string>()).ToArray();
+foreach(var word in new[]{"invalid","nuget","package","unique","name","must","publisher","prefix","manifest","version","mismatch","assembly","not_supported","dependency","references","missing","newtonsoft","sdk","unsigned","signature"})Assert(flags.Contains(word));
+Assert(fact["OperationStatus"]!.GetValue<int>()==1&&fact["SubErrorCode"]!.GetValue<int>()==-2147220891);
+var output=result.Facts.ToJsonString();foreach(var secret in new[]{"private-token","private.example","password","secret","private-trace","Bearer"})Assert(!output.Contains(secret));
+});
+await Test("package diagnostic is restricted to exact POST pluginpackages",async()=>{
+var body="""{"error":{"code":"0x80040265","message":"Invalid NuGet package name"}}""";
+foreach(var request in new[]{(HttpMethod.Get,"pluginpackages"),(HttpMethod.Post,"pluginpackages?x=1"),(HttpMethod.Post,"pluginpackages/"),(HttpMethod.Post,"PluginPackages"),(HttpMethod.Post,"pluginassemblies")}){
+var result=await PackageError(body,request.Item1,request.Item2);Assert(result.Facts.Count==0&&result.Error=="http_400_dataverse_0x80040265");
+}
+});
+await Test("package diagnostics reject unsafe int32 fields and ignore other remote fields",async()=>{
+foreach(var bad in new[]{"\"2147483648\"","-2147483649","1.5","\"1 password=secret\"","true","{}","null","\" 1\"","\"+1\""}){
+var body=Parse("""{"error":{"code":"0x80040265","message":"unclassified remote-private-marker","innererror":{"message":42},"name":"invalid assembly","@Microsoft.PowerApps.CDS.TraceText":"invalid nuget","@Microsoft.PowerApps.CDS.InnerError.Message":"invalid zip"}}""");
+body["error"]!["@Microsoft.PowerApps.CDS.ErrorDetails.OperationStatus"]=JsonNode.Parse(bad);body["error"]!["@Microsoft.PowerApps.CDS.ErrorDetails.SubErrorCode"]=JsonNode.Parse(bad);
+var result=await PackageError(body.ToJsonString());var fact=result.Facts.Single()!;
+Assert(fact["OperationStatus"]==null&&fact["SubErrorCode"]==null&&fact["Flags"]!.AsArray().Count==0&&!result.Facts.ToJsonString().Contains("remote-private-marker"));
+}
+});
+await Test("package numeric diagnostics accept only canonical int32 bounds",async()=>{
+foreach(var number in new[]{int.MinValue,0,int.MaxValue}){
+var body=Parse("""{"error":{"code":"0x80040265"}}""");
+body["error"]!["@Microsoft.PowerApps.CDS.ErrorDetails.OperationStatus"]=number;body["error"]!["@Microsoft.PowerApps.CDS.ErrorDetails.SubErrorCode"]=number.ToString(System.Globalization.CultureInfo.InvariantCulture);
+var result=await PackageError(body.ToJsonString());Assert(result.Facts[0]!["OperationStatus"]!.GetValue<int>()==number&&result.Facts[0]!["SubErrorCode"]!.GetValue<int>()==number);
+}
+});
+await Test("package malformed oversized and excessive depth bodies stay unknown and bounded",async()=>{
+foreach(var body in new[]{"{bad","[]","{}","{\"error\":{\"code\":\"0x80040265\",\"message\":\"invalid nuget "+new string('x',9000)+"\"}}","{\"error\":{\"code\":\"0x80040265\",\"message\":\"invalid nuget\",\"deep\":"+new string('[',20)+"0"+new string(']',20)+"}}"}){
+var result=await PackageError(body);Assert(result.Error=="http_400"&&result.Facts.Count==1&&result.Facts[0]!["Flags"]!.AsArray().Count==0&&result.Facts[0]!["OperationStatus"]==null&&result.Facts[0]!["SubErrorCode"]==null);
+}
+using var stream=new CountingErrorStream(System.Text.Encoding.UTF8.GetBytes(new string('x',20000)));
+using var handler=new ResponseHandler(()=>new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest){Content=new StreamContent(stream)});
+using var transport=new WebApiTransport(Target.Url,()=>Task.FromResult("synthetic-token"),handler);
+await Reject(()=>transport.SendAsync(HttpMethod.Post,"pluginpackages",new JsonObject()));Assert(stream.ReadBytes<=8193);
+});
+async Task<(string Error,JsonArray Facts)> PackageError(string body,HttpMethod? method=null,string path="pluginpackages") {
+int requests=0;
+using var handler=new ResponseHandler(()=>new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest){Content=new StringContent(body)},request=>{
+requests++;
+bool packageCreate=(method??HttpMethod.Post)==HttpMethod.Post&&path=="pluginpackages";
+Assert(request.Headers.Contains("Prefer")==packageCreate);
+if(packageCreate)Assert(request.Headers.GetValues("Prefer").Single()=="odata.include-annotations=\"Microsoft.PowerApps.CDS.ErrorDetails.OperationStatus,Microsoft.PowerApps.CDS.ErrorDetails.SubErrorCode\"");
+});
+using var transport=new WebApiTransport(Target.Url,()=>Task.FromResult("synthetic-token"),handler);
+try{await transport.SendAsync(method??HttpMethod.Post,path,new JsonObject());throw new Exception("Expected refusal");}
+catch(DeploymentException error){Assert(requests==1);return (SafeOutput.Error(error),System.Text.Json.JsonSerializer.SerializeToNode(transport)?["PackageCreateDiagnostics"]?.AsArray()??new JsonArray());}
+}
 await Test("MSAL object must match actual Dataverse systemuser",async()=>{var f=Fixture(new());await Reject(()=>new ResourceEngine(f,"00000000-0000-0000-0000-000000000099").AuthenticateTargetAsync());Assert(f.Writes==0);});
 await Test("supported unguardable mutation blocks readiness without writes",async()=>{
 var f=Fixture(null,(m,p,b)=>Task.FromResult<JsonNode?>(Parse(p.StartsWith("sdkmessages?")?"{\"value\":[{\"sdkmessageid\":\"00000000-0000-0000-0000-000000000011\"}]}":"{\"value\":[{\"sdkmessagefilterid\":\"00000000-0000-0000-0000-000000000012\",\"iscustomprocessingstepallowed\":false,\"primaryobjecttypecode\":\"zk_kitchenworkspace\"}]}")));
@@ -328,8 +378,8 @@ sealed class GuardHarness {
  public JsonObject Coverage(string table,string message)=>Coverages().Single(c=>c["table"]!.GetValue<string>()==table&&c["message"]!.GetValue<string>()==message);
 }
 
-sealed class ResponseHandler(Func<HttpResponseMessage> response):HttpMessageHandler {
- protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken cancellationToken)=>Task.FromResult(response());
+sealed class ResponseHandler(Func<HttpResponseMessage> response,Action<HttpRequestMessage>? inspect=null):HttpMessageHandler {
+ protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken cancellationToken){inspect?.Invoke(request);return Task.FromResult(response());}
 }
 
 sealed class CountingErrorStream(byte[] bytes):Stream {

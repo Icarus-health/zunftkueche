@@ -80,3 +80,31 @@ DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home
 ```
 
 Build succeeded with **0 warnings and 0 errors**; `git diff --check` passed. Self-review confirmed comparison is confined to this key, requires both exact strings and exact cardinality, retains schema/status gates, leaves the payload unchanged and emits no provider field values. Only Provisioner.cs, its covering tests and this report are included. No provider/auth/browser calls, plugin rebuild or unrelated test reruns were performed. Root's independent review precedes live readiness/seed actions; this commit claims local verification only.
+
+## Bounded package-create diagnostic facts
+
+Base: 61ed9a0. Root's backend run 22144 verified tables, Active key and original seed/owner before the package POST returned HTTP 400 / 0x80040265; canonical package readback stayed absent and execution stopped before APIs/guards. Root's read-only diagnostic 85394 subsequently found zero packages by exact unique name or exact name and zero recent Create traces. The package failure cause is still unknown. Local nuspec ID/version match the POST. Microsoft's [package guidance](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/build-and-package) permits unsigned assemblies in packages and Microsoft.NET.Sdk project format; the [PluginPackage reference](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/reference/entities/pluginpackage) lists the supplied fields as writable. No proven package/payload defect or official GUID-only unique-name rule was identified. This change does not guess or repair a provider-side validation failure.
+
+Root authorized narrowly bounded diagnostics for one later explicitly initiated package-create attempt after review. Only HTTP POST with relativePath exactly `pluginpackages` enables the new path. The existing error-body limit stays 8192 bytes, with at most one extra sentinel byte read to detect overflow, and JSON MaxDepth stays 16. Malformed, oversized, too-deep and invalid-code responses produce only the generic numeric HTTP error and empty diagnostic facts. Existing valid hexadecimal Dataverse codes retain their exact safe format.
+
+For this exact endpoint, the transport examines only error.message and its direct innererror.message transiently in memory. It recognizes complete ASCII word tokens against a fixed source-defined dictionary and the fixed sequences not found/not supported/not allowed. Output flags are sorted, deduplicated labels from that dictionary, never words copied from the response. They indicate lexical presence only: they are not proof of a failure category, negation interpretation or recommended fix. All other remote fields, arbitrary text, URLs, trace text, headers, tokens, package content and configuration are excluded from output and persistent storage. An unrecognized response has no lexical flags. Unknown/localized wording remains unclassified.
+
+Only the two documented numeric annotations are requested through Prefer: Microsoft.PowerApps.CDS.ErrorDetails.OperationStatus and Microsoft.PowerApps.CDS.ErrorDetails.SubErrorCode. No wildcard, TraceText, HelpLink or InnerError annotation is requested. Both values must be valid int32 JSON integers or canonical decimal int32 strings; overflow, fractional values, whitespace, plus signs, malformed strings, objects, booleans and nulls become null. The official [HTTP error-handling documentation](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/compose-http-requests-handle-errors) documents selecting individual annotations and illustrates why 0x80040265 alone cannot identify the cause.
+
+Program adds packageCreateDiagnostics to the existing phase result/error object. Each entry contains only Error (the existing safe HTTP/hex code), Flags, OperationStatus and SubErrorCode. This survives ResourceEngine's mandatory canonical readback and safe unconfirmed-stop, so the original sanitized failure remains available even when the final exception is write_outcome_unconfirmed_stop. Other endpoints retain numeric-only suppression and add no diagnostic entry or Prefer header. There is no automatic retry, new provider operation, changed package identity/payload or metadata write path.
+
+Covering tests in server/Deploy.Tests/Program.cs send real HttpRequestMessage instances through synthetic HttpMessageHandler responses. They verify fixed flags from direct/inner messages, numeric boundaries, hostile values and private markers never being emitted, ignored trace/unrelated fields, exact endpoint/method restriction including path/query/case variants, and the exact numeric-only Prefer header. Each helper asserts a single request. Malformed, >8192-byte and depth>16 bodies stay unknown; a streaming response asserts at most8193 bytes read. Existing ambiguous-write/no-retry, secret suppression and all provisioning tests remain unchanged and pass.
+
+Red before implementation: **61 passed; 3 failed** (missing package facts). Green after implementation: 64 passed; 0 failed. After adding explicit int32-boundary and request/header assertions: **65 passed; 0 failed**. Exact test command:
+
+```sh
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home DOTNET_GENERATE_ASPNET_CERTIFICATE=false ../dotnet10/dotnet run --project server/Deploy.Tests --no-restore -p:UseSharedCompilation=false
+```
+
+Final build command:
+
+```sh
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home DOTNET_GENERATE_ASPNET_CERTIFICATE=false ../dotnet10/dotnet build server/Deploy --no-restore -p:UseSharedCompilation=false
+```
+
+Build succeeded with **0 warnings and 0 errors**. `git diff --check` passed. Self-review traced all emitted strings to fixed local labels or the preexisting validated HTTP/hex code, confirmed transient bounded parsing and canonical integer validation, and confirmed the endpoint guard covers both the annotation header and classification. Only WebApiTransport.cs, Program.cs, focused tests and this report changed. No provider/auth/browser calls, package rebuild, package/payload/identity/source/plugin changes, Acceptance edits or unrelated test runs occurred. Root must independently review before its explicitly authorized re-POST; diagnosis is still pending actual provider evidence.
