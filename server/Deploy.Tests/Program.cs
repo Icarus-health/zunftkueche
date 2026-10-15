@@ -193,6 +193,29 @@ var engine=new ResourceEngine(f);await engine.AuthenticateTargetAsync();
 await Reject(()=>engine.EnsureAsync("zk_kitchenworkspace.zk_name","attributes","attributes",new(),Parse("{\"RequiredLevel\":{\"Value\":\"None\"}}"),true));
 var log=System.Text.Json.JsonSerializer.Serialize(engine.Resources);Assert(log.Contains("$.RequiredLevel.Value")&&!log.Contains("sensitive-provider-value")&&!log.Contains("untrusted-note")&&f.Writes==0);
 });
+await Test("reviewed internal primary names reuse exact observed capacity without mutation",async()=>{
+var contract=Provisioner.LoadContract("server/deployment/registration.json");
+foreach(var table in contract["tables"]!.AsArray()) {
+var spec=table!["attributes"]![0]!;var expected=Metadata.AttributeExpected(spec,true);
+var observed=Parse("{\"SchemaName\":\"zk_name\",\"RequiredLevel\":{\"Value\":\"None\",\"CanBeChanged\":true},\"IsPrimaryName\":true,\"MaxLength\":850,\"FormatName\":{\"Value\":\"Text\"}}");
+var f=Fixture(new JsonObject{["value"]=new JsonArray(observed)});var engine=new ResourceEngine(f);await engine.AuthenticateTargetAsync();
+await engine.EnsureAsync("primary-name","attributes","attributes",Metadata.Attribute(spec,true),expected,true);
+Assert(Metadata.Table(table)["Attributes"]![0]!["MaxLength"]!.GetValue<int>()==850&&f.Writes==0);
+}
+});
+await Test("internal primary capacity remains exact and all business limits remain unchanged",async()=>{
+var contract=Provisioner.LoadContract("server/deployment/registration.json");
+foreach(var table in contract["tables"]!.AsArray())foreach(var length in new[]{200,849,851}) {
+var expected=Metadata.AttributeExpected(table!["attributes"]![0]!,true);
+var observed=Parse("{\"SchemaName\":\"zk_name\",\"RequiredLevel\":{\"Value\":\"None\"},\"IsPrimaryName\":true,\"MaxLength\":850,\"FormatName\":{\"Value\":\"Text\"}}");observed["MaxLength"]=length;
+await Reject(()=>{ResourceEngine.RequireMatch(observed,expected);return Task.CompletedTask;});
+}
+Assert(contract["tables"]![0]!["attributes"]![1]!["maxLength"]!.GetValue<int>()==1048576);
+var receipt=contract["tables"]![1]!["attributes"]!.AsArray();
+Assert(receipt.Single(a=>a!["name"]!.GetValue<string>()=="zk_operationid")!["maxLength"]!.GetValue<int>()==100);
+Assert(receipt.Single(a=>a!["name"]!.GetValue<string>()=="zk_requesthash")!["maxLength"]!.GetValue<int>()==64);
+Assert(receipt.Single(a=>a!["name"]!.GetValue<string>()=="zk_actor")!["maxLength"]!.GetValue<int>()==36);
+});
 Console.WriteLine($"{passed} passed; {failed} failed");return failed==0?0:1;
 Fake Fixture(JsonObject? data, Func<HttpMethod,string,JsonNode?,Task<JsonNode?>>? other=null)=>new((m,p,b)=>{
  if(p=="WhoAmI")return Task.FromResult<JsonNode?>(Parse($"{{\"OrganizationId\":\"{Target.Organization}\",\"UserId\":\"00000000-0000-0000-0000-000000000002\"}}"));

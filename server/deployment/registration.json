@@ -15,7 +15,7 @@
         {
           "name": "zk_name",
           "type": "String",
-          "maxLength": 200
+          "maxLength": 850
         },
         {
           "name": "zk_state",
@@ -47,7 +47,7 @@
         {
           "name": "zk_name",
           "type": "String",
-          "maxLength": 200
+          "maxLength": 850
         },
         {
           "name": "zk_workspace",

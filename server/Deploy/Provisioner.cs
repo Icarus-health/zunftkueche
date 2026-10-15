@@ -9,7 +9,7 @@ public sealed class Provisioner(ResourceEngine engine, IDataverseTransport trans
     public List<string> Gaps { get; } = [];
     public static JsonObject LoadContract(string path) {
         var bytes = File.ReadAllBytes(path);
-        if (Seed.Hash(bytes) != "46e7fe2b0a71763318bd713df028c3e57ed7d8a7fae380566622a44f94017207") throw new DeploymentException("registration_contract_changed_requires_review");
+        if (Seed.Hash(bytes) != "08bd35ddbb43f12ee2c80eed9048630bebf25a899d012a327db3aa9f647baf47") throw new DeploymentException("registration_contract_changed_requires_review");
         return JsonNode.Parse(bytes)!.AsObject();
     }
     private static string S(JsonNode n, string field) => Metadata.Text(n, field);
