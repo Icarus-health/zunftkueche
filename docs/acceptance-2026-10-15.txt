@@ -1,12 +1,18 @@
-ZUNFTKÜCHE – STAND UND BEDIENUNG
+ZUNFTKÜCHE – START UND PRÜFSTAND
 15. Oktober 2026
 
-AKTUELLER STATUS
-Die App ist noch nicht veröffentlicht oder für den Vereinsbetrieb freigegeben. Die Microsoft-Umgebung, Tabellen, Schnittstellen und Schreibschutz-Registrierungen sind vorhanden. Die Daten von 2026 lassen sich im Vorstand-Konto laden und speichern. Der fachlich unveränderte Livevorgang wurde genau einmal gespeichert; die identische Wiederholung erzeugte keine zweite Änderung, und eine veraltete Anfrage wurde als Konflikt erkannt. Die Nachkontrolle bestätigt Revision 1 und den zugehörigen Änderungsbeleg. Zwölf unterstützte direkte Schreibwege am Küchenbestand wurden bereits abgewiesen. Die vollständige Schutzprüfung beider Tabellen ist noch offen; die nicht verfügbare Standardtabellen-Sammellöschung wird getrennt ausgewiesen.
+ÖFFNEN
+https://apps.powerapps.com/play/e/5684204c-3254-ec15-93f4-276ec50cc65b/app/bfec495e-c223-4176-89a8-3e4d631337ae?tenantId=1dcbc0d3-e9b9-4622-bbd7-811ff1c1f7e9
+Konto: Vorstand@Schelmenzunft.onmicrosoft.com
 
-VORGESEHENER ARBEITSABLAUF
+AKTUELLER STATUS
+Die private Power Apps Code App ist veröffentlicht und im Vorstand-Konto im echten Browser geprüft: Laden, Bestellungen nach Lieferant/Tag, Planung nebeneinander, Speichern und erneutes Öffnen funktionieren. Eine unabhängige Dataverse-Nachkontrolle bestätigt Revision 2. Die Freigabeansicht zeigt einen Besitzer, keine weiteren Empfänger und keine ausstehenden Einladungen.
+
+Die zusätzliche persönliche Teams-Einbindung wird noch entwickelt und geprüft. Microsofts automatischer „Zu Teams hinzufügen“-Weg für Code Apps ist derzeit nicht unterstützt; unser tatsächlicher Versuch scheiterte an einem unvollständigen Teams-Paket. Der Nutzer hat die separate eigene Teams-Einbindung ausdrücklich beauftragt. Sie gilt bis zur tatsächlichen Teams-Bedienprüfung nicht als fertig.
+
+ARBEITSABLAUF
 1. Veranstaltung auswählen und Stammdaten/Rezepturen prüfen.
-2. Freitag und Samstag nebeneinander planen; offene Mengen bleiben als offen erkennbar.
+2. Freitag und Samstag nebeneinander planen; offene Mengen bleiben offen.
 3. Anfangsbestand einmal für das Wochenende erfassen und Einkaufsbedarf ausdrücklich übernehmen.
 4. Lieferant und anschließend Liefertag auswählen. Bestellversion vorbereiten und prüfen.
 5. Tatsächlich Geliefertes, Verbrauch und Rückgaben erfassen. Eine Bestellung gilt noch nicht als Lieferung.
@@ -14,17 +20,16 @@ VORGESEHENER ARBEITSABLAUF
 7. Verkaufte Stückzahlen je Abend erfassen und Restbestände zählen. Verkäufe ersetzen keine Verbrauchsbuchung.
 8. Auswertung lesen; fehlende Angaben ergeben Teilsummen und keinen behaupteten Gewinn.
 
-BESTELLUNGEN UND ORIGINALBELEGE
-Vorbereitete Bestellversionen bewahren den damaligen Stand. Versand und native Druckausgabe sind gesonderte Schritte und werden nicht als automatisch erledigt dargestellt. Originalrechnungen wurden nicht nach SharePoint migriert. Die vorhandenen PDF-, Word- und Excel-Originale bleiben unverändert; 62 Originaldateien wurden am 15.10.2026 erneut per Prüfsumme verglichen, alle stimmen überein.
+VORHANDENE DATEN
+76 Einkaufspositionen, 62 Artikel, acht Lieferanten, 13 Speisen-/Getränkeeinträge. Die 26 Planmengen und 13 Rezepturentwürfe müssen noch fachlich bestätigt werden. Zehn Belege sind im Datenstand; zwei Listenbelege haben noch kein Original. Tatsächliche Lieferungen, Verkäufe und Restmengen werden nicht aus Bestellungen abgeleitet.
 
-ZUGRIFF
-Zunächst ist ausschließlich Vorstand@Schelmenzunft.onmicrosoft.com vorgesehen. Die Microsoft-365-Teamgruppe begrenzt den Zugang zur Umgebung; sie ist keine pauschale Schreib- oder App-Freigabe für alle Teammitglieder. Weitere Bearbeiter und Leser sind noch nicht eingerichtet oder live geprüft.
+BESTELLUNGEN UND ORIGINALBELEGE
+Vorbereitete Bestellversionen bewahren den damaligen Stand. Versand und native Druckausgabe sind gesonderte Schritte. Originalrechnungen wurden nicht nach SharePoint migriert. Die PDF-, Word- und Excel-Originale bleiben unverändert; 62 Originaldateien wurden am 15.10.2026 erneut per Prüfsumme verglichen, alle stimmen überein. Im Codepaket sind die Ausgangsdaten als geprüfte private Kopie enthalten, keine Original-PDFs oder lokalen Teststände.
 
 PRÜFSTAND
-Der eingefrorene Korrekturstand 703f6c0 besteht 86 Server-, 74 Bereitstellungs-, 35 Abnahme- und 36 Paketupdate-Prüfungen. Der erfolgreiche Microsoft-Speichervorgang, seine Wiederholung und der Konflikt wurden separat live nachgewiesen. Die Oberfläche und die tatsächlich erzeugten Microsoft-Dienste wurden separat geprüft; die veröffentlichte App, tatsächliche Lizenznutzung und Teams-Einbindung sind noch offen.
+Der eingefrorene v5-Serverstand besteht 86 Server- und 36 Paketupdate-Prüfungen. Der abschließende Korrekturstand besteht 76 Bereitstellungs- und 41 Abnahme-Prüfungen. Produktions-Build und TypeScript-Prüfung sind erfolgreich. Unabhängige Agenten haben Implementierung und Korrekturen geprüft.
 
-DATEN UND GRENZEN
-Der gemeinsame Datenstand umfasst auch frühere Veranstaltungen. Gleichzeitige Änderungen werden durch Versionsprüfung geschützt; bei einem Konflikt wird kein fremder Stand still überschrieben. Die Größe des gemeinsamen Dokuments ist begrenzt. Fehlende Rechnungen, tatsächliche Verkäufe und offene Rezepturen/Mengen müssen weiterhin ergänzt werden. Gewollte Ergänzungen werden nicht aus unvollständigen Quellen erfunden.
+Live wurden ein fachlich unveränderter Speichervorgang, identische Wiederholung ohne zweite Wirkung, Versionskonflikt und 24 unterstützte direkte Schreibschutzprüfungen beider Tabellen nachgewiesen. Zwei Standardtabellen-Sammellöschungen sind dokumentiert nicht verfügbar und wurden nicht als ausgeführte Schutztests gezählt. Danach erfolgte der zusätzliche echte Oberflächen-Speichertest mit Neuladen.
 
-NÄCHSTER NACHWEIS
-Die ausstehenden unterstützten Schreibschutzprüfungen werden von dem exakt bestätigten Datenstand aus fortgesetzt, ohne den gespeicherten Vorgang erneut anzulegen. Danach folgen private Veröffentlichung und echte Bedienprüfung im Vorstand-Konto. Link und endgültiger Abnahmestand werden anschließend ergänzt.
+ZUGRIFF UND GRENZEN
+Zunächst nur Vorstand. Die Teamgruppe begrenzt den Zugang zur Umgebung; sie ist keine pauschale App-Freigabe. Weitere Bearbeiter-/Leserrollen sind nicht eingerichtet oder live geprüft. Gleichzeitige Änderungen sind durch Versionsprüfung geschützt. Ein gemeinsames Dokument enthält auch frühere Veranstaltungen und ist auf 512 KiB begrenzt. Größere Nutzung oder feinere Rechte benötigen eine Weiterentwicklung. Erzwungene Transaktionsrücknahme, mobile Ansicht, SharePoint-Verknüpfungen und native Druckvorschau sind noch nicht live abgenommen. Fehlende Rechnungen, tatsächliche Verkäufe, Rezepturen und Planmengen sind weiterhin zu ergänzen.

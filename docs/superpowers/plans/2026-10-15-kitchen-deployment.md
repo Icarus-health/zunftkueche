@@ -51,13 +51,14 @@ Only https://org1d76e28a.crm17.dynamics.com, organization5ded2106-01c8-f111-be88
 
 **Files:** generated actual Code Apps metadata/services, src/main.tsx bootstrap integration, deployment documentation/status. Actual names/signatures come from generation; never invent them.
 
-- [ ] Root signs in via DuckDuckGo, runs inspect, confirms expected organization/account and read-only gates. Root executes reviewed phases sequentially, reading back actual results. Record exact IDs/status, no credentials. If a phase is rejected or unsupported, preserve partial resources and report the concrete blocker.
-- [ ] Enable Code Apps only in approved environment; inspect ten existing donated passes and allocate needed quantity without new purchases. Root verifies sharing only for Vorstand; no broad Team app access.
-- [ ] Generate real services through pa; inspect SDK data.ResultJson/canWrite contract, configure stable workspace GUID before React mount; test build and actual Load/Commit. Agent implements bootstrap after real generation only, independently reviewed.
-- [ ] Publish private code app, verify real host URL under owner identity. Connect Teams through existing intended location, no new data roles/messages. Read back actual app/resource/permission state.
+- [x] Root signs in via DuckDuckGo, runs inspect, confirms expected organization/account and read-only gates. Root executes reviewed phases sequentially, reading back actual results. Record exact IDs/status, no credentials. If a phase is rejected or unsupported, preserve partial resources and report the concrete blocker.
+- [x] Enable Code Apps only in approved environment; inspect ten existing donated passes and allocate needed quantity without new purchases. Root verifies sharing only for Vorstand; no broad Team app access.
+- [x] Generate real services through pa; inspect SDK data.ResultJson/canWrite contract, configure stable workspace GUID before React mount; test build and actual Load/Commit. Agent implements bootstrap after real generation only, independently reviewed.
+- [x] Publish private code app, verify real host URL under owner identity; owner-only actual sharing read back.
+- [ ] Additional personally scoped Teams integration explicitly approved after automatic CodeApp route failed. No new data roles/messages; independently reviewed package and actual Teams Load/Save/Reload required.
 
 ### Task 4: Live acceptance and package
 
-- [ ] Root verifies owner browser workflow, provider-side persisted data, retry/idempotence/conflict/direct-write behavior and source preservation with explicitly marked test data only. Do not infer ordinary-user roles from admin success or weaken write guard to make testing pass.
-- [ ] Final whole change review; one grouped fix wave and scoped re-review if needed. Record unverified live boundaries precisely.
+- [x] Root verifies owner browser workflow, provider-side persisted data, retry/idempotence/conflict/direct-write behavior and source preservation with explicitly marked test data only. Do not infer ordinary-user roles from admin success or weaken write guard to make testing pass.
+- [x] Final whole change review; one grouped fix wave and scoped re-review if needed. Record unverified live boundaries precisely.
 - [ ] Fresh tests/build as changes require, source hashes; package source/usage/status/proof in outputs with no credentials/private working test state. Preserve existing originals and historical deliverables.
