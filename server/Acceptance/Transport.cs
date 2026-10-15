@@ -7,7 +7,8 @@ using Kitchen.Deploy;
 namespace Kitchen.Acceptance;
 [JsonConverter(typeof(JsonStringEnumConverter<FailureKind>))]
 public enum FailureKind { unknown, guard_context, guard_target, invalid_guard_marker, invalid_execution_context, validation_prefix, invalid_json, request_required }
-public sealed record Outcome(int Status, JsonNode? Value, bool GuardDenied=false, bool Unsupported=false, string? NumericCode=null,FailureKind FailureKind=FailureKind.unknown,int? GuardMask=null,int? ParentKind=null,int? WrapperMask=null,int? SourceMask=null,int? SourceKind=null,int? GuardVersion=null,int? BindingReason=null,int? TargetMask=null,int? TargetCount=null,int? TargetIdPresence=null) {
+public sealed record DecorationFacts(int Measured,int Presence,int Types,int Nulls,int Matches,int DateKind,int UnknownCount);
+public sealed record Outcome(int Status, JsonNode? Value, bool GuardDenied=false, bool Unsupported=false, string? NumericCode=null,FailureKind FailureKind=FailureKind.unknown,int? GuardMask=null,int? ParentKind=null,int? WrapperMask=null,int? SourceMask=null,int? SourceKind=null,int? GuardVersion=null,int? BindingReason=null,int? TargetMask=null,int? TargetCount=null,int? TargetIdPresence=null,DecorationFacts? Decoration=null) {
  public bool Success=>Status is >=200 and <=299;
 }
 public interface IAcceptanceTransport:IDataverseTransport {
@@ -32,7 +33,7 @@ public static class Diagnosis {
    var kind=KnownFailureKind(message);
    var facts=GuardFacts(status,code,kind,message);
    var target=TargetFacts(status,code,kind,message);
-   return new(status,null,guard,unsupported,code,kind,facts.Mask,facts.Parent,facts.Wrapper,facts.Source,facts.Kind,facts.Version,BindingFact(status,code,kind,message),target.Mask,target.Count,target.Presence);
+   return new(status,null,guard,unsupported,code,kind,facts.Mask,facts.Parent,facts.Wrapper,facts.Source,facts.Kind,facts.Version,BindingFact(status,code,kind,message),target.Mask,target.Count,target.Presence,target.Decoration);
   }catch(Exception e)when(e is JsonException or InvalidOperationException or KeyNotFoundException){return new(status,null);}
  }
  static (int? Mask,int? Parent,int? Wrapper,int? Source,int? Kind,int? Version) GuardFacts(int status,string? code,FailureKind kind,string message) {
@@ -51,12 +52,27 @@ public static class Diagnosis {
   var match=System.Text.RegularExpressions.Regex.Match(message,@"\ADirect kitchen table writes are blocked\. \[zk_guard_binding_v1;b=([1-5])\]\z",System.Text.RegularExpressions.RegexOptions.CultureInvariant);
   return match.Success?int.Parse(match.Groups[1].Value,System.Globalization.CultureInfo.InvariantCulture):null;
  }
- static (int? Mask,int? Count,int? Presence) TargetFacts(int status,string? code,FailureKind kind,string message) {
-  if(status is not (400 or 500)||code!="0x80040265"||kind!=FailureKind.guard_target)return (null,null,null);
-  var match=System.Text.RegularExpressions.Regex.Match(message,@"\AKitchen history mutations and bulk/direct writes are blocked\. \[zk_guard_target_v1;m=(0|[1-9][0-9]{0,2});n=(0|[1-9][0-9]?);i=([0-3])\]\z",System.Text.RegularExpressions.RegexOptions.CultureInvariant);
-  if(!match.Success||!int.TryParse(match.Groups[1].Value,out int mask)||mask>255||!int.TryParse(match.Groups[2].Value,out int count)||count>63)return (null,null,null);
-  return (mask,count,int.Parse(match.Groups[3].Value,System.Globalization.CultureInfo.InvariantCulture));
+ static (int? Mask,int? Count,int? Presence,DecorationFacts? Decoration) TargetFacts(int status,string? code,FailureKind kind,string message) {
+  if(status is not (400 or 500)||code!="0x80040265"||kind!=FailureKind.guard_target)return (null,null,null,null);
+  var match=System.Text.RegularExpressions.Regex.Match(message,@"\AKitchen history mutations and bulk/direct writes are blocked\. \[zk_guard_target_v1;m=(0|[1-9][0-9]{0,2});n=(0|[1-9][0-9]?);i=([0-3])\](?: \[zk_guard_decor_v1;q=([01]);p=(0|[1-9][0-9]?);t=(0|[1-9][0-9]?);z=(0|[1-9][0-9]?);m=(0|[1-9][0-9]?);d=([0-3]);u=(0|[1-9][0-9]?)\])?\z",System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+  if(!match.Success||!int.TryParse(match.Groups[1].Value,out int mask)||mask>255||!int.TryParse(match.Groups[2].Value,out int count)||count>63)return (null,null,null,null);
+  int Number(int group)=>int.Parse(match.Groups[group].Value,System.Globalization.CultureInfo.InvariantCulture);
+  int presence=Number(3);
+  if(!match.Groups[4].Success)return (mask,count,presence,null);
+  var decoration=new DecorationFacts(Number(4),Number(5),Number(6),Number(7),Number(8),Number(9),Number(10));
+  return ValidDecoration(mask,count,presence,decoration)?(mask,count,presence,decoration):(null,null,null,null);
  }
+ static bool ValidDecoration(int mask,int count,int idPresence,DecorationFacts f) {
+  if(f.Measured is <0 or >1||f.Presence is <0 or >15||f.Types is <0 or >15||f.Nulls is <0 or >15||f.Matches is <0 or >63||f.DateKind is <0 or >3||f.UnknownCount is <0 or >63)return false;
+  if(f.Measured==0)return f.Presence==0&&f.Types==0&&f.Nulls==0&&f.Matches==0&&f.DateKind==0&&f.UnknownCount==0;
+  if(mask==0||(mask&~30)!=0||(f.Types&~f.Presence)!=0||(f.Nulls&~f.Presence)!=0||(f.Types&f.Nulls)!=0)return false;
+  if(((f.Matches&3)!=0&&(f.Types&1)==0)||((f.Matches&12)!=0&&(f.Types&2)==0)||((f.Matches&48)!=0&&(f.Types&8)==0))return false;
+  if(((f.Types&4)!=0)!=(f.DateKind!=0)||(idPresence&1)!=(f.Presence&1)||((idPresence&2)!=0&&f.UnknownCount==0))return false;
+  int business=((mask&8)==0?1:0)+((mask&16)==0?1:0);
+  int known=business+System.Numerics.BitOperations.PopCount((uint)f.Presence);
+  return count==Math.Min(63,known+f.UnknownCount)&&((mask&4)!=0)==(count!=2);
+ }
+ public static bool HasSafeDecorationFacts(Outcome o)=>HasSafeTargetFacts(o)&&o.Decoration is {} d&&ValidDecoration(o.TargetMask!.Value,o.TargetCount!.Value,o.TargetIdPresence!.Value,d);
  public static bool HasSafeGuardFacts(Outcome o)=>o.Status is 400 or 500&&o.NumericCode=="0x80040265"&&o.FailureKind==FailureKind.guard_context&&o.GuardMask is >=0 and <=32767&&o.ParentKind is >=0 and <=10&&o.GuardVersion is 1 or 2&&(o.GuardVersion!=2||(o.GuardMask.Value&6144)==0);
  public static bool HasSafeChainFacts(Outcome o)=>HasSafeGuardFacts(o)&&o.ParentKind is 2 or 3&&o.WrapperMask is >=0 and <=127&&o.SourceMask is >=0 and <=32767&&o.SourceKind is >=0 and <=10&&(o.GuardVersion!=2||(o.SourceMask.Value&6144)==0);
  public static bool HasSafeBindingFacts(Outcome o)=>o.Status is 400 or 500&&o.NumericCode=="0x80040265"&&o.FailureKind==FailureKind.guard_context&&o.BindingReason is >=1 and <=5;

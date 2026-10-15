@@ -34,7 +34,8 @@ public static class RuntimeChecks {
      GuardMask:Diagnosis.HasSafeGuardFacts(outcome)?outcome.GuardMask:null,ParentKind:Diagnosis.HasSafeGuardFacts(outcome)?outcome.ParentKind:null,
      WrapperMask:Diagnosis.HasSafeChainFacts(outcome)?outcome.WrapperMask:null,SourceMask:Diagnosis.HasSafeChainFacts(outcome)?outcome.SourceMask:null,SourceKind:Diagnosis.HasSafeChainFacts(outcome)?outcome.SourceKind:null,
      GuardVersion:Diagnosis.HasSafeGuardFacts(outcome)?outcome.GuardVersion:null,BindingReason:Diagnosis.HasSafeBindingFacts(outcome)?outcome.BindingReason:null,
-     TargetMask:Diagnosis.HasSafeTargetFacts(outcome)?outcome.TargetMask:null,TargetCount:Diagnosis.HasSafeTargetFacts(outcome)?outcome.TargetCount:null,TargetIdPresence:Diagnosis.HasSafeTargetFacts(outcome)?outcome.TargetIdPresence:null));
+     TargetMask:Diagnosis.HasSafeTargetFacts(outcome)?outcome.TargetMask:null,TargetCount:Diagnosis.HasSafeTargetFacts(outcome)?outcome.TargetCount:null,TargetIdPresence:Diagnosis.HasSafeTargetFacts(outcome)?outcome.TargetIdPresence:null,
+     Decoration:Diagnosis.HasSafeDecorationFacts(outcome)?outcome.Decoration:null));
     return Checks.Result(outcome);
    } catch(Exception) {
     try {

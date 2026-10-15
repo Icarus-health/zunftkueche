@@ -31,19 +31,39 @@ static class RequestBindingTests
             foreach(var token in new JToken[]{JValue.CreateNull(),new JValue(123),new JValue(" "),new JValue(new string('x',101))}){var q=Binding();q["operationId"]=token;Bad(q.ToString(),5);}
         });
         check("target diagnostics measure extra primary ID without permitting it",()=>{
-            var extra=Target();extra["zk_kitchenworkspaceid"]=Id;var m=Denial(()=>Guard(Binding().ToString(),extra));Assert(m.EndsWith("[zk_guard_target_v1;m=4;n=3;i=1]")&&!m.Contains(Id.ToString()));
-            extra=Target();extra["private-extra-name"]=Id;m=Denial(()=>Guard(Binding().ToString(),extra));Assert(m.EndsWith("[zk_guard_target_v1;m=4;n=3;i=0]")&&!m.Contains("private-extra-name"));
-            extra=Target();for(int i=0;i<70;i++)extra["extra"+i]=i;Assert(Denial(()=>Guard(Binding().ToString(),extra)).EndsWith("[zk_guard_target_v1;m=4;n=63;i=0]"));
-            extra=Target();extra.Id=Guid.NewGuid();Assert(Denial(()=>Guard(Binding().ToString(),extra)).EndsWith("[zk_guard_target_v1;m=2;n=2;i=0]"));
-            extra=Target();extra.Attributes.Remove("zk_state");Assert(Denial(()=>Guard(Binding().ToString(),extra)).EndsWith("[zk_guard_target_v1;m=12;n=1;i=0]"));
-            extra=Target();extra.Attributes.Remove("zk_revision");Assert(Denial(()=>Guard(Binding().ToString(),extra)).EndsWith("[zk_guard_target_v1;m=20;n=1;i=0]"));
-            foreach(var field in new[]{"zk_workspace","zk_operationid","zk_actor"}){var receipt=new Entity("zk_kitchenoperation"){["zk_workspace"]=new EntityReference("zk_kitchenworkspace",Id),["zk_operationid"]="operation",["zk_actor"]=Actor.ToString("D")};receipt[field]=field=="zk_workspace"?new EntityReference("zk_kitchenworkspace",Guid.NewGuid()):"wrong";var bit=field=="zk_workspace"?32:field=="zk_operationid"?64:128;Assert(Denial(()=>Guard(Binding().ToString(),receipt,message:"Create")).EndsWith("[zk_guard_target_v1;m="+bit+";n=3;i=0]"));}
-            Assert(Denial(()=>Guard(Binding().ToString(),Target(),message:"Delete",wrapped:false)).EndsWith("[zk_guard_target_v1;m=1;n=2;i=0]"));
+            var extra=Target();extra["zk_kitchenworkspaceid"]=Id;var m=Denial(()=>Guard(Binding().ToString(),extra));Assert(m.Contains("[zk_guard_target_v1;m=4;n=3;i=1]")&&!m.Contains(Id.ToString()));
+            extra=Target();extra["private-extra-name"]=Id;m=Denial(()=>Guard(Binding().ToString(),extra));Assert(m.Contains("[zk_guard_target_v1;m=4;n=3;i=0]")&&!m.Contains("private-extra-name"));
+            extra=Target();for(int i=0;i<70;i++)extra["extra"+i]=i;Assert(Denial(()=>Guard(Binding().ToString(),extra)).Contains("[zk_guard_target_v1;m=4;n=63;i=0]"));
+            extra=Target();extra.Id=Guid.NewGuid();Assert(Denial(()=>Guard(Binding().ToString(),extra)).Contains("[zk_guard_target_v1;m=2;n=2;i=0]"));
+            extra=Target();extra.Attributes.Remove("zk_state");Assert(Denial(()=>Guard(Binding().ToString(),extra)).Contains("[zk_guard_target_v1;m=12;n=1;i=0]"));
+            extra=Target();extra.Attributes.Remove("zk_revision");Assert(Denial(()=>Guard(Binding().ToString(),extra)).Contains("[zk_guard_target_v1;m=20;n=1;i=0]"));
+            foreach(var field in new[]{"zk_workspace","zk_operationid","zk_actor"}){var receipt=new Entity("zk_kitchenoperation"){["zk_workspace"]=new EntityReference("zk_kitchenworkspace",Id),["zk_operationid"]="operation",["zk_actor"]=Actor.ToString("D")};receipt[field]=field=="zk_workspace"?new EntityReference("zk_kitchenworkspace",Guid.NewGuid()):"wrong";var bit=field=="zk_workspace"?32:field=="zk_operationid"?64:128;Assert(Denial(()=>Guard(Binding().ToString(),receipt,message:"Create")).Contains("[zk_guard_target_v1;m="+bit+";n=3;i=0]"));}
+            Assert(Denial(()=>Guard(Binding().ToString(),Target(),message:"Delete",wrapped:false)).Contains("[zk_guard_target_v1;m=1;n=2;i=0]"));
         });
         check("target diagnostic failure remains fixed unknown",()=>{
             var broken=Context("Update",20);broken["MessageName"]=123;
             var method=typeof(KitchenWriteGuardPlugin).GetMethod("TargetDiagnostic",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static)!;
             Assert((string?)method.Invoke(null,new object[]{ContextProxy.Create(broken),Target(),Id,"operation"})=="[zk_guard_target_v1;m=0;n=0;i=0]");
+        });
+        check("decorated six-field workspace is measured but still refused",()=>{
+            var e=Target();e["zk_kitchenworkspaceid"]=Id;e["modifiedby"]=new EntityReference("systemuser",Actor);e["modifiedon"]=new DateTime(2026,1,1,0,0,0,DateTimeKind.Utc);e["modifiedonbehalfby"]=null;
+            var m=Denial(()=>Guard(Binding().ToString(),e));Assert(m.EndsWith("[zk_guard_decor_v1;q=1;p=15;t=7;z=8;m=15;d=2;u=0]"));Assert(m.Contains("[zk_guard_target_v1;m=4;n=6;i=1]")&&!m.Contains(Id.ToString())&&!m.Contains(Actor.ToString()));
+        });
+        check("decoration types nulls mismatches and timestamp kinds are fixed facts",()=>{
+            string Facts(Entity e)=>Denial(()=>Guard(Binding().ToString(),e));
+            var e=Target();e["private-name-sentinel"]=new Poison();Assert(Facts(e).EndsWith("[zk_guard_decor_v1;q=1;p=0;t=0;z=0;m=0;d=0;u=1]"));
+            e=Target();foreach(var name in new[]{"zk_kitchenworkspaceid","modifiedby","modifiedon","modifiedonbehalfby"})e[name]=null;Assert(Facts(e).EndsWith("[zk_guard_decor_v1;q=1;p=15;t=0;z=15;m=0;d=0;u=0]"));
+            foreach(var name in new[]{"zk_kitchenworkspaceid","modifiedby","modifiedon","modifiedonbehalfby"})e[name]=new Poison();Assert(Facts(e).EndsWith("[zk_guard_decor_v1;q=1;p=15;t=0;z=0;m=0;d=0;u=0]"));
+            e["zk_kitchenworkspaceid"]=Guid.Empty;e["modifiedby"]=new EntityReference("private-name-sentinel",Guid.Empty);e["modifiedonbehalfby"]=new EntityReference("private-name-sentinel",Guid.Empty);Assert(Facts(e).EndsWith("[zk_guard_decor_v1;q=1;p=15;t=11;z=0;m=0;d=0;u=0]"));
+            e["zk_kitchenworkspaceid"]=Id;e["modifiedby"]=new EntityReference("private-name-sentinel",Actor);e["modifiedonbehalfby"]=new EntityReference("systemuser",Guid.Empty);Assert(Facts(e).EndsWith("[zk_guard_decor_v1;q=1;p=15;t=11;z=0;m=27;d=0;u=0]"));
+            e["modifiedby"]=new EntityReference("systemuser",Actor);e["modifiedonbehalfby"]=new EntityReference("systemuser",Actor);
+            foreach(var kind in new[]{DateTimeKind.Unspecified,DateTimeKind.Utc,DateTimeKind.Local}){e["modifiedon"]=new DateTime(2026,1,1,0,0,0,kind);Assert(Facts(e).EndsWith("[zk_guard_decor_v1;q=1;p=15;t=15;z=0;m=63;d="+((int)kind+1)+";u=0]"));}
+            for(int i=0;i<70;i++)e["private-name-sentinel"+i]=new Poison();Assert(Facts(e).EndsWith(";u=63]")&&!Facts(e).Contains("sentinel"));
+        });
+        check("decoration diagnostic errors cannot authorize or emit exception text",()=>{
+            var broken=Context("Update",20);broken["InitiatingUserId"]="private-error-sentinel";var e=Target();e["modifiedby"]=new EntityReference("systemuser",Actor);
+            var method=typeof(KitchenWriteGuardPlugin).GetMethod("DecorationDiagnostic",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static)!;
+            Assert(method!=null);Assert((string?)method!.Invoke(null,new object[]{ContextProxy.Create(broken),e,Id})=="[zk_guard_decor_v1;q=0;p=0;t=0;z=0;m=0;d=0;u=0]");
         });
         check("real host validates before snapshot-bound direct and wrapped CAS receipt writes",()=>{
             foreach(var wrapped in new[]{false,true}){var service=new HostService(seed,wrapped);var raw=Request(seed).ToString();var result=service.Run(raw);Assert((string?)result["status"]=="saved"&&service.Writes.SequenceEqual(new[]{"Update","Create"})&&service.State.Value<int>("revision")==1&&service.Receipt!.GetAttributeValue<string>("zk_requesthash")==Protocol.Hash(raw));Assert(!service.LastContext!.SharedVariables.Contains(Marker));}
@@ -56,6 +76,7 @@ static class RequestBindingTests
         });
         check("real host CAS service fault escapes without receipt and still cleans marker",()=>{var svc=new HostService(seed,true){FailCas=true};try{svc.Run(Request(seed).ToString());throw new Exception("CAS swallowed");}catch(InvalidOperationException){Assert(svc.Writes.SequenceEqual(new[]{"Update"})&&svc.Receipt==null&&svc.State.Value<int>("revision")==0&&!svc.LastContext!.SharedVariables.Contains(Marker));}});
     }
+    sealed class Poison {public override string ToString()=>throw new Exception("private-value-sentinel");}
     static JObject Request(JObject seed){var q=Binding();q["expectedRevision"]=0;q["operation"]=new JObject{{"type","article.price"},{"payload",new JObject{{"articleId",(string)seed["articles"]![0]!["id"]!},{"priceCents",12.34}}}};var candidate=(JObject)seed.DeepClone();candidate["articles"]![0]!["unitPriceCents"]=12.34;candidate["revision"]=1;((JArray)candidate["operationIds"]!).Add("operation");candidate["operationRequests"]!["operation"]="client-untrusted";q["candidateState"]=candidate;return q;}
     sealed class HostProvider(IPluginExecutionContext context,HostService service):IServiceProvider,IOrganizationServiceFactory {
         public object? GetService(Type t)=>t==typeof(IPluginExecutionContext)?context:t==typeof(IOrganizationServiceFactory)?this:null;

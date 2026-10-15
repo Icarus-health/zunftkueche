@@ -283,7 +283,7 @@ await Test("transport stops error response reads at diagnostic bound and emits n
  Assert(stream.BytesRead<=8193&&!result.GuardDenied&&result.NumericCode==null&&result.Value==null);
 });
 await Test("package prerequisite download delegates to bounded byte reader",async()=>{
-var bytes=File.ReadAllBytes("server/artifacts/guard-request-binding-v3/Zunftkueche.Dataverse.1.0.0.nupkg");int calls=0;
+var bytes=File.ReadAllBytes("server/artifacts/guard-target-diagnostic-v4/Zunftkueche.Dataverse.1.0.0.nupkg");int calls=0;
 using var handler=new ResponseHandler(request=>{calls++;Assert(request.Method==HttpMethod.Get&&request.RequestUri!.AbsoluteUri==Target.Url+"/api/data/v9.2/pluginpackages(00000000-0000-0000-0000-000000000030)/package/$value"&&request.Headers.Authorization?.Parameter=="synthetic-token");return new(System.Net.HttpStatusCode.OK){Content=new ByteArrayContent(bytes)};});
 using var transport=new AcceptanceTransport(Target.Url,()=>Task.FromResult("synthetic-token"),handler);
 Assert((await ((IDataverseTransport)transport).ReadPackageFileAsync("00000000-0000-0000-0000-000000000030")).SequenceEqual(bytes)&&calls==1);
@@ -332,5 +332,22 @@ await Test("binding and target refusal facts are exact bounded privacy-safe meas
  foreach(var bad in new[]{context+"[zk_guard_binding_v1;b=0]",context+"[zk_guard_binding_v1;b=6]",context+"[zk_guard_binding_v1;b=01]",context+"[zk_guard_binding_v1;b=-1]",context+"[zk_guard_binding_v2;b=1]",target+"[zk_guard_target_v1;m=256;n=3;i=0]",target+"[zk_guard_target_v1;m=4;n=64;i=0]",target+"[zk_guard_target_v1;m=4;n=3;i=4]",target+"[zk_guard_target_v1;m=04;n=3;i=0]",target+"[zk_guard_target_v2;m=4;n=3;i=0]",context+"[zk_guard_target_v1;m=4;n=3;i=0]",target+"[zk_guard_binding_v1;b=1]",target+"[zk_guard_target_v1;m=4;n=3;i=0] private",context+"[zk_guard_binding_v1;b=1] [zk_guard_binding_v1;b=1]"}){var row=System.Text.Json.JsonSerializer.SerializeToNode(Parse(bad))!;Assert(row["BindingReason"]==null&&row["TargetMask"]==null&&row["TargetCount"]==null&&row["TargetIdPresence"]==null);}
  foreach(var o in new[]{Parse(target+"[zk_guard_target_v1;m=4;n=3;i=1]",403),Parse(context+"[zk_guard_binding_v1;b=1]",400,"0x80004005")}){var row=System.Text.Json.JsonSerializer.SerializeToNode(o)!;Assert(row["BindingReason"]==null&&row["TargetMask"]==null);}
  foreach(var o in new[]{good,Parse(context+"[zk_guard_binding_v1;b=3]")}){var fake=new RuntimeFake{Refusal=o};var e=new Evidence();await Reject(()=>fake.Run(e));var row=System.Text.Json.JsonSerializer.SerializeToNode(e.Checks.Single(x=>x.Name=="commit_http_refused"))!;Assert(row["TargetMask"]?.GetValue<int>()==4||row["BindingReason"]?.GetValue<int>()==3);Assert(fake.Commits==0&&e.Checks.Any(x=>x.Name=="commit_failure_independent_readback"));}
+});
+await Test("decoration refusal facts preserve denial and independent readback",async()=>{
+ const string prefix="Kitchen history mutations and bulk/direct writes are blocked. ";
+ Outcome Parse(string suffix)=>Diagnosis.Refusal(400,System.Text.Encoding.UTF8.GetBytes(new JsonObject{["error"]=new JsonObject{["code"]="0x80040265",["message"]=prefix+suffix}}.ToJsonString()));
+ var good=Parse("[zk_guard_target_v1;m=4;n=6;i=1] [zk_guard_decor_v1;q=1;p=15;t=7;z=8;m=15;d=2;u=0]");
+ var row=System.Text.Json.JsonSerializer.SerializeToNode(good)!;Assert(row["TargetMask"]?.GetValue<int>()==4&&row["Decoration"]?["Presence"]?.GetValue<int>()==15&&row["Decoration"]?["UnknownCount"]?.GetValue<int>()==0&&!good.Success);
+ var fake=new RuntimeFake{Refusal=good};var e=new Evidence();await Reject(()=>fake.Run(e));var saved=System.Text.Json.JsonSerializer.SerializeToNode(e.Checks.Single(x=>x.Name=="commit_http_refused"))!;Assert(saved["Decoration"]?["Types"]?.GetValue<int>()==7&&fake.Commits==0&&e.Checks.Any(x=>x.Name=="commit_failure_independent_readback"));
+});
+await Test("decoration strict grammar invariants complete accounting and privacy",()=>{
+ const string prefix="Kitchen history mutations and bulk/direct writes are blocked. ";
+ JsonNode Parse(string suffix,int status=400,string code="0x80040265")=>System.Text.Json.JsonSerializer.SerializeToNode(Diagnosis.Refusal(status,System.Text.Encoding.UTF8.GetBytes(new JsonObject{["error"]=new JsonObject{["code"]=code,["message"]=prefix+suffix}}.ToJsonString())))!;
+ const string target="[zk_guard_target_v1;m=4;n=6;i=1] ",decor="[zk_guard_decor_v1;q=1;p=15;t=7;z=8;m=15;d=2;u=0]";
+ foreach(var valid in new[]{target+decor,target+"[zk_guard_decor_v1;q=0;p=0;t=0;z=0;m=0;d=0;u=0]","[zk_guard_target_v1;m=4;n=3;i=0] [zk_guard_decor_v1;q=1;p=0;t=0;z=0;m=0;d=0;u=1]","[zk_guard_target_v1;m=4;n=63;i=1] [zk_guard_decor_v1;q=1;p=15;t=15;z=0;m=63;d=3;u=63]","[zk_guard_target_v1;m=12;n=5;i=1] "+decor})Assert(Parse(valid)["Decoration"]!=null);
+ foreach(var bad in new[]{decor.Replace("q=1","q=2"),decor.Replace("q=1","q=0"),decor.Replace("p=15","p=16"),decor.Replace("p=15","p=7"),decor.Replace("t=7","t=15"),decor.Replace("t=7","t=6"),decor.Replace("z=8","z=16"),decor.Replace("m=15","m=64"),decor.Replace("m=15","m=63"),decor.Replace("d=2","d=4"),decor.Replace("d=2","d=0"),decor.Replace("u=0","u=1"),decor.Replace("u=0","u=64"),decor.Replace("u=0","u=00"),decor.Replace("u=0","u=-1"),decor.Replace("v1","v2"),decor+" "+decor,decor+" private-value-sentinel"}){var row=Parse(target+bad);Assert(row["Decoration"]==null&&row["TargetMask"]==null&&!row.ToJsonString().Contains("sentinel"));}
+ foreach(var badTarget in new[]{target.Replace("n=6","n=5"),target.Replace("i=1","i=0"),target.Replace("m=4","m=36"),target.Replace("m=4","m=0")})Assert(Parse(badTarget+decor)["Decoration"]==null);
+ Assert(Parse(target+decor,403)["Decoration"]==null&&Parse(target+decor,400,"0x80004005")["Decoration"]==null);
+ return Task.CompletedTask;
 });
 Console.WriteLine($"{passed} passed; {failed} failed");return failed==0?0:1;

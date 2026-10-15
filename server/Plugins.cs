@@ -193,6 +193,43 @@ namespace Zunftkueche
             catch (Exception) { mask = 0; count = 0; presence = 0; }
             return "[zk_guard_target_v1;m=" + mask.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";n=" + count.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";i=" + presence.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]";
         }
+        // Refusal-only bookkeeping measurement. No values or arbitrary attribute names leave this method.
+        private static string DecorationDiagnostic(IPluginExecutionContext c, Entity target, Guid workspace)
+        {
+            int q = 1, presence = 0, types = 0, nulls = 0, matches = 0, dateKind = 0, unknown = 0;
+            try
+            {
+                var names = new[] { "zk_kitchenworkspaceid", "modifiedby", "modifiedon", "modifiedonbehalfby" };
+                for (int slot = 0; slot < names.Length; slot++)
+                {
+                    if (!target.Contains(names[slot])) continue;
+                    int bit = 1 << slot; presence |= bit;
+                    var value = target[names[slot]];
+                    if (value == null) { nulls |= bit; continue; }
+                    if (slot == 0 && value is Guid id)
+                    {
+                        types |= bit;
+                        if (id != Guid.Empty && id == target.Id) matches |= 1;
+                        if (id != Guid.Empty && id == workspace) matches |= 2;
+                    }
+                    else if (slot == 2 && value is DateTime timestamp)
+                    {
+                        types |= bit; dateKind = (int)timestamp.Kind + 1;
+                    }
+                    else if ((slot == 1 || slot == 3) && value is EntityReference reference)
+                    {
+                        types |= bit;
+                        if (reference.LogicalName == "systemuser") matches |= slot == 1 ? 4 : 16;
+                        if (reference.Id != Guid.Empty && reference.Id == c.InitiatingUserId) matches |= slot == 1 ? 8 : 32;
+                    }
+                }
+                int known = (target.Contains("zk_state") ? 1 : 0) + (target.Contains("zk_revision") ? 1 : 0);
+                for (int bit = 1; bit <= 8; bit <<= 1) if ((presence & bit) != 0) known++;
+                unknown = Math.Min(63, target.Attributes.Count - known);
+            }
+            catch (Exception) { q = presence = types = nulls = matches = dateKind = unknown = 0; }
+            return "[zk_guard_decor_v1;q=" + q.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";p=" + presence.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";t=" + types.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";z=" + nulls.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";m=" + matches.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";d=" + dateKind.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";u=" + unknown.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]";
+        }
         public void Execute(IServiceProvider provider)
         {
             var c = (IPluginExecutionContext)(provider.GetService(typeof(IPluginExecutionContext)) ?? throw new InvalidPluginExecutionException("Execution context missing."));
@@ -206,7 +243,7 @@ namespace Zunftkueche
             if (c.MessageName == "Create" && target.LogicalName == "zk_kitchenoperation")
                 valid = target.GetAttributeValue<EntityReference>("zk_workspace")?.Id == workspace && target.GetAttributeValue<string>("zk_operationid") == operationId && target.GetAttributeValue<string>("zk_actor") == c.InitiatingUserId.ToString("D");
             if (!valid)
-                throw new InvalidPluginExecutionException("Kitchen history mutations and bulk/direct writes are blocked. " + TargetDiagnostic(c, target, workspace, operationId));
+                throw new InvalidPluginExecutionException("Kitchen history mutations and bulk/direct writes are blocked. " + TargetDiagnostic(c, target, workspace, operationId) + (c.MessageName == "Update" && target.LogicalName == "zk_kitchenworkspace" ? " " + DecorationDiagnostic(c, target, workspace) : ""));
         }
     }
 }
