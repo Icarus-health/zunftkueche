@@ -143,8 +143,8 @@ public sealed class Provisioner(ResourceEngine engine, IDataverseTransport trans
         if (workspace == null) { Gap("workspace_missing"); if (create) throw new DeploymentException("seed_required_before_backend"); }
         string content = Convert.ToBase64String(packageBytes);
         var package = await Ensure("plugin_package", "pluginpackages?$filter=uniquename eq 'zk_Zunftkueche.Dataverse'", "pluginpackages",
-            new JsonObject { ["uniquename"] = "zk_Zunftkueche.Dataverse", ["name"] = "Zunftkueche.Dataverse", ["version"] = "1.0.0", ["content"] = content },
-            new JsonObject { ["uniquename"] = "zk_Zunftkueche.Dataverse", ["version"] = "1.0.0", ["statecode"] = 0, ["content"] = content }, create);
+            new JsonObject { ["uniquename"] = "zk_Zunftkueche.Dataverse", ["name"] = "zk_Zunftkueche.Dataverse", ["version"] = "1.0.0", ["content"] = content },
+            new JsonObject { ["uniquename"] = "zk_Zunftkueche.Dataverse", ["name"] = "zk_Zunftkueche.Dataverse", ["version"] = "1.0.0", ["statecode"] = 0, ["content"] = content }, create);
         if (package == null) return;
         var packageId = ResourceEngine.Id(package,"pluginpackageid"); await Component(packageId);
         var assemblies = await engine.Rows($"pluginassemblies?$select=pluginassemblyid,name,isolationmode,_packageid_value&$filter=_packageid_value eq {packageId}");

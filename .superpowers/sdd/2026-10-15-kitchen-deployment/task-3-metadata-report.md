@@ -108,3 +108,29 @@ DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home
 ```
 
 Build succeeded with **0 warnings and 0 errors**. `git diff --check` passed. Self-review traced all emitted strings to fixed local labels or the preexisting validated HTTP/hex code, confirmed transient bounded parsing and canonical integer validation, and confirmed the endpoint guard covers both the annotation header and classification. Only WebApiTransport.cs, Program.cs, focused tests and this report changed. No provider/auth/browser calls, package rebuild, package/payload/identity/source/plugin changes, Acceptance edits or unrelated test runs occurred. Root must independently review before its explicitly authorized re-POST; diagnosis is still pending actual provider evidence.
+
+## Experimental package name prefix alignment
+
+Base: 992ea7b. Root's explicit retry 76134 returned HTTP 400 / 0x80040265 with fixed flags [file,name,nuget,prefix], null numeric details, and missing canonical package readback. Root's independent read-only 86023 confirmed zero matching packages and zero recent traces. These flags suggest a name-prefix validation issue but do not prove the full remote message or which name is validated. The third-party reported wording is not treated as primary evidence. Microsoft's [PluginPackage field reference](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/reference/entities/pluginpackage) permits name, uniquename, version and content at creation; its [package guidance](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/build-and-package) states package name/version cannot change after creation. Neither reviewed source establishes the precise prefix rule. A bounded offline Mono.Cecil inspection of installed official PAC 2.13.1 bolt.module.plugin.dll, bolt.dataverse.dll and Microsoft.PowerPlatform.Dataverse.Client.dll found ClientPrimitives.UpdatePackage sets only content on an existing pluginpackage Entity and sends UpdateRequest; it provides no initial-create naming evidence. The reader and output remain outside the repository in ../package-binary-inspection; no PAC execution, auth/cache access or installation occurred.
+
+Root explicitly ruled on a bounded experiment: change only POST.name from Zunftkueche.Dataverse to zk_Zunftkueche.Dataverse, because uniquename already has the publisher prefix. Provisioner now also requires that exact name on canonical readback, so a different, unprefixed or missing existing name blocks without mutation. All other payload fields, query identity, version, package bytes/hash, nuspec, DLLs, registration/hash, seed/domain/source, guards and APIs are unchanged. No retry, overwrite, update or new write capability was added. This is a locally tested hypothesis pending independent review and Root's explicit provider attempt, not a proven provider fix.
+
+Covering tests in server/Deploy.Tests/Program.cs extend the existing real Tables fake-transport setup to enter Backend after exact table/attribute/relationship/key verification. They require the entire four-field package POST to match, independent canonical readback before assembly reads, exactly one creation attempt, read-only reuse, and zero writes/assembly reads for unprefixed, different or missing names. Initial red: 65 passed; 2 failed. Fixture correction removed an invalid second Backend call after its intentionally missing-assembly readiness gap and asserted the existing safe generic field diagnostic rather than an unallowlisted name label. Final green: **67 passed; 0 failed**. Exact command:
+
+```sh
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home DOTNET_GENERATE_ASPNET_CERTIFICATE=false ../dotnet10/dotnet run --project server/Deploy.Tests --no-restore -p:UseSharedCompilation=false
+```
+
+```sh
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home DOTNET_GENERATE_ASPNET_CERTIFICATE=false ../dotnet10/dotnet build server/Deploy --no-restore -p:UseSharedCompilation=false
+```
+
+Deploy build succeeded with **0 warnings, 0 errors**. Acceptance.Tests/Fixtures.cs contains no canonical package fixture, so no fixture change is needed. The compatibility suite command is recorded below with its result.
+
+```sh
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home DOTNET_GENERATE_ASPNET_CERTIFICATE=false ../dotnet10/dotnet run --project server/Acceptance.Tests --no-restore -p:UseSharedCompilation=false
+```
+
+The extra Acceptance compatibility run stalled before any test/build output. Ctrl-C requested cancellation; the CLI acknowledged that it was attempting build cancellation, but tool session 8467 has not yet returned a final exit result. A second Ctrl-C produced no further output. No Acceptance success is claimed, and no Acceptance file was edited. Root was notified immediately after confirming the stall. No broader test rerun was made. `git diff --check` passed. Self-review confirms the sole production changes are the exact POST.name prefix and the added exact readback name requirement; query identity, other payload fields and no-retry behavior are preserved. Existing mismatch tests reach package readback and stop before assembly handling. No provider/auth/browser action, package rebuild or source/contract/domain modification occurred. Only Provisioner.cs, Deploy.Tests/Program.cs and this report are included; parent files remain unstaged.
+
+Cancellation follow-up: after Ctrl-C did not finish, approved read-only process identification found PID 68370 with the exact local Acceptance.Tests command above. Approved `kill -TERM 68370` returned 0; tool session 8467 then closed with no test output (reported exit_code 0). This confirms termination, not test success. No other process was targeted and no replacement build was started.

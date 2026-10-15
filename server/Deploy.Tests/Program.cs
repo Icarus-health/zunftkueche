@@ -289,7 +289,26 @@ await CheckRelationship("zk_workspace",false,key,false,true);
 await Test("generic metadata arrays remain ordered",()=>Reject(()=>{
 ResourceEngine.RequireMatch(Parse("""{"KeyAttributes":["zk_operationid","zk_workspace"]}"""),Parse("""{"KeyAttributes":["zk_workspace","zk_operationid"]}"""));return Task.CompletedTask;
 }));
-async Task CheckRelationship(string? referencingAttribute,bool create,JsonObject? keyOverride=null,bool rejectKey=false,bool inactiveKey=false) {
+await Test("backend creates prefixed package name and verifies canonical readback before reuse",async()=>{await CheckPackage(null,false);await CheckPackage("zk_Zunftkueche.Dataverse",false);});
+await Test("backend rejects existing unprefixed different or missing package names without writes",async()=>{
+foreach(var name in new[]{"Zunftkueche.Dataverse","zk_Other",""})await CheckPackage(name,true);
+});
+async Task CheckPackage(string? existingName,bool reject) {
+byte[] bytes=[1,2,3];string content=Convert.ToBase64String(bytes);int reads=0,assemblyReads=0;
+JsonObject? stored=existingName==null?null:Package(existingName);
+JsonObject Package(string name){var row=new JsonObject{["pluginpackageid"]="00000000-0000-0000-0000-000000000030",["uniquename"]="zk_Zunftkueche.Dataverse",["version"]="1.0.0",["content"]=content,["statecode"]=0};if(name!="")row["name"]=name;return row;}
+await CheckRelationship("zk_workspace",false,afterTables:async(p,f,e)=>{
+if(reject){await Reject(()=>p.Backend(bytes,true));Assert(f.Writes==0&&reads==1&&assemblyReads==0);Assert(System.Text.Json.JsonSerializer.Serialize(e.Resources).Contains("$.field"));}
+else{await p.Backend(bytes,true);Assert(f.Writes==(existingName==null?1:0)&&reads==(existingName==null?2:1)&&assemblyReads==1&&stored?["name"]?.GetValue<string>()=="zk_Zunftkueche.Dataverse");}
+},backendTransport:(method,path,body)=>{
+if(path.StartsWith("zk_kitchenworkspaces?"))return new JsonObject{["value"]=new JsonArray(new JsonObject{["zk_kitchenworkspaceid"]=Seed.WorkspaceId,["zk_revision"]=0})};
+if(method==HttpMethod.Post){Assert(path=="pluginpackages");var expected=new JsonObject{["uniquename"]="zk_Zunftkueche.Dataverse",["name"]="zk_Zunftkueche.Dataverse",["version"]="1.0.0",["content"]=content};Assert(JsonNode.DeepEquals(body,expected));stored=Package("zk_Zunftkueche.Dataverse");return null;}
+if(path=="pluginpackages?$filter=uniquename eq 'zk_Zunftkueche.Dataverse'"){reads++;return new JsonObject{["value"]=stored==null?new JsonArray():new JsonArray(stored.DeepClone())};}
+if(path.StartsWith("pluginassemblies?")){assemblyReads++;return new JsonObject{["value"]=new JsonArray()};}
+throw new Exception("Unexpected backend test request");
+});
+}
+async Task CheckRelationship(string? referencingAttribute,bool create,JsonObject? keyOverride=null,bool rejectKey=false,bool inactiveKey=false,Func<Provisioner,Fake,ResourceEngine,Task>? afterTables=null,Func<HttpMethod,string,JsonNode?,JsonNode?>? backendTransport=null) {
 var contract=Provisioner.LoadContract("server/deployment/registration.json");
 var relationship=Parse("""
 {"SchemaName":"zk_kitchenworkspace_operations","ReferencedEntity":"zk_kitchenworkspace","ReferencedAttribute":"zk_kitchenworkspaceid","ReferencingEntity":"zk_kitchenoperation","ReferencingEntityNavigationPropertyName":"zk_workspace","CascadeConfiguration":{"Assign":"NoCascade","Delete":"Restrict","Merge":"NoCascade","Reparent":"NoCascade","Share":"NoCascade","Unshare":"NoCascade"}}
@@ -298,6 +317,7 @@ if(referencingAttribute!=null)relationship["ReferencingAttribute"]=referencingAt
 bool exists=!create;int lookupReads=0,keyReads=0;
 JsonNode Rows(JsonObject? row)=>new JsonObject{["value"]=row==null?new JsonArray():new JsonArray(row.DeepClone())};
 var f=Fixture(null,(method,path,body)=>{
+if(backendTransport!=null&&(path.StartsWith("plugin")||path.StartsWith("zk_kitchenworkspaces?")))return Task.FromResult(backendTransport(method,path,body));
 if(method==HttpMethod.Post){
 var payload=body!.AsObject();
 Assert(path=="RelationshipDefinitions"&&!payload.ContainsKey("ReferencingAttribute"));
@@ -315,7 +335,7 @@ else if(path.StartsWith("RelationshipDefinitions/"))return Task.FromResult<JsonN
 else {
 var table=contract["tables"]!.AsArray().Single(t=>path.Contains("'"+t!["logicalName"]!.GetValue<string>()+"'"))!;
 var name=table["logicalName"]!.GetValue<string>();
-if(path.StartsWith("EntityDefinitions?$filter="))row=new JsonObject{["MetadataId"]="00000000-0000-0000-0000-000000000022",["SchemaName"]=name,["LogicalName"]=name,["OwnershipType"]=table["ownershipType"]!.DeepClone(),["IsActivity"]=false,["IsOptimisticConcurrencyEnabled"]=true,["TableType"]="Standard",["PrimaryNameAttribute"]="zk_name",["PrimaryIdAttribute"]=name+"id"};
+if(path.StartsWith("EntityDefinitions?$filter="))row=new JsonObject{["MetadataId"]="00000000-0000-0000-0000-000000000022",["SchemaName"]=name,["LogicalName"]=name,["OwnershipType"]=table["ownershipType"]!.DeepClone(),["IsActivity"]=false,["IsOptimisticConcurrencyEnabled"]=true,["TableType"]="Standard",["PrimaryNameAttribute"]="zk_name",["PrimaryIdAttribute"]=name+"id",["EntitySetName"]=name+"s"};
 else if(path.Contains("/Keys?")){keyReads++;row=keyOverride?.DeepClone().AsObject()??Parse("""{"SchemaName":"zk_workspace_operation","KeyAttributes":["zk_workspace","zk_operationid"],"EntityKeyIndexStatus":"Active"}""");}
 else {
 var attr=table["attributes"]!.AsArray().Single(a=>path.EndsWith("'"+a!["name"]!.GetValue<string>()+"'"))!;
@@ -326,7 +346,8 @@ row=Metadata.AttributeExpected(attr,attr["name"]!.GetValue<string>()=="zk_name")
 return Task.FromResult<JsonNode?>(Rows(row));
 });
 var engine=new ResourceEngine(f);await engine.AuthenticateTargetAsync();var provisioner=new Provisioner(engine,f,contract);
-if(keyOverride!=null){
+if(afterTables!=null){await provisioner.Tables(true);Assert(f.Writes==0&&provisioner.Gaps.Count==0);await afterTables(provisioner,f,engine);}
+else if(keyOverride!=null){
 if(rejectKey)await Reject(()=>provisioner.Tables(true));
 else {await provisioner.Tables(true);Assert(inactiveKey?provisioner.Gaps.SequenceEqual(new[]{"alternate_key_not_active"}):provisioner.Gaps.Count==0);}
 Assert(f.Writes==0&&lookupReads==1&&keyReads==1);
