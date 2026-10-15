@@ -35,13 +35,32 @@ await Test("token cannot be sent to another host or outside API",async()=>{
 int tokenReads=0;using var t=new WebApiTransport(Target.Url,()=>{tokenReads++;return Task.FromResult("secret-token");});
 foreach(var path in new[]{"https://evil.example/api/data/v9.2/publishers","//evil.example/publishers","../../evil"}) await Reject(()=>t.SendAsync(HttpMethod.Get,path));
 await Reject(()=>t.SendAsync(HttpMethod.Delete,"publishers"));Assert(tokenReads==0);});
+await Test("HTTP refusal emits only status and exact numeric Dataverse error code",async()=>{
+foreach(var code in new[]{"0x80040220","0xAbCd1234"}){
+var body=new JsonObject{["error"]=new JsonObject{["code"]=code,["message"]="Bearer private-token password=secret https://private.example",["innererror"]=new JsonObject{["message"]="private-source"}}}.ToJsonString();
+Assert(await HttpError(body)=="http_403_dataverse_"+code);
+}
+});
+await Test("unsafe malformed missing and oversized provider codes preserve generic HTTP status",async()=>{
+foreach(var code in new[]{"80040220","0X80040220","0x8004022","0x800402200","0x8004022g","0x80040220\n","0x80040220 Bearer secret","0x８００４０２２０","https://private.example"}){
+var body=new JsonObject{["error"]=new JsonObject{["code"]=code,["message"]="private-secret"}}.ToJsonString();Assert(await HttpError(body)=="http_403");
+}
+foreach(var body in new[]{"{invalid","[]","{}","{\"error\":null}","{\"error\":{\"code\":42,\"message\":\"secret\"}}","{\"error\":{\"code\":\"0x80040220\",\"message\":\""+new string('x',9000)+"\"}}"})Assert(await HttpError(body)=="http_403");
+});
+await Test("refusal body reads stop within bounded diagnostic bytes",async()=>{
+using var stream=new CountingErrorStream(System.Text.Encoding.UTF8.GetBytes("{\"error\":{\"code\":\"0x80040220\",\"message\":\""+new string('x',20000)+"\"}}"));
+using var handler=new ResponseHandler(()=>new HttpResponseMessage(System.Net.HttpStatusCode.Forbidden){Content=new StreamContent(stream)});
+using var transport=new WebApiTransport(Target.Url,()=>Task.FromResult("synthetic-token"),handler);
+try{await transport.SendAsync(HttpMethod.Get,"pluginpackages");throw new Exception("Expected refusal");}catch(DeploymentException error){Assert(SafeOutput.Error(error)=="http_403"&&stream.ReadBytes<=8193);}
+});
+async Task<string> HttpError(string body){
+using var handler=new ResponseHandler(()=>new HttpResponseMessage(System.Net.HttpStatusCode.Forbidden){Content=new StringContent(body)});
+using var transport=new WebApiTransport(Target.Url,()=>Task.FromResult("synthetic-token"),handler);
+try{await transport.SendAsync(HttpMethod.Get,"pluginpackages?$select=pluginpackageid");throw new Exception("Expected refusal");}catch(DeploymentException error){return SafeOutput.Error(error);}
+}
 await Test("MSAL object must match actual Dataverse systemuser",async()=>{var f=Fixture(new());await Reject(()=>new ResourceEngine(f,"00000000-0000-0000-0000-000000000099").AuthenticateTargetAsync());Assert(f.Writes==0);});
-await Test("missing bulk support is reported and cannot become ready",async()=>{
-var f=Fixture(Parse("{\"value\":[]}"));var e=new ResourceEngine(f);await e.AuthenticateTargetAsync();
-var contract=Parse("{\"guardSteps\":[{\"primaryEntity\":\"zk_kitchenworkspace\",\"message\":\"CreateMultiple\"}]}");
-var p=new Provisioner(e,f,contract);await p.Guards("00000000-0000-0000-0000-000000000010",false);Assert(p.Gaps.Count==1&&f.Writes==0);});
 await Test("supported unguardable mutation blocks readiness without writes",async()=>{
-var f=Fixture(null,(m,p,b)=>Task.FromResult<JsonNode?>(Parse(p.StartsWith("sdkmessages?")?"{\"value\":[{\"sdkmessageid\":\"00000000-0000-0000-0000-000000000011\"}]}":"{\"value\":[{\"sdkmessagefilterid\":\"00000000-0000-0000-0000-000000000012\",\"iscustomprocessingstepallowed\":false}]}")));
+var f=Fixture(null,(m,p,b)=>Task.FromResult<JsonNode?>(Parse(p.StartsWith("sdkmessages?")?"{\"value\":[{\"sdkmessageid\":\"00000000-0000-0000-0000-000000000011\"}]}":"{\"value\":[{\"sdkmessagefilterid\":\"00000000-0000-0000-0000-000000000012\",\"iscustomprocessingstepallowed\":false,\"primaryobjecttypecode\":\"zk_kitchenworkspace\"}]}")));
 var e=new ResourceEngine(f);await e.AuthenticateTargetAsync();var p=new Provisioner(e,f,Parse("{\"guardSteps\":[{\"primaryEntity\":\"zk_kitchenworkspace\",\"message\":\"Update\"}]}"));await p.Guards("00000000-0000-0000-0000-000000000010",true);Assert(p.Gaps.Count==1&&f.Writes==0);});
 await Test("valid guard must bind exact filter handler message and no impersonation",()=>{
 var good=Parse("{\"stage\":20,\"mode\":0,\"rank\":1,\"statecode\":0,\"supporteddeployment\":0,\"filteringattributes\":null,\"_impersonatinguserid_value\":null,\"_eventhandler_value\":\"type\",\"_sdkmessagefilterid_value\":\"filter\",\"_sdkmessageid_value\":\"message\"}");Readiness.RequireGuard(good,"type","filter","message");
@@ -55,7 +74,7 @@ const string handler="00000000-0000-0000-0000-000000000010",message="00000000-00
 JsonObject? stored=null;
 var f=Fixture(null,(m,p,b)=>{
 if(p.StartsWith("sdkmessages?"))return Task.FromResult<JsonNode?>(Parse("{\"value\":[{\"sdkmessageid\":\"00000000-0000-0000-0000-000000000011\"}]}"));
-if(p.StartsWith("sdkmessagefilters?"))return Task.FromResult<JsonNode?>(Parse("{\"value\":[{\"sdkmessagefilterid\":\"00000000-0000-0000-0000-000000000012\",\"iscustomprocessingstepallowed\":true}]}"));
+if(p.StartsWith("sdkmessagefilters?"))return Task.FromResult<JsonNode?>(Parse("{\"value\":[{\"sdkmessagefilterid\":\"00000000-0000-0000-0000-000000000012\",\"iscustomprocessingstepallowed\":true,\"primaryobjecttypecode\":\"zk_kitchenworkspace\"}]}"));
 if(m==HttpMethod.Post&&p=="sdkmessageprocessingsteps"){
 Assert(b?["stage"]?.GetValue<int>()==20&&b?["mode"]?.GetValue<int>()==0&&b?["rank"]?.GetValue<int>()==1);
 Assert(b?["eventhandler_plugintype@odata.bind"]?.GetValue<string>()=="/plugintypes(00000000-0000-0000-0000-000000000010)");
@@ -66,6 +85,46 @@ Assert(p=="sdkmessageprocessingsteps?$filter=_sdkmessagefilterid_value eq "+filt
 return Task.FromResult<JsonNode?>(new JsonObject{["value"]=stored==null?new JsonArray():new JsonArray(stored.DeepClone())});});
 var e=new ResourceEngine(f);await e.AuthenticateTargetAsync();var p=new Provisioner(e,f,Parse("{\"guardSteps\":[{\"primaryEntity\":\"zk_kitchenworkspace\",\"message\":\"Update\"}]}"));
 await p.Guards(handler,true);await p.Guards(handler,true);Assert(f.Writes==1&&stored!=null);Readiness.RequireGuard(stored!,handler,filter,message);});
+// Regression boundary: a real contract drives real provisioning requests and coverage reports.
+await Test("known bulk filters never post dedicated Multiple or Upsert steps",async()=>{
+var h=new GuardHarness();await h.Run(true);
+Assert(h.Posted.Count==6&&h.Posted.All(p=>new[]{"Create","Update","Delete"}.Any(m=>p["name"]!.GetValue<string>().Contains("_"+m+"_"))));
+Assert(h.Posted.Select(p=>p["name"]!.GetValue<string>().Split('_')[4]).Order().SequenceEqual(new[]{"Create","Create","Delete","Delete","Update","Update"}.Order()));
+Assert(h.Posted.Select(p=>string.Join("_",p["name"]!.GetValue<string>().Split('_').Skip(2).Take(3))).Order().SequenceEqual(new[]{"zk_kitchenworkspace_Create","zk_kitchenworkspace_Update","zk_kitchenworkspace_Delete","zk_kitchenoperation_Create","zk_kitchenoperation_Update","zk_kitchenoperation_Delete"}.Order()));
+foreach(var step in h.Posted){Assert(step["stage"]!.GetValue<int>()==20&&step["mode"]!.GetValue<int>()==0&&step["rank"]!.GetValue<int>()==1&&step["supporteddeployment"]!.GetValue<int>()==0);Assert(step.ContainsKey("filteringattributes")&&step["filteringattributes"]==null&&!step.ContainsKey("impersonatinguserid@odata.bind"));Assert(step["eventhandler_plugintype@odata.bind"]!.GetValue<string>()=="/plugintypes(00000000-0000-0000-0000-000000000010)");}
+});
+await Test("standard Upsert coverage requires both exact single guards and no Upsert filter",async()=>{
+var h=new GuardHarness();await h.Run(true);foreach(var table in GuardHarness.Tables){var c=h.Coverage(table,"Upsert");Assert(c["metadataCoverage"]!.GetValue<string>()=="guarded_by_standard_create_update"&&c["runtimeAcceptance"]!.GetValue<string>()=="pending_root_live_check");}
+});
+await Test("missing single Create or Update blocks merged and Upsert coverage",async()=>{
+foreach(var missing in new[]{"Create","Update"}){var h=new GuardHarness{Missing=missing};await h.Run(true);Assert(h.Provisioner!.Gaps.Any(g=>g.Contains(missing)));Assert(h.Coverage("zk_kitchenworkspace","Upsert")["metadataCoverage"]!.GetValue<string>()=="blocked_missing_required_guard");}
+});
+await Test("inactive single Create or Update is rejected without covered claim",async()=>{
+foreach(var inactive in new[]{"Create","Update"}){var h=new GuardHarness{Inactive=inactive};await Reject(()=>h.Run(false));Assert(h.Transport.Writes==0);}
+});
+await Test("UpsertMultiple remains potentially supported without own filter",async()=>{
+var h=new GuardHarness();await h.Run(true);foreach(var table in GuardHarness.Tables)Assert(h.Coverage(table,"UpsertMultiple")["availability"]!.GetValue<string>()=="potentially_supported");
+});
+await Test("standard DeleteMultiple unsupported classification needs verified table type",async()=>{
+var standard=new GuardHarness();await standard.Run(true);Assert(standard.Coverage("zk_kitchenworkspace","DeleteMultiple")["availability"]!.GetValue<string>()=="documented_unsupported_standard_table");
+foreach(var type in new string?[]{null,"Elastic"}){var unknown=new GuardHarness{TableType=type};await unknown.Run(false);Assert(unknown.Coverage("zk_kitchenworkspace","DeleteMultiple")["availability"]!.GetValue<string>()=="unverified_table_type"&&unknown.Provisioner!.Gaps.Count>0&&unknown.Transport.Writes==0);}
+});
+await Test("bulk coverage is metadata only and keeps Root runtime gates blocking",async()=>{
+var h=new GuardHarness();await h.Run(true);Assert(h.Coverages().Length==10&&h.Provisioner!.Gaps.Count(g=>g.StartsWith("root_runtime_check_required:"))==10);
+Assert(h.Coverages().All(c=>c["runtimeAcceptance"]!.GetValue<string>()=="pending_root_live_check"));
+});
+await Test("absent bulk filters stay unconfirmed instead of declared unavailable",async()=>{
+var h=new GuardHarness{BulkFilters=false};await h.Run(true);Assert(h.Coverage("zk_kitchenworkspace","CreateMultiple")["availability"]!.GetValue<string>()=="availability_unconfirmed");Assert(h.Coverage("zk_kitchenworkspace","UpsertMultiple")["availability"]!.GetValue<string>()=="availability_unconfirmed");
+});
+await Test("existing dedicated Multiple or unexpected named guard stops before any writes",async()=>{
+foreach(var message in new[]{"CreateMultiple","UpdateMultiple","UpsertMultiple","DeleteMultiple","Upsert"}){var h=new GuardHarness{Unexpected=message};await Reject(()=>h.Run(true));Assert(h.Transport.Writes==0);}
+});
+await Test("drifted existing named single guard stops before registrations",async()=>{
+foreach(var drift in new[]{"disabled","handler","filter"}){var h=new GuardHarness{ExistingDrift=drift};await Reject(()=>h.Run(true));Assert(h.Transport.Writes==0);}
+});
+await Test("missing Delete remains a required guard gap",async()=>{
+var h=new GuardHarness{Missing="Delete"};await h.Run(true);Assert(h.Provisioner!.Gaps.Contains("missing_required_guard_filter:zk_kitchenworkspace:Delete")&&h.Posted.Count==4);
+});
 await Test("workspace readback rejects wrong owner",()=>CheckWorkspace(row=>row["_ownerid_value"]="00000000-0000-0000-0000-000000000099",true));
 await Test("workspace readback rejects missing state or revision",async()=>{
 await CheckWorkspace(row=>row.Remove("zk_state"),true);await CheckWorkspace(row=>row.Remove("zk_revision"),true);});
@@ -127,5 +186,53 @@ Fake Fixture(JsonObject? data, Func<HttpMethod,string,JsonNode?,Task<JsonNode?>>
  if(p.StartsWith("systemusers("))return Task.FromResult<JsonNode?>(Parse($"{{\"domainname\":\"{Target.User}\",\"isdisabled\":false,\"azureactivedirectoryobjectid\":\"00000000-0000-0000-0000-000000000003\"}}"));
  if(p.StartsWith("organizations("))return Task.FromResult<JsonNode?>(Parse("{\"languagecode\":1031,\"_basecurrencyid_value\":\"00000000-0000-0000-0000-000000000004\"}"));
  if(p.StartsWith("transactioncurrencies("))return Task.FromResult<JsonNode?>(Parse("{\"isocurrencycode\":\"EUR\"}"));
+ if(p.StartsWith("EntityDefinitions?$select=TableType&"))return Task.FromResult<JsonNode?>(Parse("{\"value\":[{\"TableType\":\"Standard\"}]}"));
+ if(p.StartsWith("sdkmessageprocessingsteps?$select="))return Task.FromResult<JsonNode?>(Parse("{\"value\":[]}"));
  return other!=null?other(m,p,b):Task.FromResult<JsonNode?>(data!.DeepClone());});
 sealed class Fake(Func<HttpMethod,string,JsonNode?,Task<JsonNode?>> handle):IDataverseTransport {public int Writes; public Task<JsonNode?> SendAsync(HttpMethod m,string p,JsonNode? b=null){if(m!=HttpMethod.Get)Writes++;return handle(m,p,b);}}
+
+sealed class GuardHarness {
+ public static readonly string[] Tables=["zk_kitchenworkspace","zk_kitchenoperation"];
+ public const string Handler="00000000-0000-0000-0000-000000000010";
+ static readonly string[] Messages=["Create","Update","Delete","Upsert","CreateMultiple","UpdateMultiple","UpsertMultiple","DeleteMultiple"];
+ public string? Missing,Inactive,Unexpected,ExistingDrift;public string? TableType="Standard";public bool BulkFilters=true;
+ public List<JsonObject> Posted=[];public Dictionary<string,JsonObject> Steps=[];public Fake Transport;public ResourceEngine Engine;public Provisioner? Provisioner;
+ static string Id(int n)=>$"00000000-0000-0000-0000-{n:000000000000}";
+ static JsonNode Rows(params JsonObject[] rows)=>new JsonObject{["value"]=new JsonArray(rows.Select(r=>(JsonNode)r.DeepClone()).ToArray())};
+ static JsonObject Step(string table,string message)=>new(){["name"]=$"zk_KitchenGuard_{table}_{message}",["sdkmessageprocessingstepid"]=Id(90),["stage"]=20,["mode"]=0,["rank"]=1,["statecode"]=0,["supporteddeployment"]=0,["filteringattributes"]=null,["_impersonatinguserid_value"]=null,["_eventhandler_value"]=Handler,["_sdkmessageid_value"]=Id(Array.IndexOf(Messages,message)+20),["_sdkmessagefilterid_value"]=Id(40+Array.IndexOf(Tables,table)*10+Array.IndexOf(Messages,message)),["sdkmessageid"]=new JsonObject{["name"]=message},["sdkmessagefilterid"]=new JsonObject{["primaryobjecttypecode"]=table}};
+ public GuardHarness(){Transport=new Fake((m,p,b)=>Task.FromResult(Handle(m,p,b)));Engine=new ResourceEngine(Transport);}
+ JsonNode? Handle(HttpMethod method,string path,JsonNode? body){
+ if(path=="WhoAmI")return new JsonObject{["OrganizationId"]=Target.Organization,["UserId"]=Id(2)};
+ if(path.StartsWith("systemusers("))return new JsonObject{["domainname"]=Target.User,["isdisabled"]=false};
+ if(path.StartsWith("organizations("))return new JsonObject{["languagecode"]=1031,["_basecurrencyid_value"]=Id(4)};
+ if(path.StartsWith("transactioncurrencies("))return new JsonObject{["isocurrencycode"]="EUR"};
+ if(path.StartsWith("EntityDefinitions?$select=TableType&"))return TableType==null?Rows():Rows(new JsonObject{["TableType"]=TableType});
+ if(path.StartsWith("sdkmessageprocessingsteps?$select=")){
+ if(Unexpected!=null)return Rows(Step(Tables[0],Unexpected));
+ if(ExistingDrift!=null){var drift=Step(Tables[0],"Create");if(ExistingDrift=="disabled")drift["statecode"]=1;else if(ExistingDrift=="handler")drift["_eventhandler_value"]=Id(999);else drift["_sdkmessagefilterid_value"]=Id(999);return Rows(drift);}
+ return Rows();
+}
+ if(path.StartsWith("sdkmessages?")){var msg=Messages.Single(m=>path.EndsWith("'"+m+"'"));return Rows(new JsonObject{["sdkmessageid"]=Id(Array.IndexOf(Messages,msg)+20),["name"]=msg});}
+ if(path.StartsWith("sdkmessagefilters?")){var msg=Messages.Single(m=>path.Contains(Id(Array.IndexOf(Messages,m)+20)));var table=Tables.Single(t=>path.EndsWith("'"+t+"'"));if(msg==Missing||msg is "Upsert" or "UpsertMultiple" or "DeleteMultiple"||(!BulkFilters&&msg.EndsWith("Multiple")))return Rows();return Rows(new JsonObject{["sdkmessagefilterid"]=Id(40+Array.IndexOf(Tables,table)*10+Array.IndexOf(Messages,msg)),["iscustomprocessingstepallowed"]=true,["primaryobjecttypecode"]=table});}
+ if(method==HttpMethod.Post&&path=="sdkmessageprocessingsteps"){var payload=body!.AsObject();Posted.Add(payload.DeepClone().AsObject());var msg=Messages.Single(m=>payload["sdkmessageid@odata.bind"]!.GetValue<string>().Contains(Id(Array.IndexOf(Messages,m)+20)));var table=Tables.Single(t=>payload["name"]!.GetValue<string>().Contains(t));var step=Step(table,msg);Steps[step["_sdkmessagefilterid_value"]!.GetValue<string>()]=step;return null;}
+ if(path.StartsWith("sdkmessageprocessingsteps?$filter=")){var key=path.Split(" eq ")[1].Split(' ')[0];if(Steps.TryGetValue(key,out var step))return Rows(step);if(Inactive!=null&&key==Id(40+Array.IndexOf(Messages,Inactive))){var bad=Step(Tables[0],Inactive);bad["statecode"]=1;return Rows(bad);}return Rows();}
+ throw new Exception("Unexpected guard test request: "+path);
+ }
+ public async Task Run(bool create){await Engine.AuthenticateTargetAsync();Provisioner=new Provisioner(Engine,Transport,JsonNode.Parse(File.ReadAllBytes("server/deployment/registration.json"))!.AsObject());await Provisioner.Guards(Handler,create);}
+ public JsonObject[] Coverages()=>System.Text.Json.JsonSerializer.SerializeToNode(Engine.Resources)!.AsArray().Where(r=>r?["resource"]?.GetValue<string>()=="guard_coverage").Select(r=>r!.AsObject()).ToArray();
+ public JsonObject Coverage(string table,string message)=>Coverages().Single(c=>c["table"]!.GetValue<string>()==table&&c["message"]!.GetValue<string>()==message);
+}
+
+sealed class ResponseHandler(Func<HttpResponseMessage> response):HttpMessageHandler {
+ protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken cancellationToken)=>Task.FromResult(response());
+}
+
+sealed class CountingErrorStream(byte[] bytes):Stream {
+ private readonly MemoryStream inner=new(bytes);public int ReadBytes;
+ public override bool CanRead=>true;public override bool CanSeek=>false;public override bool CanWrite=>false;
+ public override long Length=>throw new NotSupportedException();public override long Position{get=>throw new NotSupportedException();set=>throw new NotSupportedException();}
+ public override int Read(byte[] buffer,int offset,int count){var n=inner.Read(buffer,offset,count);ReadBytes+=n;return n;}
+ public override async ValueTask<int> ReadAsync(Memory<byte> buffer,CancellationToken token=default){var n=await inner.ReadAsync(buffer,token);ReadBytes+=n;return n;}
+ public override void Flush()=>throw new NotSupportedException();public override long Seek(long offset,SeekOrigin origin)=>throw new NotSupportedException();public override void SetLength(long value)=>throw new NotSupportedException();public override void Write(byte[] buffer,int offset,int count)=>throw new NotSupportedException();
+ protected override void Dispose(bool disposing){if(disposing)inner.Dispose();base.Dispose(disposing);}
+}

@@ -16,7 +16,7 @@ try {
             target = Target.Url, tenant = Target.Tenant, organization = Target.Organization,
             account = Target.User, workspaceId = Seed.WorkspaceId,
             sourceSha256 = Seed.Hash(original), normalizedSha256 = Seed.Hash(System.Text.Encoding.UTF8.GetBytes(seed.ToJsonString())),
-            packageSha256 = Seed.Hash(package), tables = 2, actions = 2, possibleGuardPairs = 16,
+            packageSha256 = Seed.Hash(package), tables = 2, actions = 2, requiredDedicatedGuardPairs = contract["guardSteps"]!.AsArray().Count, coverageRecords = contract["guardCoverage"]!.AsArray().Count,
             readiness = "not_live_verified"
         }));
         return 0;

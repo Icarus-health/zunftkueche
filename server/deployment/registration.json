@@ -1,5 +1,5 @@
 {
-  "definitionVersion": 1,
+  "definitionVersion": 2,
   "status": "Local deployment specification; NOT imported or live validated",
   "publisherPrefix": "zk",
   "pluginPackage": "Zunftkueche.Dataverse.1.0.0.nupkg",
@@ -163,7 +163,7 @@
       "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
       "runInUserContext": "CallingUser",
       "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+      "deploymentCondition": "Required dedicated single-message guard; verify active exact bindings for every available filter. Never register this unchanged guard on merged Multiple events."
     },
     {
       "primaryEntity": "zk_kitchenworkspace",
@@ -174,7 +174,7 @@
       "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
       "runInUserContext": "CallingUser",
       "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+      "deploymentCondition": "Required dedicated single-message guard; verify active exact bindings for every available filter. Never register this unchanged guard on merged Multiple events."
     },
     {
       "primaryEntity": "zk_kitchenworkspace",
@@ -185,62 +185,7 @@
       "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
       "runInUserContext": "CallingUser",
       "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
-    },
-    {
-      "primaryEntity": "zk_kitchenworkspace",
-      "message": "Upsert",
-      "stage": 20,
-      "mode": 0,
-      "rank": 1,
-      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
-      "runInUserContext": "CallingUser",
-      "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
-    },
-    {
-      "primaryEntity": "zk_kitchenworkspace",
-      "message": "CreateMultiple",
-      "stage": 20,
-      "mode": 0,
-      "rank": 1,
-      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
-      "runInUserContext": "CallingUser",
-      "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
-    },
-    {
-      "primaryEntity": "zk_kitchenworkspace",
-      "message": "UpdateMultiple",
-      "stage": 20,
-      "mode": 0,
-      "rank": 1,
-      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
-      "runInUserContext": "CallingUser",
-      "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
-    },
-    {
-      "primaryEntity": "zk_kitchenworkspace",
-      "message": "UpsertMultiple",
-      "stage": 20,
-      "mode": 0,
-      "rank": 1,
-      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
-      "runInUserContext": "CallingUser",
-      "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
-    },
-    {
-      "primaryEntity": "zk_kitchenworkspace",
-      "message": "DeleteMultiple",
-      "stage": 20,
-      "mode": 0,
-      "rank": 1,
-      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
-      "runInUserContext": "CallingUser",
-      "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+      "deploymentCondition": "Required dedicated single-message guard; verify active exact bindings for every available filter. Never register this unchanged guard on merged Multiple events."
     },
     {
       "primaryEntity": "zk_kitchenoperation",
@@ -251,7 +196,7 @@
       "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
       "runInUserContext": "CallingUser",
       "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+      "deploymentCondition": "Required dedicated single-message guard; verify active exact bindings for every available filter. Never register this unchanged guard on merged Multiple events."
     },
     {
       "primaryEntity": "zk_kitchenoperation",
@@ -262,7 +207,7 @@
       "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
       "runInUserContext": "CallingUser",
       "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+      "deploymentCondition": "Required dedicated single-message guard; verify active exact bindings for every available filter. Never register this unchanged guard on merged Multiple events."
     },
     {
       "primaryEntity": "zk_kitchenoperation",
@@ -273,62 +218,7 @@
       "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
       "runInUserContext": "CallingUser",
       "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
-    },
-    {
-      "primaryEntity": "zk_kitchenoperation",
-      "message": "Upsert",
-      "stage": 20,
-      "mode": 0,
-      "rank": 1,
-      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
-      "runInUserContext": "CallingUser",
-      "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
-    },
-    {
-      "primaryEntity": "zk_kitchenoperation",
-      "message": "CreateMultiple",
-      "stage": 20,
-      "mode": 0,
-      "rank": 1,
-      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
-      "runInUserContext": "CallingUser",
-      "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
-    },
-    {
-      "primaryEntity": "zk_kitchenoperation",
-      "message": "UpdateMultiple",
-      "stage": 20,
-      "mode": 0,
-      "rank": 1,
-      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
-      "runInUserContext": "CallingUser",
-      "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
-    },
-    {
-      "primaryEntity": "zk_kitchenoperation",
-      "message": "UpsertMultiple",
-      "stage": 20,
-      "mode": 0,
-      "rank": 1,
-      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
-      "runInUserContext": "CallingUser",
-      "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
-    },
-    {
-      "primaryEntity": "zk_kitchenoperation",
-      "message": "DeleteMultiple",
-      "stage": 20,
-      "mode": 0,
-      "rank": 1,
-      "pluginType": "Zunftkueche.KitchenWriteGuardPlugin",
-      "runInUserContext": "CallingUser",
-      "filteringAttributes": null,
-      "deploymentCondition": "Register every available SdkMessageFilter. Document unavailable bulk messages; confirm unavailable means uncallable. Do not enable writes if a supported path lacks guard."
+      "deploymentCondition": "Required dedicated single-message guard; verify active exact bindings for every available filter. Never register this unchanged guard on merged Multiple events."
     }
   ],
   "roles": {
@@ -362,7 +252,99 @@
     "Confirm generated privilege names from Privilege metadata",
     "Seed reviewed schema2 workspace before activating guards and before sharing",
     "Both tables standard/nonelastic; unique key Active; optimistic concurrency enabled",
-    "Register APIs and every supported guard before assigning editor roles",
+    "Register APIs and all six individual Create/Update/Delete guards; resolve all direct Upsert/bulk runtime gates before app release or assigning editor roles",
     "No alternate storage write plugin or provisioning API open to ordinary users"
+  ],
+  "guardCoverage": [
+    {
+      "primaryEntity": "zk_kitchenworkspace",
+      "message": "Upsert",
+      "requiredSingleGuards": [
+        "Create",
+        "Update"
+      ],
+      "mechanism": "Standard-table Upsert invokes Create or Update",
+      "runtimeAcceptance": "pending_root_live_check"
+    },
+    {
+      "primaryEntity": "zk_kitchenworkspace",
+      "message": "CreateMultiple",
+      "requiredSingleGuards": [
+        "Create"
+      ],
+      "mechanism": "Merged pipeline invokes individual Create",
+      "runtimeAcceptance": "pending_root_live_check"
+    },
+    {
+      "primaryEntity": "zk_kitchenworkspace",
+      "message": "UpdateMultiple",
+      "requiredSingleGuards": [
+        "Update"
+      ],
+      "mechanism": "Merged pipeline invokes individual Update",
+      "runtimeAcceptance": "pending_root_live_check"
+    },
+    {
+      "primaryEntity": "zk_kitchenworkspace",
+      "message": "UpsertMultiple",
+      "requiredSingleGuards": [
+        "Create",
+        "Update"
+      ],
+      "mechanism": "Potentially supported when CreateMultiple and UpdateMultiple are supported even without own filter; runtime traversal requires Root confirmation",
+      "runtimeAcceptance": "pending_root_live_check"
+    },
+    {
+      "primaryEntity": "zk_kitchenworkspace",
+      "message": "DeleteMultiple",
+      "requiredSingleGuards": [],
+      "mechanism": "Documented unsupported only after Standard table metadata verification",
+      "runtimeAcceptance": "pending_root_live_check"
+    },
+    {
+      "primaryEntity": "zk_kitchenoperation",
+      "message": "Upsert",
+      "requiredSingleGuards": [
+        "Create",
+        "Update"
+      ],
+      "mechanism": "Standard-table Upsert invokes Create or Update",
+      "runtimeAcceptance": "pending_root_live_check"
+    },
+    {
+      "primaryEntity": "zk_kitchenoperation",
+      "message": "CreateMultiple",
+      "requiredSingleGuards": [
+        "Create"
+      ],
+      "mechanism": "Merged pipeline invokes individual Create",
+      "runtimeAcceptance": "pending_root_live_check"
+    },
+    {
+      "primaryEntity": "zk_kitchenoperation",
+      "message": "UpdateMultiple",
+      "requiredSingleGuards": [
+        "Update"
+      ],
+      "mechanism": "Merged pipeline invokes individual Update",
+      "runtimeAcceptance": "pending_root_live_check"
+    },
+    {
+      "primaryEntity": "zk_kitchenoperation",
+      "message": "UpsertMultiple",
+      "requiredSingleGuards": [
+        "Create",
+        "Update"
+      ],
+      "mechanism": "Potentially supported when CreateMultiple and UpdateMultiple are supported even without own filter; runtime traversal requires Root confirmation",
+      "runtimeAcceptance": "pending_root_live_check"
+    },
+    {
+      "primaryEntity": "zk_kitchenoperation",
+      "message": "DeleteMultiple",
+      "requiredSingleGuards": [],
+      "mechanism": "Documented unsupported only after Standard table metadata verification",
+      "runtimeAcceptance": "pending_root_live_check"
+    }
   ]
 }

@@ -9,7 +9,7 @@ public sealed class Provisioner(ResourceEngine engine, IDataverseTransport trans
     public List<string> Gaps { get; } = [];
     public static JsonObject LoadContract(string path) {
         var bytes = File.ReadAllBytes(path);
-        if (Seed.Hash(bytes) != "7ed502d575c4efa245c28942dabb8de846bae3cf7b374a3d84eec6bd609ab1ea") throw new DeploymentException("registration_contract_changed_requires_review");
+        if (Seed.Hash(bytes) != "46e7fe2b0a71763318bd713df028c3e57ed7d8a7fae380566622a44f94017207") throw new DeploymentException("registration_contract_changed_requires_review");
         return JsonNode.Parse(bytes)!.AsObject();
     }
     private static string S(JsonNode n, string field) => Metadata.Text(n, field);
@@ -169,21 +169,83 @@ public sealed class Provisioner(ResourceEngine engine, IDataverseTransport trans
         }
     }
     public async Task Guards(string guardType, bool create) {
-        foreach(var spec in contract["guardSteps"]!.AsArray()) {
-            string table=S(spec!,"primaryEntity"),message=S(spec!,"message");
-            var msg=await engine.Find($"sdkmessages?$select=sdkmessageid,name&$filter=name eq '{message}'");
-            if(msg==null) {Gap("unavailable_message_requires_runtime_confirmation:"+table+":"+message);continue;}
-            string messageId=ResourceEngine.Id(msg,"sdkmessageid");
-            var filters=await engine.Rows($"sdkmessagefilters?$select=sdkmessagefilterid,iscustomprocessingstepallowed,primaryobjecttypecode&$filter=_sdkmessageid_value eq {messageId} and primaryobjecttypecode eq '{table}'");
-            if(filters.Length==0) {Gap("unavailable_filter_requires_runtime_confirmation:"+table+":"+message);continue;}
-            foreach(var filter in filters) {
-                if(filter["iscustomprocessingstepallowed"]?.GetValue<bool>()!=true) {Gap("supported_but_unguardable:"+table+":"+message);continue;}
-                string filterId=ResourceEngine.Id(filter,"sdkmessagefilterid"),name=$"zk_KitchenGuard_{table}_{message}_{filterId}";
-                var payload=new JsonObject{["name"]=name,["stage"]=20,["mode"]=0,["rank"]=1,["supporteddeployment"]=0,["filteringattributes"]=null,["eventhandler_plugintype@odata.bind"]=$"/plugintypes({guardType})",["sdkmessageid@odata.bind"]=$"/sdkmessages({messageId})",["sdkmessagefilterid@odata.bind"]=$"/sdkmessagefilters({filterId})"};
-                // Query by actual filter AND handler, never just the friendly name; duplicate registrations stop.
-                var row=await Ensure(name,$"sdkmessageprocessingsteps?$filter=_sdkmessagefilterid_value eq {filterId} and _eventhandler_value eq {guardType}","sdkmessageprocessingsteps",payload,new JsonObject(),create);
-                if(row!=null) {Readiness.RequireGuard(row,guardType,filterId,messageId);await Component(ResourceEngine.Id(row,"sdkmessageprocessingstepid"));}
+        var specs = contract["guardSteps"]!.AsArray();
+        var coverage = contract["guardCoverage"]?.AsArray() ?? new JsonArray();
+        var tableNames = specs.Concat(coverage).Select(s => S(s!, "primaryEntity")).Distinct().ToArray();
+        var standardTables = new HashSet<string>();
+        foreach (var table in tableNames) {
+            var metadata = await engine.Find($"EntityDefinitions?$select=TableType&$filter=LogicalName eq '{table}'");
+            if (metadata?["TableType"]?.GetValue<string>() == "Standard") standardTables.Add(table);
+            else Gap("standard_table_not_verified:" + table);
+        }
+        // Inspect existing named/handler registrations BEFORE any guard POST. Extra merged
+        // registrations can reject a valid Commit; they require review, never auto-repair.
+        var existing = await engine.Rows($"sdkmessageprocessingsteps?$select=sdkmessageprocessingstepid,name,stage,mode,rank,statecode,supporteddeployment,filteringattributes,_impersonatinguserid_value,_eventhandler_value,_sdkmessagefilterid_value,_sdkmessageid_value&$filter=_eventhandler_value eq {guardType} or startswith(name,'zk_KitchenGuard_')&$expand=sdkmessageid($select=name),sdkmessagefilterid($select=primaryobjecttypecode)");
+        foreach (var row in existing) {
+            string table = S(row["sdkmessagefilterid"] ?? new JsonObject(), "primaryobjecttypecode");
+            string message = S(row["sdkmessageid"] ?? new JsonObject(), "name");
+            if (!specs.Any(s => S(s!, "primaryEntity") == table && S(s!, "message") == message))
+                throw new DeploymentException("existing_unsupported_guard_step_requires_review");
+            Readiness.RequireGuard(row, guardType, ResourceEngine.Id(row, "_sdkmessagefilterid_value"), ResourceEngine.Id(row, "_sdkmessageid_value"));
+        }
+        var available = new Dictionary<(string Table, string Message), (string? Id, JsonObject[] Filters)>();
+        foreach (var spec in specs.Concat(coverage)) {
+            string table = S(spec!, "primaryEntity"), message = S(spec!, "message");
+            if (available.ContainsKey((table, message))) continue;
+            var msg = await engine.Find($"sdkmessages?$select=sdkmessageid,name&$filter=name eq '{message}'");
+            string? messageId = msg == null ? null : ResourceEngine.Id(msg, "sdkmessageid");
+            var filters = messageId == null ? [] : await engine.Rows($"sdkmessagefilters?$select=sdkmessagefilterid,iscustomprocessingstepallowed,primaryobjecttypecode&$filter=_sdkmessageid_value eq {messageId} and primaryobjecttypecode eq '{table}'");
+            available[(table, message)] = (messageId, filters);
+        }
+        // Cross-check the expanded preflight rows against canonical message/filter discovery.
+        foreach (var row in existing) {
+            var key = (S(row["sdkmessagefilterid"]!, "primaryobjecttypecode"), S(row["sdkmessageid"]!, "name"));
+            var supported = available[key];
+            if (supported.Id != ResourceEngine.Id(row, "_sdkmessageid_value") || !supported.Filters.Any(f => ResourceEngine.Id(f, "sdkmessagefilterid") == ResourceEngine.Id(row, "_sdkmessagefilterid_value")))
+                throw new DeploymentException("existing_guard_binding_drift_requires_review");
+        }
+        var protectedPairs = new HashSet<(string Table, string Message)>();
+        foreach (var spec in specs) {
+            string table = S(spec!, "primaryEntity"), message = S(spec!, "message");
+            if (!standardTables.Contains(table)) continue;
+            var (messageId, filters) = available[(table, message)];
+            if (messageId == null || filters.Length == 0) { Gap("missing_required_guard_filter:" + table + ":" + message); continue; }
+            bool complete = true;
+            foreach (var filter in filters) {
+                if (filter["primaryobjecttypecode"]?.GetValue<string>() != table) throw new DeploymentException("guard_filter_table_mismatch");
+                if (filter["iscustomprocessingstepallowed"]?.GetValue<bool>() != true) { Gap("supported_but_unguardable:" + table + ":" + message); complete = false; continue; }
+                string filterId = ResourceEngine.Id(filter, "sdkmessagefilterid"), name = $"zk_KitchenGuard_{table}_{message}_{filterId}";
+                var payload = new JsonObject { ["name"] = name, ["stage"] = 20, ["mode"] = 0, ["rank"] = 1, ["supporteddeployment"] = 0, ["filteringattributes"] = null, ["eventhandler_plugintype@odata.bind"] = $"/plugintypes({guardType})", ["sdkmessageid@odata.bind"] = $"/sdkmessages({messageId})", ["sdkmessagefilterid@odata.bind"] = $"/sdkmessagefilters({filterId})" };
+                var row = await Ensure(name, $"sdkmessageprocessingsteps?$filter=_sdkmessagefilterid_value eq {filterId} and _eventhandler_value eq {guardType}", "sdkmessageprocessingsteps", payload, new JsonObject(), create);
+                if (row == null) { complete = false; continue; }
+                Readiness.RequireGuard(row, guardType, filterId, messageId);
+                await Component(ResourceEngine.Id(row, "sdkmessageprocessingstepid"));
             }
+            if (complete) protectedPairs.Add((table, message));
+        }
+        foreach (var spec in coverage) {
+            string table = S(spec!, "primaryEntity"), message = S(spec!, "message");
+            bool standard = standardTables.Contains(table);
+            bool hasFilters(string m) => available.TryGetValue((table, m), out var value) && value.Filters.Length > 0;
+            string availability = !standard ? "unverified_table_type" : message switch {
+                "Upsert" => "supported_standard_upsert",
+                "DeleteMultiple" => "documented_unsupported_standard_table",
+                "UpsertMultiple" when hasFilters("UpsertMultiple") || (hasFilters("CreateMultiple") && hasFilters("UpdateMultiple")) => "potentially_supported",
+                _ when hasFilters(message) => "potentially_supported",
+                _ => "availability_unconfirmed"
+            };
+            bool protectedPath = spec!["requiredSingleGuards"]!.AsArray().All(m => protectedPairs.Contains((table, m!.GetValue<string>())));
+            string metadataCoverage = !standard ? "unverified_table_type" : !protectedPath ? "blocked_missing_required_guard" : message switch {
+                "Upsert" => "guarded_by_standard_create_update",
+                "DeleteMultiple" => "documented_unsupported_standard_table",
+                "CreateMultiple" or "UpdateMultiple" when hasFilters(message) => "guarded_by_merged_pipeline",
+                // UpsertMultiple traversal is a release gate, even when both singles are exact.
+                "UpsertMultiple" => "requires_root_pipeline_confirmation",
+                _ => "availability_unconfirmed"
+            };
+            engine.Resources.Add(new { resource = "guard_coverage", table, message, availability, metadataCoverage,
+                requiredSingleGuards = spec["requiredSingleGuards"]!.DeepClone(), runtimeAcceptance = "pending_root_live_check" });
+            Gap("root_runtime_check_required:" + table + ":" + message);
         }
     }
     private async Task ApiMetadata() {
