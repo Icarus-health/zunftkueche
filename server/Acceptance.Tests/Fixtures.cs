@@ -42,7 +42,7 @@ public sealed class PreflightFake:IAcceptanceTransport {
   if(path.StartsWith("solutions?"))return Task.FromResult(Ok(List(new JsonObject{["solutionid"]=Id,["uniquename"]=Target.Solution,["version"]="1.0.0.0",["ismanaged"]=false,["_publisherid_value"]=Id})));
   if(path.StartsWith("solutioncomponents?"))return Task.FromResult(Ok(List(new JsonObject{["solutioncomponentid"]=Id})));
   if(path.StartsWith("RelationshipDefinitions")){
-   var r=Metadata.Relationship();foreach(var field in new[]{"@odata.type","Lookup","AssociatedMenuConfiguration"})r.Remove(field);return Task.FromResult(Ok(List(r)));
+   var r=Metadata.Relationship();foreach(var field in new[]{"@odata.type","Lookup","AssociatedMenuConfiguration"})r.Remove(field);r["ReferencingAttribute"]="zk_workspace";return Task.FromResult(Ok(List(r)));
   }
   if(path.StartsWith("EntityDefinitions")) {
    var spec=Contract["tables"]!.AsArray().Single(s=>path.Contains("'"+s!["logicalName"]!.GetValue<string>()+"'"))!;

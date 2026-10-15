@@ -22,8 +22,10 @@ public static class Diagnosis {
    if(code?.Length!=10||!code.StartsWith("0x",StringComparison.Ordinal)||!code.AsSpan(2).ToArray().All(x=>x is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F'))code=null;
    string message=error.TryGetProperty("message",out var m)&&m.ValueKind==JsonValueKind.String?m.GetString()!:"";
    bool guard=status is 400 or 500 && (message.Contains("Direct kitchen table writes are blocked.",StringComparison.Ordinal)||message.Contains("Kitchen history mutations and bulk/direct writes are blocked.",StringComparison.Ordinal));
-   bool unsupported=status is 400 or 404 or 405 or 500 or 501 && message.Contains("DeleteMultiple",StringComparison.Ordinal) &&
-    (message.Contains("DeleteMultiple has not yet been implemented.",StringComparison.Ordinal)||message.Contains("not supported",StringComparison.OrdinalIgnoreCase)||message.Contains("not available",StringComparison.OrdinalIgnoreCase)||message.Contains("Resource not found for the segment",StringComparison.Ordinal)||message.Contains("not a valid action",StringComparison.OrdinalIgnoreCase));
+   // An absent action route does not prove the Standard-table operation was refused.
+   // Microsoft documents this exact refusal; an unrecognized status/code/text fails closed.
+   bool unsupported=status==400 && code!=null &&
+    string.Equals(message,"DeleteMultiple has not yet been implemented.",StringComparison.Ordinal);
    return new(status,null,guard,unsupported,code);
   }catch(Exception e)when(e is JsonException or InvalidOperationException or KeyNotFoundException){return new(status,null);}
  }

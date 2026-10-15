@@ -119,6 +119,33 @@ await Test("documented standard DeleteMultiple provider text is recognized witho
  Assert(Diagnosis.Refusal(400,bytes).Unsupported);
  Assert(!Diagnosis.Refusal(403,bytes).Unsupported);return Task.CompletedTask;
 });
+await Test("actual diagnosis and denial accept known400 but reject absent routes and vague refusals unchanged",async()=>{
+ var probe=Scope.Probes(Scope.Operation,"zk_kitchenoperations",PreflightFake.Actor).Last();
+ var snapshot=()=>Task.FromResult(new Fingerprint(new string('a',64),2,0));
+ byte[] Body(string? code,string message)=>System.Text.Encoding.UTF8.GetBytes(new JsonObject{["error"]=new JsonObject{["code"]=code,["message"]=message}}.ToJsonString());
+ const string known="DeleteMultiple has not yet been implemented.";
+ var accepted=new Evidence();
+ await Checks.Denial(new Fake(p=>Task.FromResult(Diagnosis.Refusal(400,Body("0x80004001",known)))),probe,snapshot,accepted);
+ Assert(accepted.Checks.All(c=>c.Passed)&&accepted.Checks.Any(c=>c.Name==probe.Check));
+ foreach(var input in new[]{
+  (404,"0x80060888","Resource not found for the segment 'Microsoft.Dynamics.CRM.DeleteMultiple'."),
+  (400,"0x80004001","DeleteMultiple is not supported."),
+  (400,"0x80004001","DeleteMultiple is not available."),
+  (400,"0x80004001","DeleteMultiple is not a valid action."),
+  (403,"0x80004001",known),(404,"0x80004001",known),(405,"0x80004001",known),
+  (500,"0x80004001",known),(501,"0x80004001",known),
+  (400,"invalid",known),(400,(string?)null,known),
+  (400,"0x80004001","Unexpected prefix "+known),
+  (400,"0x80004001",known+" Unexpected suffix")}){
+  var evidence=new Evidence();
+  var fake=new Fake(p=>Task.FromResult(Diagnosis.Refusal(input.Item1,Body(input.Item2,input.Item3))));
+  await Reject(()=>Checks.Denial(fake,probe,snapshot,evidence));
+  Assert(fake.Calls.Count==1&&evidence.Stopped&&!evidence.RootReleaseAllowed);
+  Assert(evidence.Checks.Single(c=>c.Name==probe.Check+"_unchanged").Passed);
+ }
+ var malformed=new Fake(p=>Task.FromResult(Diagnosis.Refusal(400,System.Text.Encoding.UTF8.GetBytes("{invalid"))));
+ await Reject(()=>Checks.Denial(malformed,probe,snapshot,new()));
+});
 await Test("transport rejects unsafe routes before token acquisition",async()=>{
  int tokens=0;using var t=new AcceptanceTransport(Target.Url,()=>{tokens++;return Task.FromResult("secret");});
  foreach(var path in new[]{"https://evil.example/api/data/v9.2/a","//evil.example/a","../../outside","a#secret"})await Reject(()=>t.ProbeAsync(new("probe",HttpMethod.Delete,path,null)));
