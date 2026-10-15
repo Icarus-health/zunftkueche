@@ -14,6 +14,8 @@ public sealed class PreflightFake:IAcceptanceTransport {
  public const string ObjectId="9e78b093-8f98-4b74-a030-009bb5ee0f30";
  public JsonObject Contract=Provisioner.LoadContract("server/deployment/registration.json");
  public Dictionary<string,JsonObject> Rows=[];
+ public JsonObject InternalMetadata=LoadInternalMetadata();
+ public static JsonObject LoadInternalMetadata(){using var stream=typeof(Session).Assembly.GetManifestResourceStream("Kitchen.Acceptance.platform-intrinsics.json")!;return JsonNode.Parse(stream)!.AsObject();}
  public List<Probe> Calls=[];
  public int Writes=>Calls.Count(c=>c.Method!=HttpMethod.Get);
  public bool Guards,Elastic,WrongOrganization,WrongObject,WrongLanguage,WrongCurrency,AmbiguousCreate,CreateInvisible;
@@ -55,7 +57,12 @@ public sealed class PreflightFake:IAcceptanceTransport {
    var metadata=new JsonObject{["MetadataId"]=Id,["SchemaName"]=table,["LogicalName"]=table,["OwnershipType"]=spec["ownershipType"]!.DeepClone(),["IsActivity"]=false,["IsOptimisticConcurrencyEnabled"]=true,["TableType"]=Elastic?"Elastic":"Standard",["PrimaryNameAttribute"]="zk_name",["PrimaryIdAttribute"]=table+"id",["EntitySetName"]=table+"s"};
    return Task.FromResult(Ok(path.StartsWith("EntityDefinitions(")?metadata:List(metadata)));
   }
-  if(path.StartsWith("sdkmessageprocessingsteps?"))return Task.FromResult(Ok(Guards?List(new JsonObject{["sdkmessageprocessingstepid"]=Id}):List()));
+  if(path.StartsWith("sdkmessageprocessingsteps?")){
+   var internalRows=InternalMetadata["steps"]!.AsArray().Select(r=>r!.DeepClone().AsObject()).ToList();
+   if(Guards)internalRows.Add(new JsonObject{["sdkmessageprocessingstepid"]=Id});
+   return Task.FromResult(Ok(List(internalRows.ToArray())));
+  }
+  if(path.StartsWith("plugintypes?")&&path.Contains("Microsoft.Crm.Extensibility.InternalOperationPlugin"))return Task.FromResult(Ok(List(InternalMetadata["handler"]!.DeepClone().AsObject())));
   if(path.StartsWith("plugintypes?"))return Task.FromResult(Ok(List()));
   if(path.StartsWith("zk_kitchenworkspaces(")||path.StartsWith("zk_kitchenoperations("))return Task.FromResult(Rows.TryGetValue(path.Split('?')[0],out var found)?Ok(found.DeepClone()):new Outcome(404,null));
   throw new Exception("unexpected_read_route");
@@ -101,4 +108,12 @@ public sealed class ResponseHandler(Func<HttpRequestMessage,HttpResponseMessage>
 public sealed class CountingStream(byte[] bytes):MemoryStream(bytes) {
  public int BytesRead;
  public override ValueTask<int> ReadAsync(Memory<byte> buffer,CancellationToken token=default){var count=base.Read(buffer.Span);BytesRead+=count;return ValueTask.FromResult(count);}
+}
+public static class GuardFixture {
+ public const string Handler="00000000-0000-0000-0000-000000000010";
+ public static JsonObject[] Steps()=>new[]{Scope.Workspace,Scope.Operation}.SelectMany((t,i)=>new[]{"Create","Update","Delete"}.Select((m,j)=>new JsonObject{
+  ["sdkmessageprocessingstepid"]=new Guid(i*3+j+1,0,0,new byte[8]).ToString("D"),["_eventhandler_value"]=Handler,
+  ["_sdkmessagefilterid_value"]=new Guid(i*3+j+20,0,0,new byte[8]).ToString("D"),["_sdkmessageid_value"]=new Guid(j+30,0,0,new byte[8]).ToString("D"),
+  ["sdkmessagefilterid"]=new JsonObject{["primaryobjecttypecode"]=t},["sdkmessageid"]=new JsonObject{["name"]=m},
+  ["stage"]=20,["mode"]=0,["rank"]=1,["statecode"]=0,["supporteddeployment"]=0,["filteringattributes"]=null,["_impersonatinguserid_value"]=null})).ToArray();
 }

@@ -42,6 +42,59 @@ await Test("canary creation posts exactly four fixed rows readbacks and reuses e
  Assert(f.Rows.Where(p=>p.Key.StartsWith("zk_kitchenworkspaces")).All(p=>p.Value["zk_state"]!.GetValue<string>()==Scope.MarkerState));
  await f.Session().RunAsync("prepare-canaries");Assert(f.Writes==4);
 });
+await Test("verified52 internal main-operation steps permit preparation without treating them as guards",async()=>{
+ var f=new PreflightFake();var evidence=f.InternalMetadata;
+ Assert(evidence["steps"]!.AsArray().Count==52);
+ var session=f.Session();await session.RunAsync("prepare-canaries");
+ Assert(f.Writes==4&&session.Evidence.Checks.Any(c=>c.Name=="verified_platform_main_operation_steps"&&c.Count==52));
+});
+await Test("missing extra modified or forged platform definitions stop preparation before writes",async()=>{
+ foreach(var defect in new[]{"missing","extra","duplicate","stage","mode","inactive","rank","managed","hidden","customizable","impersonating","filter","message","expanded_handler","handler_id","handler_token","assembly_id","assembly_token","assembly_hidden","assembly_package","named_guard","own_handler","custom_bulk_handler"}){
+  var f=new PreflightFake();var rows=f.InternalMetadata["steps"]!.AsArray();var row=rows[0]!;var type=f.InternalMetadata["handler"]!;
+  switch(defect){
+   case "missing":rows.RemoveAt(0);break;
+   case "extra":{var extra=row.DeepClone();extra["sdkmessageprocessingstepid"]="00000000-0000-0000-0000-000000000099";rows.Add(extra);break;}
+   case "duplicate":rows.Add(row.DeepClone());break;
+   case "stage":row["stage"]=20;break;case "mode":row["mode"]=1;break;case "inactive":row["statecode"]=1;break;case "rank":row["rank"]=1;break;case "managed":row["ismanaged"]=true;break;
+   case "hidden":row["ishidden"]!["Value"]=false;break;case "customizable":row["iscustomizable"]!["Value"]=false;break;
+   case "impersonating":row["_impersonatinguserid_value"]=PreflightFake.Actor.ToString("D");break;
+   case "filter":row["_sdkmessagefilterid_value"]="00000000-0000-0000-0000-000000000099";break;
+   case "message":row["sdkmessageid"]!["name"]="Unexpected";break;
+   case "expanded_handler":row["eventhandler_plugintype"]!["typename"]="Custom.InternalOperationPlugin";break;
+   case "handler_id":type["plugintypeid"]="00000000-0000-0000-0000-000000000099";break;
+   case "handler_token":type["publickeytoken"]="0000000000000000";break;
+   case "assembly_id":type["_pluginassemblyid_value"]="00000000-0000-0000-0000-000000000099";break;
+   case "assembly_token":type["pluginassemblyid"]!["publickeytoken"]="0000000000000000";break;
+   case "assembly_hidden":type["pluginassemblyid"]!["ishidden"]!["Value"]=false;break;
+   case "assembly_package":type["pluginassemblyid"]!["_packageid_value"]="00000000-0000-0000-0000-000000000099";break;
+   case "named_guard":row["name"]="zk_KitchenGuard_forged";break;
+   case "own_handler":row["_eventhandler_value"]=GuardFixture.Handler;break;
+   case "custom_bulk_handler":row["stage"]=20;row["sdkmessageid"]!["name"]="CreateMultiple";row["eventhandler_plugintype"]!["typename"]="Custom.BulkPlugin";break;
+  }
+  await Reject(()=>f.Session().RunAsync("prepare-canaries"));Assert(f.Writes==0);
+ }
+});
+await Test("platform baseline exclusion retains exactly six strict runtime guards and blocks all extras",async()=>{
+ var metadata=PreflightFake.LoadInternalMetadata();
+ JsonObject[] Intrinsics()=>metadata["steps"]!.AsArray().Select(r=>r!.DeepClone().AsObject()).ToArray();
+ var combined=Intrinsics().Concat(GuardFixture.Steps()).ToArray();
+ var inventory=PlatformSteps.ValidateAndExclude(metadata["handler"]!.AsObject(),combined);
+ Assert(inventory.InternalCount==52&&inventory.CustomSteps.Length==6&&inventory.DefinitionHash.Length==64);
+ Checks.GuardSet(inventory.CustomSteps,GuardFixture.Handler);
+ var reordered=PlatformSteps.ValidateAndExclude(metadata["handler"]!.AsObject(),combined.Reverse().ToArray());
+ Assert(reordered.DefinitionHash==inventory.DefinitionHash);
+ foreach(var defect in new[]{"missing_guard","extra_guard","extra_intrinsic_lookalike","missing_intrinsic","drifted_intrinsic"}){
+  var rows=combined.Select(r=>r.DeepClone().AsObject()).ToList();
+  if(defect=="missing_guard")rows.RemoveAt(rows.Count-1);
+  if(defect=="extra_guard"){var extra=GuardFixture.Steps()[0];extra["sdkmessageprocessingstepid"]="00000000-0000-0000-0000-000000000099";rows.Add(extra);}
+  if(defect=="extra_intrinsic_lookalike"){var extra=rows[0].DeepClone().AsObject();extra["sdkmessageprocessingstepid"]="00000000-0000-0000-0000-000000000099";rows.Add(extra);}
+  if(defect=="missing_intrinsic")rows.RemoveAt(0);
+  if(defect=="drifted_intrinsic")rows[0]["sdkmessagefilterid"]!["primaryobjecttypecode"]="other_table";
+  await Reject(()=>{var checkedInventory=PlatformSteps.ValidateAndExclude(metadata["handler"]!.AsObject(),rows.ToArray());Checks.GuardSet(checkedInventory.CustomSteps,GuardFixture.Handler);return Task.CompletedTask;});
+ }
+ Assert(PlatformSteps.Query(GuardFixture.Handler).Contains("_eventhandler_value eq "+GuardFixture.Handler));
+ Assert(PlatformSteps.Query().Contains("startswith(name,'zk_KitchenGuard_')")&&PlatformSteps.Query().Contains("eventhandler_plugintype"));
+});
 await Test("ambiguous canary create independently reads back and stops without retry",async()=>{
  foreach(var invisible in new[]{true,false}){
   var f=new PreflightFake{AmbiguousCreate=true,CreateInvisible=invisible};var session=f.Session();await Reject(()=>session.RunAsync("prepare-canaries"));

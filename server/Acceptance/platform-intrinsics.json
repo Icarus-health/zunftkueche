@@ -1,0 +1,2115 @@
+{
+  "handler": {
+    "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+    "assemblyname": "Microsoft.Crm.ObjectModel",
+    "customizationlevel": 0,
+    "ismanaged": true,
+    "pluginassemblyid": {
+      "_packageid_value": null,
+      "culture": "neutral",
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": true,
+      "isolationmode": 1,
+      "name": "Microsoft.Crm.ObjectModel",
+      "pluginassemblyid": "a8243db5-fbf7-4637-881e-d635ca99269c",
+      "publickeytoken": "31bf3856ad364e35",
+      "sourcetype": 2,
+      "version": "9.0.0.0"
+    },
+    "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+    "publickeytoken": "31bf3856ad364e35",
+    "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin",
+    "version": "9.0.0.0"
+  },
+  "steps": [
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "4c3f76ac-0d25-4b61-87fd-e872210a88b8",
+      "_sdkmessageid_value": "dcbdbb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "dcbdbb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "4c3f76ac-0d25-4b61-87fd-e872210a88b8"
+      },
+      "sdkmessageid": {
+        "name": "ModifyAccess",
+        "sdkmessageid": "dcbdbb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "03b19d53-a042-4361-9cb2-6587f3688aee",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "4d08232f-0363-436c-be12-d20a9421c9e4",
+      "_sdkmessageid_value": "47d627c8-a324-400e-a59f-d25877550f06",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "47d627c8-a324-400e-a59f-d25877550f06",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "4d08232f-0363-436c-be12-d20a9421c9e4"
+      },
+      "sdkmessageid": {
+        "name": "Restore",
+        "sdkmessageid": "47d627c8-a324-400e-a59f-d25877550f06"
+      },
+      "sdkmessageprocessingstepid": "0b2ca5c8-4c1c-4650-b232-6c4413853b58",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "99a427fb-97c2-4e69-b9f4-52d9743a6c9c",
+      "_sdkmessageid_value": "1cbebb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "1cbebb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "99a427fb-97c2-4e69-b9f4-52d9743a6c9c"
+      },
+      "sdkmessageid": {
+        "name": "SetState",
+        "sdkmessageid": "1cbebb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "17d1ae4e-7e32-4c71-af5c-4d788ffd17ae",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "99e6da85-1407-4968-b7fa-39cc894a20cf",
+      "_sdkmessageid_value": "3a2f175d-d34f-41ca-94f2-8ec927d1c9e9",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "3a2f175d-d34f-41ca-94f2-8ec927d1c9e9",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "99e6da85-1407-4968-b7fa-39cc894a20cf"
+      },
+      "sdkmessageid": {
+        "name": "DeleteMultiple",
+        "sdkmessageid": "3a2f175d-d34f-41ca-94f2-8ec927d1c9e9"
+      },
+      "sdkmessageprocessingstepid": "21b58c8f-2469-4ba3-9f93-bef55545a993",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "65c0cea9-d3be-45a6-8ff2-ffd8e4071e22",
+      "_sdkmessageid_value": "20bebb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "20bebb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "65c0cea9-d3be-45a6-8ff2-ffd8e4071e22"
+      },
+      "sdkmessageid": {
+        "name": "Update",
+        "sdkmessageid": "20bebb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "224a4198-ec22-4618-89f7-2e169971d9d1",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "5abd4f4c-c72b-4da8-bbf9-423394f8d982",
+      "_sdkmessageid_value": "03bebb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "03bebb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "5abd4f4c-c72b-4da8-bbf9-423394f8d982"
+      },
+      "sdkmessageid": {
+        "name": "RetrieveMultiple",
+        "sdkmessageid": "03bebb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "24884de8-f3b2-4cb2-99e2-f4652fbb6a61",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "1a0bc779-6919-4edf-8f59-d237a50c2d27",
+      "_sdkmessageid_value": "9ebdbb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "9ebdbb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "1a0bc779-6919-4edf-8f59-d237a50c2d27"
+      },
+      "sdkmessageid": {
+        "name": "Create",
+        "sdkmessageid": "9ebdbb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "248cac45-6a55-4db0-ae99-65b1433479cb",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "de7afa3d-bd34-47f2-94dc-ecfb41eb3204",
+      "_sdkmessageid_value": "a1bdbb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "a1bdbb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "de7afa3d-bd34-47f2-94dc-ecfb41eb3204"
+      },
+      "sdkmessageid": {
+        "name": "Delete",
+        "sdkmessageid": "a1bdbb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "2a51449b-977c-4dd8-b89c-045af19007ee",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "ca24d679-2a16-4f88-94af-d9dd3b8dc722",
+      "_sdkmessageid_value": "3a2f175d-d34f-41ca-94f2-8ec927d1c9e9",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "3a2f175d-d34f-41ca-94f2-8ec927d1c9e9",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "ca24d679-2a16-4f88-94af-d9dd3b8dc722"
+      },
+      "sdkmessageid": {
+        "name": "DeleteMultiple",
+        "sdkmessageid": "3a2f175d-d34f-41ca-94f2-8ec927d1c9e9"
+      },
+      "sdkmessageprocessingstepid": "2d095986-c944-42b2-8baa-69247a5050b3",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "afa12e37-ab1b-4dfd-bc36-7996474b6468",
+      "_sdkmessageid_value": "9473dd2f-1787-4d63-8ed2-79d33ee9550e",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "9473dd2f-1787-4d63-8ed2-79d33ee9550e",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "afa12e37-ab1b-4dfd-bc36-7996474b6468"
+      },
+      "sdkmessageid": {
+        "name": "CreateMultipleLegacy",
+        "sdkmessageid": "9473dd2f-1787-4d63-8ed2-79d33ee9550e"
+      },
+      "sdkmessageprocessingstepid": "3db479ba-33ca-4690-8f0d-c823477ed6fa",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "891fc6fb-7c43-452d-a095-6636beae2d2e",
+      "_sdkmessageid_value": "47d627c8-a324-400e-a59f-d25877550f06",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "47d627c8-a324-400e-a59f-d25877550f06",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "891fc6fb-7c43-452d-a095-6636beae2d2e"
+      },
+      "sdkmessageid": {
+        "name": "Restore",
+        "sdkmessageid": "47d627c8-a324-400e-a59f-d25877550f06"
+      },
+      "sdkmessageprocessingstepid": "3dc1a1bf-fddc-40b8-836b-bfbddd5d7ec7",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "2cde0096-8b6c-4b54-b669-9f7abb6a1d76",
+      "_sdkmessageid_value": "8cbdbb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "8cbdbb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "2cde0096-8b6c-4b54-b669-9f7abb6a1d76"
+      },
+      "sdkmessageid": {
+        "name": "Assign",
+        "sdkmessageid": "8cbdbb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "444ba5ad-f1ad-43ba-8003-c108e0dbb8fe",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "a3eee498-6d4b-4f13-8290-250aa7bbce71",
+      "_sdkmessageid_value": "1dbebb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "1dbebb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "a3eee498-6d4b-4f13-8290-250aa7bbce71"
+      },
+      "sdkmessageid": {
+        "name": "SetStateDynamicEntity",
+        "sdkmessageid": "1dbebb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "49ff540d-0a97-49b6-9545-dcb191973560",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "24b5a76d-6411-447c-afa4-af892ab6066b",
+      "_sdkmessageid_value": "eb9990f6-feff-497f-974c-eb457ee0d072",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "eb9990f6-feff-497f-974c-eb457ee0d072",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "24b5a76d-6411-447c-afa4-af892ab6066b"
+      },
+      "sdkmessageid": {
+        "name": "CreateMultiple",
+        "sdkmessageid": "eb9990f6-feff-497f-974c-eb457ee0d072"
+      },
+      "sdkmessageprocessingstepid": "4c6c88e9-09ee-4eee-95eb-3dcc6cc5e044",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "45778715-00a4-4c10-ae9b-025cafd2dc62",
+      "_sdkmessageid_value": "04bebb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "04bebb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "45778715-00a4-4c10-ae9b-025cafd2dc62"
+      },
+      "sdkmessageid": {
+        "name": "RetrievePrincipalAccess",
+        "sdkmessageid": "04bebb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "4ca6eecd-5917-46b8-b777-9dc54b05ae04",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "de7afa3d-bd34-47f2-94dc-ecfb41eb3204",
+      "_sdkmessageid_value": "a1bdbb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "a1bdbb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "de7afa3d-bd34-47f2-94dc-ecfb41eb3204"
+      },
+      "sdkmessageid": {
+        "name": "Delete",
+        "sdkmessageid": "a1bdbb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "507cdf6d-258a-4539-afbb-af52c0027289",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "8b51d657-9bd6-4be6-8721-81d4f24eb696",
+      "_sdkmessageid_value": "a1bdbb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "a1bdbb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "8b51d657-9bd6-4be6-8721-81d4f24eb696"
+      },
+      "sdkmessageid": {
+        "name": "Delete",
+        "sdkmessageid": "a1bdbb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "527cd53f-ab65-41ce-989d-43328a49d625",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "2cb7d388-cbcf-418d-b572-a1aff97a3cfb",
+      "_sdkmessageid_value": "c5bdbb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "c5bdbb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "2cb7d388-cbcf-418d-b572-a1aff97a3cfb"
+      },
+      "sdkmessageid": {
+        "name": "GrantAccess",
+        "sdkmessageid": "c5bdbb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "58a8b9f4-d986-4b27-8495-0b4aebc903d1",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "40bfc920-b39c-48c6-8c14-b0cc351df812",
+      "_sdkmessageid_value": "9483dd2f-1787-4d63-8ed2-79d33ee9550e",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "9483dd2f-1787-4d63-8ed2-79d33ee9550e",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "40bfc920-b39c-48c6-8c14-b0cc351df812"
+      },
+      "sdkmessageid": {
+        "name": "UpdateMultipleLegacy",
+        "sdkmessageid": "9483dd2f-1787-4d63-8ed2-79d33ee9550e"
+      },
+      "sdkmessageprocessingstepid": "5fa397e5-5945-45f5-999e-3f0fded42874",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "40bfc920-b39c-48c6-8c14-b0cc351df812",
+      "_sdkmessageid_value": "9483dd2f-1787-4d63-8ed2-79d33ee9550e",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "9483dd2f-1787-4d63-8ed2-79d33ee9550e",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "40bfc920-b39c-48c6-8c14-b0cc351df812"
+      },
+      "sdkmessageid": {
+        "name": "UpdateMultipleLegacy",
+        "sdkmessageid": "9483dd2f-1787-4d63-8ed2-79d33ee9550e"
+      },
+      "sdkmessageprocessingstepid": "6033bc8e-b9e5-4afc-8965-17a061c8cb51",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "a7963969-3d98-42d9-8f1a-e5785e4f7b10",
+      "_sdkmessageid_value": "9ebdbb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "9ebdbb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "a7963969-3d98-42d9-8f1a-e5785e4f7b10"
+      },
+      "sdkmessageid": {
+        "name": "Create",
+        "sdkmessageid": "9ebdbb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "624820d1-d72d-4718-86b8-5bceceeb4a63",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "99e6da85-1407-4968-b7fa-39cc894a20cf",
+      "_sdkmessageid_value": "3a2f175d-d34f-41ca-94f2-8ec927d1c9e9",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "3a2f175d-d34f-41ca-94f2-8ec927d1c9e9",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "99e6da85-1407-4968-b7fa-39cc894a20cf"
+      },
+      "sdkmessageid": {
+        "name": "DeleteMultiple",
+        "sdkmessageid": "3a2f175d-d34f-41ca-94f2-8ec927d1c9e9"
+      },
+      "sdkmessageprocessingstepid": "64c0f976-05c9-4912-b9a4-78b742bf6a09",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "27031765-ce12-40c3-a72b-66fe70e7f9b7",
+      "_sdkmessageid_value": "9473dd2f-1787-4d63-8ed2-79d33ee9550e",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "9473dd2f-1787-4d63-8ed2-79d33ee9550e",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "27031765-ce12-40c3-a72b-66fe70e7f9b7"
+      },
+      "sdkmessageid": {
+        "name": "CreateMultipleLegacy",
+        "sdkmessageid": "9473dd2f-1787-4d63-8ed2-79d33ee9550e"
+      },
+      "sdkmessageprocessingstepid": "67e24afc-f2a3-4933-a880-85b294b98271",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "0762bb07-341f-4759-a07e-a1ef34d005d1",
+      "_sdkmessageid_value": "20bebb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "20bebb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "0762bb07-341f-4759-a07e-a1ef34d005d1"
+      },
+      "sdkmessageid": {
+        "name": "Update",
+        "sdkmessageid": "20bebb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "6f1d759f-b344-4e58-a881-4c20deebd2fb",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "8a5da425-733c-483c-ae13-0c4322b65e5c",
+      "_sdkmessageid_value": "f2bdbb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "f2bdbb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "8a5da425-733c-483c-ae13-0c4322b65e5c"
+      },
+      "sdkmessageid": {
+        "name": "Retrieve",
+        "sdkmessageid": "f2bdbb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "798e1c40-0fc4-4c00-a9e3-af67098d7c85",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "b25fdfb5-809d-454c-8a59-ef8dcb2d357e",
+      "_sdkmessageid_value": "e2ac2e19-aea0-47a3-b024-f7a7015b4d60",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "e2ac2e19-aea0-47a3-b024-f7a7015b4d60",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "b25fdfb5-809d-454c-8a59-ef8dcb2d357e"
+      },
+      "sdkmessageid": {
+        "name": "UpdateMultiple",
+        "sdkmessageid": "e2ac2e19-aea0-47a3-b024-f7a7015b4d60"
+      },
+      "sdkmessageprocessingstepid": "7b7f6c92-8013-4117-9cff-89b18e057dfa",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "0762bb07-341f-4759-a07e-a1ef34d005d1",
+      "_sdkmessageid_value": "20bebb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "20bebb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "0762bb07-341f-4759-a07e-a1ef34d005d1"
+      },
+      "sdkmessageid": {
+        "name": "Update",
+        "sdkmessageid": "20bebb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "7f9231ac-ab2c-4fa5-b3c4-38df281b2d07",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "27031765-ce12-40c3-a72b-66fe70e7f9b7",
+      "_sdkmessageid_value": "9473dd2f-1787-4d63-8ed2-79d33ee9550e",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "9473dd2f-1787-4d63-8ed2-79d33ee9550e",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "27031765-ce12-40c3-a72b-66fe70e7f9b7"
+      },
+      "sdkmessageid": {
+        "name": "CreateMultipleLegacy",
+        "sdkmessageid": "9473dd2f-1787-4d63-8ed2-79d33ee9550e"
+      },
+      "sdkmessageprocessingstepid": "81eeb047-91ce-45e7-b1d5-b4d05182d5d0",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "fb4616f2-9fb6-478e-bf29-01e932eabffa",
+      "_sdkmessageid_value": "cebdbb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "cebdbb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "fb4616f2-9fb6-478e-bf29-01e932eabffa"
+      },
+      "sdkmessageid": {
+        "name": "IsValidStateTransition",
+        "sdkmessageid": "cebdbb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "852aab10-e7de-44df-9b89-5c94e516a5a8",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "65c0cea9-d3be-45a6-8ff2-ffd8e4071e22",
+      "_sdkmessageid_value": "20bebb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "20bebb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "65c0cea9-d3be-45a6-8ff2-ffd8e4071e22"
+      },
+      "sdkmessageid": {
+        "name": "Update",
+        "sdkmessageid": "20bebb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "8769bc79-467b-4a6b-99ab-b6714afd16e7",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "1a0bc779-6919-4edf-8f59-d237a50c2d27",
+      "_sdkmessageid_value": "9ebdbb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "9ebdbb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "1a0bc779-6919-4edf-8f59-d237a50c2d27"
+      },
+      "sdkmessageid": {
+        "name": "Create",
+        "sdkmessageid": "9ebdbb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "881e0e79-76aa-42d0-949c-f36b67a288a1",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "4ee18d2b-7975-4394-b03d-66bb6205b33c",
+      "_sdkmessageid_value": "03bebb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "03bebb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "4ee18d2b-7975-4394-b03d-66bb6205b33c"
+      },
+      "sdkmessageid": {
+        "name": "RetrieveMultiple",
+        "sdkmessageid": "03bebb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "89299433-9dee-41ea-80c0-5343aeacdcc0",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "891fc6fb-7c43-452d-a095-6636beae2d2e",
+      "_sdkmessageid_value": "47d627c8-a324-400e-a59f-d25877550f06",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "47d627c8-a324-400e-a59f-d25877550f06",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "891fc6fb-7c43-452d-a095-6636beae2d2e"
+      },
+      "sdkmessageid": {
+        "name": "Restore",
+        "sdkmessageid": "47d627c8-a324-400e-a59f-d25877550f06"
+      },
+      "sdkmessageprocessingstepid": "951bb438-90ea-4411-b8c1-49d17ce7ca3e",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "afa12e37-ab1b-4dfd-bc36-7996474b6468",
+      "_sdkmessageid_value": "9473dd2f-1787-4d63-8ed2-79d33ee9550e",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "9473dd2f-1787-4d63-8ed2-79d33ee9550e",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "afa12e37-ab1b-4dfd-bc36-7996474b6468"
+      },
+      "sdkmessageid": {
+        "name": "CreateMultipleLegacy",
+        "sdkmessageid": "9473dd2f-1787-4d63-8ed2-79d33ee9550e"
+      },
+      "sdkmessageprocessingstepid": "96b43b90-9cfe-42f5-8fea-6016d9d84bd4",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "ca24d679-2a16-4f88-94af-d9dd3b8dc722",
+      "_sdkmessageid_value": "3a2f175d-d34f-41ca-94f2-8ec927d1c9e9",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "3a2f175d-d34f-41ca-94f2-8ec927d1c9e9",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "ca24d679-2a16-4f88-94af-d9dd3b8dc722"
+      },
+      "sdkmessageid": {
+        "name": "DeleteMultiple",
+        "sdkmessageid": "3a2f175d-d34f-41ca-94f2-8ec927d1c9e9"
+      },
+      "sdkmessageprocessingstepid": "9aea9bb8-8b7f-4ce1-9b8b-8b29ec28abe8",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "4d08232f-0363-436c-be12-d20a9421c9e4",
+      "_sdkmessageid_value": "47d627c8-a324-400e-a59f-d25877550f06",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "47d627c8-a324-400e-a59f-d25877550f06",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "4d08232f-0363-436c-be12-d20a9421c9e4"
+      },
+      "sdkmessageid": {
+        "name": "Restore",
+        "sdkmessageid": "47d627c8-a324-400e-a59f-d25877550f06"
+      },
+      "sdkmessageprocessingstepid": "9e2ba042-cc48-4370-8d25-faf82086dcb3",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "513f71c5-0dda-43a1-94bc-d3544f6dbf59",
+      "_sdkmessageid_value": "11bebb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "11bebb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "513f71c5-0dda-43a1-94bc-d3544f6dbf59"
+      },
+      "sdkmessageid": {
+        "name": "RevokeAccess",
+        "sdkmessageid": "11bebb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "a374832d-726b-4102-8b76-b81c7848e4f7",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "58e22e1d-3c8a-4bd1-9e25-b8219360d65c",
+      "_sdkmessageid_value": "1dbebb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "1dbebb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "58e22e1d-3c8a-4bd1-9e25-b8219360d65c"
+      },
+      "sdkmessageid": {
+        "name": "SetStateDynamicEntity",
+        "sdkmessageid": "1dbebb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "ab3ec703-0f17-425b-ae22-6b005321131d",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "8b51d657-9bd6-4be6-8721-81d4f24eb696",
+      "_sdkmessageid_value": "a1bdbb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "a1bdbb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "8b51d657-9bd6-4be6-8721-81d4f24eb696"
+      },
+      "sdkmessageid": {
+        "name": "Delete",
+        "sdkmessageid": "a1bdbb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "afe1959b-cc5e-4758-9d2f-e717c02ed003",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "716d4f4b-257d-4a91-bc8d-bbe1fce0916a",
+      "_sdkmessageid_value": "1cbebb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "1cbebb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "716d4f4b-257d-4a91-bc8d-bbe1fce0916a"
+      },
+      "sdkmessageid": {
+        "name": "SetState",
+        "sdkmessageid": "1cbebb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "b4f4c4b0-70c1-4c03-b099-29865f3ddf4e",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "b25fdfb5-809d-454c-8a59-ef8dcb2d357e",
+      "_sdkmessageid_value": "e2ac2e19-aea0-47a3-b024-f7a7015b4d60",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "e2ac2e19-aea0-47a3-b024-f7a7015b4d60",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "b25fdfb5-809d-454c-8a59-ef8dcb2d357e"
+      },
+      "sdkmessageid": {
+        "name": "UpdateMultiple",
+        "sdkmessageid": "e2ac2e19-aea0-47a3-b024-f7a7015b4d60"
+      },
+      "sdkmessageprocessingstepid": "ba5a1106-f58f-4f22-baf5-8ac3f2934d2c",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "7c16e4d7-90a3-4f79-a067-d8ad475f528f",
+      "_sdkmessageid_value": "eb9990f6-feff-497f-974c-eb457ee0d072",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "eb9990f6-feff-497f-974c-eb457ee0d072",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "7c16e4d7-90a3-4f79-a067-d8ad475f528f"
+      },
+      "sdkmessageid": {
+        "name": "CreateMultiple",
+        "sdkmessageid": "eb9990f6-feff-497f-974c-eb457ee0d072"
+      },
+      "sdkmessageprocessingstepid": "c63b88a3-ede5-47c1-896a-ed560b9c760c",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "361674b0-f2b5-4b57-99a7-7a2d32dca828",
+      "_sdkmessageid_value": "e2ac2e19-aea0-47a3-b024-f7a7015b4d60",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "e2ac2e19-aea0-47a3-b024-f7a7015b4d60",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "361674b0-f2b5-4b57-99a7-7a2d32dca828"
+      },
+      "sdkmessageid": {
+        "name": "UpdateMultiple",
+        "sdkmessageid": "e2ac2e19-aea0-47a3-b024-f7a7015b4d60"
+      },
+      "sdkmessageprocessingstepid": "cb80e81d-6a10-4223-9d35-4b1d3760d81e",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "3167a4bf-4b6c-4978-b8f1-54f68beb73b7",
+      "_sdkmessageid_value": "9483dd2f-1787-4d63-8ed2-79d33ee9550e",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "9483dd2f-1787-4d63-8ed2-79d33ee9550e",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "3167a4bf-4b6c-4978-b8f1-54f68beb73b7"
+      },
+      "sdkmessageid": {
+        "name": "UpdateMultipleLegacy",
+        "sdkmessageid": "9483dd2f-1787-4d63-8ed2-79d33ee9550e"
+      },
+      "sdkmessageprocessingstepid": "d937f9c6-d171-48da-8a50-61264a54edef",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "a223258b-5fbd-4f43-a75c-b16eecd235be",
+      "_sdkmessageid_value": "cebdbb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "cebdbb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "a223258b-5fbd-4f43-a75c-b16eecd235be"
+      },
+      "sdkmessageid": {
+        "name": "IsValidStateTransition",
+        "sdkmessageid": "cebdbb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "dc692732-6d8e-4cbd-a8cd-d0430aceda08",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "4f1fd08c-5d92-40ef-a8a5-fbada3c0171c",
+      "_sdkmessageid_value": "10bebb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "10bebb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "4f1fd08c-5d92-40ef-a8a5-fbada3c0171c"
+      },
+      "sdkmessageid": {
+        "name": "RetrieveSharedPrincipalsAndAccess",
+        "sdkmessageid": "10bebb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "e59eb6eb-0511-4795-91ba-698aaf1c7e23",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "361674b0-f2b5-4b57-99a7-7a2d32dca828",
+      "_sdkmessageid_value": "e2ac2e19-aea0-47a3-b024-f7a7015b4d60",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "e2ac2e19-aea0-47a3-b024-f7a7015b4d60",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "361674b0-f2b5-4b57-99a7-7a2d32dca828"
+      },
+      "sdkmessageid": {
+        "name": "UpdateMultiple",
+        "sdkmessageid": "e2ac2e19-aea0-47a3-b024-f7a7015b4d60"
+      },
+      "sdkmessageprocessingstepid": "e7eeff8b-4e77-4700-bb41-64fa79023d58",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "3167a4bf-4b6c-4978-b8f1-54f68beb73b7",
+      "_sdkmessageid_value": "9483dd2f-1787-4d63-8ed2-79d33ee9550e",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "9483dd2f-1787-4d63-8ed2-79d33ee9550e",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "3167a4bf-4b6c-4978-b8f1-54f68beb73b7"
+      },
+      "sdkmessageid": {
+        "name": "UpdateMultipleLegacy",
+        "sdkmessageid": "9483dd2f-1787-4d63-8ed2-79d33ee9550e"
+      },
+      "sdkmessageprocessingstepid": "e81561bc-c6de-4c58-89f8-cc8e08e4e4c5",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "24b5a76d-6411-447c-afa4-af892ab6066b",
+      "_sdkmessageid_value": "eb9990f6-feff-497f-974c-eb457ee0d072",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "eb9990f6-feff-497f-974c-eb457ee0d072",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "24b5a76d-6411-447c-afa4-af892ab6066b"
+      },
+      "sdkmessageid": {
+        "name": "CreateMultiple",
+        "sdkmessageid": "eb9990f6-feff-497f-974c-eb457ee0d072"
+      },
+      "sdkmessageprocessingstepid": "f6ffea09-c52c-46fb-b267-ce4b113cc559",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "a7963969-3d98-42d9-8f1a-e5785e4f7b10",
+      "_sdkmessageid_value": "9ebdbb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "9ebdbb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "a7963969-3d98-42d9-8f1a-e5785e4f7b10"
+      },
+      "sdkmessageid": {
+        "name": "Create",
+        "sdkmessageid": "9ebdbb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "f71308f7-007b-4f26-a67c-e3b4fdadb187",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "c0eefb7b-df5d-4ad4-96b4-bc195c453154",
+      "_sdkmessageid_value": "f2bdbb1b-ea3e-db11-86a7-000a3a5473e8",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "f2bdbb1b-ea3e-db11-86a7-000a3a5473e8",
+        "primaryobjecttypecode": "zk_kitchenoperation",
+        "sdkmessagefilterid": "c0eefb7b-df5d-4ad4-96b4-bc195c453154"
+      },
+      "sdkmessageid": {
+        "name": "Retrieve",
+        "sdkmessageid": "f2bdbb1b-ea3e-db11-86a7-000a3a5473e8"
+      },
+      "sdkmessageprocessingstepid": "fb004637-14fe-4011-83f5-c594bbdfc8cc",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    },
+    {
+      "_eventhandler_value": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+      "_impersonatinguserid_value": null,
+      "_sdkmessagefilterid_value": "7c16e4d7-90a3-4f79-a067-d8ad475f528f",
+      "_sdkmessageid_value": "eb9990f6-feff-497f-974c-eb457ee0d072",
+      "customizationlevel": 1,
+      "eventhandler_plugintype": {
+        "_pluginassemblyid_value": "a8243db5-fbf7-4637-881e-d635ca99269c",
+        "plugintypeid": "29efe3a5-047c-40a3-b89c-2787eff38eee",
+        "typename": "Microsoft.Crm.Extensibility.InternalOperationPlugin"
+      },
+      "filteringattributes": null,
+      "iscustomizable": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "iscustomizableanddeletable",
+        "Value": true
+      },
+      "ishidden": {
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "ishidden",
+        "Value": true
+      },
+      "ismanaged": false,
+      "mode": 0,
+      "name": "ObjectModel Implementation",
+      "rank": 0,
+      "sdkmessagefilterid": {
+        "_sdkmessageid_value": "eb9990f6-feff-497f-974c-eb457ee0d072",
+        "primaryobjecttypecode": "zk_kitchenworkspace",
+        "sdkmessagefilterid": "7c16e4d7-90a3-4f79-a067-d8ad475f528f"
+      },
+      "sdkmessageid": {
+        "name": "CreateMultiple",
+        "sdkmessageid": "eb9990f6-feff-497f-974c-eb457ee0d072"
+      },
+      "sdkmessageprocessingstepid": "fb64ff69-1490-45fb-9c11-d5cf5a7f793a",
+      "stage": 30,
+      "statecode": 0,
+      "supporteddeployment": 0
+    }
+  ]
+}
