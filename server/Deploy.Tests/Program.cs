@@ -180,6 +180,19 @@ var e=new ResourceEngine(f);await e.AuthenticateTargetAsync();var p=new Provisio
 if(reject)await Reject(()=>p.VerifyWorkspace(seed,owner));else{await p.VerifyWorkspace(seed,owner);Assert(p.Gaps.Count==0);}
 Assert(f.Writes==0);
 }
+await Test("metadata drift diagnosis names only trusted resource and fixed field path",async()=>{
+var f=Fixture(Parse("{\"value\":[{\"SchemaName\":\"zk_name\",\"MaxLength\":850,\"private-note\":\"Bearer secret-token receipt-body\"}]}"));
+var engine=new ResourceEngine(f);await engine.AuthenticateTargetAsync();
+await Reject(()=>engine.EnsureAsync("zk_kitchenworkspace.zk_name","attributes","attributes",new(),Parse("{\"SchemaName\":\"zk_name\",\"MaxLength\":200}"),true));
+var log=System.Text.Json.JsonSerializer.Serialize(engine.Resources);
+Assert(log.Contains("zk_kitchenworkspace.zk_name")&&log.Contains("$.MaxLength")&&!log.Contains("850")&&!log.Contains("secret-token")&&!log.Contains("receipt-body")&&f.Writes==0);
+});
+await Test("metadata drift diagnosis handles nested managed-property value safely",async()=>{
+var f=Fixture(Parse("{\"value\":[{\"RequiredLevel\":{\"Value\":\"sensitive-provider-value\",\"ManagedPropertyLogicalName\":\"untrusted-note\"}}]}"));
+var engine=new ResourceEngine(f);await engine.AuthenticateTargetAsync();
+await Reject(()=>engine.EnsureAsync("zk_kitchenworkspace.zk_name","attributes","attributes",new(),Parse("{\"RequiredLevel\":{\"Value\":\"None\"}}"),true));
+var log=System.Text.Json.JsonSerializer.Serialize(engine.Resources);Assert(log.Contains("$.RequiredLevel.Value")&&!log.Contains("sensitive-provider-value")&&!log.Contains("untrusted-note")&&f.Writes==0);
+});
 Console.WriteLine($"{passed} passed; {failed} failed");return failed==0?0:1;
 Fake Fixture(JsonObject? data, Func<HttpMethod,string,JsonNode?,Task<JsonNode?>>? other=null)=>new((m,p,b)=>{
  if(p=="WhoAmI")return Task.FromResult<JsonNode?>(Parse($"{{\"OrganizationId\":\"{Target.Organization}\",\"UserId\":\"00000000-0000-0000-0000-000000000002\"}}"));

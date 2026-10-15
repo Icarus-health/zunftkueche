@@ -77,24 +77,46 @@ public sealed class ResourceEngine(IDataverseTransport transport, string? authen
             status = ambiguous ? "confirmed_after_ambiguous_write" : "created_and_read_back";
         }
         if (row == null) { Resources.Add(new { resource = name, status = "missing" }); return null; }
-        RequireMatch(row, expected);
+        RequireMatch(row, expected, (fieldPath, code) =>
+            Resources.Add(new { resource = name, status = code, fieldPath }));
         var idField = new[] { "MetadataId", "publisherid", "solutionid", "pluginpackageid", "customapiid", "sdkmessageprocessingstepid", "zk_kitchenworkspaceid" }.FirstOrDefault(row.ContainsKey);
         string? id = idField == null ? null : Id(row, idField);
         Resources.Add(new { resource = name, status, id });
         return row;
     }
-    public static void RequireMatch(JsonNode? actual, JsonNode? expected) {
+    // Only these source-defined field names may appear in diagnostics. Neither remote values,
+    // unknown property names nor expected content (e.g. seed JSON/package content) is logged.
+    private static readonly HashSet<string> DiagnosticFields = new(StringComparer.Ordinal) {
+        "SchemaName", "LogicalName", "OwnershipType", "IsActivity", "IsOptimisticConcurrencyEnabled", "TableType",
+        "PrimaryNameAttribute", "PrimaryIdAttribute", "RequiredLevel", "Value", "IsPrimaryName", "MaxLength",
+        "FormatName", "Format", "MinValue", "MaxValue", "DateTimeBehavior", "Targets", "KeyAttributes",
+        "ReferencedEntity", "ReferencedAttribute", "ReferencingEntity", "ReferencingAttribute", "ReferencingEntityNavigationPropertyName",
+        "CascadeConfiguration", "Assign", "Delete", "Merge", "Reparent", "Share", "Unshare",
+        "uniquename", "version", "ismanaged", "customizationprefix", "customizationoptionvalueprefix", "_publisherid_value",
+        "zk_kitchenworkspaceid", "zk_name", "zk_state", "zk_revision", "_ownerid_value", "content", "statecode", "isolationmode",
+        "bindingtype", "isfunction", "isprivate", "allowedcustomprocessingsteptype", "workflowsdkstepenabled", "executeprivilegename",
+        "_plugintypeid_value", "boundentitylogicalname", "CustomAPIRequestParameters", "CustomAPIResponseProperties", "type", "isoptional", "logicalentityname",
+        "stage", "mode", "rank", "supporteddeployment", "filteringattributes", "_impersonatinguserid_value", "_eventhandler_value", "_sdkmessagefilterid_value", "_sdkmessageid_value"
+    };
+    public static void RequireMatch(JsonNode? actual, JsonNode? expected, Action<string, string>? onMismatch = null) => Match(actual, expected, "$", onMismatch);
+    private static void Match(JsonNode? actual, JsonNode? expected, string path, Action<string, string>? onMismatch) {
+        void Fail(string code) { onMismatch?.Invoke(path, code); throw new DeploymentException(code); }
         if (expected is JsonObject obj) {
-            if (actual is not JsonObject read) throw new DeploymentException("resource_definition_drift");
+            if (actual is not JsonObject) Fail("resource_definition_drift");
+            var read = (JsonObject)actual!;
             foreach (var p in obj) {
-                if (!read.ContainsKey(p.Key)) throw new DeploymentException("resource_definition_missing_field");
-                RequireMatch(read[p.Key], p.Value);
+                var childPath = path + "." + (DiagnosticFields.Contains(p.Key) ? p.Key : "field");
+                if (!read.ContainsKey(p.Key)) {
+                    onMismatch?.Invoke(childPath, "resource_definition_missing_field");
+                    throw new DeploymentException("resource_definition_missing_field");
+                }
+                Match(read[p.Key], p.Value, childPath, onMismatch);
             }
         } else if (expected is JsonArray arr) {
-            if (actual is not JsonArray read || read.Count != arr.Count) throw new DeploymentException("resource_definition_drift");
+            if (actual is not JsonArray read || read.Count != arr.Count) Fail("resource_definition_drift");
             // Arrays here represent exact ordered keys/targets, or a single API parameter.
-            for (int i = 0; i < arr.Count; i++) RequireMatch(read[i], arr[i]);
-        } else if (!JsonNode.DeepEquals(actual, expected)) throw new DeploymentException("resource_definition_drift");
+            for (int i = 0; i < arr.Count; i++) Match(actual![i], arr[i], path + "[]", onMismatch);
+        } else if (!JsonNode.DeepEquals(actual, expected)) Fail("resource_definition_drift");
     }
 }
 public static class Readiness {
