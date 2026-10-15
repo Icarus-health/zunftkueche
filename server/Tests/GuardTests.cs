@@ -59,6 +59,7 @@ static class GuardTests
                 try { Execute(c); throw new Exception("expected denial"); }
                 catch (InvalidPluginExecutionException e) {
                     var expected = "Direct kitchen table writes are blocked. [zk_guard_v1;m=" + mask + ";p=" + kind + "]";
+                    if (kind == 2 || kind == 3) expected += " [zk_guard_chain_v1;w=" + (kind == 2 ? 17 : 16) + ";s=8;g=0]";
                     if (e.Message != expected) throw new Exception("diagnostic mismatch: expected mask " + mask);
                 }
             }

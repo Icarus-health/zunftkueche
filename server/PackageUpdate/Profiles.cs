@@ -1,12 +1,12 @@
 using Kitchen.Deploy;
 namespace Kitchen.PackageUpdate;
 public static class Profiles {
- public const string PriorPath="server/artifacts/Zunftkueche.Dataverse.1.0.0.nupkg";
- public const string CurrentPath="server/artifacts/guard-diagnostic-v1/Zunftkueche.Dataverse.1.0.0.nupkg";
- public const string PriorHash="215fb97e2a374a4e621719c3c04cc9b21fc55686ca94fe67cc0d2a221c5bdf73";
- public const int PriorLength=290280;
- public const string SourceManifest="server/artifacts/guard-diagnostic-v1/source-manifest.sha256";
- public const string SourceHash="5bffc2cf14f08132e77f903305a5863cafa45e39aaa2b4a14fd1a17e8f0a29b3";
+ public const string PriorPath="server/artifacts/guard-diagnostic-v1/Zunftkueche.Dataverse.1.0.0.nupkg";
+ public const string CurrentPath="server/artifacts/guard-wrapper-v2/Zunftkueche.Dataverse.1.0.0.nupkg";
+ public const string PriorHash="1c6ea57c3c56922911d201fde6a7c2a862efa0619ac7f81e5fe42fcf2ede7d92";
+ public const int PriorLength=290994;
+ public const string SourceManifest="server/artifacts/guard-wrapper-v2/source-manifest.sha256";
+ public const string SourceHash="0b55bc2e593a00e56bc5eaa37653122e45934f7f3a942d59b38bddbdbd818041";
  public static byte[] ReadPinned(string path,string hash,int length) {
   if(new FileInfo(path).Length!=length)throw new DeploymentException("local_artifact_length_mismatch");
   var bytes=File.ReadAllBytes(path);

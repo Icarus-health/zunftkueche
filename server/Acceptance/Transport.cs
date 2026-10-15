@@ -7,7 +7,7 @@ using Kitchen.Deploy;
 namespace Kitchen.Acceptance;
 [JsonConverter(typeof(JsonStringEnumConverter<FailureKind>))]
 public enum FailureKind { unknown, guard_context, guard_target, invalid_guard_marker, invalid_execution_context, validation_prefix, invalid_json, request_required }
-public sealed record Outcome(int Status, JsonNode? Value, bool GuardDenied=false, bool Unsupported=false, string? NumericCode=null,FailureKind FailureKind=FailureKind.unknown,int? GuardMask=null,int? ParentKind=null) {
+public sealed record Outcome(int Status, JsonNode? Value, bool GuardDenied=false, bool Unsupported=false, string? NumericCode=null,FailureKind FailureKind=FailureKind.unknown,int? GuardMask=null,int? ParentKind=null,int? WrapperMask=null,int? SourceMask=null,int? SourceKind=null) {
  public bool Success=>Status is >=200 and <=299;
 }
 public interface IAcceptanceTransport:IDataverseTransport {
@@ -31,19 +31,22 @@ public static class Diagnosis {
     string.Equals(message,"DeleteMultiple has not yet been implemented.",StringComparison.Ordinal);
    var kind=KnownFailureKind(message);
    var facts=GuardFacts(status,code,kind,message);
-   return new(status,null,guard,unsupported,code,kind,facts.Mask,facts.Parent);
+   return new(status,null,guard,unsupported,code,kind,facts.Mask,facts.Parent,facts.Wrapper,facts.Source,facts.Kind);
   }catch(Exception e)when(e is JsonException or InvalidOperationException or KeyNotFoundException){return new(status,null);}
  }
- static (int? Mask,int? Parent) GuardFacts(int status,string? code,FailureKind kind,string message) {
-  if(status is not (400 or 500)||code!="0x80040265"||kind!=FailureKind.guard_context)return (null,null);
+ static (int? Mask,int? Parent,int? Wrapper,int? Source,int? Kind) GuardFacts(int status,string? code,FailureKind kind,string message) {
+  if(status is not (400 or 500)||code!="0x80040265"||kind!=FailureKind.guard_context)return (null,null,null,null,null);
   const string prefix="Direct kitchen table writes are blocked. ";
   // Exact full message: no remote prefix/suffix, duplicate markers or unknown versions.
-  var match=System.Text.RegularExpressions.Regex.Match(message,@"\ADirect kitchen table writes are blocked\. \[zk_guard_v1;m=(0|[1-9][0-9]{0,4});p=(0|[1-9][0-9]?)\]\z",System.Text.RegularExpressions.RegexOptions.CultureInvariant);
-  if(!message.StartsWith(prefix,StringComparison.Ordinal)||!match.Success)return (null,null);
-  if(!int.TryParse(match.Groups[1].Value,out int mask)||mask>32767||!int.TryParse(match.Groups[2].Value,out int parent)||parent>10)return (null,null);
-  return (mask,parent);
+  var match=System.Text.RegularExpressions.Regex.Match(message,@"\ADirect kitchen table writes are blocked\. \[zk_guard_v1;m=(0|[1-9][0-9]{0,4});p=(0|[1-9][0-9]?)\](?: \[zk_guard_chain_v1;w=(0|[1-9][0-9]{0,2});s=(0|[1-9][0-9]{0,4});g=(0|[1-9][0-9]?)\])?\z",System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+  if(!message.StartsWith(prefix,StringComparison.Ordinal)||!match.Success)return (null,null,null,null,null);
+  if(!int.TryParse(match.Groups[1].Value,out int mask)||mask>32767||!int.TryParse(match.Groups[2].Value,out int parent)||parent>10)return (null,null,null,null,null);
+  if(!match.Groups[3].Success)return (mask,parent,null,null,null);
+  if(parent is not (2 or 3)||!int.TryParse(match.Groups[3].Value,out int wrapper)||wrapper>127||!int.TryParse(match.Groups[4].Value,out int source)||source>32767||!int.TryParse(match.Groups[5].Value,out int sourceKind)||sourceKind>10)return (null,null,null,null,null);
+  return (mask,parent,wrapper,source,sourceKind);
  }
  public static bool HasSafeGuardFacts(Outcome o)=>o.Status is 400 or 500&&o.NumericCode=="0x80040265"&&o.FailureKind==FailureKind.guard_context&&o.GuardMask is >=0 and <=32767&&o.ParentKind is >=0 and <=10;
+ public static bool HasSafeChainFacts(Outcome o)=>HasSafeGuardFacts(o)&&o.ParentKind is 2 or 3&&o.WrapperMask is >=0 and <=127&&o.SourceMask is >=0 and <=32767&&o.SourceKind is >=0 and <=10;
  static FailureKind KnownFailureKind(string message) {
   if(message.Contains("Direct kitchen table writes are blocked.",StringComparison.Ordinal))return FailureKind.guard_context;
   if(message.Contains("Kitchen history mutations and bulk/direct writes are blocked.",StringComparison.Ordinal))return FailureKind.guard_target;

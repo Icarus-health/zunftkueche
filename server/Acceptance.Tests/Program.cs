@@ -283,7 +283,7 @@ await Test("transport stops error response reads at diagnostic bound and emits n
  Assert(stream.BytesRead<=8193&&!result.GuardDenied&&result.NumericCode==null&&result.Value==null);
 });
 await Test("package prerequisite download delegates to bounded byte reader",async()=>{
-var bytes=File.ReadAllBytes("server/artifacts/guard-diagnostic-v1/Zunftkueche.Dataverse.1.0.0.nupkg");int calls=0;
+var bytes=File.ReadAllBytes("server/artifacts/guard-wrapper-v2/Zunftkueche.Dataverse.1.0.0.nupkg");int calls=0;
 using var handler=new ResponseHandler(request=>{calls++;Assert(request.Method==HttpMethod.Get&&request.RequestUri!.AbsoluteUri==Target.Url+"/api/data/v9.2/pluginpackages(00000000-0000-0000-0000-000000000030)/package/$value"&&request.Headers.Authorization?.Parameter=="synthetic-token");return new(System.Net.HttpStatusCode.OK){Content=new ByteArrayContent(bytes)};});
 using var transport=new AcceptanceTransport(Target.Url,()=>Task.FromResult("synthetic-token"),handler);
 Assert((await ((IDataverseTransport)transport).ReadPackageFileAsync("00000000-0000-0000-0000-000000000030")).SequenceEqual(bytes)&&calls==1);
@@ -301,5 +301,17 @@ await Test("fixed guard suffix exposes only bounded canonical numeric facts",asy
  var fake=new RuntimeFake{Refusal=good};var e=new Evidence();await Reject(()=>fake.Run(e));
  var row=System.Text.Json.JsonSerializer.SerializeToNode(e.Checks.Single(c=>c.Name=="commit_http_refused"))!;
  Assert(row["GuardMask"]?.GetValue<int>()==2048&&row["ParentKind"]?.GetValue<int>()==1&&fake.WriteRequests==1&&fake.Commits==0);
+});
+await Test("chain guard facts remain bounded and reach failure evidence",async()=>{
+ Outcome Parse(string suffix)=>Diagnosis.Refusal(400,System.Text.Encoding.UTF8.GetBytes(new JsonObject{["error"]=new JsonObject{["code"]="0x80040265",["message"]="Direct kitchen table writes are blocked. [zk_guard_v1;m=2064;p=3] "+suffix}}.ToJsonString()));
+ const string valid="[zk_guard_chain_v1;w=0;s=2048;g=1]";
+ var good=Parse(valid);var json=System.Text.Json.JsonSerializer.SerializeToNode(good)!;
+ Assert(json["WrapperMask"]?.GetValue<int>()==0&&json["SourceMask"]?.GetValue<int>()==2048&&json["SourceKind"]?.GetValue<int>()==1&&json["GuardMask"]?.GetValue<int>()==2064);
+ foreach(var suffix in new[]{"[zk_guard_chain_v1;w=128;s=0;g=1]","[zk_guard_chain_v1;w=0;s=32768;g=1]","[zk_guard_chain_v1;w=0;s=0;g=11]","[zk_guard_chain_v1;w=00;s=0;g=1]","[zk_guard_chain_v1;w=-1;s=0;g=1]","[zk_guard_chain_v2;w=0;s=0;g=1]",valid+" "+valid,valid+" secret"}){
+  var row=System.Text.Json.JsonSerializer.SerializeToNode(Parse(suffix))!;Assert(row["WrapperMask"]==null&&row["SourceMask"]==null&&row["SourceKind"]==null&&row["GuardMask"]==null);
+ }
+ var fake=new RuntimeFake{Refusal=good};var evidence=new Evidence();await Reject(()=>fake.Run(evidence));
+ var facts=System.Text.Json.JsonSerializer.SerializeToNode(evidence.Checks.Single(c=>c.Name=="commit_http_refused"))!;
+ Assert(facts["WrapperMask"]?.GetValue<int>()==0&&facts["SourceMask"]?.GetValue<int>()==2048&&facts["SourceKind"]?.GetValue<int>()==1&&fake.Commits==0);
 });
 Console.WriteLine($"{passed} passed; {failed} failed");return failed==0?0:1;

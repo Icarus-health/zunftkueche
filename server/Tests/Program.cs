@@ -157,6 +157,7 @@ Check("post-write validation-shaped storage faults must escape", () => {
     throw new Exception("storage failure became definitive rejection");
 });
 GuardTests.Run(Check);
+WrapperTests.Run(Check);
 Console.WriteLine($"Policy tests: {passed} passed, {failed} failed");
 return failed == 0 ? 0 : 1;
 

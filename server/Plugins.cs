@@ -92,41 +92,73 @@ namespace Zunftkueche
     }
     public sealed class KitchenWriteGuardPlugin : IPlugin
     {
-        // Called only after the original guard has already denied the operation.
+        private static int ParentKind(IPluginExecutionContext? p)
+        {
+            if (p == null) return 0;
+            var names = new[] { "zk_KitchenCommit", "Create", "Update", "Delete", "CreateMultiple", "UpdateMultiple", "Upsert", "UpsertMultiple", "DeleteMultiple" };
+            int index = Array.IndexOf(names, p.MessageName); return index < 0 ? 10 : index + 1;
+        }
+        // The original fifteen failed-condition bits, applied to one explicitly supplied source.
+        private static int ContextMask(IPluginExecutionContext c, IPluginExecutionContext? p)
+        {
+            int mask = 0;
+            if (c.Mode != 0) mask |= 1;
+            if (c.Stage != 20) mask |= 2;
+            if (!c.IsInTransaction) mask |= 4;
+            if (p == null) mask |= 8;
+            else
+            {
+                if (p.MessageName != "zk_KitchenCommit") mask |= 16;
+                if (p.Stage != 30) mask |= 32;
+                if (p.Mode != 0) mask |= 64;
+                if (!p.IsInTransaction) mask |= 128;
+                if (c.InitiatingUserId != p.InitiatingUserId) mask |= 256;
+                if (c.UserId != p.UserId) mask |= 512;
+                if (!p.SharedVariables.Contains(PluginHost.InternalWrite)) mask |= 2048;
+                else if (!(p.SharedVariables[PluginHost.InternalWrite] is string)) mask |= 4096;
+            }
+            if (c.UserId != c.InitiatingUserId) mask |= 1024;
+            if (!c.InputParameters.Contains("Target")) mask |= 8192;
+            else if (!(c.InputParameters["Target"] is Entity)) mask |= 16384;
+            return mask;
+        }
+        // Only this single operation/table wrapper may be transparent. Never search ancestors.
+        private static int WrapperMask(IPluginExecutionContext c, IPluginExecutionContext p)
+        {
+            var target = c.InputParameters != null && c.InputParameters.Contains("Target") ? c.InputParameters["Target"] as Entity : null;
+            bool allowed = target != null && ((c.MessageName == "Update" && target.LogicalName == "zk_kitchenworkspace") || (c.MessageName == "Create" && target.LogicalName == "zk_kitchenoperation"));
+            int mask = 0;
+            if (!allowed || p.MessageName != c.MessageName) mask |= 1;
+            if (p.Stage != 30) mask |= 2;
+            if (p.Mode != 0) mask |= 4;
+            if (!p.IsInTransaction) mask |= 8;
+            if (target == null || p.PrimaryEntityName != target.LogicalName || c.PrimaryEntityName != target.LogicalName) mask |= 16;
+            if (p.InitiatingUserId != c.InitiatingUserId) mask |= 32;
+            if (p.UserId != c.UserId) mask |= 64;
+            return mask;
+        }
+        // Called only after denial. Fixed numbers never expose the context's values.
         private static string GuardDiagnostic(IPluginExecutionContext c)
         {
             int mask = 0, kind = 0;
-            try
+            try { mask = ContextMask(c, c.ParentContext); kind = ParentKind(c.ParentContext); }
+            catch (Exception) { mask = 0; kind = 0; }
+            string result = "[zk_guard_v1;m=" + mask.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";p=" + kind.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]";
+            if (kind == 2 || kind == 3)
             {
-                if (c.Mode != 0) mask |= 1;
-                if (c.Stage != 20) mask |= 2;
-                if (!c.IsInTransaction) mask |= 4;
-                var p = c.ParentContext;
-                if (p == null) mask |= 8;
-                else
-                {
-                    var names = new[] { "zk_KitchenCommit", "Create", "Update", "Delete", "CreateMultiple", "UpdateMultiple", "Upsert", "UpsertMultiple", "DeleteMultiple" };
-                    int index = Array.IndexOf(names, p.MessageName); kind = index < 0 ? 10 : index + 1;
-                    if (p.MessageName != "zk_KitchenCommit") mask |= 16;
-                    if (p.Stage != 30) mask |= 32;
-                    if (p.Mode != 0) mask |= 64;
-                    if (!p.IsInTransaction) mask |= 128;
-                    if (c.InitiatingUserId != p.InitiatingUserId) mask |= 256;
-                    if (c.UserId != p.UserId) mask |= 512;
-                    if (!p.SharedVariables.Contains(PluginHost.InternalWrite)) mask |= 2048;
-                    else if (!(p.SharedVariables[PluginHost.InternalWrite] is string)) mask |= 4096;
-                }
-                if (c.UserId != c.InitiatingUserId) mask |= 1024;
-                if (!c.InputParameters.Contains("Target")) mask |= 8192;
-                else if (!(c.InputParameters["Target"] is Entity)) mask |= 16384;
+                int wrapper = 0, source = 0, sourceKind = 0;
+                try { var p = c.ParentContext; wrapper = WrapperMask(c, p); source = ContextMask(c, p.ParentContext); sourceKind = ParentKind(p.ParentContext); }
+                catch (Exception) { wrapper = 0; source = 0; sourceKind = 0; }
+                result += " [zk_guard_chain_v1;w=" + wrapper.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";s=" + source.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";g=" + sourceKind.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]";
             }
-            catch (Exception) { mask = 0; kind = 0; } // Diagnosis must never replace or bypass denial.
-            return "[zk_guard_v1;m=" + mask.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";p=" + kind.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]";
+            return result;
         }
         public void Execute(IServiceProvider provider)
         {
             var c = (IPluginExecutionContext)(provider.GetService(typeof(IPluginExecutionContext)) ?? throw new InvalidPluginExecutionException("Execution context missing."));
             var parent = c.ParentContext;
+            if (parent != null && (parent.MessageName == "Create" || parent.MessageName == "Update") && WrapperMask(c, parent) == 0)
+                parent = parent.ParentContext;
             if (c.Mode != 0 || c.Stage != 20 || !c.IsInTransaction || parent == null || parent.MessageName != "zk_KitchenCommit" || parent.Stage != 30 || parent.Mode != 0 || !parent.IsInTransaction || c.InitiatingUserId != parent.InitiatingUserId || c.UserId != parent.UserId || c.UserId != c.InitiatingUserId || !parent.SharedVariables.Contains(PluginHost.InternalWrite) || !(parent.SharedVariables[PluginHost.InternalWrite] is string marker) || !c.InputParameters.Contains("Target") || !(c.InputParameters["Target"] is Entity target))
                 throw new InvalidPluginExecutionException("Direct kitchen table writes are blocked. " + GuardDiagnostic(c));
             var parts = marker.Split(new[] { '|' }, 2);
