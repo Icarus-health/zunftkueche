@@ -3,13 +3,16 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 namespace Kitchen.Access;
 
-public enum AccessMode { Offline, Inspect, Execute, PrepareExistingRole }
+public enum AccessProfile { SixOnly, ObservedTen }
+public enum AccessMode { Offline, Inspect, Execute, PrepareExistingRole, InspectObservedRole, ExecuteObservedRole }
 public static class AccessProgram {
     public static AccessMode Parse(string[] args) => args switch {
         [] => AccessMode.Offline,
         ["--inspect"] => AccessMode.Inspect,
         ["--execute"] => AccessMode.Execute,
         ["--prepare-existing-role"] => AccessMode.PrepareExistingRole,
+        ["--inspect-observed-role"] => AccessMode.InspectObservedRole,
+        ["--execute-observed-role"] => AccessMode.ExecuteObservedRole,
         _ => throw new DeploymentException("unsupported_access_arguments")
     };
     public static async Task<int> Run(string[] args) {
@@ -30,10 +33,11 @@ public static class AccessProgram {
                 Console.WriteLine(JsonSerializer.Serialize(new{mode=mode.ToString(),facts=preparation.Facts,rolePrepared=prepared,kitchenAccessReady=false,schreiberAppAcceptance="not_performed"}));
                 return prepared?0:2;
             }
-            helper=new FixedAccess(transport,auth.ObjectId);
-            bool ready=await helper.Run(mode==AccessMode.Execute);
+            bool execute=mode is AccessMode.Execute or AccessMode.ExecuteObservedRole;
+            helper=new FixedAccess(transport,auth.ObjectId,mode is AccessMode.InspectObservedRole or AccessMode.ExecuteObservedRole?AccessProfile.ObservedTen:AccessProfile.SixOnly);
+            bool ready=await helper.Run(execute);
             Console.WriteLine(JsonSerializer.Serialize(new{mode=mode.ToString(),facts=helper.Facts,kitchenAccessReady=ready,schreiberAppAcceptance="not_performed"}));
-            return mode==AccessMode.Execute&&!ready?2:0;
+            return execute&&!ready?2:0;
         } catch(Exception e) {
             Console.WriteLine(JsonSerializer.Serialize(new{error=SafeOutput.Error(e),facts=preparation?.Facts??helper?.Facts,kitchenAccessReady=false}));
             return 1;
@@ -42,13 +46,14 @@ public static class AccessProgram {
 }
 
 // Single-purpose additive provisioning; no caller-supplied identities, privileges or paths.
-public sealed class FixedAccess(IDataverseTransport transport,string objectId) {
+public sealed class FixedAccess(IDataverseTransport transport,string objectId,AccessProfile profile=AccessProfile.SixOnly) {
     public const string Recipient="Schreiber@Schelmenzunft.onmicrosoft.com";
     public const string Workspace="45deaf94-5661-4110-8f16-3d2678c09f04";
     public const string RoleName="Zunftküche Bearbeiter";
     private const string WorkspaceTable="zk_kitchenworkspace",ReceiptTable="zk_kitchenoperation";
     private const string DesiredAccess="ReadAccess, WriteAccess, AppendToAccess";
     private readonly ResourceEngine engine=new(transport,objectId);
+    private bool Observed=>profile==AccessProfile.ObservedTen;
     private string user="",businessUnit="",aad="",admin="";
     private long revision;
     private readonly List<Privilege> wanted=[];
@@ -65,16 +70,24 @@ public sealed class FixedAccess(IDataverseTransport transport,string objectId) {
     private static void Require(bool condition,string code){if(!condition)throw new DeploymentException(code);}
 
     public async Task<bool> Run(bool execute) {
+        Require(profile is AccessProfile.SixOnly or AccessProfile.ObservedTen,"unsupported_access_profile");
         Require(admin=="","access_session_already_used");
         admin=(await engine.AuthenticateTargetAsync()).ToString("D");
         await Identity(true);
         await WorkspaceUnchanged(true);
         await Privileges();
         await ApiPrivileges();
+        if(Observed){
+            await ObservedRoleProfile.VerifyNames(engine);
+            Require(!ObservedRoleProfile.Retained.Any(p=>kitchenPrivilegeIds.Contains(p.Id)),"privilege_metadata_invalid");
+            wanted.AddRange(ObservedRoleProfile.Retained.Select(p=>new Privilege(p.Id,p.Name,"Global")));
+            await NoSharePointConfiguration();
+        }
         // Read all current direct/team role definitions and effective access before any mutation.
         var inventory=await InspectAccess();
         originalAssignments=inventory.Assigned;
         var role=await FindRole();
+        if(Observed)Require(role!=null,"observed_role_missing");
         if(role!=null){roleId=Id(role,"roleid");await ExactRole(false);}
         Facts.Add(new{resource="access_plan",roleStatus=roleId==null?"missing":"exact",roleAssignment=roleId!=null&&inventory.Assigned.Contains(roleId),workspaceAccessComplete=Complete(inventory.Rights),platformAppOpeningRights="separate_review_no_automatic_grant"});
         if(!execute)return roleId!=null&&inventory.Assigned.Contains(roleId)&&Complete(inventory.Rights)&&inventory.EffectiveKitchenComplete;
@@ -121,7 +134,7 @@ public sealed class FixedAccess(IDataverseTransport transport,string objectId) {
         await ExactRole(false);inventory=await AfterStep();
         RequireEffective(inventory);
         Require(inventory.Assigned.Contains(roleId!)&&Complete(inventory.Rights),"access_final_readback_incomplete");
-        Facts.Add(new{resource="access_result",status="six_privileges_assignment_and_effective_workspace_rights_verified",workspaceRevision=revision,ownerUnchanged=true});
+        Facts.Add(new{resource="access_result",status=Observed?"ten_privileges_assignment_and_effective_workspace_rights_verified":"six_privileges_assignment_and_effective_workspace_rights_verified",workspaceRevision=revision,ownerUnchanged=true});
         return true;
     }
     private async Task Identity(bool first) {
@@ -130,6 +143,7 @@ public sealed class FixedAccess(IDataverseTransport transport,string objectId) {
         Require(string.Equals(Text(row,"domainname"),Recipient,StringComparison.OrdinalIgnoreCase)&&row["isdisabled"]?.GetValue<bool>()==false&&row["accessmode"]?.GetValue<int>()==0&&row.ContainsKey("applicationid")&&row["applicationid"]==null,"schreiber_identity_invalid");
         string id=Id(row,"systemuserid"),bu=Id(row,"_businessunitid_value"),objectId=Id(row,"azureactivedirectoryobjectid");
         Require(id!=admin,"schreiber_identity_invalid");
+        if(Observed)Require(id==ObservedRoleProfile.User&&bu==ObservedRoleProfile.BusinessUnit&&objectId==ObservedRoleProfile.Aad,"observed_identity_drift");
         if(first){user=id;businessUnit=bu;aad=objectId;}else Require(id==user&&bu==businessUnit&&objectId==aad,"schreiber_identity_drift");
         var unit=await Get($"businessunits({businessUnit})?$select=businessunitid,isdisabled");
         Require(Id(unit,"businessunitid")==businessUnit&&unit["isdisabled"]?.GetValue<bool>()==false,"business_unit_invalid");
@@ -140,7 +154,12 @@ public sealed class FixedAccess(IDataverseTransport transport,string objectId) {
         Require(Id(row,"zk_kitchenworkspaceid")==Workspace&&Id(row,"_ownerid_value")==admin&&value>=2,"workspace_owner_or_revision_drift");
         if(first)revision=value;else Require(value==revision,"workspace_changed_during_access");
     }
-    private async Task Boundary(){await Identity(false);await WorkspaceUnchanged();}
+    private async Task NoSharePointConfiguration(){
+        if(!Observed)return;
+        await ObservedRoleProfile.RequireNoConfiguration(engine);
+        Facts.Add(new{resource="sharepoint_configuration_absent",managedIdentities=0,sites=0,documentLocations=0});
+    }
+    private async Task Boundary(){await Identity(false);await WorkspaceUnchanged();await NoSharePointConfiguration();}
     private async Task<Inventory> AfterStep(){await Boundary();return await InspectAccess();}
     private async Task Privileges() {
         foreach(var table in new[]{WorkspaceTable,ReceiptTable}) {
@@ -170,6 +189,7 @@ public sealed class FixedAccess(IDataverseTransport transport,string objectId) {
         Require(rows.Length<=1,"role_not_unique");
         if(rows.Length==0)return null;
         var role=rows[0];
+        if(Observed)Require(Id(role,"roleid")==ObservedRoleProfile.Role,"observed_role_identity_drift");
         Require(Text(role,"name")==RoleName&&Id(role,"_businessunitid_value")==businessUnit&&role["ismanaged"]?.GetValue<bool>()==false&&role.ContainsKey("_roletemplateid_value")&&role["_roletemplateid_value"]==null,"role_identity_drift");
         if(roleId!=null)Require(Id(role,"roleid")==roleId,"role_identity_drift");
         return role;
@@ -181,12 +201,16 @@ public sealed class FixedAccess(IDataverseTransport transport,string objectId) {
     private async Task ExactRole(bool empty) {
         Require(await FindRole()!=null,"role_missing_after_write");
         var privileges=await RolePrivileges(roleId!);
-        Require(privileges.Count==(empty?0:6),"role_privileges_drift");
+        Require(privileges.Count==(empty?0:wanted.Count),"role_privileges_drift");
         var seen=new HashSet<string>();
         foreach(var p in privileges) {
             string id=Id(p!,"PrivilegeId");var expected=wanted.SingleOrDefault(w=>w.Id==id);
             Require(seen.Add(id)&&expected!=null&&Text(p!,"Depth")==expected.Depth,"role_privileges_drift");
-            // These optional newer filter fields must not change the six unfiltered privileges.
+            if(Observed){
+                Require(p is JsonObject row&&row.ContainsKey("RecordFilterId")&&row["RecordFilterId"]!=null&&Id(row,"BusinessUnitId")==ObservedRoleProfile.BusinessUnit,"role_privileges_drift");
+                if(p!["PrivilegeName"]!=null)Require(Text(p,"PrivilegeName")==expected!.Name,"role_privileges_drift");
+            }
+            // Legacy optional fields remain unchanged; observed profile requires explicit empty filter above.
             if(p!["RecordFilterId"]!=null)Require(Text(p,"RecordFilterId")==Guid.Empty.ToString("D"),"role_privileges_drift");
             if(p["RecordFilterUniqueName"]!=null)Require(Text(p,"RecordFilterUniqueName")=="","role_privileges_drift");
         }
@@ -196,8 +220,9 @@ public sealed class FixedAccess(IDataverseTransport transport,string objectId) {
         var assigned=direct.Select(r=>Id(r,"roleid")).ToHashSet();Require(assigned.Count==direct.Length,"duplicate_user_role");
         var teams=await Rows($"systemusers({user})/teammembership_association?$select=teamid");
         Require(teams.Length<=50,"team_inventory_too_large");
+        if(Observed)Require(assigned.All(id=>id==ObservedRoleProfile.Role),"observed_role_assignments_drift");
         var all=new HashSet<string>(assigned);
-        foreach(var team in teams){var roles=await Rows($"teams({Id(team,"teamid")})/teamroles_association?$select=roleid");foreach(var r in roles)all.Add(Id(r,"roleid"));}
+        foreach(var team in teams){var roles=await Rows($"teams({Id(team,"teamid")})/teamroles_association?$select=roleid");if(Observed)Require(roles.Length==0,"observed_role_assignments_drift");foreach(var r in roles)all.Add(Id(r,"roleid"));}
         Require(all.Count<=100,"role_inventory_too_large");
         foreach(var id in all) {
             var privileges=await RolePrivileges(id);
@@ -217,6 +242,7 @@ public sealed class FixedAccess(IDataverseTransport transport,string objectId) {
             Require(!kitchenPrivilegeIds.Contains(id)||wanted.Any(w=>w.Id==id),"effective_kitchen_privileges_broader_than_plan");
             effectiveIds.Add(id);
         }
+        if(Observed)Require(effectiveIds.Count==effectivePrivileges.Count&&effectiveIds.SetEquals(assigned.Contains(ObservedRoleProfile.Role)?wanted.Select(w=>w.Id):Array.Empty<string>()),"observed_effective_privileges_drift");
         bool effectiveKitchenComplete=wanted.All(w=>effectiveIds.Contains(w.Id));
         var target=Uri.EscapeDataString(new JsonObject{["@odata.id"]=$"zk_kitchenworkspaces({Workspace})"}.ToJsonString());
         var access=await Get($"systemusers({user})/Microsoft.Dynamics.CRM.RetrievePrincipalAccess(Target=@target)?@target={target}");
@@ -234,6 +260,7 @@ public sealed class FixedAccess(IDataverseTransport transport,string objectId) {
     }
     private static bool Complete(HashSet<string> rights)=>rights.SetEquals(new[]{"ReadAccess","WriteAccess","AppendToAccess"});
     private async Task Write(string step,string path,JsonObject payload,Func<Task<bool>> verify) {
+        await NoSharePointConfiguration();
         bool uncertain=false;
         try{await transport.SendAsync(HttpMethod.Post,path,payload);}catch(Exception){uncertain=true;}
         // Any provider exception is suppressed; only independent canonical readback can prove the outcome.

@@ -2,7 +2,7 @@
 
 Der Helfer `server/Access` ist ausschließlich für `Schreiber@Schelmenzunft.onmicrosoft.com` in der bestehenden Zunftküchen-Umgebung bestimmt. Er verwendet die geprüfte administrative Anmeldung als Vorstand. Er erstellt keinen Benutzer und übernimmt weder App-Freigabe noch Teams-Richtlinie, Lizenzierung oder Plattform-Basisrolle.
 
-Die eigene Rolle **Zunftküche Bearbeiter** enthält genau:
+Das ursprüngliche Sechs-Rechte-Profil für **Zunftküche Bearbeiter** verlangt genau:
 
 | Tabelle | Privilegien | Tiefe |
 | --- | --- | --- |
@@ -41,19 +41,36 @@ Erst nach Bewertung dieses Ergebnisses freigeben:
 
 Die Anmeldung gibt ausschließlich eine öffentliche `AUTH_URL` aus; Root öffnet diese normal in DuckDuckGo. Kein Browser wird automatisch geöffnet. Tokens bleiben im Arbeitsspeicher. Es gibt keine alternativen Ziel-, Benutzer-, Rollen- oder Privilegienargumente.
 
-## Einmalige Vorbereitung der gemessenen unzugewiesenen Rolle
+## Beobachtete Rolle mit sechs Küchen- und vier zusätzlichen Rechten
 
-Der tatsächliche erste Rollen-POST legte Rolle `660a97b9-a8c8-f111-a05c-7ced8d5f6c91` mit neun Plattform-Standardprivilegien an. Der normale Ausführungsmodus stoppte vor Zuweisung und Workspace-Freigabe. Für genau diesen gemessenen Zustand gibt es nach unabhängiger Prüfung einen getrennten Aufruf:
+Der einmalige Vorbereitungslauf stoppte korrekt: Dataverse behielt nach dem Ersatzversuch vier SharePoint-Privilegien zusätzlich zu den sechs Küchenrechten. Unabhängiges Nachlesen bestätigte zehn Rechte; Schreiber hatte weiterhin keine Rolle, effektiven Privilegien oder Workspace-Freigabe. **Keine weiteren Remove-/Replace-Versuche ausführen.** Der historische `--prepare-existing-role`-Modus bleibt erhalten, ist für diesen Zehn-Rechte-Zustand aber nicht vorgesehen und verweigert ihn.
+
+Das getrennte beobachtete Profil akzeptiert ausschließlich vorhandene Rolle `660a97b9-a8c8-f111-a05c-7ced8d5f6c91`, den festen Schreiber-Benutzer samt AAD-ID und Geschäftsbereich sowie genau die sechs Küchenrechte plus diese vier Privilegien mit Global-Tiefe, passendem Geschäftsbereich und leerem Datensatzfilter:
+
+| Zusätzliches Privileg | Feste Privileg-ID |
+| --- | --- |
+| `prvReadSharePointData` | `fecbd29c-df64-4ede-a611-47226b402c22` |
+| `prvWriteSharePointData` | `cfdd12cf-090b-4599-8302-771962d2350a` |
+| `prvCreateSharePointData` | `5eb85025-363b-46ea-a77e-ce24159cd231` |
+| `prvReadSharePointDocument` | `d71fc8d0-99bc-430e-abd7-d95c64f11e9c` |
+
+Diese vier Rechte sind keine belegte Pflichtbasis und nicht auf einen Küchenordner beschränkt. Die Genehmigung dieses Profils gilt nur bei nachgewiesen fehlender Dokumentdienst-Konfiguration in dieser Umgebung. Vor jeder Mutation und beim Nachlesen werden drei feste GET-Abfragen auf `sharepointmanagedidentities`, `sharepointsites` und `sharepointdocumentlocations` mit jeweils `$top=1` ausgeführt. Jeder Treffer, Providerfehler, fehlende/unklare Ergebnisliste oder Pagination stoppt. Die Ausgabe enthält nur die drei bestätigten Nullbestände, keine Konfigurationsinhalte oder URLs. Microsoft dokumentiert die zusätzliche [Managed-Identity-Konfiguration für SharePoint-Dokumentzugriff außerhalb des Dokumentrasters](https://learn.microsoft.com/en-us/power-platform/admin/configure-azure-app-with-sharepoint-access).
+
+Nach unabhängigem Code-Review muss Root **zuerst ausschließlich prüfen**:
 
 ```sh
-../dotnet10/dotnet server/Access/bin/Debug/net10.0/Kitchen.Access.dll --prepare-existing-role
+../dotnet10/dotnet server/Access/bin/Debug/net10.0/Kitchen.Access.dll --inspect-observed-role
 ```
 
-Dieser Modus prüft die festen Schreiber-AAD-/Dataverse-/Geschäftsbereich-IDs, Vorstand als Workspace-Eigentümer und exakt Revision 2. Schreiber muss weiterhin keine direkten oder über Teams zugewiesenen Rollen, effektiven Privilegien oder Workspace-Rechte haben. Die feste Rolle muss unverwaltet, ohne Vorlage und übergeordnete Rolle, ihre eigene Wurzel sowie keinem Benutzer oder Team zugewiesen sein; abgeleitete Rollen sind ebenfalls ausgeschlossen. Alle neun beobachteten Standardprivilegien müssen mit ID, Name, Global-Tiefe, Geschäftsbereich und leerem Datensatzfilter exakt übereinstimmen.
+Nur wenn der Lauf die exakte Zehn-Rechte-Rolle und alle drei leeren Konfigurationsbestände bestätigt, ist der getrennte Ausführungsschritt vorgesehen:
 
-Erst dann erfolgt **ein** [ReplacePrivilegesRole](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/reference/replaceprivilegesrole)-POST mit genau den sechs oben genannten, aus tatsächlichen Tabellenmetadaten aufgelösten Rechten. Danach werden Privilegien, Identitäten, Eigentümer/Revision und fehlende Zuweisungen unabhängig gelesen. Ein unklarer Schreibausgang erlaubt nur diese Lesekontrolle, keinen Wiederholungsversuch. Verbleibende oder erneut hinzugefügte Standardrechte, Teilmengen, Drift oder unbekannte Ergebnisse stoppen. Eine bereits vorbereitete Sechs-Rechte-Rolle wird durch diesen Modus nicht erneut geschrieben.
+```sh
+../dotnet10/dotnet server/Access/bin/Debug/net10.0/Kitchen.Access.dll --execute-observed-role
+```
 
-Der Vorbereitungsschritt erstellt und löscht nichts, weist niemanden zu und teilt keinen Workspace. `rolePrepared=true` bedeutet ausschließlich eine exakt zurückgelesene unzugewiesene Rolle; `kitchenAccessReady` bleibt false. Root prüft anschließend separat mit `--inspect` und nutzt erst danach den ursprünglichen `--execute`-Modus für die freigegebenen Zuweisungs-/Freigabeschritte. Es gibt keine atomare Sperre gegen externe Administratoren; Root benötigt ein kontrolliertes Fenster ohne weitere Rollenverwaltung.
+Dieser Pfad erstellt keine Rolle und verändert keine Privilegien. Er kann höchstens zweimal schreiben: die feste Rolle ausschließlich Schreiber zuweisen und den bestehenden Workspace mit Read/Write/AppendTo freigeben. Bereits exakt vorhandene Schritte werden nur geprüft. Zulässig sind keine Teamrollen und direkt entweder keine Rolle oder genau diese eine Rolle; die effektiven Privilegien müssen entsprechend leer oder exakt diese zehn IDs sein. Eigentümer Vorstand und Revision ab 2 bleiben während des Laufs unverändert. Jede unklare Schreibantwort wird unabhängig zurückgelesen, niemals wiederholt. Das normale `--execute` bleibt beim Sechs-Rechte-Vertrag und akzeptiert die beobachtete Zehn-Rechte-Rolle nicht.
+
+Es werden keine SharePoint-ACLs, Gruppen, Sites, Locations, Integrationsidentitäten, App-Registrierungen oder Zustimmungen geändert. Abwesenheitsprüfungen sind Momentaufnahmen, keine atomare Sperre gegen externe Administratoren. Wenn ein konfigurierter Pfad gefunden wird, erfolgen keine weiteren Grants; vor einer abweichenden Freigabe ist eine neue Nutzerentscheidung erforderlich. Falls Konfiguration erst nach einer Zuweisung entsteht, stoppt der Helfer ohne weitere Freigabe und ohne automatischen Entzug. Root muss Teilzustand und Risiko prüfen. Auch ein erfolgreicher Abschluss ersetzt weder SharePoint-Sicherheitsbewertung noch tatsächliche Schreiber-App-Abnahme.
 
 ## Verhalten und Grenzen des ursprünglichen Ausführungsmodus
 
