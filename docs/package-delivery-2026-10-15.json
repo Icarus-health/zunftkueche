@@ -1,0 +1,49 @@
+{
+  "sourceCommit": "44c0f5227684452991199b49f5b14c968c9bc40a",
+  "sourcePackage": "Zunftkueche_Code_15-10-2026.zip",
+  "fileCount": 175,
+  "bytes": 2219844,
+  "sha256": "6818bad8ed23d2bc5f31c6bf7786a5f5aa72560478d157bb654f28670491fdd8",
+  "dataversePackages": {
+    "server/artifacts/Zunftkueche.Dataverse.1.0.0.nupkg": {
+      "bytes": 290280,
+      "sha256": "215fb97e2a374a4e621719c3c04cc9b21fc55686ca94fe67cc0d2a221c5bdf73"
+    },
+    "server/artifacts/guard-diagnostic-v1/Zunftkueche.Dataverse.1.0.0.nupkg": {
+      "bytes": 290994,
+      "sha256": "1c6ea57c3c56922911d201fde6a7c2a862efa0619ac7f81e5fe42fcf2ede7d92"
+    },
+    "server/artifacts/guard-request-binding-v3/Zunftkueche.Dataverse.1.0.0.nupkg": {
+      "bytes": 296571,
+      "sha256": "02449a6b7ff2a073d40a833fd64360b964a9d31386d099b6b432f6e05a1ee89e"
+    },
+    "server/artifacts/guard-target-diagnostic-v4/Zunftkueche.Dataverse.1.0.0.nupkg": {
+      "bytes": 297112,
+      "sha256": "54534e6c1053e1e41fbd4eab6741183f53996e18995b0924c7f695f619ed865b"
+    },
+    "server/artifacts/guard-target-normalization-v5/Zunftkueche.Dataverse.1.0.0.nupkg": {
+      "bytes": 297290,
+      "sha256": "6d74048606fd199b06a20c2856752eb56e87e7bd6bb9d634bdef80387c596247"
+    },
+    "server/artifacts/guard-wrapper-v2/Zunftkueche.Dataverse.1.0.0.nupkg": {
+      "bytes": 296102,
+      "sha256": "20ebc01203f0eb5f16064ae35c535467f978353bd2ef2ce4bcc45ec164912660"
+    }
+  },
+  "originalSourceImportSha256": "d38bf0ac7c2bf34211c1df01af1869dd97522da24e2bde1a284e3e505844a15f",
+  "originalFilesMatched": 62,
+  "localTestStateIncluded": false,
+  "originalDocumentsIncluded": false,
+  "codeAppPublished": true,
+  "teamsInstalled": false,
+  "liveAcceptanceComplete": false,
+  "applicationUsers": [
+    "Vorstand@Schelmenzunft.onmicrosoft.com",
+    "Schreiber@Schelmenzunft.onmicrosoft.com"
+  ],
+  "deliveryVerified": true,
+  "decisionsExport": "Zunftkueche_Entscheidungen_15-10-2026.txt",
+  "decisionsSha256": "320892cd06b856a3c5f333abc0717f18d7f062f04b4e3e5ceae64df3acfca2aa",
+  "latestTeamsClientObservation": "Schreiber native Teams Upload App still offers organization submission only; no personal upload. Modal closed, no file submitted.",
+  "schreiberBrowserAcceptance": "Pending actual Schreiber login; grant confirmed, no browser acceptance inferred."
+}
