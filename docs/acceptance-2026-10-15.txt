@@ -8,7 +8,7 @@ Konto: Vorstand@Schelmenzunft.onmicrosoft.com
 AKTUELLER STATUS
 Die private Power Apps Code App ist veröffentlicht und im Vorstand-Konto im echten Browser geprüft: Laden, Bestellungen nach Lieferant/Tag, Planung nebeneinander, Speichern und erneutes Öffnen funktionieren. Eine unabhängige Dataverse-Nachkontrolle bestätigt Revision 2. Die Freigabeansicht zeigt einen Besitzer, keine weiteren Empfänger und keine ausstehenden Einladungen.
 
-Die zusätzliche persönliche Teams-Einbindung wird noch entwickelt und geprüft. Microsofts automatischer „Zu Teams hinzufügen“-Weg für Code Apps ist derzeit nicht unterstützt; unser tatsächlicher Versuch scheiterte an einem unvollständigen Teams-Paket. Der Nutzer hat die separate eigene Teams-Einbindung ausdrücklich beauftragt. Sie gilt bis zur tatsächlichen Teams-Bedienprüfung nicht als fertig.
+Das eigene persönliche Teams-Paket ist fertig gebaut, gegen Microsofts Schema geprüft und unabhängig ohne offene Befunde geprüft. Die Installation und der tatsächliche Lauf in Teams sind noch offen. Der persönliche Upload ist durch die vorhandene Richtlinie gesperrt; die separat vorbereitete Regel „Zunftkueche Vorstand“ wartet vor Speichern und Zuweisung auf die ausdrückliche Freigabe. Sie erlaubt technisch auch andere persönliche eigene App-Pakete. Andere Konten, globale Einstellungen und Datenrechte wurden nicht verändert. Microsofts automatischer „Zu Teams hinzufügen“-Weg für Code Apps ist derzeit nicht unterstützt; unser tatsächlicher Versuch scheiterte an einem unvollständigen Teams-Paket. Der Nutzer hat die separate eigene Teams-Einbindung ausdrücklich beauftragt. Sie gilt bis zur tatsächlichen Teams-Bedienprüfung nicht als fertig.
 
 ARBEITSABLAUF
 1. Veranstaltung auswählen und Stammdaten/Rezepturen prüfen.

@@ -1,0 +1,275 @@
+ZUNFTKÜCHE – ENTSCHEIDUNGEN UND PRÜFNACHWEISE
+15. Oktober 2026
+
+Die folgenden technischen Entscheidungen wurden während der Bereitstellung festgehalten. Die Einträge sind chronologisch und enthalten bewusst auch frühere, inzwischen durch spätere Nachweise ersetzte Zwischenstände. Aktueller Nutzungsstand: acceptance-2026-10-15.txt und deployment-status-2026-10-15.json. Frühere Fehlschläge bleiben dokumentiert; sie werden nicht nachträglich als Erfolg dargestellt. Originalunterlagen und frühere Pakete bleiben erhalten.
+
+ENTSCHEIDUNGEN AUS DEM ARBEITSPROTOKOLL
+
+1. Protokollzeile 13:
+Ruling: Continue within already authorized deployment and agent execution method without another abstract plan-approval round — current spec only implements approved environment and owner-private use — cost is reviewable implementation rework if supported metadata differs; no provider writes by implementers.
+
+2. Protokollzeile 49:
+Ruling: Insert new Task2 before backend execution and renumber existing execution/acceptance to Tasks3/4. For these verified Standard tables, retain strict individual guards and replace planned duplicate Multiple registrations with explicit merged-pipeline coverage; unchanged runtime plugin. Both Root code check and independent merged-pipeline-preflight.md diagnosis confirm unconditional Multiple rejection would block valid writes under Microsoft's documented event merge. All direct bulk rejection remains a live release gate, and pre-existing drifted steps must stop without deletion. Cost if wrong: failed live coverage/Commit acceptance blocks publication and requires registration rework; no additional user grants are made.
+
+3. Protokollzeile 80:
+Root fixed metadata diagnostic84788 confirms primary zk_name MaxLength850 vs exactcontract200, allotherselectedfieldsagree. RetrieveEntity93634 after usercompletedlogin independentlyconfirms both RetrieveAsIfPublished=false850 andtrue850. Officialdocs supportspecifiedMaxLength200 and creationsautopublish, so causeisobservedproviderresult, notunprovenunpublishedstateoruniversalnormalization. Ruling: change only both internal bookkeeping primary zk_name exactcapacity200→850 in pinnedcontract, retainstrictcomparisonandallotherconstraints — matches observedemptytablewithoutcolumnmutation, no businessstate/schema/source/pluginchange — costifwrong: secondtablereadbackfailsandstillstops, harmlesslargerlabelcapacityonly. Originalprovisionerworkerownsregression+safe fixedfielddiagnosis, freshindependentreviewrequired.
+
+4. Protokollzeile 100:
+Readonly77829 confirms key SchemaNamezk_workspace_operation KeyAttributes[zk_operationid,zk_workspace], EntityKeyIndexStatusActive. Ruling: uniquenessisexactcolumnsetperofficialdocs, so compareonlythiskeyasunorderedstrictsetwithcount/type/noduplicates/exactmembers; keepgenericarraysordered/othermetadataexactandActivegate — avoidsrejectingvalidserverorderingwithoutchanginglivemetadataorpermissions — costifwrong: controlledkeyreadinessfail, no column/seedmutation. Originalprovisionerimplementsnarrowfix+regression; freshreviewbeforeseed. Allcustomtable/column/relationship/keyresourcesnowactuallycreatedandproviderreadbackconfirmed, no cloudworkspaceorbackendyet.
+
+5. Protokollzeile 108:
+Rootintrinsic34024 read-onlyprovenancefileintrinsic-step-evidence.json62420bytes SHA9225d64b3e1794b8e9776b832ad506fe2c43f327c3bc450e89774c052fb421b4. 1canonicalmanagedtype29efe3a5-047c-40a3-b89c-2787eff38eee Microsoft.Crm.Extensibility.InternalOperationPlugin; managedassemblya8243db5-fbf7-4637-881e-d635ca99269c Microsoft.Crm.ObjectModel9.0.0.0 token31bf3856ad364e35 cultneutral sourcetype2 isolation1 hidden.Value true packageidnull. All52tableintrinsics stage30mode0state0rank0deployment0impersonatingnullhidden true. Onlyvolatileodataetagssuppressed; provenance/namescomplete. Ruling: distinguishONLYthisverifiedcanonical52-stepbaseline+hashes/type/assembly fromcustomextensionsinAcceptance, remainingprepzero/runtimeexact6 — MicrosoftMainOperationstepsarenecessarycoreoperationsperofficialevent-frameworkdocs — costifwrong: falseliveproofforunknownextensions, mitigatedbyexactbaselineidentities/selectednonvolatiledefinitions/provenance andfailonmissing/extra/modified, nopermissionorsystemstepmutation. UnknownMicrosoft-looking/stage30handlersstillblock. Roothelperworkerimplements/tests; independentreviewbeforeproviderretry. Initialintrinsic19897 gotbothqueriesbutlocalJsonNodeparentingexceptionpreventedfilewrite; fixedscratchDeepCloneandrepeatedreadonly34024, no providerwrites.
+
+6. Protokollzeile 126:
+Ruling: Narrow package-create name correction Zunftkueche.Dataverse→zk_Zunftkueche.Dataverse, plus exact name readback, preserving all other fields and original package bytes — actual provider76134lexicalfacts identify Nuget/file/name/prefix; uniquename already has zk_ while name does not, official PluginPackage reference confirms Name writable and package guidance confirms name immutable after create. OfficialPAC UpdatePackage only sets content and cannot resolve initial-create semantics. This remains an explicit bounded hypothesis, not a proven diagnosis until actual provider result; no package exists by independent86023readback, no existing resource overwritten. Cost if wrong: one rejected attempt, or provider accepts a harmless prefixed name while a later check still blocks release; no source/domain/user change. Originalworker owns focused test+implementation, independentreview before one Root explicitattempt. No package/nuspec/DLL/hash/uniquename/version/contract/guard/API changes.
+
+7. Protokollzeile 131:
+Ruling: verify package bytes through documented read-only package File column instead of expecting transient Content Memo to persist — actual76484byte-hash proof and officialbuild-and-package/file-column docs establish file-storage path — retain exactName/UniqueName/Version/Active metadata and byte length/hash, failclosedbeforeAPIs/guards, no package/source change. Cost if wrong: a malformed/missing/oversized/different download blocks deployment; no weakened content assurance. Workerowns bounded rawfile transport+delegation+focusedtests, reviewbeforeproviderresume.
+
+8. Protokollzeile 137:
+Ruling: Complete missing documented CustomAPI deep-insert fields together: deterministic short descriptions and iscustomizable.Value=false on parent+RequestJson+ResultJson, with exact readback — actual48746RequiredFieldMissing and officialentityschema identify parentdescriptionSystemRequired, childdescriptionsApplicationRequired, all3managedpropertiesSystemRequired; officialcreate-custom-api-with-code example suppliesall6. Keepnames/privilege/type10/globalaction/pluginbinding/parameter/resultcontracts exactlyunchanged. Cost if wrong: providerstillrejectsorreadbackblocks; no permission/domain/source effect. NoAPIexistsbycanonicalreadback, fixnotupdateexistingresource. IndependentreviewbeforeRootresume.
+
+9. Protokollzeile 154:
+Ruling: Add diagnosis only to already-rejected first guard branch, with original predicate byte-for-byte and denialprefix unchanged; fixed failed-check mask and parent-kind, no guard relaxation — actual13028guard_context failure proves firstgate mismatch but no individualcondition, so furthermeasurementisneeded — costifwrong: diagnosticrefusalstillstops, no widenedwritepath. Preserveoriginalnupkg, buildseparatelyreviewedrevision, updateonlyexistingpackagecontentafterexactold/newbyte/identityproof; no re-registration/disable/delete. ConditionalETagwhenPluginPackageoptimisticconcurrencysupported; otherwise explicitexclusive-writerbasisforRootprivateinitialenvironmentandIf-Match:* preventsupsert, immediateoldbytescheck+independentfinalreadback, no atomicCASclaim. No other deploymentwriter/jobintroduced, onlyRootapprovedadministratoroperatespackage. Costifwrong: concurrentexternalpackagewriterwouldinvalidatepre/postproofandstop; originalsretainedformanualrecovery, no automatedoverwrite/retry. WorkspaceCAS/actor/transaction/receiptprotectionneverweakened.
+
+10. Protokollzeile 159:
+Ruling: Require supported exactETagconditionalPATCHforupdater and failclosedifcapability/ETagdrifts; supersedes conditionalexclusive-writerfallbackpermission inpriorbrief because actualproviderstrongCAScapabilityisnowverified — preventsconcurrentoverwriteusingdocumentedIf-Match semantics — costifwrong: updateblocksuntilmetadatareview, no accidentaloverwrite. WorkspaceCASunchanged.
+
+11. Protokollzeile 187:
+Ruling: approve guard-wrapper-plan.md constraineddirectAPI OR one same-operation/table Create/Update stage30/sync/txn/actor wrapper whose immediateparent alone satisfies all original sourceCommit/marker checks. Actual35785provesUpdatewrapper; MicrosoftdocumentsmergedCreate/Updatepipelines butnotexactgrandparent, so source/PrimaryEntityNameconstraintsremainfailclosed. Costifwrong: stilldenied withboundedchainfacts/unchangedpersistence, noautomaticextraancestororTargetrelaxation. No wrapper/current/tagmarker substitution, no depthwalk. Existingtargetgate/Protocol/CAS/receipt/finallycleanupunchanged. Addonlyboundedchainrefusalfacts andstrictparser, direct+bypass+realDataverseStoreCAS/receiptlocaltests. Originalprovisioner soleimplementer authorizedBase263ed1b, separatev2preservingold/v1/sourcepins, priorv1/currentv2updaterunchangedmaintenancepath. IndependentimmutableartifactreviewbeforeRootcontrolledupdateandfullruntimeacceptance. AllRootproviderprocessesended, noRootbuildconcurrent.
+
+12. Protokollzeile 199:
+Ruling: approve guard-marker-plan.md exactAPI-source RequestJson workspace/opbinding in place of unreliable late SharedVariables marker — runtime55228 confirmsallv2structural/actor/txn/table/sourcechecksandonlymissingmarker; primaryMicrosoftdocs identifyInputParametersasrequestandNone-processingownhandlerastheonlycustomlogic. Existingmarker-onlyrulewasRootengineeringchoice,notuserconstraint. AuthorityremainsexacttrustedAPIorigin+verifiedhandlercontrolflow, inputonlybindsID/op; no tag/current/wrapper/outputfallback, no extraancestor. Protocol/StatePolicy/Store/CAS/receiptorder andfinalTargetpredicateunchanged; realHosttestsensurevalidation/permission/conflict/replaybeforewrites. Costifwrong: missingactualsourceInputParametersstillrefusesandindependentpersistencecheckmustpass; futureown-handlerwrite-before-validationwouldinvalidateproofandmustfailsequencetests/review. No claimsecretinputoradministrator-tamperresistance. Historicalv1meaningspreserved,newstructuralv2/binding/targetrefusalfactsstrictlyversioned/fixednumericforfurthermeasurement. OriginalworkerimplementsBase350cc48separatev3preservingold/v1/v2; independentimmutablecodereviewbeforeRootproviderupdate. Designreviewinparallelreadonly, currentprovisionalreviewagreesbindingapproach.
+
+13. Protokollzeile 207:
+Ruling: approveguard-target-plan.md v4REFUSAL-ONLYdecor_v1measurement,notv5allowance — actual63595provesSDK2becomesTarget6andIDpresentbutnotunknownnames/types/values; metadata7606isreadonlyschemaonly, independentguard-target-design-reviewrequiresmeasurementfirst. Totalcount2architecturalassumptionconflatesbusinesswriteswithplatformbookkeeping. v4preservesoriginalpredicate/allsource/CAS/receipt/registrationsandonlyemitsfixedpresence/type/null/match/DateTimeKind/unknowncounts; no rawnames/values/IDs/noclockguess. Parsermustretaincompleteaccountingforhonestmeasurementandrejectinconsistentmaskedfacts, q0allzeronotvalidmeasurement. Costifwrong: diagnosticremainsrefused/unknownfactsanddatamustremainunchanged; noauthorizedwritepathwidens. OriginalworkerimplementsBase592204fseparatev4,independentfrozenreviewbeforeRootsinglecontrolledmeasurementattempt. v5explicitlynotauthorizedyetuntilactualfactsonallfour/unknown0andnewRootruling.
+
+14. Protokollzeile 215:
+Ruling: v5 exact observed alternative shape authorized to originalimplementer; retain original2fieldpath OR exact6fields/allfourcandidatespresent, primaryGuid==Target.Id==sourceworkspace nonempty, modifiedby systemuser==authorizedactor nonempty, modifiedonDateTimeKindUtcONLY, modifiedonbehalfby presentnullONLY. Missing/hybrid/unknownextra/local/unspecified/non-nullbehalf deny. No fieldstrip or broadsystemignore. Unchanged ownAPI structural/sourceRequestJson/actor/txn/Host/Store/CAS/receipt/registration gates; metadata alone notauthority. Costifwrong: stillrefusal, independentreadback/stop; no blindretry. Actual receiptshape unmeasured and separate. Worker builds/pins v5 priorv4, preservesallold; independentfrozenreviewrequired beforeRootsinglecontrolledupdate/runtime. M1testcounter may be addressedtestonly ifcoherent.
+
+15. Protokollzeile 231:
+Ruling: approve runtime-resume-plan.md and one grouped final fix wave. The actual successful fixed Commit must never be regenerated/reposted. Continue with explicit offline-default denials-only phase pinned to exact revision1/count3/fingerprint8050006306b60bda077c3086a809c6b7d311ec8f5f6d1cc055f16914b5e7c0c6, canonical ExpectedState of original normalized seed plus fixed operation, owner and unique fixed receipt/request hash8e9c02522e69ce5f05a7389b182bda4670510de85d9a9af4d3d8d44cea77ab4c/appliedRevision1; full v5/package/API/key/guard/canary/actor prerequisites and actual Load. Repeat24 supported fixed canary denials once with same pinned snapshot before every dispatch and independent after readback; stop without retry on any drift, unknown or ambiguity. Cost if wrong: continuation stops or a canary mutation is independently detected and blocks publication; real business-state writes are excluded from this phase.
+
+16. Protokollzeile 233:
+Ruling: distinguish supported-operation denial proof from unavailable operation classification. Microsoft Learn bulk-operations and update-delete-entities-using-web-api, freshly read, explicitly restrict DeleteMultiple to elastic tables. Both actual tables are exact Standard. Therefore replace earlier expectation of26 executions with24 actual supported denial tests plus2 unexecuted documented Standard-table availability exclusions (executed=false, guardExecutionProved=false). Do not reinterpret405 or add any blanket failure pass; existing strict400 classifier unchanged. Generic CSDL binding/filter absence is not per-table execution proof. Historical405 remains an unclassified stopped result with unchanged persistence. Cost if wrong: future table-type/support changes require reacceptance; any Elastic/unknown metadata blocks this fixed phase. RootReleaseAllowed staysfalse in continuation; Root combines historical25963 save/replay/conflict with new supported-denial evidence explicitly.
+
+17. Protokollzeile 243:
+Ruling: combine actual25963 successful save/replay/conflict with fresh11975 full24 supported denials and exact v5/package/registration proof to proceed with already authorized owner-private CodeApp publication and browser/Teams acceptance. This does not claim ordinary-role, forced rollback or overall user acceptance. Cost if wrong: private owner launch/save/UX verification fails and still blocks completion; no additional users granted. Official CLI active account freshly verified exact Vorstand object/tenant, app list pending;9 production files rehashed equal frozen successful build.
+
+18. Protokollzeile 251:
+Ruling: authorize one additional isolated personal Teams package task after completed original app reviews — new concrete integration failure, user explicitly approved custom implementation, not an unbounded second backend fix wave — cost if wrong: package validation or real Teams runtime fails; private browser app remains usable, no backend or user grants change. Root owns remaining legal URLs/actual UI acceptance. Builder must stop without approved required metadata.
+
+19. Protokollzeile 257:
+Ruling: do not use admin catalog upload while default CustomApps availabilityEveryone is on; it would initially distribute metadata beyond personal scope. Keep global settings unchanged; prepare separate setup policy named Zunftkueche Vorstand with exact same6pins/UserPinningOn, onlyUploadCustomAppsOn, assign onlyexplicitVorstand after action-time user approval. Draft prepared but not saved/assigned. Costifwrong: personal upload remainsblocked or policy propagation delaysacceptance; no backend data role or other userschanged. User confirmation pending because this grants technical ability to upload otherpersonalcustompackages too.
+
+AKTUELLE UNABHÄNGIGE PRÜFUNGEN
+
+final-review.md
+# Final independent whole-change review
+
+**Frozen range:** `05db458..703f6c0bc1f7ad7f04e4b8da41c66d6947ab27a5` (93 files).  
+**Verdict:** Approved for the reviewed implementation and Root's controlled next verification step. **0 Critical, 0 Important, 4 Minor observations** below; one is optional evidence hardening. Correct the handoff documentation before final delivery. This is **not** approval to claim successful live Commit, publish the app, or mark Teams/user acceptance complete.
+
+## Scope and evidence
+
+Reviewed the deployment spec/plan, progress/rulings, frozen Git range, production paths, relevant tests and completed implementation/review reports. The initial business application is the already reviewed baseline. This review concentrates on cross-task integration: exact target/authentication, provisioning/readback, source-preserving seed and later snapshots, package replacement, generated SDK bootstrap, write authorization, bounded diagnostics and runtime acceptance.
+
+The uncommitted Root README/status/acceptance/spec/plan documents were read as current context, not treated as part of the frozen implementation or as proof of execution. Source files were not changed. No tests/builds were rerun, and no provider, authentication, browser or subagent actions were taken. The only write was this report.
+
+Accepted existing reported verification: **86 server, 74 Deploy, 35 Acceptance, 36 updater tests passing**, clean builds in `guard-target-normalization-report.md`; unchanged bootstrap evidence at `009233e`: **10 bootstrap, 31 Microsoft, 4 local persistence/repository tests**, successful production build and scoped output scans. These are reviewed reports, not independently reproduced test execution.
+
+## Strengths
+
+- `server/Deploy/Program.cs:25-28` verifies OAuth identity and the actual Dataverse target before phase work. `ResourceEngine.AuthenticateTargetAsync` binds organization, enabled account, Entra object, German language and EUR. Transport destinations are constrained before tokens are attached; remote failure messages are suppressed.
+- The resource engine reads canonical identities, refuses duplicate/drifted definitions and reads after ambiguous POSTs without retrying them. Seed normalization pins the original bytes, clones before removing local paths and uses the real policy. Read-only verification separately checks workspace owner/identity, revision/state and reviewed history across multiple valid commits; it no longer misuses a single-transition validator for later snapshots.
+- Package installation/verification compares the actual bounded File download, not a nullable write-input column. The maintenance updater has one fixed target/content PATCH, explicit invocation, pinned artifacts/source manifest, prewrite observations and independent postread; the non-atomic mode is accurately named. It does not weaken kitchen RowVersion/CAS or receipt semantics.
+- The six required individual guards and ten coverage records are distinct. Standard table type, active key and exact active handler/message/filter bindings remain prerequisites. `PlatformSteps` excludes only the pinned 52 identities and complete selected handler/assembly/step definitions; it has no broad Microsoft/stage/managed-name exemption. Unknown extra steps remain blocking.
+- `src/bootstrap/microsoft.ts:5-15` obtains and validates the real host context before importing generated clients/configuring the repository; App mounts afterward. Microsoft development and production fail closed. The generated services/metadata are actual generator outputs, not substitute connectors; local import data and a silent local-write fallback are absent from the reported production build.
+- `server/Plugins.cs:247-254` allows the direct own API source or one tightly validated operation/table wrapper only. Request binding comes from that exact source. The observed six-field workspace form remains subordinate to the existing source/actor/transaction/business-field gates and requires all four exact value/type predicates; unknown extras and partial forms cannot fit the count. The original two-field form remains. No ancestor search, tag authority, broad system-field exemption or field stripping was added.
+- Runtime acceptance checks the actual owner Load/Commit, persisted expected state and receipt, exact-byte replay, stale conflict and each fixed direct/bulk denial with independent fingerprints. It stops on ambiguity, routing absence, unexpected outcomes or changed persistence. A successful administrator result is explicitly scoped and does not imply ordinary roles, browser usability or Teams acceptance.
+
+## Findings
+
+### Critical
+
+None found.
+
+### Important
+
+None found in the frozen implementation.
+
+### Minor
+
+**M1 — Update the deployment handoff to the actual completed implementation and final live result.**  
+Files: `docs/deployment.md:3`, `:43`, `:59`, `:71-84`, `:136`.
+
+Line 3 still says kitchen tables/APIs/guards and generated services do not exist; line 136 still leaves the initial provider payload acceptance unconfirmed. The bootstrap section instructs a future manual connection using lowercase `zk_KitchenLoadService`/`zk_KitchenCommitService` imports and a placeholder workspace. The actual case-sensitive generated files/classes are `Zk_...`, and `src/bootstrap/microsoft.ts` already configures them once before mount. Following that recipe as a new implementation step would use invalid imports or introduce a second initialization, which the runtime deliberately rejects. Line 59 also says the guard implementation remains unchanged although this delta deliberately changes it. Line 43 identifies the old general build output rather than distinguishing the preserved artifact from the exact reviewed versioned deployment artifact.
+
+Rewrite these statements around Root's final observed result; point to the existing bootstrap and exact reviewed package instead of asking the next operator to implement it again. Keep publication, actual pass entitlement, browser/storage/reload and Teams statuses explicit until verified. The Root-owned README/status/acceptance documents are outside the frozen range and should be reconciled in that same handoff pass. This does not block the already reviewed controlled v5 package/runtime step.
+
+**M2 — Resource evidence can report a foreign Solution ID as the resource ID.**  
+File: `server/Deploy/Core.cs:83-85`.
+
+The generic ID selection prefers `solutionid` to `pluginpackageid`, `customapiid` and `sdkmessageprocessingstepid`. Dataverse rows with both their own primary ID and that Solution field are logged with the latter, so separate resources can appear to have the same identity. This impairs audit/readback evidence, although the later package/API/component code explicitly reads its proper primary ID and therefore does not authorize or bind the wrong resource.
+
+Pass the expected primary-ID field from each resource definition/call site (or use an explicit collection-to-ID mapping); do not infer it by the first incidental field present. Cover a returned row containing both IDs while retaining exact match/readback behavior. This confirms the deferred observation; it is not a new provisioning security bypass.
+
+**M3 — Independent inspect does not inventory privileges before the package exists.**  
+Files: `server/Deploy/Provisioner.cs:27-42`, `:148`, `:167-176`.
+
+`Inventory` reads tables/packages/types/APIs/guards/filter counts but no privilege metadata. The actual workspace privilege read occurs only in `Apis`, reached after a package, exact bytes and all three types exist. A normal partial setup with tables but no package therefore cannot provide the promised privilege preflight. Backend API creation still derives and verifies the privilege before creating an API, so this is an inspection completeness issue rather than an authorization hole.
+
+Read and safely report the required Read/Write privilege availability independently when the workspace table exists, retaining a clear missing-table result and keeping API creation separate. This is the previously deferred task-1 Minor.
+
+**M4 — Optional: reject duplicate relevant JSON envelope keys for diagnostic facts.**  
+File: `server/Acceptance/Transport.cs:23-35`.
+
+`JsonDocument.GetProperty`/`TryGetProperty` selects the last duplicate root `error`, `code` or `message` property. Such a malformed envelope can still yield a canonical bounded guard/binding/target/decoration diagnostic from the selected final value. The suffix parsers correctly reject duplicate suffix text, and no raw text is exposed; this does not permit a kitchen write or introduce a retry. The fixed updater already checks relevant envelope uniqueness.
+
+If included in the grouped wave, require one relevant envelope/key before extracting the additive diagnostic facts and cover a duplicate-envelope example. Preserve the existing denial/release contract unless its scope is separately reviewed. It remains nonblocking if explicitly retained as deferred evidence hardening, as earlier rulings allowed.
+
+## Deferred-item disposition
+
+- **Previous guard-marker M1, attempted versus accepted writes: addressed.** `server/Tests/RequestBindingTests.cs:90-97` now asserts separate Attempts and Writes for validation/access/conflict/replay failures and includes a deliberate dispatch rejected by the guard. The service entry increments Attempts before guard invocation. This closes the measurement gap without changing runtime code. It still does not prove provider transaction rollback.
+- Generic resource ID and pre-package privilege inventory remain open as M2/M3 above.
+- Duplicate-envelope hardening remains optional M4 above.
+
+## Declined to judge / explicit boundaries
+
+- **Ordinary reader/editor/third-identity roles and owning-team authorization:** outside the approved initial Vorstand-only deployment; no extra accounts/grants may be inferred or required for this scoped approval.
+- **Assign/Share/bypass permissions for future ordinary roles:** a later authorized role acceptance boundary; current helpers deliberately do not provision such roles. Administrator tampering resistance is not claimed.
+- **Forced rollback fault injection:** not implemented or established by this delta; the helper explicitly reports it false. Local simulated CAS faults do not prove Dataverse rollback after a later receipt failure.
+- **Private Code App publication, actual per-app entitlement, browser acceptance and Teams installation:** remaining Root work, not a source defect to fabricate around. No app was yet published/installed at the reviewed context snapshot.
+- **A universal Dataverse decoration rule or future unmeasured receipt/Create form:** intentionally not promised. v5 admits only the measured workspace alternative. Any later refusal needs fresh evidence and review, not a broader exemption.
+- **An automatic persistent acceptance journal/resume facility:** outside the explicitly bounded helper. Its fixed operation and request live only in that process; it deliberately refuses a new runtime invocation when an acceptance operation already exists (`RuntimeChecks.cs:15-17`).
+
+## Material operational limits and next gate
+
+At the supplied review snapshot, Root independently verified **v4**, its package/types/APIs/six guards/key and owner Load. The intentional first Commit remained refused, and the independent readback preserved revision 0/count 2/fingerprint `ef7216d54d6b8a3b62f546b17a3f0611274a7aa14c3a717d4a17f9c21ed3c7a0`. The measured `q1 p15 t7 z8 m15 d2 u0` supports v5's exact alternative; it is not proof of a successful v5 Commit or receipt. Root's later concurrent actions are not inferred by this review.
+
+Root's next gate remains exact installed v5 verification followed by the controlled runtime checks. If the real Commit succeeds but a later denial probe fails, **do not rerun the whole runtime with a newly derived request under the same fixed operation ID**. The existing early receipt check correctly stops this. Investigate the actual failure and independent persistence first; an explicit safe resume, if needed, requires its own bounded design. No partial success of that kind has occurred in the supplied evidence.
+
+The package maintenance mode's matching metadata/file/metadata bracket and final bytes detect observed drift but cannot guarantee absence of an intervening external administrator write; `If-Match:*` is not atomic version CAS. Root's separately approved controlled package-only window and truthful output preserve that limitation. The kitchen workspace continues to use real RowVersion CAS.
+
+After the runtime gate, final handoff must state the actual saved/replayed/conflicted/denied results separately from publication, browser and Teams checks. `RootReleaseAllowed=true` is explicitly the helper's scoped administrator-runtime verdict, not a complete user acceptance certificate.
+
+## Assessment
+
+**Ready to integrate? With the minor handoff corrections above; no Critical/Important code fix is required by this review.** The implementation preserves the approved target, data and authorization boundaries and has meaningful reported coverage. The frozen source is suitable for Root's controlled next step, while live Commit/receipt, full runtime, publication and user-facing acceptance remain distinct unfinished evidence gates until Root supplies results.
+
+
+final-fix-review.md
+# Scoped final-fix re-review
+
+**Frozen range:** `703f6c0bc1f7ad7f04e4b8da41c66d6947ab27a5..ee079b69dd94b409debdba840451d92dba417c3b`. Worker implementation `0309ac77bf13573115271b2e4cb0e4f3046ea335`; Root owner documents `ee079b6`.
+
+**Verdict: Approved for Root's one controlled `denials-only --execute` continuation.** Prior findings M1–M4 are addressed in their reviewed scope. **New findings: 0 Critical, 0 Important, 1 Minor documentation residual** accepted by Root for the final observed-result handoff append. No new application fix wave is required by this review. This verdict does not claim that the continuation has passed live or that publication/browser/Teams acceptance is complete.
+
+## Scope and evidence
+
+Reviewed the supplied scoped diff, `runtime-resume-plan.md`, `runtime-resume-report.md`, original final-review findings, Root's two explicit rulings and supplied live partial-result/GET41582 facts. Examined the changed code/tests/docs and the immediately relevant Session call order. This is not a second whole-branch review.
+
+No source edits, tests/build reruns, provider/authentication/browser actions or subagents. The only write is this report. Accepted the implementation report's final **Deploy76/76 and Acceptance41/41**, clean builds, offline denials-only result and transparent account of intermediate failures/old-DLL execution; these are reported verification, not independently reproduced results. Root reports a clean frontend build8619/scans, and this range contains no TypeScript/frontend changes.
+
+## Prior findings
+
+**M1 — Handoff status/bootstrap/package instructions: ADDRESSED.** `docs/deployment.md:3-9` distinguishes the actual v5 installation/verification and partial25963 result from unfinished continuation/publication/browser/Teams work. Lines47 and63 identify the exact versioned v5 package and changed guard; lines65-69 document the existing case-correct generated clients and once-only bootstrap, removing the old placeholder/second-initialization recipe. Lines124-139 document the fixed continuation, checkpoint/hash, no Commit/replay/conflict, 24 executed denials plus two unexecuted availability classifications and false partial-phase release verdict. README/acceptance/status record the actual save/replay/conflict/workspace12 success while retaining the stopped405 and receipt/continuation gap. Root will append the continuation's actual result after execution; the frozen documents do not invent it. The separate helper README residual is N1 below.
+
+**M2 — Incidental foreign Solution ID selected as resource ID: ADDRESSED.** `server/Deploy/Core.cs:83-91` uses a closed collection mapping plus the fixed metadata/seed cases; it never falls back to `solutionid` on package/API/step rows. Resource matching, canonical lookup, ambiguous readback and downstream mandatory ID checks remain unchanged. New Deploy regressions explicitly return both foreign and primary IDs for the three affected resource classes and assert the primary ID with zero writes.
+
+**M3 — Pre-package privilege inventory absent: ADDRESSED.** `server/Deploy/Provisioner.cs:38-55` discovers whether the workspace table exists, then independently reads Read/Write metadata regardless of package/type presence. Fixed availability/missing/invalid-or-duplicate/table-missing labels and fixed Read/Write labels leave the process; remote privilege names do not. Existing API privilege derivation/validation is untouched. New tests cover table-present/package-absent, table-missing, missing Read, duplicate Write and unsafe name without writes.
+
+**M4 — Duplicate diagnostic-envelope keys: ADDRESSED.** `server/Acceptance/Transport.cs:34-38` requires unique root `error` and direct `code`/`message` before passing text to any additive guard/chain/binding/target/decoration parser. The duplicate-envelope cases suppress those numeric facts. Existing safe code/status, failure-kind and GuardDenied behavior remains as explicitly authorized; no new raw output or broad response-success classifier is introduced. The bounded/depth-limited parsing and historical exact400 unsupported classifier remain unchanged.
+
+## Continuation correctness
+
+- **Full prerequisites precede entry.** `Session.cs:13-43` still verifies identity/organization/object/language/currency; exact tables/Standard type/sets/concurrency/key; seed-anchored persisted state; exact v5 package/types/APIs/privileges; precisely the ten known metadata/runtime gaps; 52 pinned platform definitions; six exact active guards; direct administrator role; four exact canaries and fixed absent IDs. The new branch is at lines44-45 and returns before `RuntimeCommit` at47. It cannot enter canary preparation.
+- **Exact measured state, not a configurable cursor.** `DenialContinuation.cs:8-24` pins revision1/count3/fingerprint `8050006306b60bda077c3086a809c6b7d311ec8f5f6d1cc055f16914b5e7c0c6`, the fixed workspace/verified owner and canonical ExpectedState of the normalized original plus the existing operation. It requires exactly one application receipt among exactly three scoped receipts; the existing Receipt checker validates operation/workspace/actor, fixed request SHA `8e9c02522e69ce5f05a7389b182bda4670510de85d9a9af4d3d8d44cea77ab4c`, applied revision1, nonempty identity and timestamp. The other two identities/workspace bindings must be the fixed canaries. The pinned snapshot covers the actual row IDs/versions/content; prior Session verification independently anchors the persisted state to the reviewed seed.
+- **Actual Load and no Commit construction.** Lines25-26 require real Load protocol/workspace/canWrite and state equality. No `Checks.CommitRequest`, `RuntimeChecks.Run`, replay or conflict invocation exists in this branch. Recomputing ExpectedState is a read-only comparison, not regeneration of the successful request.
+- **Exactly24 supported dispatches.** `Scope.cs:37-43` requires the fixed13 names/order/count per table, excludes only the exact last POST DeleteMultiple entry with its explicit flag/path/method, rejects a generic unsupported flag elsewhere, and returns12. `DenialContinuation.cs:29` materializes/validates both plans before any denial dispatch. All targets/payloads still come from the unchanged fixed canary plan.
+- **One unchanged checkpoint before every probe.** `Checks.cs:22-23` rejects a different required-before fingerprint before dispatch. Every continuation probe receives the same immutable checkpoint (`DenialContinuation.cs:31`), then retains the existing independent after snapshot, known-guard/non-success requirement and immediate ambiguity/unknown/mutation stop. Drift between probes cannot become an accepted new baseline.
+- **Honest completion evidence.** Only the end of all24 probes sets SupportedDenialsComplete. RootReleaseAllowed is cleared on entry and never set true by this phase. Program reports historical25963 separately and leaves completion/release false on failure. Two availability records explicitly say `documented_unsupported_standard_table`, `Executed=false`, `GuardExecutionProved=false`; no DeleteMultiple POST, generic405 pass or new classifier was added.
+- **Initial runtime consistency.** The original runtime now uses the same24-plus-two selection, while retaining the existing acceptance-operation-present stop. It remains forbidden against the current saved operation; this change provides no way around that stop.
+
+The new tests exercise the positive24-call path and fixed prerequisite/state/receipt/Load mismatches, no Commit/DeleteMultiple, changed before/after fingerprints, unknown404/405, success, ambiguity/readback failure, plan drift and partial-purpose evidence. The continuation fixture injects a fixed fingerprint, so it proves control flow rather than independently deriving the real provider checkpoint. Root's recorded live checkpoint and fresh execution remain necessary.
+
+## New breakage in this scoped wave
+
+### Critical
+
+None found.
+
+### Important
+
+None found.
+
+### Minor
+
+**N1 — Helper README still describes the superseded26-execution behavior.** `server/Acceptance/README.md:24-30` lists the original phases without denials-only and says both DeleteMultiple routes execute and must return the exact400 unsupported signature. The new implementation intentionally performs24 supported probes and emits two unexecuted Standard exclusions. Update this helper guide alongside the final actual-result append, explain the new phase and explicitly prohibit rerunning runtime after25963. This is documentation-only and does not block controlled continuation: the main deployment guide already states the correct invocation and limits. Root explicitly accepted ownership of this final handoff correction; no second application fix wave is requested.
+
+## Protected artifacts and remaining boundaries
+
+Independent read-only Git/local byte comparisons found **22 enumerated protected files unchanged** from703f6c0 through ee079b6 and in the working tree: plugin/policy, registration, artifacts/manifests, updater/profile and package/seed/download pins. Current v5 remains **297290 bytes**, SHA256 `6d74048606fd199b06a20c2856752eb56e87e7bd6bb9d634bdef80387c596247`; manifest SHA256 `5152cb2bc9f323d309870725f33c50e9d9cd430c2a67352f1db6626ee7a27263`, with **5/5** local source entries matching. No package update or new guard authorization change is needed for this wave.
+
+Root25963's successful save/replay/conflict and workspace12 are historical evidence from a run that stopped at the unclassified405. GET41582's Standard types plus generic CSDL/filter presence do not prove table-specific DeleteMultiple support. The approved classification rests on verified Standard type and the cited elastic-only documentation, not that405. The new continuation must supply its own actual result; it cannot retroactively convert25963 into a fully passing run.
+
+Declined to judge: live continuation outcome (not executed by reviewer); private Code App publication/pass/browser/reload/storage and Teams acceptance (later Root gates); ordinary-role/third-identity and forced rollback acceptance (unchanged separate boundaries). No additional behavior was silently set aside in this scoped wave.
+
+**Assessment:** Prior M1–M4 fixes are accepted, and the denial-only continuation follows the explicit Root ruling without replaying the saved operation or weakening guard proof. Root may execute the reviewed frozen continuation once from its verified mirror, stop on any mismatch/ambiguity, and then record actual results and the N1 helper-guide correction truthfully.
+
+
+teams-package-review.md
+# Independent Teams package review
+
+**Frozen range:** `ee079b6..f1ae3ab`, scoped to `teams/**`.  
+**Verdict: Approved for the local experimental personal Teams package.** Spec compliance: **pass**. Quality: **approved**. Findings: **0 Critical, 0 Important, 0 Minor** requiring correction in this task. This is not a claim of successful upload, installation, Teams authentication or functional acceptance.
+
+## Scope and evidence
+
+Read the task brief, implementation report, frozen Teams diff and complete builder/validator/tests/documentation, relevant local official-schema definitions and actual ZIP metadata. No unchanged app/backend review was reopened. No tests/builds were rerun and no provider/UI/authentication/policy/subagent actions occurred. The only write is this review report.
+
+Root explicitly confirms the user's later selection of the existing website links. That resolves the brief's earlier pending metadata requirement; it does not authorize inventing app-specific policies. The builder source/config and artifact reflect that choice. Root also explicitly accepted the accidentally combined owner docs/config in `f1ae3ab`; those are outside this Teams code review. Filename-only comparison confirms the only changed executable source in this range is the three Teams Python files; the non-Teams differences include Root's `power.config.json` and the previously accepted Acceptance README handoff.
+
+Accepted the implementation report's **2 passing real-CLI tests**, actual build and validator success, **official v1.16 Draft4 plus URI-format validation**, and **5/5 rejected artifact mutations**. The report identifies the existing cached schema-validation dependency path and initial unavailable-module attempts; no new dependency installation is required by the builder. These are recorded implementation results, not rerun reviewer execution.
+
+Independent read-only artifact inspection confirmed:
+
+- ZIP: **2506 bytes**, SHA256 `97cea6bd4fe2a389216d698dd94a0dc5b7b4bec714cefe48717908ccc70933ea`.
+- Exactly three root entries: `manifest.json`, `color.png`, `outline.png`.
+- Both packaged PNG byte sequences equal their reviewed source files.
+- Actual manifest uses the approved three `https://schelmenzunft.de/` website/privacy/imprint URLs, exact app/environment/tenant URLs, own wrapper UUID and personal-only scope.
+- Local official schema: **36882 bytes**, SHA256 `54b95948e6dbcf0248918b4506d051b28a0741717d01a2dba1444cdd65ad2384`, matching the reference provenance/report.
+
+## Spec compliance and strengths
+
+- `teams/build.py:15-18,49-58` fixes a fresh stable wrapper UUID `a93e06f2-e1e8-4572-bb29-a52acc9c2c7a`, separate from the Code App and official template. The exact published Code App URL is used as websiteUrl and gains only `source=teamstab` as contentUrl. There is one static tab with only `personal`, one exact validDomain `apps.powerapps.com`, and no bot, Graph/RSC, identity/auth-client, device/media or team/groupChat capability.
+- `build.py:22-44,138-146` requires explicitly supplied metadata and rejects absent/nonstring values, obvious placeholders, HTTP, user-info URLs, disallowed ports and literal IPs. The actual supplied URLs are the explicit user-approved public website values. There is no fallback policy text or silently generated installable pending manifest. The README correctly says that a syntactic check cannot establish human approval or legal adequacy; the imprint choice is described accurately.
+- `build.py:66-113,122-127` creates original geometric stockpot artwork and verifies PNG signature, selected encoding/dimensions, chunk CRCs, decoded raster/filter and alpha content. The builder additionally requires exact generated artwork bytes. The color image is 192×192 opaque and the 32×32 outline consists of white artwork plus transparent background. No organization logo was repurposed.
+- `build.py:128-135` builds a fixed-entry ZIP with explicit timestamps/permissions and exclusive `xb` output creation. Existing output cannot be overwritten. Tests use actual CLI processes and prove deterministic repeated output and refusal to replace existing bytes; the implementation does not rely only on a mocked manifest.
+- `teams/validate.py:11-23` checks the actual ZIP entry set, the complete fixed manifest contract and both icons. The explicit optional schema mode validates against the local official reference and URI formats. Output honestly distinguishes schema run/not run. Exact manifest comparison adds the narrow scope/permission/URL restrictions the broad Microsoft schema alone would not enforce. Building/validation has no provider or network path.
+- `teams/README.md:36-56` keeps schema/package validity separate from installation, frame/TeamsJS/auth compatibility and actual Load/Orders/Save/Reload acceptance. Generic Code App iframe documentation is not presented as Teams support. No runtime/CSP/backend change, additional domain guess or new access grant is smuggled into the wrapper.
+
+## Findings
+
+### Critical
+
+None found.
+
+### Important
+
+None found.
+
+### Minor
+
+None requiring correction for the approved fixed package and local builder/validation scope.
+
+## Declined to judge and remaining acceptance
+
+- **Legal adequacy/app coverage of the chosen website privacy and imprint pages:** not established by package validation; the user explicitly selected these values and the documentation makes no stronger assertion.
+- **TeamsJS initialization, frame/CSP, nested player SDK and authentication compatibility:** not proven by this ZIP or local schema. These require the actual authorized Teams test; no speculative runtime/CSP fix is warranted from this source review.
+- **Upload/availability/assignment policy:** Root's current observation is that personal upload is blocked and an admin-catalog upload would initially be organization-available. Personal tab scope does not restrict distribution or confer data access, as the README explicitly states. This approval does not authorize organization-wide publication or a policy change; Root's separate user-scoped administration path remains outside this package task.
+- **Installation and Load/Orders/reversible Save/Reload:** still unverified in Teams. Record concrete client/version/artifact checksum and independent persistence results when an authorized installation path exists. Successful Code App/browser/backend work cannot substitute for this check.
+
+**Assessment:** The implementation satisfies the reviewed packaging task and accurately labels its experimental status. No source correction is needed before Root uses this exact artifact in the separately authorized, narrowly distributed Teams acceptance workflow. Package approval must remain distinct from policy approval, upload, installation and successful app use.
+
+

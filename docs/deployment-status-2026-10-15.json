@@ -288,7 +288,32 @@
         "privacyUrl": "https://schelmenzunft.de/datenschutz/",
         "termsOfUseUrl": "https://schelmenzunft.de/impressum/"
       },
-      "metadataUrlCaveat": "Existing website links explicitly chosen by user; no newly authored app policy or legal sufficiency claim."
+      "metadataUrlCaveat": "Existing website links explicitly chosen by user; no newly authored app policy or legal sufficiency claim.",
+      "packageId": "a93e06f2-e1e8-4572-bb29-a52acc9c2c7a",
+      "packageSha256": "97cea6bd4fe2a389216d698dd94a0dc5b7b4bec714cefe48717908ccc70933ea",
+      "packageBytes": 2506,
+      "localContractAndSchemaValidationPassed": true,
+      "independentReview": "approved_spec_pass_quality_0_findings",
+      "orgDefaultCustomAppAvailability": "Everyone",
+      "adminCatalogUploadPerformed": false,
+      "personalSetupPolicyDraft": {
+        "name": "Zunftkueche Vorstand",
+        "uploadCustomApps": true,
+        "userPinning": true,
+        "pins": [
+          "Activity",
+          "Chat",
+          "Teams",
+          "Calendar",
+          "Calling",
+          "OneDrive"
+        ],
+        "assignedUsersIntended": [
+          "Vorstand@Schelmenzunft.onmicrosoft.com"
+        ],
+        "saved": false,
+        "userActionTimeApproval": "pending"
+      }
     }
   },
   "licensing": {
