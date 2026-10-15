@@ -418,6 +418,20 @@ else if(create){await provisioner.Tables(true);await provisioner.Tables(true);As
 else {await Reject(()=>provisioner.Tables(true));Assert(f.Writes==0&&lookupReads==0&&keyReads==0);
 Assert(System.Text.Json.JsonSerializer.Serialize(engine.Resources).Contains("$.ReferencingAttribute"));}
 }
+await Test("resource evidence selects its own collection primary ID over foreign solution ID",async()=>{
+ foreach(var pair in new[]{("pluginpackages","pluginpackageid"),("customapis","customapiid"),("sdkmessageprocessingsteps","sdkmessageprocessingstepid")}){
+ var row=new JsonObject{["solutionid"]="00000000-0000-0000-0000-000000000001",[pair.Item2]="00000000-0000-0000-0000-000000000002"};var f=Fixture(new JsonObject{["value"]=new JsonArray(row)});var e=new ResourceEngine(f);await e.EnsureAsync("test",pair.Item1,pair.Item1,new(),new(),false);var fact=System.Text.Json.JsonSerializer.SerializeToNode(e.Resources)![0]!;Assert(fact["id"]!.GetValue<string>()=="00000000-0000-0000-0000-000000000002"&&f.Writes==0);
+ }
+});
+await Test("privilege inventory runs independently of absent package and safely reports gaps",async()=>{
+ foreach(var defect in new[]{"none","table_missing","read_missing","write_duplicate","invalid_name"}){
+ int privilegeReads=0;var f=new Fake((method,path,body)=>{
+ if(path=="EntityDefinitions(LogicalName='zk_kitchenworkspace')?$select=Privileges"){
+ privilegeReads++;var read=new JsonObject{["PrivilegeType"]="Read",["Name"]=defect=="invalid_name"?"private-sentinel ":"prvReadzk_kitchenworkspace"};var write=new JsonObject{["PrivilegeType"]="Write",["Name"]="prvWritezk_kitchenworkspace"};var list=new JsonArray();if(defect!="read_missing")list.Add(read);list.Add(write);if(defect=="write_duplicate")list.Add(write.DeepClone());return Task.FromResult<JsonNode?>(new JsonObject{["Privileges"]=list});}
+ var rows=new JsonArray();if(path.StartsWith("EntityDefinitions?")&&defect!="table_missing")rows.Add(new JsonObject{["LogicalName"]="zk_kitchenworkspace"});return Task.FromResult<JsonNode?>(new JsonObject{["value"]=rows});});
+ var e=new ResourceEngine(f);await new Provisioner(e,f,Provisioner.LoadContract("server/deployment/registration.json")).Inventory();var facts=System.Text.Json.JsonSerializer.SerializeToNode(e.Resources)!.AsArray().Where(r=>r?["resource"]?.GetValue<string>()=="workspace_privilege").ToArray();Assert(facts.Length==2&&f.Writes==0&&privilegeReads==(defect=="table_missing"?0:1));Assert(!System.Text.Json.JsonSerializer.Serialize(e.Resources).Contains("private-sentinel"));Assert(facts.Count(r=>r!["status"]!.GetValue<string>()=="available")== (defect=="none"?2:defect=="table_missing"?0:1));
+ }
+});
 Console.WriteLine($"{passed} passed; {failed} failed");return failed==0?0:1;
 Fake Fixture(JsonObject? data, Func<HttpMethod,string,JsonNode?,Task<JsonNode?>>? other=null)=>new((m,p,b)=>{
  if(p=="WhoAmI")return Task.FromResult<JsonNode?>(Parse($"{{\"OrganizationId\":\"{Target.Organization}\",\"UserId\":\"00000000-0000-0000-0000-000000000002\"}}"));

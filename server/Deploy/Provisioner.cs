@@ -35,9 +35,24 @@ public sealed class Provisioner(ResourceEngine engine, IDataverseTransport trans
             ["workspace_message_filters"] = "sdkmessagefilters?$select=sdkmessagefilterid,iscustomprocessingstepallowed,_sdkmessageid_value&$filter=primaryobjecttypecode eq 'zk_kitchenworkspace'",
             ["receipt_message_filters"] = "sdkmessagefilters?$select=sdkmessagefilterid,iscustomprocessingstepallowed,_sdkmessageid_value&$filter=primaryobjecttypecode eq 'zk_kitchenoperation'"
         };
+        bool workspaceExists = false;
         foreach (var query in queries) {
             var rows = await engine.Rows(query.Value);
             engine.Resources.Add(new { resource=query.Key, status="inventory", count=rows.Length });
+            if(query.Key=="kitchen_tables") workspaceExists=rows.Any(r=>r["LogicalName"]?.GetValue<string>()=="zk_kitchenworkspace");
+        }
+        var privilegeMetadata=workspaceExists?await engine.Get("EntityDefinitions(LogicalName='zk_kitchenworkspace')?$select=Privileges"):null;
+        foreach(var verb in new[]{"Read","Write"}) {
+            string status="table_missing";
+            if(workspaceExists) {
+                status="invalid_or_duplicate";
+                if(privilegeMetadata?["Privileges"] is JsonArray privileges) {
+                    var matches=privileges.Where(p=>p is JsonObject o&&o["PrivilegeType"] is JsonValue v&&v.TryGetValue<string>(out var value)&&value==verb).ToArray();
+                    if(matches.Length==0)status="missing";
+                    else if(matches.Length==1&&matches[0]?["Name"] is JsonValue n&&n.TryGetValue<string>(out var name)&&name.Length is >0 and <=100&&name.All(c=>c is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '_'))status="available";
+                }
+            }
+            engine.Resources.Add(new{resource="workspace_privilege",privilege=verb,status});
         }
     }
     public async Task Tables(bool create) {

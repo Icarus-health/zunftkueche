@@ -80,8 +80,15 @@ public sealed class ResourceEngine(IDataverseTransport transport, string? authen
         if (row == null) { Resources.Add(new { resource = name, status = "missing" }); return null; }
         RequireMatch(row, expected, (fieldPath, code) =>
             Resources.Add(new { resource = name, status = code, fieldPath }));
-        var idField = new[] { "MetadataId", "publisherid", "solutionid", "pluginpackageid", "customapiid", "sdkmessageprocessingstepid", "zk_kitchenworkspaceid" }.FirstOrDefault(row.ContainsKey);
-        string? id = idField == null ? null : Id(row, idField);
+        // Fixed resource collection mapping; solutionid on another resource is never its primary ID.
+        string? idField = collection switch {
+            "publishers" => "publisherid", "solutions" => "solutionid", "pluginpackages" => "pluginpackageid",
+            "customapis" => "customapiid", "sdkmessageprocessingsteps" => "sdkmessageprocessingstepid",
+            "EntityDefinitions" or "RelationshipDefinitions" => "MetadataId", _ => null
+        };
+        if (collection.StartsWith("EntityDefinitions(LogicalName='zk_kitchenworkspace')/", StringComparison.Ordinal) || collection.StartsWith("EntityDefinitions(LogicalName='zk_kitchenoperation')/", StringComparison.Ordinal) || name == "receipt_lookup") idField = "MetadataId";
+        if (name == "workspace_seed") idField = "zk_kitchenworkspaceid";
+        string? id = idField == null || !row.ContainsKey(idField) ? null : Id(row, idField);
         Resources.Add(new { resource = name, status, id });
         return row;
     }

@@ -9,7 +9,7 @@ public sealed class Session(IAcceptanceTransport transport,string objectId,JsonO
  Guid actor;
  public Evidence Evidence {get;}=new();
  public async Task RunAsync(string phase) {
-  if(phase is not ("inspect" or "prepare-canaries" or "runtime"))throw new AcceptanceFault("invalid_phase");
+  if(phase is not ("inspect" or "prepare-canaries" or "runtime" or "denials-only"))throw new AcceptanceFault("invalid_phase");
   actor=await engine.AuthenticateTargetAsync();Evidence.Pass("target_identity_german_eur");
   var p=new Provisioner(engine,transport,contract);
   await p.Tables(false);
@@ -41,9 +41,16 @@ public sealed class Session(IAcceptanceTransport transport,string objectId,JsonO
   if(!roles.Any(r=>string.Equals(r["_roletemplateid_value"]?.GetValue<string>(),"627090ff-40a3-4053-8790-584edc5be201",StringComparison.OrdinalIgnoreCase)))throw new AcceptanceFault("direct_system_administrator_role_required");
   Evidence.Pass("permitted_administrator");
   await VerifyCanaries(false);
+  if(phase=="denials-only") {
+   await DenialContinuation.Run(transport,actor,seed,()=>Row(Scope.Workspace,Seed.WorkspaceId),Receipts,Snapshot,sets,Evidence);return;
+  }
   await RuntimeCommit();
-  foreach(var table in new[]{Scope.Workspace,Scope.Operation})foreach(var probe in Scope.Probes(table,sets[table],actor,sets[Scope.Workspace]))
-   await Checks.Denial(transport,probe,Snapshot,Evidence);
+  foreach(var table in new[]{Scope.Workspace,Scope.Operation}) {
+   var probes=Scope.SupportedProbes(table,sets[table],actor,sets[Scope.Workspace]);
+   Evidence.Availability.Add(new(table,"DeleteMultiple","documented_unsupported_standard_table",false,false));
+   foreach(var probe in probes)await Checks.Denial(transport,probe,Snapshot,Evidence);
+  }
+  Evidence.SupportedDenialsComplete=true;
   Evidence.RootReleaseAllowed=true;
  }
  async Task<PlatformInventory> VerifiedInventory(string? kitchenGuardHandler=null) {

@@ -30,6 +30,18 @@ public static class Scope {
   }
   return row;
  }
+ public static IReadOnlyList<Probe> SupportedProbes(string table,string set,Guid actor,string workspaceSet) {
+  var plan=Probes(table,set,actor,workspaceSet);
+  return ValidateSupportedPlan(table,set,plan);
+ }
+ public static IReadOnlyList<Probe> ValidateSupportedPlan(string table,string set,IReadOnlyList<Probe> plan) {
+  ValidateSet(table,set);
+  var names=new[]{"create","update","delete","upsert_existing","upsert_missing","create_multiple_1","create_multiple_2","update_multiple_1","update_multiple_2","upsert_multiple_existing_1","upsert_multiple_missing_1","upsert_multiple_mixed_2","delete_multiple"};
+  if(plan.Count!=13||!plan.Select(p=>p.Check).SequenceEqual(names.Select(n=>table+"_"+n)))throw new AcceptanceFault("denial_plan_drift");
+  var unavailable=plan[12];
+  if(!unavailable.Unsupported||unavailable.Method!=HttpMethod.Post||unavailable.Path!=set+"/Microsoft.Dynamics.CRM.DeleteMultiple"||plan.Take(12).Any(p=>p.Unsupported||p.Path.Contains("DeleteMultiple",StringComparison.Ordinal)))throw new AcceptanceFault("denial_plan_drift");
+  return plan.Take(12).ToArray();
+ }
  public static IReadOnlyList<Probe> Probes(string table,string set,Guid actor,string workspaceSet="zk_kitchenworkspaces") {
   ValidateSet(table,set); var ids=Existing(table);var missing=Missing(table);var list=new List<Probe>();
   void Add(string name,HttpMethod method,string path,JsonNode? body=null,bool update=false,bool unsupported=false)=>list.Add(new(table+"_"+name,method,path,body?.ToJsonString(),update,unsupported));

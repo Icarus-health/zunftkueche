@@ -31,9 +31,11 @@ public static class Diagnosis {
    bool unsupported=status==400 && code!=null &&
     string.Equals(message,"DeleteMultiple has not yet been implemented.",StringComparison.Ordinal);
    var kind=KnownFailureKind(message);
-   var facts=GuardFacts(status,code,kind,message);
-   var target=TargetFacts(status,code,kind,message);
-   return new(status,null,guard,unsupported,code,kind,facts.Mask,facts.Parent,facts.Wrapper,facts.Source,facts.Kind,facts.Version,BindingFact(status,code,kind,message),target.Mask,target.Count,target.Presence,target.Decoration);
+   bool unique=doc.RootElement.EnumerateObject().Count(p=>p.Name=="error")==1&&error.EnumerateObject().Count(p=>p.Name=="code")==1&&error.EnumerateObject().Count(p=>p.Name=="message")==1;
+   string factsMessage=unique?message:"";
+   var facts=GuardFacts(status,code,kind,factsMessage);
+   var target=TargetFacts(status,code,kind,factsMessage);
+   return new(status,null,guard,unsupported,code,kind,facts.Mask,facts.Parent,facts.Wrapper,facts.Source,facts.Kind,facts.Version,BindingFact(status,code,kind,factsMessage),target.Mask,target.Count,target.Presence,target.Decoration);
   }catch(Exception e)when(e is JsonException or InvalidOperationException or KeyNotFoundException){return new(status,null);}
  }
  static (int? Mask,int? Parent,int? Wrapper,int? Source,int? Kind,int? Version) GuardFacts(int status,string? code,FailureKind kind,string message) {

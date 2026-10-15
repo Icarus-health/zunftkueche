@@ -22,7 +22,7 @@ await Test("both tables have bounded complete 13-route denial plans",()=>{
 async Task Reject(Func<Task> run){try{await run();}catch(Exception e)when(e is AcceptanceFault or DeploymentException){return;}throw new Exception("unsafe_acceptance");}
 await Test("offline default and all unexecuted phases cannot authenticate",async()=>{
  Assert(!AcceptanceOptions.Parse([]).Execute&&AcceptanceOptions.Parse([]).Phase=="inspect");
- foreach(var phase in new[]{"inspect","prepare-canaries","runtime"})Assert(!AcceptanceOptions.Parse(["--phase",phase]).Execute);
+ foreach(var phase in new[]{"inspect","prepare-canaries","runtime","denials-only"})Assert(!AcceptanceOptions.Parse(["--phase",phase]).Execute);
  await Reject(()=>{AcceptanceOptions.Parse(["--phase","runtime","--url","https://evil.example"]);return Task.CompletedTask;});
  await Reject(()=>{AcceptanceOptions.Parse(["--phase","cleanup"]);return Task.CompletedTask;});
  await Reject(()=>{AcceptanceOptions.Parse(["--phase","runtime","--phase","inspect"]);return Task.CompletedTask;});
@@ -349,5 +349,33 @@ await Test("decoration strict grammar invariants complete accounting and privacy
  foreach(var badTarget in new[]{target.Replace("n=6","n=5"),target.Replace("i=1","i=0"),target.Replace("m=4","m=36"),target.Replace("m=4","m=0")})Assert(Parse(badTarget+decor)["Decoration"]==null);
  Assert(Parse(target+decor,403)["Decoration"]==null&&Parse(target+decor,400,"0x80004005")["Decoration"]==null);
  return Task.CompletedTask;
+});
+await Test("duplicate diagnostic envelope keys suppress additive facts without raw text",()=>{
+ const string msg="Direct kitchen table writes are blocked. [zk_guard_binding_v1;b=1]";
+ var safe=System.Text.Json.JsonSerializer.Serialize(msg);
+ foreach(var body in new[]{"{\"error\":{},\"error\":{\"code\":\"0x80040265\",\"message\":"+safe+"}}","{\"error\":{\"code\":\"0x80040265\",\"code\":\"0x80040265\",\"message\":"+safe+"}}","{\"error\":{\"code\":\"0x80040265\",\"message\":\"private-sentinel\",\"message\":"+safe+"}}"}){var o=Diagnosis.Refusal(400,System.Text.Encoding.UTF8.GetBytes(body));Assert(o.BindingReason==null&&o.GuardMask==null&&o.TargetMask==null&&o.Decoration==null&&o.NumericCode=="0x80040265"&&o.GuardDenied&&!System.Text.Json.JsonSerializer.Serialize(o).Contains("sentinel"));}
+ return Task.CompletedTask;
+});
+await Test("denial continuation performs24 fixed probes and2 unexecuted availability classifications without Commit",async()=>{
+ var f=new ContinuationFake();var e=new Evidence();await f.Run(e);Assert(f.Probes.Count==24&&f.Probes.Select(p=>p.Check).Distinct().Count()==24&&f.Loads==1&&f.Probes.All(p=>!p.Path.Contains("DeleteMultiple")&&!p.Path.Contains("KitchenCommit")));var facts=System.Text.Json.JsonSerializer.SerializeToNode(e)!;Assert(facts["SupportedDenialsComplete"]?.GetValue<bool>()==true&&!e.RootReleaseAllowed&&facts["Availability"]!.AsArray().Count==2);Assert(facts["Availability"]!.AsArray().All(a=>a!["Executed"]!.GetValue<bool>()==false&&a["GuardExecutionProved"]!.GetValue<bool>()==false&&a["Status"]!.GetValue<string>()=="documented_unsupported_standard_table"));
+});
+await Test("continuation rejects every fixed checkpoint receipt owner state and Load mismatch before denials",async()=>{
+ foreach(var defect in new[]{"revision","count","fingerprint","owner","state","state_revision","receipt_missing","receipt_duplicate","receipt_hash","receipt_actor","receipt_workspace","receipt_revision","receipt_timestamp","conflict","other_receipt","load","readonly"}){var f=new ContinuationFake{Defect=defect};await Reject(()=>f.Run(new Evidence()));Assert(f.Probes.Count==0);}
+});
+await Test("continuation pins every before snapshot and stops after any unknown changed or ambiguous result",async()=>{
+ foreach(var defect in new[]{"drift_before","changed_after","success","http405","http404","unknown","ambiguous","readback_failure"}){var f=new ContinuationFake{Defect=defect};var e=new Evidence();await Reject(()=>f.Run(e));Assert(f.Probes.Count==1);Assert(!e.RootReleaseAllowed&&System.Text.Json.JsonSerializer.SerializeToNode(e)!["SupportedDenialsComplete"]?.GetValue<bool>()!=true);if(defect is "ambiguous" or "changed_after")Assert(e.Checks.Any(c=>c.Name.Contains("readback")||c.Name.EndsWith("_unchanged")));}
+});
+await Test("denial-only Session retains identity Standard table and missing-backend gates",async()=>{
+ foreach(var defect in new[]{"organization","object","language","currency","elastic","missing_backend"}){var f=new PreflightFake{WrongOrganization=defect=="organization",WrongObject=defect=="object",WrongLanguage=defect=="language",WrongCurrency=defect=="currency",Elastic=defect=="elastic"};try{await f.Session().RunAsync("denials-only");throw new Exception("accepted");}catch(Exception ex)when(ex is AcceptanceFault or DeploymentException){}Assert(f.Writes==0);}
+});
+await Test("supported plan excludes only exact DeleteMultiple and rejects plan drift",async()=>{
+ foreach(var table in new[]{Scope.Workspace,Scope.Operation}){
+  var set=table+"s";var plan=Scope.Probes(table,set,PreflightFake.Actor);
+  Assert(Scope.ValidateSupportedPlan(table,set,plan).Count==12);
+  foreach(var defect in new[]{"missing","extra","renamed","generic_unsupported","wrong_route","wrong_method","unsupported_false"}){
+   var altered=plan.ToList();switch(defect){case "missing":altered.RemoveAt(0);break;case "extra":altered.Add(plan[0]);break;case "renamed":altered[0]=plan[0] with{Check="unknown"};break;case "generic_unsupported":altered[0]=plan[0] with{Unsupported=true};break;case "wrong_route":altered[12]=plan[12] with{Path=set+"/unknown"};break;case "wrong_method":altered[12]=plan[12] with{Method=HttpMethod.Get};break;case "unsupported_false":altered[12]=plan[12] with{Unsupported=false};break;}
+   await Reject(()=>{Scope.ValidateSupportedPlan(table,set,altered);return Task.CompletedTask;});
+  }
+ }
 });
 Console.WriteLine($"{passed} passed; {failed} failed");return failed==0?0:1;

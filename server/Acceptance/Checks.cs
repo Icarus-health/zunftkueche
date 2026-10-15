@@ -5,7 +5,10 @@ using Kitchen.Deploy;
 using Zunftkueche;
 namespace Kitchen.Acceptance;
 public sealed record Check(string Name,bool Passed,int? Status=null,string? NumericCode=null,int? Revision=null,int? Count=null,string? Hash=null,bool? GuardDenied=null,FailureKind? FailureKind=null,int? GuardMask=null,int? ParentKind=null,int? WrapperMask=null,int? SourceMask=null,int? SourceKind=null,int? GuardVersion=null,int? BindingReason=null,int? TargetMask=null,int? TargetCount=null,int? TargetIdPresence=null,DecorationFacts? Decoration=null);
+public sealed record Availability(string Table,string Message,string Status,bool Executed,bool GuardExecutionProved);
 public sealed class Evidence {
+ public List<Availability> Availability {get;}=[];
+ public bool SupportedDenialsComplete {get;internal set;}
  public List<Check> Checks {get;}=[];
  public bool RootReleaseAllowed {get;internal set;}
  public bool Stopped {get;internal set;}
@@ -16,8 +19,8 @@ public sealed record Fingerprint(string Hash,int OperationCount,int Revision);
 public static class Checks {
  public static string Hash(JsonNode value)=>Protocol.Hash(Protocol.Canonical(JToken.Parse(value.ToJsonString())).ToString(Formatting.None));
  public static bool Same(JsonNode? a,JsonNode? b)=>a!=null&&b!=null&&JToken.DeepEquals(Protocol.Canonical(JToken.Parse(a.ToJsonString())),Protocol.Canonical(JToken.Parse(b.ToJsonString())));
- public static async Task Denial(IAcceptanceTransport transport,Probe probe,Func<Task<Fingerprint>> snapshot,Evidence evidence) {
-  var before=await snapshot(); evidence.Pass(probe.Check+"_before",revision:before.Revision,count:before.OperationCount,hash:before.Hash); Outcome outcome;
+ public static async Task Denial(IAcceptanceTransport transport,Probe probe,Func<Task<Fingerprint>> snapshot,Evidence evidence,Fingerprint? requiredBefore=null) {
+  var before=await snapshot(); if(requiredBefore!=null&&before!=requiredBefore)evidence.Fail(probe.Check+"_checkpoint_drift_stop"); evidence.Pass(probe.Check+"_before",revision:before.Revision,count:before.OperationCount,hash:before.Hash); Outcome outcome;
   try{outcome=await transport.ProbeAsync(probe);}catch(Exception){
    // Even an ambiguous write gets an independent readback. It can never pass or be retried.
    try{var after=await snapshot();evidence.Pass(probe.Check+"_ambiguous_readback",count:after.OperationCount,revision:after.Revision,hash:after.Hash);}catch(Exception){}

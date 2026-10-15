@@ -64,6 +64,7 @@ public sealed class PreflightFake:IAcceptanceTransport {
   }
   if(path.StartsWith("plugintypes?")&&path.Contains("Microsoft.Crm.Extensibility.InternalOperationPlugin"))return Task.FromResult(Ok(List(InternalMetadata["handler"]!.DeepClone().AsObject())));
   if(path.StartsWith("plugintypes?"))return Task.FromResult(Ok(List()));
+  if(path.StartsWith("zk_kitchenworkspaces?")||path.StartsWith("pluginpackages?"))return Task.FromResult(Ok(List()));
   if(path.StartsWith("zk_kitchenworkspaces(")||path.StartsWith("zk_kitchenoperations("))return Task.FromResult(Rows.TryGetValue(path.Split('?')[0],out var found)?Ok(found.DeepClone()):new Outcome(404,null));
   throw new Exception("unexpected_read_route");
  }
