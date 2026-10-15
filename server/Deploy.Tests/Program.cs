@@ -220,7 +220,26 @@ await Test("relationship deep insert omits existing lookup reference and reuses 
 await Test("relationship readback still rejects missing or wrong referencing attribute",async()=>{
 await CheckRelationship(null,false);await CheckRelationship("zk_other",false);
 });
-async Task CheckRelationship(string? referencingAttribute,bool create) {
+await Test("receipt key accepts reversed exact column set without writes",()=>CheckRelationship("zk_workspace",false,
+Parse("""{"SchemaName":"zk_workspace_operation","KeyAttributes":["zk_operationid","zk_workspace"],"EntityKeyIndexStatus":"Active"}""")));
+await Test("receipt key rejects duplicate missing extra wrong and nonstring columns",async()=>{
+foreach(var columns in new[]{"[]","[\"zk_workspace\"]","[\"zk_workspace\",\"zk_workspace\"]","[\"zk_operationid\",\"zk_operationid\"]","[\"zk_workspace\",\"zk_other\"]","[\"zk_workspace\",\"zk_operationid\",\"zk_other\"]","[\"zk_workspace\",null]","[\"zk_workspace\",42]","[\"zk_workspace\",{}]","null","\"zk_workspace\""}){
+var key=Parse("""{"SchemaName":"zk_workspace_operation","EntityKeyIndexStatus":"Active"}""");key["KeyAttributes"]=JsonNode.Parse(columns);
+await CheckRelationship("zk_workspace",false,key,true);
+}
+await CheckRelationship("zk_workspace",false,Parse("""{"SchemaName":"zk_workspace_operation","EntityKeyIndexStatus":"Active"}"""),true);
+});
+await Test("receipt key retains exact schema and active gating with reversed columns",async()=>{
+await CheckRelationship("zk_workspace",false,Parse("""{"SchemaName":"zk_other","KeyAttributes":["zk_operationid","zk_workspace"],"EntityKeyIndexStatus":"Active"}"""),true);
+foreach(var status in new[]{"Pending","InProgress","Failed","active"}){
+var key=Parse("""{"SchemaName":"zk_workspace_operation","KeyAttributes":["zk_operationid","zk_workspace"]}""");key["EntityKeyIndexStatus"]=status;
+await CheckRelationship("zk_workspace",false,key,false,true);
+}
+});
+await Test("generic metadata arrays remain ordered",()=>Reject(()=>{
+ResourceEngine.RequireMatch(Parse("""{"KeyAttributes":["zk_operationid","zk_workspace"]}"""),Parse("""{"KeyAttributes":["zk_workspace","zk_operationid"]}"""));return Task.CompletedTask;
+}));
+async Task CheckRelationship(string? referencingAttribute,bool create,JsonObject? keyOverride=null,bool rejectKey=false,bool inactiveKey=false) {
 var contract=Provisioner.LoadContract("server/deployment/registration.json");
 var relationship=Parse("""
 {"SchemaName":"zk_kitchenworkspace_operations","ReferencedEntity":"zk_kitchenworkspace","ReferencedAttribute":"zk_kitchenworkspaceid","ReferencingEntity":"zk_kitchenoperation","ReferencingEntityNavigationPropertyName":"zk_workspace","CascadeConfiguration":{"Assign":"NoCascade","Delete":"Restrict","Merge":"NoCascade","Reparent":"NoCascade","Share":"NoCascade","Unshare":"NoCascade"}}
@@ -247,7 +266,7 @@ else {
 var table=contract["tables"]!.AsArray().Single(t=>path.Contains("'"+t!["logicalName"]!.GetValue<string>()+"'"))!;
 var name=table["logicalName"]!.GetValue<string>();
 if(path.StartsWith("EntityDefinitions?$filter="))row=new JsonObject{["MetadataId"]="00000000-0000-0000-0000-000000000022",["SchemaName"]=name,["LogicalName"]=name,["OwnershipType"]=table["ownershipType"]!.DeepClone(),["IsActivity"]=false,["IsOptimisticConcurrencyEnabled"]=true,["TableType"]="Standard",["PrimaryNameAttribute"]="zk_name",["PrimaryIdAttribute"]=name+"id"};
-else if(path.Contains("/Keys?")){keyReads++;row=Parse("""{"SchemaName":"zk_workspace_operation","KeyAttributes":["zk_workspace","zk_operationid"],"EntityKeyIndexStatus":"Active"}""");}
+else if(path.Contains("/Keys?")){keyReads++;row=keyOverride?.DeepClone().AsObject()??Parse("""{"SchemaName":"zk_workspace_operation","KeyAttributes":["zk_workspace","zk_operationid"],"EntityKeyIndexStatus":"Active"}""");}
 else {
 var attr=table["attributes"]!.AsArray().Single(a=>path.EndsWith("'"+a!["name"]!.GetValue<string>()+"'"))!;
 if(attr["type"]!.GetValue<string>()=="Lookup")lookupReads++;
@@ -257,7 +276,12 @@ row=Metadata.AttributeExpected(attr,attr["name"]!.GetValue<string>()=="zk_name")
 return Task.FromResult<JsonNode?>(Rows(row));
 });
 var engine=new ResourceEngine(f);await engine.AuthenticateTargetAsync();var provisioner=new Provisioner(engine,f,contract);
-if(create){await provisioner.Tables(true);await provisioner.Tables(true);Assert(provisioner.Gaps.Count==0&&f.Writes==1&&lookupReads==2&&keyReads==2);}
+if(keyOverride!=null){
+if(rejectKey)await Reject(()=>provisioner.Tables(true));
+else {await provisioner.Tables(true);Assert(inactiveKey?provisioner.Gaps.SequenceEqual(new[]{"alternate_key_not_active"}):provisioner.Gaps.Count==0);}
+Assert(f.Writes==0&&lookupReads==1&&keyReads==1);
+}
+else if(create){await provisioner.Tables(true);await provisioner.Tables(true);Assert(provisioner.Gaps.Count==0&&f.Writes==1&&lookupReads==2&&keyReads==2);}
 else {await Reject(()=>provisioner.Tables(true));Assert(f.Writes==0&&lookupReads==0&&keyReads==0);
 Assert(System.Text.Json.JsonSerializer.Serialize(engine.Resources).Contains("$.ReferencingAttribute"));}
 }

@@ -56,3 +56,27 @@ DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home
 ```
 
 Result: build succeeded, **0 warnings, 0 errors**. `git diff --check` passed. No unchanged Node suite or plugin rebuild was run. Self-review: the production diff removes one POST property and reinstates that exact property solely in the expected readback; all other payload and verification fields stay identical. Contract, source, domain, plugin/package, six guards and ten runtime gates are untouched. Root/other-worker README, package.json, Acceptance directories and status/planning files remain unstaged. This is a locally verified documented-shape correction pending independent review and Root's provider test; successful live relationship creation is not claimed.
+
+## Alternate-key column-order follow-up
+
+Base: a285a33. Root reported that run 29382, using the reviewed relationship-payload change, successfully created and read back relationship a6d5c932-6cc8-f111-a05c-7ced8d5f6e0d and lookup 52bdfafb-343c-4078-912c-7d6643c06c2a. Thus the changed create shape resolved the observed relationship failure in this environment, while the internal existing-lookup-resolution explanation remains undocumented. The next key creation became visible but stopped at the ordered KeyAttributes comparison. Root's independent read-only session 77829 then confirmed SchemaName zk_workspace_operation, KeyAttributes exactly [zk_operationid, zk_workspace], and EntityKeyIndexStatus Active. The readback contains the same two columns in reverse order, not different columns.
+
+Microsoft's [Work with alternate keys](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/define-alternate-keys-entity) describes uniqueness over a combination of columns and asynchronous index activation. [Use an alternate key to reference a record](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/use-alternate-key-reference-record) describes matching the set of key columns; Web API matching requires their names and number. The [EntityKeyMetadata reference](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/reference/entitykeymetadata?view=dataverse-latest) represents KeyAttributes as a string collection. No reviewed documentation promises preservation of array order or says that Dataverse always reverses/sorts it. For this app's uniqueness requirement, the exact column set defines the needed constraint. Root explicitly authorized this narrow interpretation after the concrete readback.
+
+Provisioner.Tables now checks receipt_key's SchemaName through the unchanged generic matcher, then independently requires exactly two string entries containing zk_workspace and zk_operationid. Count two plus both distinct required members rejects duplicates, missing or extra columns, unknown names, nulls, numbers, objects and nonarray input. A mismatch records only the fixed receipt_key / $.KeyAttributes diagnostic and stops. Active status is still checked exactly afterward, with the same blocking gap for an inactive index. The create payload still contains the original ordered two-column array; no update, retry or metadata mutation capability was added. ResourceEngine, generic ordered-array comparison, registration/hash, seed, original source, domain, plugin/package, six guards and ten runtime gates are untouched.
+
+Covering tests in server/Deploy.Tests/Program.cs extend the actual Tables fake-transport path: reversed exact set is accepted without writes; original order remains covered by the existing successful relationship tests; bad sets/duplicates/malformed members are rejected without writes; wrong SchemaName still fails; reversed columns with Pending, InProgress, Failed or lower-case active still block readiness. A direct generic comparison test proves ordered KeyAttributes arrays remain unequal outside this specific receipt-key validation. Read counters ensure the rejection/acceptance cases reached the key after successful relationship/lookup verification. Acceptance.Tests/Fixtures.cs already returns the other valid order and needs no update; Acceptance files were neither edited nor staged.
+
+Red with the original ordered comparison: **58 passed; 2 failed** (reversed valid set and reversed inactive-key gating). Green after the narrow fix: **60 passed; 0 failed**. Exact command:
+
+```sh
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home DOTNET_GENERATE_ASPNET_CERTIFICATE=false ../dotnet10/dotnet run --project server/Deploy.Tests --no-restore -p:UseSharedCompilation=false
+```
+
+Build command:
+
+```sh
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home DOTNET_GENERATE_ASPNET_CERTIFICATE=false ../dotnet10/dotnet build server/Deploy --no-restore -p:UseSharedCompilation=false
+```
+
+Build succeeded with **0 warnings and 0 errors**; `git diff --check` passed. Self-review confirmed comparison is confined to this key, requires both exact strings and exact cardinality, retains schema/status gates, leaves the payload unchanged and emits no provider field values. Only Provisioner.cs, its covering tests and this report are included. No provider/auth/browser calls, plugin rebuild or unrelated test reruns were performed. Root's independent review precedes live readiness/seed actions; this commit claims local verification only.

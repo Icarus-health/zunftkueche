@@ -76,10 +76,20 @@ public sealed class Provisioner(ResourceEngine engine, IDataverseTransport trans
         var lookupSpec = contract["tables"]![1]!["attributes"]![1]!;
         await Ensure("receipt_lookup", "EntityDefinitions(LogicalName='zk_kitchenoperation')/Attributes/Microsoft.Dynamics.CRM.LookupAttributeMetadata?$filter=LogicalName eq 'zk_workspace'", "", new JsonObject(), Metadata.AttributeExpected(lookupSpec), false);
         string keys = "EntityDefinitions(LogicalName='zk_kitchenoperation')/Keys";
-        var keyExpected = new JsonObject { ["SchemaName"] = "zk_workspace_operation", ["KeyAttributes"] = new JsonArray("zk_workspace", "zk_operationid") };
-        var keyPayload = keyExpected.DeepClone().AsObject(); keyPayload["DisplayName"] = Metadata.Label("Workspace und Vorgangs-ID");
+        var keyExpected = new JsonObject { ["SchemaName"] = "zk_workspace_operation" };
+        var keyPayload = keyExpected.DeepClone().AsObject();
+        keyPayload["KeyAttributes"] = new JsonArray("zk_workspace", "zk_operationid");
+        keyPayload["DisplayName"] = Metadata.Label("Workspace und Vorgangs-ID");
         var key = await Ensure("receipt_key", keys + "?$filter=SchemaName eq 'zk_workspace_operation'", keys, keyPayload, keyExpected, create);
         if (key != null) {
+            // This key enforces uniqueness of the two named columns, regardless of metadata serialization order.
+            // Count plus both exact string members also rejects duplicates, nulls and unexpected columns.
+            if (key["KeyAttributes"] is not JsonArray columns || columns.Count != 2 ||
+                !new[] { "zk_workspace", "zk_operationid" }.All(name => columns.Any(node =>
+                    node is JsonValue value && value.TryGetValue<string>(out var column) && column == name))) {
+                engine.Resources.Add(new { resource = "receipt_key", status = "resource_definition_drift", fieldPath = "$.KeyAttributes" });
+                throw new DeploymentException("resource_definition_drift");
+            }
             try { Readiness.RequireActiveKey(key); }
             catch (DeploymentException) { Gap("alternate_key_not_active"); }
         }
