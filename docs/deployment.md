@@ -1,6 +1,6 @@
 # Microsoft-Bereitstellung: lokal gebaut, noch nicht im Tenant eingerichtet
 
-Diese Arbeitsversion enthält einen echten kompilierten Dataverse-Plug-in-Server und einen typisierten Browseradapter. **Die genehmigte Umgebung/Zugriffsgruppe fehlt weiterhin.** Es wurden keine Tenant-Ressourcen, Konten, Rollen, Verbindungen oder Zugangsdaten verändert. Die produktive App bleibt ohne echte generierte Dienste gesperrt. Die lokale Arbeitsversion arbeitet weiter wie bisher.
+Diese Arbeitsversion enthält einen echten kompilierten Dataverse-Plug-in-Server und einen typisierten Browseradapter. **Fortschreibung 15.10.2026:** Der Nutzer hat das bestehende Zunft-Team als Zugriffsgruppe ausdrücklich freigegeben. Die Umgebung „Zunftküche“ mit Dataverse wurde daraufhin erstellt und im Admin Center als bereit bestätigt: 5684204c-3254-ec15-93f4-276ec50cc65b, https://org1d76e28a.crm17.dynamics.com, EU/EFTA (zugeteilte Region Schweiz), Sandbox. Die App soll zunächst ausschließlich vom Konto Vorstand@Schelmenzunft.onmicrosoft.com verwendet werden. Es bestehen noch keine registrierten Küchentabellen, APIs, Guards oder veröffentlichten Apps. Weitere Rollen, App-Pässe und Verbindungen wurden noch nicht eingerichtet. Die produktive App bleibt ohne echte generierte Dienste gesperrt. Die lokale Arbeitsversion arbeitet weiter wie bisher. Aktueller Stand: deployment-status-2026-10-15.json.
 
 ## Vertrag und Grenzen
 
@@ -93,3 +93,42 @@ Lokale Tests beweisen Validierung, Serialisierung, Fehlerbehandlung und dass CAS
 - Timeout nach Commit plus Reload wiederholt unveränderte Bytes und erhält Bestätigung; gespeicherte Daten sind nach neuer Anmeldung vorhanden. Echte serverseitige Kandidatenablehnung liefert den hashgebundenen `rejected`-Vertrag, erlaubt anschließend Korrektur und blockiert keinen erneuten Load. Unbekannte Fehler oder veränderte Bestätigungen erhalten dagegen die offenen Anfragebytes.
 - Alle unterstützten direkten CRUD-/Bulkpfade, Lösch-/Share-/Assign- und Bypass-Berechtigungen prüfen; aktive Schlüssel, RowVersion, Paketabhängigkeiten und normale Benutzerrollen dokumentieren.
 - Quellprovenienz, Originalbelege, Korrekturhistorie, vorbereitete Bestellungen und historische Verkaufspreise über einen Veranstaltungswechsel wiederfinden.
+
+## Lokales Einrichtungswerkzeug (15.10.2026)
+
+`server/Deploy` ist ein separates .NET-10-Konsolenprojekt; es wird nicht ins Plug-in-Paket aufgenommen. Die offiziellen Abhängigkeiten Microsoft.Identity.Client 4.83.0 und Newtonsoft.Json 13.0.3 sind samt transitiven Versionen in Lockfiles festgehalten. Das Werkzeug liest ausschließlich den unveränderten Vertrag, das Original `import/2026.json` und das bereits geprüfte nupkg. Abweichende SHA-256-Werte stoppen vor Anmeldung. Feste Workspace-ID: `45deaf94-5661-4110-8f16-3d2678c09f04`.
+
+Aus dem Repository-Verzeichnis, nachdem der separate Code-Review abgeschlossen ist:
+
+```sh
+# Vollständig offline: keine Anmeldung, keine Provider-Anfragen, keine Änderungen.
+bash server/Deploy/run.sh --phase inspect --dry-run
+
+# Read-only; zeigt genau einmal AUTH_URL für das Öffnen durch Root in DuckDuckGo.
+bash server/Deploy/run.sh --phase inspect
+
+# Phasen einzeln nach Prüfung des vorherigen Ergebnisses starten.
+bash server/Deploy/run.sh --phase tables
+bash server/Deploy/run.sh --phase seed
+bash server/Deploy/run.sh --phase backend
+bash server/Deploy/run.sh --phase verify
+```
+
+Ohne Argumente gilt `inspect`. Weitere Eingaben: `--url`, `--contract`, `--seed`, `--package`; das Ziel und die Datei-Inhalte sind fest auf den freigegebenen Stand begrenzt. `.local-state` ist als Seed ausgeschlossen. Die Schema-2-Kopie entsteht ausschließlich im Arbeitsspeicher: Revision 0, leere operationIds/operationRequests; nur `localPath` wird aus dieser Kopie entfernt. Der tatsächliche Servervalidator prüft sie. Original-IDs, Werte und sonstige Provenienz bleiben erhalten. Der Datensatz gehört ausschließlich dem angemeldeten Vorstand. Es gibt keine Rollen-/Teamfreigabe, keine Lösch-/Updatefunktion und keine Speicherung von Tokens, Anmeldecodes oder Credentials.
+
+Die Anmeldung verwendet Microsofts dokumentierten öffentlichen SDK-Beispielclient ausschließlich für dieses lokale Sandbox-Werkzeug, mit mandantenspezifischer Authority, `user_impersonation`, MSAL-PKCE und Loopback. Der Prozess startet selbst keinen Browser; Root öffnet die öffentliche `AUTH_URL` im genehmigten DuckDuckGo und übernimmt bei einer zusätzlichen Einwilligung. Token und MSAL-Cache bleiben nur im Speicher dieses Prozesses. Jede Phase startet eine neue Anmeldung. Nach der Anmeldung müssen Mandant, Account, Issuer, Dataverse-Organisation, aktiver Systemuser und dessen Entra-Objekt-ID übereinstimmen; außerdem werden Deutsch und EUR gelesen. Fehler enthalten ausschließlich eigene Fehlercodes, keine Antwortbodies oder Tokenwerte.
+
+Das Werkzeug vergleicht vorhandene Ressourcen und stoppt bei abweichenden Definitionen oder mehrfachen Identitäten. Nach jedem POST wird die kanonische Ressource erneut gelesen; auch bei Timeout/HTTP-Fehler wird zuerst nachgelesen und nie blind erneut geschrieben. Ein noch nicht sichtbares Ergebnis stoppt den Lauf. Später kann die Phase erneut aufgerufen werden. Fehlende Solution-Zugehörigkeit, inaktiver Schlüssel, fehlende Typen/API-Metadaten sowie unvollständige oder deaktivierte Guards verhindern die Metadatenfreigabe. Nicht vorhandene Bulk-Filter werden als `unavailable_*_requires_runtime_confirmation` dokumentiert: das Werkzeug behauptet deren Nichtaufrufbarkeit nicht. Root muss diese im echten Tenant prüfen; die Lücke lässt sich nicht per Schalter wegattestieren. `metadataReady` ist nur bei `verify` ohne Lücken wahr; tatsächliche Runtime-/Browserabnahme bleibt immer separat. Rückgabecodes: 0 erfolgreicher Lauf (bei inspect dürfen Ressourcen fehlen), 1 Fehler/Drift, 2 offene Verifikationslücken.
+
+Lokale Wiederherstellung, Tests und Build (nur offizielle NuGet-Quelle; absolute Cachepfade):
+
+```sh
+export DOTNET_CLI_HOME="$(pwd)/../dotnet-home"
+export NUGET_PACKAGES="$(pwd)/../nuget"
+export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 DOTNET_GENERATE_ASPNET_CERTIFICATE=false
+../dotnet10/dotnet restore server/Deploy.Tests --configfile server/NuGet.Config --locked-mode
+../dotnet10/dotnet run --project server/Deploy.Tests --no-restore -p:UseSharedCompilation=false
+../dotnet10/dotnet build server/Deploy --no-restore -p:UseSharedCompilation=false
+```
+
+Die Payloads folgen den offiziellen [Tabellenmetadaten](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/create-update-entity-definitions-using-web-api), [Lookup-Beziehungen](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/create-update-entity-relationships-using-web-api), [PluginPackage-Feldern](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/reference/pluginpackage?view=dataverse-latest), [Custom-API-Deep-Inserts](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/create-custom-api-with-code) und [Nachrichtenfiltern](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/reference/sdkmessagefilter?view=dataverse-latest). Die erste Paketregistrierung und die Annahme dieser Payloads durch den konkreten Tenant sind trotz erfolgreicher lokaler Tests erst durch Root live zu bestätigen. Die OAuth-Grundlage ist [Microsofts Dataverse-OAuth-Dokumentation](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/authenticate-oauth), der Browseraufruf folgt [MSAL-Systembrowseroptionen](https://learn.microsoft.com/en-us/entra/msal/dotnet/acquiring-tokens/using-web-browsers).

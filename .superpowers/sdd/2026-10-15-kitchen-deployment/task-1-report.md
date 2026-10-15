@@ -1,0 +1,43 @@
+# Task 1 — local phased Dataverse console
+
+Base: 05db45834ac60aea2aaf06399fc56adacc421876, feat/zunftkueche. Implementer performed only local file/build/test operations and read official documentation. No tenant authentication, OAuth request, provider API, browser, role grant, deployment or token-cache read occurred.
+
+## Delivered
+
+Separate net10.0 executable in server/Deploy; MSAL 4.83.0 + Newtonsoft.Json 13.0.3, pinned transitive lockfiles, official server/NuGet.Config. Default inspect, explicit tables/seed/backend/verify, entirely offline --dry-run. Public AUTH_URL emitted by MSAL's system browser callback; Root must open DuckDuckGo. Tenant-specific authority, user_impersonation scope, PKCE/loopback, in-memory cache only. Exact host/org/account/issuer/Entra-object identity plus German/EUR checks. All writes go through guarded create/readback logic; no update/delete/grant APIs. No response bodies/credentials in logs.
+
+Table/attribute/relationship/key metadata, publisher + unmanaged solution, exact existing nupkg content and real package/type/privilege bindings, Custom API deep inserts and $metadata readback, message/filter-driven guard registrations and solution membership reads. Existing definitions are compared; duplicate canonical identities/drift stop. Ambiguous POST failures requery once without blind POST retry. Inactive keys and incomplete/disabled/filtered/impersonating guards block readiness.
+
+Original-only seed hash d38bf0ac7c2bf34211c1df01af1869dd97522da24e2bde1a284e3e505844a15f. Schema-2 normalization is an in-memory copy using the actual server validator, all original fields preserved except localPath and schema metadata. Stable workspace 45deaf94-5661-4110-8f16-3d2678c09f04 is owned by authenticated Vorstand. Package hash 215fb97e2a374a4e621719c3c04cc9b21fc55686ca94fe67cc0d2a221c5bdf73 is enforced before auth. No package rebuild, source-data change or frontend/domain/import change.
+
+## Exact verification
+
+All commands run from /Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app. Build environment:
+
+```sh
+export DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home
+export NUGET_PACKAGES=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/nuget
+export DOTNET_GENERATE_ASPNET_CERTIFICATE=false DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 DOTNET_CLI_TELEMETRY_OPTOUT=1
+../dotnet10/dotnet restore server/Deploy.Tests --configfile server/NuGet.Config
+../dotnet10/dotnet restore server/Deploy.Tests --configfile server/NuGet.Config --locked-mode -p:NuGetAudit=false
+../dotnet10/dotnet run --project server/Deploy.Tests --no-restore -p:UseSharedCompilation=false
+../dotnet10/dotnet build server/Deploy --no-restore -p:UseSharedCompilation=false
+../dotnet10/dotnet run --project server/Deploy --no-restore -p:UseSharedCompilation=false -- --dry-run
+npm test
+```
+
+- Official dependency restore: succeeded (explicit tool approval for NuGet network). Locked restore: succeeded. Final build: 0 warnings, 0 errors, SDK 10.0.402.
+- Initial red behavioral suite against compileable stubs: 0 passed / 14 failed. Seed stub produced a missing-field NullReferenceException; remaining failures were explicit unsafe-input/behavior assertions. After implementation: 14 passed. Two metadata tests were then observed failing against stubs before metadata implementation; 16 passed afterward. Additional boundary/integration checks brought final suite to 24 passed / 0 failed.
+- Tests exercise exact URL/tenant/identity gates, wrong organization/no writes, missing target check, canonical reuse, drift/duplicates, ambiguous commit/readback and unresolved outcome, inactive key, unsafe guards, real source normalization and every field preservation, unsafe outgoing URL before token access, MSAL object-to-systemuser binding, unavailable and unguardable mutation gaps, exact supported guard creation/reuse and sanitized errors.
+- Offline dry-run exit 0; no AUTH_URL. Normalized copy hash be8a39ba0ef8b95f60223860df6fa8d20187f63726b2e0cf209d2ccbdc449da5, original/package hashes match above.
+- Entire existing npm test suite: 95 passed, 0 failed, 0 skipped.
+
+Initial tooling corrections: first invocation mistakenly used relative NUGET_PACKAGES and failed before compilation; .NET10 also printed a first-run development certificate banner and macOS CSSM_ModuleLoad warning. All subsequent invocations use absolute home/cache paths and explicitly disable certificate generation. A generated server/dotnet-home directory was moved intact outside the repository to ../dotnet10-first-run-home-preserved, not staged/deleted. No auth credentials were present or read. A subsequent compilation caught MSAL OpenBrowserAsync receiving Uri rather than string; fixed before successful build. No such warnings in final compile/test output. No live authentication was attempted.
+
+## Review boundaries / not yet proven
+
+Official docs support metadata fields, package content field, SDK-message filter, steps and Custom API deep inserts (links in deployment usage). First package registration and actual tenant acceptance of these payloads remain untested. Fake tests cannot establish live SDK transaction behavior, dependency resolution, effective ordinary-user permissions or browser acceptance.
+
+Missing bulk message/filter support is explicitly a runtime-confirmation gap; there is no skip/attestation switch. Thus metadataReady remains false if e.g. standard-table DeleteMultiple has no filter, until Root resolves that release evidence outside this local implementation. The console never guesses an unavailable path is uncallable. Any unsupported metadata field or unreadable package content stops rather than overwriting a definition. No polling/retry loop is present: inactive/pending keys or asynchronous package visibility require later read-only recheck. Inspect inventories are independent of missing publisher/solution; definition verification stops safely on drift.
+
+Readiness output is metadata-only and always labels live runtime acceptance pending. Root's dedicated independent review precedes provider writes. Root may then run `bash server/Deploy/run.sh --phase inspect` and open the emitted public URL in DuckDuckGo; all implementation verification above was local/offline.
