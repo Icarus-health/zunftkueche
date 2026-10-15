@@ -1,4 +1,5 @@
 using System.Net;
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -8,7 +9,11 @@ using Kitchen.Deploy;
 namespace Kitchen.PackageUpdate;
 
 // Single-purpose updater. The only mutation is one conditional Content PATCH to the fixed existing package.
-public sealed record PatchDiagnostic(int? HttpStatus=null,string? DataverseCode=null,string? TransportFailure=null);
+public sealed record PatchDiagnostic(int? HttpStatus=null,string? DataverseCode=null,string? TransportFailure=null) {
+ public string[] Flags { get; init; } = [];
+ public int? OperationStatus { get; init; }
+ public int? SubErrorCode { get; init; }
+}
 public sealed class FixedPackageUpdater:IDataverseTransport,IDisposable {
  public PatchDiagnostic PatchDiagnostic { get; private set; } = new();
  public const string PackageId="70a54daa-73c8-f111-a05c-7ced8d5f6e0d";
@@ -37,6 +42,7 @@ public sealed class FixedPackageUpdater:IDataverseTransport,IDisposable {
   try {
    using var request=await Request(HttpMethod.Patch,Row);
    request.Headers.IfMatch.Add(EntityTagHeaderValue.Parse(etag));
+   request.Headers.Add("Prefer","odata.include-annotations=\"Microsoft.PowerApps.CDS.ErrorDetails.OperationStatus,Microsoft.PowerApps.CDS.ErrorDetails.SubErrorCode\"");
    request.Content=new StringContent(new JsonObject{["content"]=Convert.ToBase64String(current)}.ToJsonString(),Encoding.UTF8,"application/json");
    using var timeout=new CancellationTokenSource(client.Timeout);
    // Status/code diagnose this single attempt; only the independent byte readback establishes its outcome.
@@ -71,9 +77,43 @@ public sealed class FixedPackageUpdater:IDataverseTransport,IDisposable {
    if(error.ValueKind!=JsonValueKind.Object||error.EnumerateObject().Count(p=>p.Name=="code")!=1)return;
    var value=error.GetProperty("code");if(value.ValueKind!=JsonValueKind.String)return;
    var code=value.GetString();
-   if(code is {Length:10}&&code.StartsWith("0x",StringComparison.Ordinal)&&code.AsSpan(2).ToArray().All(c=>c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F'))
+   if(code is {Length:10}&&code.StartsWith("0x",StringComparison.Ordinal)&&code.AsSpan(2).ToArray().All(c=>c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F')) {
     PatchDiagnostic=PatchDiagnostic with { DataverseCode=code };
+    CapturePackageFacts(error);
+   }
   } catch(Exception) { /* Malformed/unknown diagnostic: retain only the already observed status. */ }
+ }
+ // Same reviewed package-create vocabulary, plus explicit update/CAS vocabulary.
+ // Word presence is an observation, not a validation cause or authorization to retry.
+ static readonly string[] PackageWords = [
+  "package", "validation", "unique", "uniquename", "name", "prefix", "publisher", "version", "invalid", "mismatch",
+  "assembly", "signed", "unsigned", "signature", "trusted", "sandbox", "nuget", "zip", "content", "manifest", "nuspec",
+  "dependency", "dependencies", "reference", "references", "sdk", "newtonsoft", "duplicate", "already", "format", "strong",
+  "file", "missing", "blocked", "must", "alphanumeric", "characters", "size", "guid", "required",
+  "update", "upgrade", "existing", "same", "different", "immutable", "concurrency", "rowversion", "etag", "precondition", "match", "support", "unsupported"
+ ];
+ void CapturePackageFacts(JsonElement error) {
+  const string annotation="@Microsoft.PowerApps.CDS.ErrorDetails.";
+  bool Duplicate(JsonElement obj,string name)=>obj.EnumerateObject().Count(p=>p.Name==name)>1;
+  if(new[]{"message","innererror",annotation+"OperationStatus",annotation+"SubErrorCode"}.Any(name=>Duplicate(error,name)))return;
+  bool hasInner=error.TryGetProperty("innererror",out var inner)&&inner.ValueKind==JsonValueKind.Object;
+  if(hasInner&&Duplicate(inner,"message"))return;
+  var found=new HashSet<string>(StringComparer.Ordinal);
+  void Scan(JsonElement obj) {
+   if(!obj.TryGetProperty("message",out var message)||message.ValueKind!=JsonValueKind.String)return;
+   var tokens=Regex.Matches(message.GetString()!,"[A-Za-z]+").Select(m=>m.Value).ToArray();
+   foreach(var label in PackageWords)if(tokens.Contains(label,StringComparer.OrdinalIgnoreCase))found.Add(label);
+   foreach(var word in new[]{"found","supported","allowed"})
+    for(int i=1;i<tokens.Length;i++)if(string.Equals(tokens[i-1],"not",StringComparison.OrdinalIgnoreCase)&&string.Equals(tokens[i],word,StringComparison.OrdinalIgnoreCase))found.Add("not_"+word);
+  }
+  int? Number(string name) {
+   if(!error.TryGetProperty(annotation+name,out var value))return null;
+   if(value.ValueKind==JsonValueKind.Number&&value.TryGetInt32(out int number))return number;
+   if(value.ValueKind==JsonValueKind.String&&int.TryParse(value.GetString(),NumberStyles.AllowLeadingSign,CultureInfo.InvariantCulture,out number)&&value.GetString()==number.ToString(CultureInfo.InvariantCulture))return number;
+   return null;
+  }
+  Scan(error);if(hasInner)Scan(inner);
+  PatchDiagnostic=PatchDiagnostic with { Flags=found.Order(StringComparer.Ordinal).ToArray(),OperationStatus=Number("OperationStatus"),SubErrorCode=Number("SubErrorCode") };
  }
  async Task<string> ReadIdentity() {
   var row=await SendAsync(HttpMethod.Get,RowQuery)??throw new DeploymentException("package_missing");

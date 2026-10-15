@@ -83,10 +83,47 @@ await Test("fixed transport failure labels and absent PATCH do not fabricate sta
  var absent=System.Text.Json.JsonSerializer.SerializeToNode(updaterNew)!["PatchDiagnostic"];
  Assert(absent!=null&&absent["HttpStatus"]==null&&absent["DataverseCode"]==null&&absent["TransportFailure"]==null);
 });
+async Task<JsonNode> PatchFacts(string body,int status=400) {
+ using var handler=new Fake("refused_old"){PatchResponse=()=>new((HttpStatusCode)status){Content=new StringContent(body)}};
+ using var updater=new FixedPackageUpdater(()=>Task.FromResult("synthetic-token"),Fake.ObjectId,handler);
+ Assert(await updater.ExecuteAsync()=="unchanged_prior"&&handler.Writes==1&&handler.FileReads==2&&handler.SafeMutation);
+ Assert(handler.Prefer=="odata.include-annotations=\"Microsoft.PowerApps.CDS.ErrorDetails.OperationStatus,Microsoft.PowerApps.CDS.ErrorDetails.SubErrorCode\"");
+ return System.Text.Json.JsonSerializer.SerializeToNode(updater)!["PatchDiagnostic"]!;
+}
+await Test("package PATCH reports only reviewed lexical labels and known numeric annotations",async()=>{
+ var result=await PatchFacts("""{"error":{"code":"0x80040265","message":"Invalid NuGet package unique name prefix publisher version mismatch update upgrade existing same different immutable concurrency rowversion etag precondition match support unsupported. private-token https://private.example private-etag","innererror":{"message":"ASSEMBLY not supported; dependency references missing. Newtonsoft SDK unsigned signature. not found. not allowed."},"@Microsoft.PowerApps.CDS.ErrorDetails.OperationStatus":"1","@Microsoft.PowerApps.CDS.ErrorDetails.SubErrorCode":-2147220891,"@Microsoft.PowerApps.CDS.TraceText":"private-trace zip"}}""");
+ var flags=result["Flags"]!.AsArray().Select(v=>v!.GetValue<string>()).ToArray();
+ foreach(var expected in new[]{"invalid","nuget","package","unique","name","prefix","publisher","version","mismatch","update","upgrade","existing","same","different","immutable","concurrency","rowversion","etag","precondition","match","support","unsupported","assembly","not_supported","dependency","references","missing","newtonsoft","sdk","unsigned","signature","not_found","not_allowed"})Assert(flags.Contains(expected));
+ Assert(flags.SequenceEqual(flags.Distinct().Order(StringComparer.Ordinal))&&!flags.Contains("zip"));
+ Assert(result["OperationStatus"]!.GetValue<int>()==1&&result["SubErrorCode"]!.GetValue<int>()==-2147220891);
+ foreach(var secret in new[]{"private","https","Bearer","token"})Assert(!result.ToJsonString().Contains(secret));
+});
+await Test("numeric package annotations require canonical Int32 and other fields are not scanned",async()=>{
+ foreach(var number in new[]{int.MinValue,0,int.MaxValue}){
+  var body=new JsonObject{["error"]=new JsonObject{["code"]="0x80040265",["@Microsoft.PowerApps.CDS.ErrorDetails.OperationStatus"]=number,["@Microsoft.PowerApps.CDS.ErrorDetails.SubErrorCode"]=number.ToString(System.Globalization.CultureInfo.InvariantCulture)}};
+  var result=await PatchFacts(body.ToJsonString());Assert(result["OperationStatus"]!.GetValue<int>()==number&&result["SubErrorCode"]!.GetValue<int>()==number);
+ }
+ foreach(var bad in new[]{"2147483648","-2147483649","1.5","\"+1\"","\" 1\"","\"01\"","\"1 private\"","true","{}","null"}){
+  var body=JsonNode.Parse("""{"error":{"code":"0x80040265","message":123,"innererror":{"message":false,"innererror":{"message":"invalid zip"}},"@Microsoft.PowerApps.CDS.TraceText":"invalid zip","name":"invalid nuget"}}""")!;
+  body["error"]!["@Microsoft.PowerApps.CDS.ErrorDetails.OperationStatus"]=JsonNode.Parse(bad);body["error"]!["@Microsoft.PowerApps.CDS.ErrorDetails.SubErrorCode"]=JsonNode.Parse(bad);
+  var result=await PatchFacts(body.ToJsonString());Assert(result["Flags"]!.AsArray().Count==0&&result["OperationStatus"]==null&&result["SubErrorCode"]==null);
+ }
+});
+await Test("duplicate relevant package paths suppress all additive facts while retaining safe code",async()=>{
+ foreach(var extra in new[]{"\"message\":\"invalid\",\"message\":\"assembly\"","\"innererror\":{},\"innererror\":{\"message\":\"invalid\"}","\"innererror\":{\"message\":\"invalid\",\"message\":\"assembly\"}","\"@Microsoft.PowerApps.CDS.ErrorDetails.OperationStatus\":1,\"@Microsoft.PowerApps.CDS.ErrorDetails.OperationStatus\":2","\"@Microsoft.PowerApps.CDS.ErrorDetails.SubErrorCode\":1,\"@Microsoft.PowerApps.CDS.ErrorDetails.SubErrorCode\":2"}){
+  var result=await PatchFacts("{\"error\":{\"code\":\"0x80040265\","+extra+"}}");Assert(result["DataverseCode"]!.GetValue<string>()=="0x80040265"&&result["Flags"]!.AsArray().Count==0&&result["OperationStatus"]==null&&result["SubErrorCode"]==null);
+ }
+ foreach(var bounded in new[]{new JsonObject{["error"]=new JsonObject{["code"]="0x80040265",["message"]="invalid nuget "+new string('x',9000)}}.ToJsonString(),"{\"error\":{\"code\":\"0x80040265\",\"message\":\"invalid nuget\",\"deep\":"+new string('[',20)+"0"+new string(']',20)+"}}"}){
+  var rejected=await PatchFacts(bounded);Assert(rejected["HttpStatus"]!.GetValue<int>()==400&&rejected["DataverseCode"]==null&&rejected["Flags"]!.AsArray().Count==0&&rejected["OperationStatus"]==null&&rejected["SubErrorCode"]==null);
+ }
+ var success=await PatchFacts("""{"error":{"code":"0x80040265","message":"invalid zip","@Microsoft.PowerApps.CDS.ErrorDetails.OperationStatus":1}}""",204);
+ Assert(success["Flags"]!.AsArray().Count==0&&success["OperationStatus"]==null);
+});
 Console.WriteLine($"{passed} passed; {failed} failed");return failed==0?0:1;
 sealed class Fake(string scenario):HttpMessageHandler {
  public const string ObjectId="00000000-0000-0000-0000-000000000001";
  const string Actor="00000000-0000-0000-0000-000000000002",Currency="00000000-0000-0000-0000-000000000003";
+ public string? Prefer;
  public Func<HttpResponseMessage>? PatchResponse;public Exception? PatchException;
  public int Writes,FileReads,PostWriteReads;public bool SafeMutation=true;
  readonly byte[] prior=File.ReadAllBytes(Profiles.PriorPath),current=File.ReadAllBytes(Profiles.CurrentPath);
@@ -94,7 +131,7 @@ sealed class Fake(string scenario):HttpMessageHandler {
   string path=request.RequestUri!.PathAndQuery[("/api/data/v9.2/").Length..];
   if(request.RequestUri.Host!=new Uri(Target.Url).Host)throw new Exception("bad_host");
   if(request.Method==HttpMethod.Patch){
-   Writes++;var body=JsonNode.Parse(await request.Content!.ReadAsStringAsync())!.AsObject();
+   Writes++;Prefer=request.Headers.TryGetValues("Prefer",out var preferences)?string.Join("",preferences):null;var body=JsonNode.Parse(await request.Content!.ReadAsStringAsync())!.AsObject();
    SafeMutation &= path==$"pluginpackages({FixedPackageUpdater.PackageId})"&&request.Headers.IfMatch.Single().ToString()=="W/\"12345\""&&body.Count==1&&body["content"]!.GetValue<string>()==Convert.ToBase64String(current);
    if(PatchException!=null)throw PatchException;
    if(PatchResponse!=null)return PatchResponse();
