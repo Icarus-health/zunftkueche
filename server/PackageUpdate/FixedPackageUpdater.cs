@@ -8,7 +8,9 @@ using Kitchen.Deploy;
 namespace Kitchen.PackageUpdate;
 
 // Single-purpose updater. The only mutation is one conditional Content PATCH to the fixed existing package.
+public sealed record PatchDiagnostic(int? HttpStatus=null,string? DataverseCode=null,string? TransportFailure=null);
 public sealed class FixedPackageUpdater:IDataverseTransport,IDisposable {
+ public PatchDiagnostic PatchDiagnostic { get; private set; } = new();
  public const string PackageId="70a54daa-73c8-f111-a05c-7ced8d5f6e0d";
  const string Row="pluginpackages("+PackageId+")";
  const string RowQuery=Row+"?$select=pluginpackageid,name,uniquename,version,statecode,package";
@@ -37,15 +39,41 @@ public sealed class FixedPackageUpdater:IDataverseTransport,IDisposable {
    request.Headers.IfMatch.Add(EntityTagHeaderValue.Parse(etag));
    request.Content=new StringContent(new JsonObject{["content"]=Convert.ToBase64String(current)}.ToJsonString(),Encoding.UTF8,"application/json");
    using var timeout=new CancellationTokenSource(client.Timeout);
-   // Status or body cannot establish success. No body is logged, parsed, persisted or retried.
+   // Status/code diagnose this single attempt; only the independent byte readback establishes its outcome.
    using var response=await client.SendAsync(request,HttpCompletionOption.ResponseHeadersRead,timeout.Token);
-  } catch(Exception) { /* Ambiguous outcome: independent fixed-resource readback below, never repeat. */ }
+   PatchDiagnostic=new((int)response.StatusCode);
+   if(!response.IsSuccessStatusCode)await CaptureRefusal(response,timeout.Token);
+  } catch(Exception error) {
+   PatchDiagnostic=PatchDiagnostic with { TransportFailure=error is OperationCanceledException?"timeout":error is HttpRequestException?"network_error":null };
+   // Ambiguous outcome: independent fixed-resource readback below, never repeat.
+  }
   try {
    await ReadIdentity();var after=await ReadFile();
    if(after.AsSpan().SequenceEqual(current))return "updated_exact";
    if(after.AsSpan().SequenceEqual(prior))return "unchanged_prior";
   } catch(Exception) { /* No remote details escape; Root must investigate read-only. */ }
   return "unconfirmed";
+ }
+ // Diagnostic parsing is bounded and cannot suppress the mandatory independent readback.
+ async Task CaptureRefusal(HttpResponseMessage response,CancellationToken cancellationToken) {
+  const int limit=8192;byte[] bytes;int count=0;
+  try {
+   if(response.Content.Headers.ContentLength is >limit)return;
+   using var stream=await response.Content.ReadAsStreamAsync(cancellationToken);bytes=new byte[limit+1];
+   while(count<bytes.Length){int n=await stream.ReadAsync(bytes.AsMemory(count),cancellationToken);if(n==0)break;count+=n;}
+  } catch(Exception) { PatchDiagnostic=PatchDiagnostic with { TransportFailure="response_read_failed" };return; }
+  if(count==0||count>limit)return;
+  try {
+   using var document=JsonDocument.Parse(bytes.AsMemory(0,count),new JsonDocumentOptions{MaxDepth=16});
+   var root=document.RootElement;
+   if(root.ValueKind!=JsonValueKind.Object||root.EnumerateObject().Count(p=>p.Name=="error")!=1)return;
+   var error=root.GetProperty("error");
+   if(error.ValueKind!=JsonValueKind.Object||error.EnumerateObject().Count(p=>p.Name=="code")!=1)return;
+   var value=error.GetProperty("code");if(value.ValueKind!=JsonValueKind.String)return;
+   var code=value.GetString();
+   if(code is {Length:10}&&code.StartsWith("0x",StringComparison.Ordinal)&&code.AsSpan(2).ToArray().All(c=>c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F'))
+    PatchDiagnostic=PatchDiagnostic with { DataverseCode=code };
+  } catch(Exception) { /* Malformed/unknown diagnostic: retain only the already observed status. */ }
  }
  async Task<string> ReadIdentity() {
   var row=await SendAsync(HttpMethod.Get,RowQuery)??throw new DeploymentException("package_missing");

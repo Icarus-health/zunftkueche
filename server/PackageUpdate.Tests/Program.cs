@@ -40,10 +40,54 @@ await Test("changed source or artifact blocks before authentication or network",
   }
  } finally {Directory.SetCurrentDirectory(original);Directory.Delete(scratch,true);}
 });
+await Test("PATCH facts preserve numeric status and code without remote message text",async()=>{
+ foreach(var status in new[]{400,412,500,204}) {
+  using var handler=new Fake("refused_old"){PatchResponse=()=>new((HttpStatusCode)status){Content=new StringContent("{\"error\":{\"code\":\"0x80040265\",\"message\":\"private-token private-url private-etag\"}}")}};
+  using var updater=new FixedPackageUpdater(()=>Task.FromResult("synthetic-token"),Fake.ObjectId,handler);
+  Assert(await updater.ExecuteAsync()=="unchanged_prior");
+  var diagnostic=System.Text.Json.JsonSerializer.SerializeToNode(updater)!["PatchDiagnostic"];
+  Assert(diagnostic?["HttpStatus"]?.GetValue<int>()==status);
+  Assert(diagnostic?["DataverseCode"]?.GetValue<string>()==(status==204?null:"0x80040265"));
+  Assert(diagnostic?["TransportFailure"]==null&&!diagnostic!.ToJsonString().Contains("private"));
+  Assert(handler.Writes==1&&handler.FileReads==2&&handler.SafeMutation);
+ }
+});
+await Test("malformed bounded PATCH diagnostics never prevent independent readback",async()=>{
+ foreach(var body in new[]{"{invalid", "{}", "{\"error\":{\"code\":123}}", "{\"error\":{\"code\":\"0x80040265private\"}}", "{\"error\":{\"code\":\"0x80040265\",\"code\":\"0x80040265\"}}", "{\"error\":{},\"error\":{\"code\":\"0x80040265\"}}", new string('[',20)+new string(']',20), new string('x',9000)}) {
+  using var handler=new Fake("refused_old"){PatchResponse=()=>new(HttpStatusCode.BadRequest){Content=new StringContent(body)}};
+  using var updater=new FixedPackageUpdater(()=>Task.FromResult("synthetic-token"),Fake.ObjectId,handler);
+  Assert(await updater.ExecuteAsync()=="unchanged_prior");
+  var diagnostic=System.Text.Json.JsonSerializer.SerializeToNode(updater)!["PatchDiagnostic"];
+  Assert(diagnostic?["HttpStatus"]?.GetValue<int>()==400&&diagnostic?["DataverseCode"]==null&&handler.Writes==1&&handler.FileReads==2);
+ }
+ using var stream=new DiagnosticStream(new byte[20000]);
+ using var largeHandler=new Fake("refused_old"){PatchResponse=()=>new(HttpStatusCode.BadRequest){Content=new StreamContent(stream)}};
+ using var largeUpdater=new FixedPackageUpdater(()=>Task.FromResult("synthetic-token"),Fake.ObjectId,largeHandler);
+ Assert(await largeUpdater.ExecuteAsync()=="unchanged_prior"&&stream.ReadBytes<=8193&&largeHandler.FileReads==2);
+});
+await Test("fixed transport failure labels and absent PATCH do not fabricate status",async()=>{
+ foreach(var entry in new[]{(new TaskCanceledException("private-token") as Exception,"timeout"),(new HttpRequestException("private-token") as Exception,"network_error")}) {
+  using var handler=new Fake("refused_old"){PatchException=entry.Item1};
+  using var updater=new FixedPackageUpdater(()=>Task.FromResult("synthetic-token"),Fake.ObjectId,handler);
+  Assert(await updater.ExecuteAsync()=="unchanged_prior");
+  var diagnostic=System.Text.Json.JsonSerializer.SerializeToNode(updater)!["PatchDiagnostic"];
+  Assert(diagnostic?["HttpStatus"]==null&&diagnostic?["DataverseCode"]==null&&diagnostic?["TransportFailure"]?.GetValue<string>()==entry.Item2&&handler.Writes==1&&handler.FileReads==2);
+ }
+ using var readHandler=new Fake("refused_old"){PatchResponse=()=>new(HttpStatusCode.BadRequest){Content=new StreamContent(new DiagnosticStream([],true))}};
+ using var readUpdater=new FixedPackageUpdater(()=>Task.FromResult("synthetic-token"),Fake.ObjectId,readHandler);
+ Assert(await readUpdater.ExecuteAsync()=="unchanged_prior");
+ var failedRead=System.Text.Json.JsonSerializer.SerializeToNode(readUpdater)!["PatchDiagnostic"];
+ Assert(failedRead?["HttpStatus"]?.GetValue<int>()==400&&failedRead?["TransportFailure"]?.GetValue<string>()=="response_read_failed"&&readHandler.FileReads==2);
+ using var handlerNew=new Fake("new");using var updaterNew=new FixedPackageUpdater(()=>Task.FromResult("synthetic-token"),Fake.ObjectId,handlerNew);
+ Assert(await updaterNew.ExecuteAsync()=="already_current"&&handlerNew.Writes==0);
+ var absent=System.Text.Json.JsonSerializer.SerializeToNode(updaterNew)!["PatchDiagnostic"];
+ Assert(absent!=null&&absent["HttpStatus"]==null&&absent["DataverseCode"]==null&&absent["TransportFailure"]==null);
+});
 Console.WriteLine($"{passed} passed; {failed} failed");return failed==0?0:1;
 sealed class Fake(string scenario):HttpMessageHandler {
  public const string ObjectId="00000000-0000-0000-0000-000000000001";
  const string Actor="00000000-0000-0000-0000-000000000002",Currency="00000000-0000-0000-0000-000000000003";
+ public Func<HttpResponseMessage>? PatchResponse;public Exception? PatchException;
  public int Writes,FileReads,PostWriteReads;public bool SafeMutation=true;
  readonly byte[] prior=File.ReadAllBytes(Profiles.PriorPath),current=File.ReadAllBytes(Profiles.CurrentPath);
  protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken cancellationToken) {
@@ -52,6 +96,8 @@ sealed class Fake(string scenario):HttpMessageHandler {
   if(request.Method==HttpMethod.Patch){
    Writes++;var body=JsonNode.Parse(await request.Content!.ReadAsStringAsync())!.AsObject();
    SafeMutation &= path==$"pluginpackages({FixedPackageUpdater.PackageId})"&&request.Headers.IfMatch.Single().ToString()=="W/\"12345\""&&body.Count==1&&body["content"]!.GetValue<string>()==Convert.ToBase64String(current);
+   if(PatchException!=null)throw PatchException;
+   if(PatchResponse!=null)return PatchResponse();
    if(scenario=="ambiguous_new")throw new TaskCanceledException("private-token");
    return new(scenario=="refused_old"?HttpStatusCode.BadRequest:HttpStatusCode.NoContent);
   }
@@ -79,3 +125,11 @@ sealed class Fake(string scenario):HttpMessageHandler {
 }
 
 sealed class UnboundedStream(byte[] bytes):MemoryStream(bytes) { public override bool CanSeek=>false; }
+
+sealed class DiagnosticStream(byte[] bytes,bool fail=false):MemoryStream(bytes) {
+ public int ReadBytes;public override bool CanSeek=>false;
+ public override ValueTask<int> ReadAsync(Memory<byte> buffer,CancellationToken cancellationToken=default) {
+  if(fail)throw new IOException("private-token");
+  int count=base.Read(buffer.Span);ReadBytes+=count;return ValueTask.FromResult(count);
+ }
+}

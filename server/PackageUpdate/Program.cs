@@ -8,5 +8,5 @@ try {
  var auth=new InteractiveAuthentication();await auth.SignInAsync();
  using var updater=new FixedPackageUpdater(auth.TokenAsync,auth.ObjectId);
  var result=await updater.ExecuteAsync();
- Console.WriteLine(JsonSerializer.Serialize(new { result, runtimeReady=false }));return result is "updated_exact" or "already_current"?0:2;
+ Console.WriteLine(JsonSerializer.Serialize(new { result, patchDiagnostic=updater.PatchDiagnostic, runtimeReady=false }));return result is "updated_exact" or "already_current"?0:2;
 } catch(Exception) { Console.WriteLine("{\"error\":\"package_update_stopped_details_suppressed\",\"runtimeReady\":false}");return 1; }
