@@ -1,5 +1,7 @@
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
+using Newtonsoft.Json.Linq;
+using Zunftkueche;
 namespace Kitchen.Deploy;
 public sealed class Provisioner(ResourceEngine engine, IDataverseTransport transport, JsonObject contract) {
     private string? solutionId;
@@ -92,6 +94,35 @@ public sealed class Provisioner(ResourceEngine engine, IDataverseTransport trans
             if (guards.Length != 0) throw new DeploymentException("seed_after_guard_registration_forbidden");
         }
         await Ensure("workspace_seed", $"{set}?$filter=zk_kitchenworkspaceid eq {Seed.WorkspaceId}", set, payload, expected, create);
+    }
+    public async Task VerifyWorkspace(JsonObject reviewedSeed, Guid owner) {
+        var table = await engine.Find("EntityDefinitions?$select=EntitySetName&$filter=LogicalName eq 'zk_kitchenworkspace'");
+        if (table == null) { Gap("workspace_table_missing"); return; }
+        var set = S(table, "EntitySetName");
+        var row = await engine.Find($"{set}?$select=zk_kitchenworkspaceid,_ownerid_value,zk_state,zk_revision&$filter=zk_kitchenworkspaceid eq {Seed.WorkspaceId}");
+        if (row == null) { Gap("workspace_missing"); return; }
+        if (owner == Guid.Empty || ResourceEngine.Id(row, "_ownerid_value") != owner.ToString("D"))
+            throw new DeploymentException("workspace_owner_mismatch");
+        if (ResourceEngine.Id(row, "zk_kitchenworkspaceid") != Seed.WorkspaceId)
+            throw new DeploymentException("workspace_identity_mismatch");
+        try {
+            if (row["zk_revision"] is not JsonValue revisionValue || !revisionValue.TryGetValue<int>(out int revision) || revision < 0 ||
+                row["zk_state"] is not JsonValue stateValue || !stateValue.TryGetValue<string>(out var rawState))
+                throw new DeploymentException("workspace_required_state_or_revision_missing");
+            // Parse with the server's size/depth/duplicate-property bounds; do not trust persisted JSON.
+            var state = Protocol.Parse(rawState);
+            var baseline = JObject.Parse(reviewedSeed.ToJsonString());
+            StatePolicy.Validate(state, baseline);
+            if ((int)state["revision"]! != revision) throw new DeploymentException("workspace_revision_mismatch");
+            // Revision zero must be the exact reviewed seed (object order/formatting are immaterial).
+            // Later revisions may contain valid edits, while the policy protects original provenance,
+            // receipt economics and baseline history. Intermediate transaction history is a live-test gate.
+            if (revision == 0 && !JToken.DeepEquals(Protocol.Canonical(state), Protocol.Canonical(baseline)))
+                throw new DeploymentException("workspace_initial_seed_mismatch");
+            engine.Resources.Add(new { resource = "workspace_state", status = "verified", id = Seed.WorkspaceId, revision });
+        } catch (Exception error) when (error is ArgumentException or Newtonsoft.Json.JsonException or InvalidOperationException or OverflowException) {
+            throw new DeploymentException("workspace_persisted_state_invalid");
+        }
     }
     public async Task Backend(byte[] packageBytes, bool create) {
         if (tables.Count != 2 || Gaps.Count != 0) { if (create) throw new DeploymentException("tables_not_ready_for_backend"); return; }

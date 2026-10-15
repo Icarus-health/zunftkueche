@@ -41,3 +41,20 @@ Official docs support metadata fields, package content field, SDK-message filter
 Missing bulk message/filter support is explicitly a runtime-confirmation gap; there is no skip/attestation switch. Thus metadataReady remains false if e.g. standard-table DeleteMultiple has no filter, until Root resolves that release evidence outside this local implementation. The console never guesses an unavailable path is uncallable. Any unsupported metadata field or unreadable package content stops rather than overwriting a definition. No polling/retry loop is present: inactive/pending keys or asynchronous package visibility require later read-only recheck. Inspect inventories are independent of missing publisher/solution; definition verification stops safely on drift.
 
 Readiness output is metadata-only and always labels live runtime acceptance pending. Root's dedicated independent review precedes provider writes. Root may then run `bash server/Deploy/run.sh --phase inspect` and open the emitted public URL in DuckDuckGo; all implementation verification above was local/offline.
+
+## Scoped fix round 1 — I1 persisted workspace verification
+
+Review base b71979c. Fixed only Important I1 from task-1-review.md. Both read-only inspect and verify now call the same explicit VerifyWorkspace path before Backend. It queries the stable workspace with owner/state/revision, requires the authenticated owner, exact workspace ID, required nonnegative integer revision and JSON state, parses using the actual server parser's depth/size/duplicate-key bounds, and runs the actual StatePolicy against the reviewed normalized original. Persisted state revision must match the row revision. Revision zero additionally equals the reviewed normalized seed semantically (JSON object ordering/whitespace do not matter). Later revisions may contain legitimate edits under server invariants while retaining original source provenance, receipt economics and baseline history; this does not claim proof of every intermediate transaction, which remains live acceptance work. Missing table/row creates a blocking gap; mismatches throw sanitized errors, so Program emits metadataReady false.
+
+Covering tests: server/Deploy.Tests/Program.cs, eight focused tests (including multi-case missing-field and invalid-state checks): wrong owner; missing state/revision; invalid JSON/schema; replaced initial seed; valid initial seed; valid later article-price edit; row/state revision mismatch; rewritten original economics in a later revision. The tests use a fake transport but execute the actual read-only verifier and server policy and assert zero writes.
+
+Red evidence: with a compileable no-op VerifyWorkspace stub, suite output was `26 passed; 6 failed`; the six negative workspace cases failed as intended. Green after implementation: `32 passed; 0 failed`. Only the deployment suite and build were rerun; unchanged Node tests were not rerun.
+
+Exact commands from the repository directory:
+
+```sh
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home DOTNET_GENERATE_ASPNET_CERTIFICATE=false ../dotnet10/dotnet run --project server/Deploy.Tests --no-restore -p:UseSharedCompilation=false
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home DOTNET_GENERATE_ASPNET_CERTIFICATE=false ../dotnet10/dotnet build server/Deploy --no-restore -p:UseSharedCompilation=false
+```
+
+Results: tests exit 0, `32 passed; 0 failed`; build exit 0, `0 Warnung(en)`, `0 Fehler`. Self-review traced both Program branches through VerifyWorkspace and checked that all failures occur before metadataReady can be true; missing-resource gaps also block that flag. No new provider actions or package/contract/domain/import edits. Root's uncommitted docs/deployment.md and other files remain unstaged; deferred privilege inventory and separate bulk-pipeline integration issue were not changed. Fix commit changes only Program.cs, Provisioner.cs, the covering deployment tests and this report.

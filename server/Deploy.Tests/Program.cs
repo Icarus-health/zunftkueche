@@ -66,6 +66,35 @@ Assert(p=="sdkmessageprocessingsteps?$filter=_sdkmessagefilterid_value eq "+filt
 return Task.FromResult<JsonNode?>(new JsonObject{["value"]=stored==null?new JsonArray():new JsonArray(stored.DeepClone())});});
 var e=new ResourceEngine(f);await e.AuthenticateTargetAsync();var p=new Provisioner(e,f,Parse("{\"guardSteps\":[{\"primaryEntity\":\"zk_kitchenworkspace\",\"message\":\"Update\"}]}"));
 await p.Guards(handler,true);await p.Guards(handler,true);Assert(f.Writes==1&&stored!=null);Readiness.RequireGuard(stored!,handler,filter,message);});
+await Test("workspace readback rejects wrong owner",()=>CheckWorkspace(row=>row["_ownerid_value"]="00000000-0000-0000-0000-000000000099",true));
+await Test("workspace readback rejects missing state or revision",async()=>{
+await CheckWorkspace(row=>row.Remove("zk_state"),true);await CheckWorkspace(row=>row.Remove("zk_revision"),true);});
+await Test("workspace readback rejects invalid persisted JSON and schema",async()=>{
+await CheckWorkspace(row=>row["zk_state"]="{invalid",true);
+await CheckWorkspace(row=>{var state=JsonNode.Parse(row["zk_state"]!.GetValue<string>())!;state["schemaVersion"]=1;row["zk_state"]=state.ToJsonString();},true);});
+await Test("workspace readback rejects replacement at initial revision",()=>CheckWorkspace(row=>{
+var state=JsonNode.Parse(row["zk_state"]!.GetValue<string>())!;state["articles"]![0]!["unitPriceCents"]=12.34;row["zk_state"]=state.ToJsonString();},true));
+await Test("workspace readback accepts reviewed initial seed",()=>CheckWorkspace(_=>{},false));
+await Test("workspace readback accepts valid later edit preserving source",()=>CheckWorkspace(row=>{
+var state=JsonNode.Parse(row["zk_state"]!.GetValue<string>())!;state["articles"]![0]!["unitPriceCents"]=12.34;state["revision"]=1;
+state["operationIds"]=new JsonArray("edit-1");state["operationRequests"]=new JsonObject{["edit-1"]="article.price"};row["zk_revision"]=1;row["zk_state"]=state.ToJsonString();},false));
+await Test("workspace readback rejects row-state revision mismatch",()=>CheckWorkspace(row=>row["zk_revision"]=1,true));
+await Test("later revisions cannot rewrite original receipt economics",()=>CheckWorkspace(row=>{
+var state=JsonNode.Parse(row["zk_state"]!.GetValue<string>())!;state["revision"]=1;state["invoices"]![0]!["grossCents"]=1;
+row["zk_revision"]=1;row["zk_state"]=state.ToJsonString();},true));
+async Task CheckWorkspace(Action<JsonObject> change,bool reject) {
+var seed=Seed.Normalize(File.ReadAllBytes("import/2026.json"));
+var owner=Guid.Parse("00000000-0000-0000-0000-000000000002");
+var row=new JsonObject{["zk_kitchenworkspaceid"]=Seed.WorkspaceId,["_ownerid_value"]=owner.ToString("D"),["zk_revision"]=0,["zk_state"]=seed.ToJsonString()};change(row);
+var f=Fixture(null,(m,p,b)=>{
+Assert(m==HttpMethod.Get);
+if(p=="EntityDefinitions?$select=EntitySetName&$filter=LogicalName eq 'zk_kitchenworkspace'")return Task.FromResult<JsonNode?>(Parse("{\"value\":[{\"EntitySetName\":\"zk_kitchenworkspaces\"}]}"));
+Assert(p=="zk_kitchenworkspaces?$select=zk_kitchenworkspaceid,_ownerid_value,zk_state,zk_revision&$filter=zk_kitchenworkspaceid eq "+Seed.WorkspaceId);
+return Task.FromResult<JsonNode?>(new JsonObject{["value"]=new JsonArray(row.DeepClone())});});
+var e=new ResourceEngine(f);await e.AuthenticateTargetAsync();var p=new Provisioner(e,f,new());
+if(reject)await Reject(()=>p.VerifyWorkspace(seed,owner));else{await p.VerifyWorkspace(seed,owner);Assert(p.Gaps.Count==0);}
+Assert(f.Writes==0);
+}
 Console.WriteLine($"{passed} passed; {failed} failed");return failed==0?0:1;
 Fake Fixture(JsonObject? data, Func<HttpMethod,string,JsonNode?,Task<JsonNode?>>? other=null)=>new((m,p,b)=>{
  if(p=="WhoAmI")return Task.FromResult<JsonNode?>(Parse($"{{\"OrganizationId\":\"{Target.Organization}\",\"UserId\":\"00000000-0000-0000-0000-000000000002\"}}"));

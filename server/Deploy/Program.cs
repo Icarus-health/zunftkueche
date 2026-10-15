@@ -36,7 +36,10 @@ try {
             await provisioner.SeedWorkspace(seed, user, false);
             await provisioner.Backend(package, true);
         }
-        if (options.Phase is "inspect" or "verify") await provisioner.Backend(package, false);
+        if (options.Phase is "inspect" or "verify") {
+            await provisioner.VerifyWorkspace(seed, user);
+            await provisioner.Backend(package, false);
+        }
         Console.WriteLine(JsonSerializer.Serialize(new {
             phase = options.Phase, workspaceId = Seed.WorkspaceId, resources = engine.Resources,
             gaps = provisioner.Gaps, metadataReady = options.Phase == "verify" && provisioner.Gaps.Count == 0,
