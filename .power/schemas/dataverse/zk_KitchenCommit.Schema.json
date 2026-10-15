@@ -1,0 +1,43 @@
+{
+  "name": "zk_KitchenCommit",
+  "title": "zk_KitchenCommit",
+  "type": "Microsoft.PowerApps/dataverseOperation",
+  "properties": {
+    "displayName": "zk_KitchenCommit",
+    "swagger": {
+      "swagger": "2.0",
+      "info": {
+        "title": "zk_KitchenCommit",
+        "version": "1.0"
+      },
+      "basePath": "/api/data/v9.2",
+      "paths": {
+        "/zk_KitchenCommit": {
+          "post": {
+            "operationId": "zk_KitchenCommit",
+            "parameters": [
+              {
+                "name": "RequestJson",
+                "in": "body",
+                "required": true,
+                "type": "string",
+                "x-ms-dataverse-type": "StringType",
+                "x-ms-csdl-type": "Edm.String"
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "Success",
+                "schema": {
+                  "type": "object",
+                  "x-ms-dataverse-type": "LookupType",
+                  "x-ms-csdl-type": "mscrm.zk_KitchenCommitResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

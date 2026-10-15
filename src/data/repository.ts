@@ -38,7 +38,8 @@ export function createLocalRepository(
 export function getRepository(): Repository {
   const microsoft = getMicrosoftRepository();
   if (microsoft) return microsoft;
-  if (!import.meta.env.DEV)
+  // Keep this guard static so production drops the local API implementation entirely.
+  if (import.meta.env?.DEV !== true || import.meta.env?.MODE === "microsoft")
     throw new Error(
       "Die Microsoft-Datenverbindung ist noch nicht eingerichtet.",
     );

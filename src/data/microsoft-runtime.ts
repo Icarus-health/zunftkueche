@@ -2,8 +2,7 @@ import type { IOperationResult } from "@microsoft/power-apps/data";
 import { createMicrosoftRepository } from "./microsoft-repository.ts";
 import type { PendingStore } from "./microsoft-repository.ts";
 import type { Repository } from "./repository.ts";
-// Supply the REAL metadata-generated service classes after deploying the Custom APIs.
-// Their own getClient(dataSourcesInfo) owns nativeAction/Dataverse routing; no fabricated metadata.
+// Actual generated services own getClient(dataSourcesInfo) and Dataverse routing.
 export interface KitchenGeneratedServices {
   load: {
     zk_KitchenLoad: (

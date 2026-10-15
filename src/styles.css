@@ -2151,3 +2151,8 @@ th small {
     display: none;
   }
 }
+.bootstrap-screen {
+  max-width: 38rem;
+  margin: 12vh auto;
+  padding: 2rem;
+}

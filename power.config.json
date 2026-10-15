@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "appId": null,
+  "appDisplayName": "Zunftküche",
+  "region": "prod",
+  "appType": "CodeApp",
+  "environmentId": "5684204c-3254-ec15-93f4-276ec50cc65b",
+  "description": "Planung, Einkauf und Auswertung der Zunftküche",
+  "buildPath": "./dist",
+  "buildEntryPoint": "index.html",
+  "localAppUrl": "http://localhost:4182",
+  "logoPath": "Default",
+  "connectionReferences": {},
+  "databaseReferences": {
+    "default.cds": {
+      "dataSources": {
+        "environment_39a902ba": {
+          "entitySetName": "Environment",
+          "logicalName": "environment_39a902ba",
+          "isHidden": false
+        }
+      },
+      "environmentVariableName": ""
+    }
+  }
+}
