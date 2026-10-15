@@ -222,4 +222,10 @@ await Test("transport stops error response reads at diagnostic bound and emits n
  var result=await t.ProbeAsync(new("probe",HttpMethod.Post,"zk_kitchenworkspaces",null));
  Assert(stream.BytesRead<=8193&&!result.GuardDenied&&result.NumericCode==null&&result.Value==null);
 });
+await Test("package prerequisite download delegates to bounded byte reader",async()=>{
+var bytes=File.ReadAllBytes("server/artifacts/Zunftkueche.Dataverse.1.0.0.nupkg");int calls=0;
+using var handler=new ResponseHandler(request=>{calls++;Assert(request.Method==HttpMethod.Get&&request.RequestUri!.AbsoluteUri==Target.Url+"/api/data/v9.2/pluginpackages(00000000-0000-0000-0000-000000000030)/package/$value"&&request.Headers.Authorization?.Parameter=="synthetic-token");return new(System.Net.HttpStatusCode.OK){Content=new ByteArrayContent(bytes)};});
+using var transport=new AcceptanceTransport(Target.Url,()=>Task.FromResult("synthetic-token"),handler);
+Assert((await ((IDataverseTransport)transport).ReadPackageFileAsync("00000000-0000-0000-0000-000000000030")).SequenceEqual(bytes)&&calls==1);
+});
 Console.WriteLine($"{passed} passed; {failed} failed");return failed==0?0:1;

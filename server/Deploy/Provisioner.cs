@@ -144,9 +144,16 @@ public sealed class Provisioner(ResourceEngine engine, IDataverseTransport trans
         string content = Convert.ToBase64String(packageBytes);
         var package = await Ensure("plugin_package", "pluginpackages?$filter=uniquename eq 'zk_Zunftkueche.Dataverse'", "pluginpackages",
             new JsonObject { ["uniquename"] = "zk_Zunftkueche.Dataverse", ["name"] = "zk_Zunftkueche.Dataverse", ["version"] = "1.0.0", ["content"] = content },
-            new JsonObject { ["uniquename"] = "zk_Zunftkueche.Dataverse", ["name"] = "zk_Zunftkueche.Dataverse", ["version"] = "1.0.0", ["statecode"] = 0, ["content"] = content }, create);
+            new JsonObject { ["uniquename"] = "zk_Zunftkueche.Dataverse", ["name"] = "zk_Zunftkueche.Dataverse", ["version"] = "1.0.0", ["statecode"] = 0 }, create);
         if (package == null) return;
-        var packageId = ResourceEngine.Id(package,"pluginpackageid"); await Component(packageId);
+        var packageId = ResourceEngine.Id(package,"pluginpackageid");
+        // Content is a write input; Dataverse stores the uploaded package in the File column.
+        _ = ResourceEngine.Id(package,"package");
+        var downloaded = await transport.ReadPackageFileAsync(packageId);
+        if (packageBytes.Length != PackageFileDownload.ExpectedLength || !downloaded.AsSpan().SequenceEqual(packageBytes))
+            throw new DeploymentException("package_file_bytes_mismatch");
+        engine.Resources.Add(new { resource = "plugin_package_file", status = "exact_bytes_verified", id = packageId });
+        await Component(packageId);
         var assemblies = await engine.Rows($"pluginassemblies?$select=pluginassemblyid,name,isolationmode,_packageid_value&$filter=_packageid_value eq {packageId}");
         var assembly = assemblies.SingleOrDefault(a=>a["name"]?.GetValue<string>()=="Kitchen.Dataverse");
         if (assembly == null) { Gap("package_assembly_missing"); return; }

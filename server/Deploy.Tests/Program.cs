@@ -96,6 +96,33 @@ using var handler=new ResponseHandler(()=>new HttpResponseMessage(System.Net.Htt
 using var transport=new WebApiTransport(Target.Url,()=>Task.FromResult("synthetic-token"),handler);
 await Reject(()=>transport.SendAsync(HttpMethod.Post,"pluginpackages",new JsonObject()));Assert(stream.ReadBytes<=8193);
 });
+await Test("package file GET uses exact authenticated route and returns reviewed bytes",async()=>{
+var bytes=File.ReadAllBytes("server/artifacts/Zunftkueche.Dataverse.1.0.0.nupkg");int calls=0;
+using var t=new WebApiTransport(Target.Url,()=>Task.FromResult("synthetic-token"),new ResponseHandler(()=>new(System.Net.HttpStatusCode.OK){Content=new ByteArrayContent(bytes)},r=>{calls++;Assert(r.Method==HttpMethod.Get&&r.RequestUri!.AbsoluteUri==Target.Url+"/api/data/v9.2/pluginpackages(00000000-0000-0000-0000-000000000030)/package/$value"&&r.Headers.Authorization?.Parameter=="synthetic-token"&&r.Content==null);}));
+Assert((await ((IDataverseTransport)t).ReadPackageFileAsync("00000000-0000-0000-0000-000000000030")).SequenceEqual(bytes)&&calls==1);
+});
+await Test("package file rejects invalid IDs before token acquisition",async()=>{
+int tokens=0;using var t=new WebApiTransport(Target.Url,()=>{tokens++;return Task.FromResult("secret");});
+foreach(var id in new[]{"","00000000-0000-0000-0000-000000000000","bad","../other","00000000000000000000000000000030","00000000-0000-0000-0000-000000000030)/fileid/$value"})await Reject(()=>((IDataverseTransport)t).ReadPackageFileAsync(id));Assert(tokens==0);
+});
+await Test("package file reads are bounded and reject short oversized partial and refusal responses",async()=>{
+foreach(var length in new[]{0,290279,290280,290281,400000}){
+using var stream=new CountingErrorStream(new byte[length]);int calls=0;
+using var t=new WebApiTransport(Target.Url,()=>Task.FromResult("secret"),new ResponseHandler(()=>new(System.Net.HttpStatusCode.OK){Content=new StreamContent(stream)},_=>calls++));
+if(length==290280)Assert((await ((IDataverseTransport)t).ReadPackageFileAsync("00000000-0000-0000-0000-000000000030")).Length==length);
+else await Reject(()=>((IDataverseTransport)t).ReadPackageFileAsync("00000000-0000-0000-0000-000000000030"));Assert(calls==1&&stream.ReadBytes<=290281);
+}
+foreach(var status in new[]{206,204,302,400,404,500}){
+using var t=new WebApiTransport(Target.Url,()=>Task.FromResult("secret"),new ResponseHandler(()=>new((System.Net.HttpStatusCode)status){Content=new StringContent("{\"error\":{\"code\":\"0x80040265\",\"message\":\"private-token https://private.example\"}}") }));
+try{await ((IDataverseTransport)t).ReadPackageFileAsync("00000000-0000-0000-0000-000000000030");throw new Exception("Expected refusal");}catch(DeploymentException error){Assert(!SafeOutput.Error(error).Contains("private")&&!SafeOutput.Error(error).Contains("secret"));}
+}
+});
+await Test("package file read errors and cancellation emit only fixed failures",async()=>{
+foreach(var failure in new Exception[]{new HttpRequestException("private-token"),new IOException("private-path"),new TaskCanceledException("private-url")}){
+int calls=0;using var t=new WebApiTransport(Target.Url,()=>Task.FromResult("secret"),new ResponseHandler(()=>{calls++;throw failure;}));
+try{await ((IDataverseTransport)t).ReadPackageFileAsync("00000000-0000-0000-0000-000000000030");throw new Exception("Expected refusal");}catch(DeploymentException error){Assert(SafeOutput.Error(error)=="package_file_read_failed"&&calls==1&&t.PackageCreateDiagnostics.Count==0);}
+}
+});
 async Task<(string Error,JsonArray Facts)> PackageError(string body,HttpMethod? method=null,string path="pluginpackages") {
 int requests=0;
 using var handler=new ResponseHandler(()=>new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest){Content=new StringContent(body)},request=>{
@@ -293,13 +320,17 @@ await Test("backend creates prefixed package name and verifies canonical readbac
 await Test("backend rejects existing unprefixed different or missing package names without writes",async()=>{
 foreach(var name in new[]{"Zunftkueche.Dataverse","zk_Other",""})await CheckPackage(name,true);
 });
-async Task CheckPackage(string? existingName,bool reject) {
-byte[] bytes=[1,2,3];string content=Convert.ToBase64String(bytes);int reads=0,assemblyReads=0;
+await Test("backend rejects missing malformed or different package files before further actions",async()=>{
+foreach(var defect in new[]{"missing","malformed","short","oversize","different","error"})await CheckPackage("zk_Zunftkueche.Dataverse",true,defect);
+});
+async Task CheckPackage(string? existingName,bool reject,string? fileDefect=null) {
+byte[] bytes=File.ReadAllBytes("server/artifacts/Zunftkueche.Dataverse.1.0.0.nupkg");string content=Convert.ToBase64String(bytes);int reads=0,assemblyReads=0,fileReads=0;
 JsonObject? stored=existingName==null?null:Package(existingName);
-JsonObject Package(string name){var row=new JsonObject{["pluginpackageid"]="00000000-0000-0000-0000-000000000030",["uniquename"]="zk_Zunftkueche.Dataverse",["version"]="1.0.0",["content"]=content,["statecode"]=0};if(name!="")row["name"]=name;return row;}
+JsonObject Package(string name){var row=new JsonObject{["pluginpackageid"]="00000000-0000-0000-0000-000000000030",["uniquename"]="zk_Zunftkueche.Dataverse",["version"]="1.0.0",["content"]=null,["package"]=fileDefect=="missing"?null:fileDefect=="malformed"?"unsafe-id":"00000000-0000-0000-0000-000000000031",["statecode"]=0};if(name!="")row["name"]=name;return row;}
 await CheckRelationship("zk_workspace",false,afterTables:async(p,f,e)=>{
-if(reject){await Reject(()=>p.Backend(bytes,true));Assert(f.Writes==0&&reads==1&&assemblyReads==0);Assert(System.Text.Json.JsonSerializer.Serialize(e.Resources).Contains("$.field"));}
-else{await p.Backend(bytes,true);Assert(f.Writes==(existingName==null?1:0)&&reads==(existingName==null?2:1)&&assemblyReads==1&&stored?["name"]?.GetValue<string>()=="zk_Zunftkueche.Dataverse");}
+f.PackageFile=id=>{fileReads++;Assert(id=="00000000-0000-0000-0000-000000000030");if(fileDefect=="error")throw new DeploymentException("http_404");var result=bytes.ToArray();if(fileDefect=="short")result=result[..^1];if(fileDefect=="oversize")result=[..result,0];if(fileDefect=="different")result[0]^=1;return Task.FromResult(result);};
+if(reject){await Reject(()=>p.Backend(bytes,true));Assert(f.Writes==0&&reads==1&&assemblyReads==0);Assert(fileReads==(fileDefect is "short" or "oversize" or "different" or "error"?1:0));}
+else{await p.Backend(bytes,true);Assert(f.Writes==(existingName==null?1:0)&&reads==(existingName==null?2:1)&&assemblyReads==1&&fileReads==1&&stored?["name"]?.GetValue<string>()=="zk_Zunftkueche.Dataverse");}
 },backendTransport:(method,path,body)=>{
 if(path.StartsWith("zk_kitchenworkspaces?"))return new JsonObject{["value"]=new JsonArray(new JsonObject{["zk_kitchenworkspaceid"]=Seed.WorkspaceId,["zk_revision"]=0})};
 if(method==HttpMethod.Post){Assert(path=="pluginpackages");var expected=new JsonObject{["uniquename"]="zk_Zunftkueche.Dataverse",["name"]="zk_Zunftkueche.Dataverse",["version"]="1.0.0",["content"]=content};Assert(JsonNode.DeepEquals(body,expected));stored=Package("zk_Zunftkueche.Dataverse");return null;}
@@ -365,7 +396,7 @@ Fake Fixture(JsonObject? data, Func<HttpMethod,string,JsonNode?,Task<JsonNode?>>
  if(p.StartsWith("EntityDefinitions?$select=TableType&"))return Task.FromResult<JsonNode?>(Parse("{\"value\":[{\"TableType\":\"Standard\"}]}"));
  if(p.StartsWith("sdkmessageprocessingsteps?$select="))return Task.FromResult<JsonNode?>(Parse("{\"value\":[]}"));
  return other!=null?other(m,p,b):Task.FromResult<JsonNode?>(data!.DeepClone());});
-sealed class Fake(Func<HttpMethod,string,JsonNode?,Task<JsonNode?>> handle):IDataverseTransport {public int Writes; public Task<JsonNode?> SendAsync(HttpMethod m,string p,JsonNode? b=null){if(m!=HttpMethod.Get)Writes++;return handle(m,p,b);}}
+sealed class Fake(Func<HttpMethod,string,JsonNode?,Task<JsonNode?>> handle):IDataverseTransport {public int Writes; public Func<string,Task<byte[]>>? PackageFile; public Task<byte[]> ReadPackageFileAsync(string id)=>PackageFile?.Invoke(id)??throw new DeploymentException("package_file_download_unavailable"); public Task<JsonNode?> SendAsync(HttpMethod m,string p,JsonNode? b=null){if(m!=HttpMethod.Get)Writes++;return handle(m,p,b);}}
 
 sealed class GuardHarness {
  public static readonly string[] Tables=["zk_kitchenworkspace","zk_kitchenoperation"];

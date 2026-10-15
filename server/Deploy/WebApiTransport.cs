@@ -16,6 +16,7 @@ public sealed class WebApiTransport : IDataverseTransport, IDisposable {
         baseUri = new Uri(Target.Url + "/api/data/v9.2/"); token = tokenProvider;
         client = new HttpClient(handler ?? new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { Timeout = TimeSpan.FromMinutes(3) };
     }
+    public Task<byte[]> ReadPackageFileAsync(string packageId) => PackageFileDownload.ReadAsync(client, token, packageId);
     public async Task<JsonNode?> SendAsync(HttpMethod method, string relativePath, JsonNode? payload = null) {
         if (method != HttpMethod.Get && method != HttpMethod.Post) throw new DeploymentException("unsupported_http_method");
         if (!Uri.TryCreate(baseUri, relativePath, out var uri) || uri.Scheme != "https" || uri.Host != baseUri.Host || uri.Port != 443 || !uri.AbsolutePath.StartsWith(baseUri.AbsolutePath, StringComparison.Ordinal) || !string.IsNullOrEmpty(uri.UserInfo))
@@ -43,7 +44,7 @@ public sealed class WebApiTransport : IDataverseTransport, IDisposable {
         if (relativePath == "$metadata") return JsonValue.Create(text);
         return JsonNode.Parse(text);
     }
-    private static async Task<string> RefusalCode(HttpResponseMessage response, CancellationToken cancellationToken, Action<JsonElement>? packageDiagnostic = null) {
+    internal static async Task<string> RefusalCode(HttpResponseMessage response, CancellationToken cancellationToken, Action<JsonElement>? packageDiagnostic = null) {
         string generic = "http_" + (int)response.StatusCode;
         const int limit = 8192;
         if (response.Content.Headers.ContentLength is > limit) return generic;

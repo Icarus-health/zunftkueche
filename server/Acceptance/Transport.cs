@@ -38,6 +38,7 @@ public sealed class AcceptanceTransport:IAcceptanceTransport,IDisposable {
   Target.ValidateUrl(url);this.token=token;
   client=new(handler??new HttpClientHandler{AllowAutoRedirect=false,UseCookies=false}){Timeout=TimeSpan.FromMinutes(3)};
  }
+ public Task<byte[]> ReadPackageFileAsync(string packageId)=>PackageFileDownload.ReadAsync(client,token,packageId);
  public async Task<JsonNode?> SendAsync(HttpMethod method,string relativePath,JsonNode? payload=null) {
   var result=await ProbeAsync(new("prerequisite",method,relativePath,payload?.ToJsonString()));
   if(method==HttpMethod.Get&&result.Status==404&&relativePath.Contains('(')&&!relativePath.Contains('?'))return null;

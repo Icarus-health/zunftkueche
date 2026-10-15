@@ -3,6 +3,7 @@ namespace Kitchen.Deploy;
 
 public interface IDataverseTransport {
     Task<JsonNode?> SendAsync(HttpMethod method, string relativePath, JsonNode? payload = null);
+    Task<byte[]> ReadPackageFileAsync(string packageId) => throw new DeploymentException("package_file_download_unavailable");
 }
 public sealed class DeploymentException(string code) : Exception(code);
 public static class Target {
