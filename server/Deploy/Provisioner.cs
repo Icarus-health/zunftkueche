@@ -112,11 +112,11 @@ public sealed class Provisioner(ResourceEngine engine, IDataverseTransport trans
             // Parse with the server's size/depth/duplicate-property bounds; do not trust persisted JSON.
             var state = Protocol.Parse(rawState);
             var baseline = JObject.Parse(reviewedSeed.ToJsonString());
-            StatePolicy.Validate(state, baseline);
+            SnapshotVerification.Validate(state, baseline);
             if ((int)state["revision"]! != revision) throw new DeploymentException("workspace_revision_mismatch");
             // Revision zero must be the exact reviewed seed (object order/formatting are immaterial).
-            // Later revisions may contain valid edits, while the policy protects original provenance,
-            // receipt economics and baseline history. Intermediate transaction history is a live-test gate.
+            // Later revisions use snapshot validation and seed-anchored history checks, not a
+            // single-transition comparison. Intermediate server transactions remain a live-test gate.
             if (revision == 0 && !JToken.DeepEquals(Protocol.Canonical(state), Protocol.Canonical(baseline)))
                 throw new DeploymentException("workspace_initial_seed_mismatch");
             engine.Resources.Add(new { resource = "workspace_state", status = "verified", id = Seed.WorkspaceId, revision });

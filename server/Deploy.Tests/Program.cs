@@ -82,6 +82,32 @@ await Test("workspace readback rejects row-state revision mismatch",()=>CheckWor
 await Test("later revisions cannot rewrite original receipt economics",()=>CheckWorkspace(row=>{
 var state=JsonNode.Parse(row["zk_state"]!.GetValue<string>())!;state["revision"]=1;state["invoices"]![0]!["grossCents"]=1;
 row["zk_revision"]=1;row["zk_state"]=state.ToJsonString();},true));
+await Test("workspace readback accepts two individually valid receipt corrections",()=>CheckWorkspace(row=>row["zk_state"]=TwoCorrections(row).ToString(Newtonsoft.Json.Formatting.None),false));
+await Test("multi-correction readback rejects changed provenance and baseline",async()=>{
+await CheckWorkspace(row=>{var state=TwoCorrections(row);state["planLines"]![0]!["source"]!["hash"]=new string('0',64);row["zk_state"]=state.ToString(Newtonsoft.Json.Formatting.None);},true);
+await CheckWorkspace(row=>{var state=TwoCorrections(row);state["invoices"]!.OfType<Newtonsoft.Json.Linq.JObject>().Single(r=>(string?)r["id"]=="r-rewe-list-1")["sourceBaseline"]!["grossCents"]=42;row["zk_state"]=state.ToString(Newtonsoft.Json.Formatting.None);},true);});
+await Test("multi-correction readback rejects changed original economics",()=>CheckWorkspace(row=>{
+var state=TwoCorrections(row);state["invoices"]!.OfType<Newtonsoft.Json.Linq.JObject>().First(r=>(string?)r["status"]=="Original vorhanden")["grossCents"]=1;row["zk_state"]=state.ToString(Newtonsoft.Json.Formatting.None);},true));
+await Test("multi-correction readback rejects tampered intermediate provenance",()=>CheckWorkspace(row=>{
+var state=TwoCorrections(row);state["invoices"]!.OfType<Newtonsoft.Json.Linq.JObject>().Single(r=>(string?)r["id"]=="r-rewe-list-1")["corrections"]![1]!["before"]!["source"]!["hash"]=new string('0',64);row["zk_state"]=state.ToString(Newtonsoft.Json.Formatting.None);},true));
+await Test("snapshot verification does not grandfather new duplicate receipt IDs",()=>CheckWorkspace(row=>{
+var state=TwoCorrections(row);var duplicate=(Newtonsoft.Json.Linq.JObject)state["invoices"]![0]!.DeepClone();duplicate["id"]="new-duplicate";
+((Newtonsoft.Json.Linq.JArray)state["invoices"]!).Add(duplicate);row["zk_state"]=state.ToString(Newtonsoft.Json.Formatting.None);},true));
+Newtonsoft.Json.Linq.JObject TwoCorrections(JsonObject row) {
+var state=Zunftkueche.Protocol.Parse(row["zk_state"]!.GetValue<string>());
+for(int revision=1;revision<=2;revision++) {
+var next=(Newtonsoft.Json.Linq.JObject)state.DeepClone();
+var receipt=next["invoices"]!.OfType<Newtonsoft.Json.Linq.JObject>().Single(r=>(string?)r["id"]=="r-rewe-list-1");
+var before=(Newtonsoft.Json.Linq.JObject)receipt.DeepClone();before.Remove("sourceBaseline");before.Remove("corrected");before.Remove("corrections");
+receipt["sourceBaseline"]??=before.DeepClone();receipt["corrected"]=true;receipt["corrections"]??=new Newtonsoft.Json.Linq.JArray();
+((Newtonsoft.Json.Linq.JArray)receipt["corrections"]!).Add(new Newtonsoft.Json.Linq.JObject{{"operationId","receipt-edit-"+revision},{"revision",revision},{"before",before}});
+receipt["grossCents"]=revision==1?2000:3000;receipt["netCents"]=1000;next["revision"]=revision;
+((Newtonsoft.Json.Linq.JArray)next["operationIds"]!).Add("receipt-edit-"+revision);next["operationRequests"]!["receipt-edit-"+revision]="invoice.update";
+// Each fixture step must satisfy the unmodified runtime's real single-commit contract.
+Zunftkueche.StatePolicy.Validate(next,state);state=next;
+}
+row["zk_revision"]=2;return state;
+}
 async Task CheckWorkspace(Action<JsonObject> change,bool reject) {
 var seed=Seed.Normalize(File.ReadAllBytes("import/2026.json"));
 var owner=Guid.Parse("00000000-0000-0000-0000-000000000002");
