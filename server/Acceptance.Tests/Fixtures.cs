@@ -76,6 +76,7 @@ public sealed class RuntimeFake:IAcceptanceTransport,IKitchenStore {
  public List<Probe> Calls=[];
  public int Commits,WriteRequests;
  public string Failure="";
+ public Outcome? Refusal;
  public Task<JsonNode?> SendAsync(HttpMethod method,string path,JsonNode? payload=null)=>throw new Exception("unexpected_metadata");
  public Task<Outcome> ProbeAsync(Probe probe) {
   Calls.Add(probe);string raw=JsonNode.Parse(probe.Body!)!["RequestJson"]!.GetValue<string>();
@@ -83,6 +84,7 @@ public sealed class RuntimeFake:IAcceptanceTransport,IKitchenStore {
   if(probe.Path=="zk_KitchenLoad")result=Protocol.Load(raw,this);
   else {
    WriteRequests++;
+   if(Refusal!=null)return Task.FromResult(Refusal);
    if(Failure=="before")throw new HttpRequestException("secret");
    if(Failure=="fault")return Task.FromResult(new Outcome(500,null));
    result=Protocol.Commit(raw,Actor,true,this);

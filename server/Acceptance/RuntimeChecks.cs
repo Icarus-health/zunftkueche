@@ -26,18 +26,27 @@ public static class RuntimeChecks {
    Checks.Receipt(receipt,hash,actor,revision+1);
    foreach(var old in receiptsBefore)if(!receipts.Any(r=>Checks.Same(r,old)))throw new AcceptanceFault("existing_receipt_changed");
   }
-  async Task<JObject> PostOnce(Probe request) {
-   try{return Checks.Result(await transport.ProbeAsync(request));}
-   catch(Exception){try{var after=await snapshot();evidence.Pass("commit_failure_independent_readback",revision:after.Revision,count:after.OperationCount,hash:after.Hash);}catch(Exception){}evidence.Fail("commit_fault_or_ambiguous_stop");throw;}
+  async Task<JObject> PostOnce(Probe request,Fingerprint prior) {
+   try {
+    var outcome=await transport.ProbeAsync(request);
+    if(!outcome.Success)evidence.Checks.Add(new("commit_http_refused",false,outcome.Status,Diagnosis.ValidatedCode(outcome.NumericCode),GuardDenied:outcome.GuardDenied,FailureKind:Enum.IsDefined(outcome.FailureKind)?outcome.FailureKind:FailureKind.unknown));
+    return Checks.Result(outcome);
+   } catch(Exception) {
+    try {
+     var after=await snapshot();evidence.Pass("commit_failure_independent_readback",revision:after.Revision,count:after.OperationCount,hash:after.Hash);
+     evidence.Checks.Add(new("commit_failure_persistence_unchanged",prior==after));
+    } catch(Exception) {}
+    evidence.Fail("commit_fault_or_ambiguous_stop");throw;
+   }
   }
-  var saved=await PostOnce(frozen);await VerifySaved();Checks.CommitResult(saved,Scope.CommitOperation,"saved",expected,revision+1);
+  var saved=await PostOnce(frozen,initial);await VerifySaved();Checks.CommitResult(saved,Scope.CommitOperation,"saved",expected,revision+1);
   evidence.Pass("legitimate_no_business_change_saved",revision:revision+1,hash:hash);
   var confirmed=await snapshot();evidence.Pass("commit_confirmed_persistence",revision:confirmed.Revision,count:confirmed.OperationCount,hash:confirmed.Hash);
   // Reuse the same immutable outer body string: the RequestJson bytes cannot be regenerated.
-  var repeated=await PostOnce(frozen);await VerifySaved();Checks.CommitResult(repeated,Scope.CommitOperation,"saved",expected,revision+1);
+  var repeated=await PostOnce(frozen,confirmed);await VerifySaved();Checks.CommitResult(repeated,Scope.CommitOperation,"saved",expected,revision+1);
   if(confirmed!=await snapshot())throw new AcceptanceFault("idempotent_repeat_changed_persistence");evidence.Pass("exact_bytes_idempotent_repeat",revision:revision+1);
   var conflict=Checks.CommitRequest(before,Scope.ConflictOperation,revision);
-  var rejected=await PostOnce(conflict);var afterConflict=await snapshot();Checks.CommitResult(rejected,Scope.ConflictOperation,"conflict",expected,null);
+  var rejected=await PostOnce(conflict,confirmed);var afterConflict=await snapshot();Checks.CommitResult(rejected,Scope.ConflictOperation,"conflict",expected,null);
   if(confirmed!=afterConflict)throw new AcceptanceFault("conflict_changed_persistence");await VerifySaved();
   evidence.Pass("stale_revision_conflict_unchanged",revision:revision+1);
  }

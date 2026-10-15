@@ -159,6 +159,66 @@ await Test("commit fault ambiguous response or malformed result stops without an
   Assert(fake.Commits==(failure is "after" or "body"?1:0));
  }
 });
+await Test("failed commit records bounded known-guard or unknown HTTP facts and unchanged readback then stops",async()=>{
+ foreach(var scenario in new[]{(400,true,"0x80040265"),(500,true,"0x80040265"),(400,false,"0x80004005"),(500,false,"malformed-secret")}){
+  string message=scenario.Item2?"Direct kitchen table writes are blocked. Bearer secret https://private.example":"Unknown remote secret https://private.example";
+  var body=System.Text.Encoding.UTF8.GetBytes(new JsonObject{["error"]=new JsonObject{["code"]=scenario.Item3,["message"]=message}}.ToJsonString());
+  var fake=new RuntimeFake{Refusal=Diagnosis.Refusal(scenario.Item1,body)};var evidence=new Evidence();
+  await Reject(()=>fake.Run(evidence));
+  var refusal=evidence.Checks.Single(c=>c.Name=="commit_http_refused");
+  Assert(!refusal.Passed&&refusal.Status==scenario.Item1&&refusal.NumericCode==(scenario.Item3=="malformed-secret"?null:scenario.Item3));
+  Assert(System.Text.Json.JsonSerializer.Serialize(refusal).Contains("\"GuardDenied\":"+(scenario.Item2?"true":"false")));
+  Assert(evidence.Checks.Single(c=>c.Name=="commit_failure_persistence_unchanged").Passed);
+  Assert(fake.WriteRequests==1&&fake.Commits==0&&fake.Receipts.Count==0&&evidence.Stopped&&!evidence.RootReleaseAllowed);
+  Assert(!System.Text.Json.JsonSerializer.Serialize(evidence.Checks).Contains("secret"));
+  Assert(!evidence.Checks.Any(c=>c.Name is "legitimate_no_business_change_saved" or "exact_bytes_idempotent_repeat" or "stale_revision_conflict_unchanged"));
+ }
+});
+await Test("transport exception has no fabricated HTTP facts and readback comparison never permits continuation",async()=>{
+ foreach(var failure in new[]{"before","after"}){
+  var fake=new RuntimeFake{Failure=failure};var evidence=new Evidence();await Reject(()=>fake.Run(evidence));
+  Assert(!evidence.Checks.Any(c=>c.Name=="commit_http_refused"));
+  Assert(evidence.Checks.Single(c=>c.Name=="commit_failure_persistence_unchanged").Passed==(failure=="before"));
+  Assert(fake.WriteRequests==1&&evidence.Stopped&&!evidence.RootReleaseAllowed);
+ }
+});
+await Test("bounded failure kinds distinguish only fixed source literals without exposing their contents",()=>{
+ foreach(var pair in new[]{
+  ("Direct kitchen table writes are blocked.","guard_context"),
+  ("Kitchen history mutations and bulk/direct writes are blocked.","guard_target"),
+  ("Invalid kitchen write context.","invalid_guard_marker"),
+  ("Invalid kitchen execution context.","invalid_execution_context"),
+  ("Kitchen validation: private validation detail","validation_prefix"),
+  ("Kitchen request JSON is invalid.","invalid_json"),
+  ("RequestJson is required.","request_required"),
+  ("Private unknown fault detail","unknown")}){
+  var bytes=System.Text.Encoding.UTF8.GetBytes(new JsonObject{["error"]=new JsonObject{["code"]="0x80040265",["message"]=pair.Item1+" Bearer secret https://private.example"}}.ToJsonString());
+  var outcome=Diagnosis.Refusal(500,bytes);
+  using var json=System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(outcome));
+  Assert(json.RootElement.GetProperty("FailureKind").GetString()==pair.Item2);
+  Assert(outcome.GuardDenied==(pair.Item2 is "guard_context" or "guard_target"));
+  Assert(!System.Text.Json.JsonSerializer.Serialize(outcome).Contains("private",StringComparison.OrdinalIgnoreCase));
+ }
+ return Task.CompletedTask;
+});
+await Test("both known guard reasons survive bounded failed-commit evidence at400and500",async()=>{
+ foreach(int status in new[]{400,500})foreach(var pair in new[]{("Direct kitchen table writes are blocked.",FailureKind.guard_context),("Kitchen history mutations and bulk/direct writes are blocked.",FailureKind.guard_target)}){
+  var bytes=System.Text.Encoding.UTF8.GetBytes(new JsonObject{["error"]=new JsonObject{["code"]="0x80040265",["message"]=pair.Item1}}.ToJsonString());
+  var fake=new RuntimeFake{Refusal=Diagnosis.Refusal(status,bytes)};var evidence=new Evidence();await Reject(()=>fake.Run(evidence));
+  var row=evidence.Checks.Single(c=>c.Name=="commit_http_refused");
+  Assert(row.GuardDenied==true&&row.FailureKind==pair.Item2&&row.Status==status&&!row.Passed);
+  Assert(fake.WriteRequests==1&&fake.Commits==0&&evidence.Stopped&&!evidence.RootReleaseAllowed);
+ }
+});
+await Test("failed HTTP evidence rejects synthetic private code and undefined enum values",async()=>{
+ var fake=new RuntimeFake{Refusal=new Outcome(500,null,NumericCode:"Bearer secret https://private.example",FailureKind:(FailureKind)123456)};
+ var evidence=new Evidence();await Reject(()=>fake.Run(evidence));
+ var row=evidence.Checks.Single(c=>c.Name=="commit_http_refused");
+ Assert(row.NumericCode==null&&row.FailureKind==FailureKind.unknown&&row.Status==500&&row.GuardDenied==false);
+ string json=System.Text.Json.JsonSerializer.Serialize(evidence.Checks);
+ Assert(!json.Contains("secret")&&!json.Contains("123456")&&json.Contains("\"FailureKind\":\"unknown\""));
+ Assert(fake.WriteRequests==1&&fake.Commits==0&&evidence.Stopped&&!evidence.RootReleaseAllowed);
+});
 await Test("bounded provider diagnosis redacts remote messages and numeric codes",()=>{
  string Body(string code,string message)=>new JsonObject{["error"]=new JsonObject{["code"]=code,["message"]=message}}.ToJsonString();
  var refusal=Diagnosis.Refusal(400,System.Text.Encoding.UTF8.GetBytes(Body("0x80040265","Bearer secret https://private.example Direct kitchen table writes are blocked.")));

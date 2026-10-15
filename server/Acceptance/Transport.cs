@@ -2,9 +2,12 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Kitchen.Deploy;
 namespace Kitchen.Acceptance;
-public sealed record Outcome(int Status, JsonNode? Value, bool GuardDenied=false, bool Unsupported=false, string? NumericCode=null) {
+[JsonConverter(typeof(JsonStringEnumConverter<FailureKind>))]
+public enum FailureKind { unknown, guard_context, guard_target, invalid_guard_marker, invalid_execution_context, validation_prefix, invalid_json, request_required }
+public sealed record Outcome(int Status, JsonNode? Value, bool GuardDenied=false, bool Unsupported=false, string? NumericCode=null,FailureKind FailureKind=FailureKind.unknown) {
  public bool Success=>Status is >=200 and <=299;
 }
 public interface IAcceptanceTransport:IDataverseTransport {
@@ -19,16 +22,27 @@ public static class Diagnosis {
    using var doc=JsonDocument.Parse(bytes.ToArray(),new JsonDocumentOptions{MaxDepth=16});
    var error=doc.RootElement.GetProperty("error");
    string? code=error.TryGetProperty("code",out var c)&&c.ValueKind==JsonValueKind.String?c.GetString():null;
-   if(code?.Length!=10||!code.StartsWith("0x",StringComparison.Ordinal)||!code.AsSpan(2).ToArray().All(x=>x is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F'))code=null;
+   code=ValidatedCode(code);
    string message=error.TryGetProperty("message",out var m)&&m.ValueKind==JsonValueKind.String?m.GetString()!:"";
    bool guard=status is 400 or 500 && (message.Contains("Direct kitchen table writes are blocked.",StringComparison.Ordinal)||message.Contains("Kitchen history mutations and bulk/direct writes are blocked.",StringComparison.Ordinal));
    // An absent action route does not prove the Standard-table operation was refused.
    // Microsoft documents this exact refusal; an unrecognized status/code/text fails closed.
    bool unsupported=status==400 && code!=null &&
     string.Equals(message,"DeleteMultiple has not yet been implemented.",StringComparison.Ordinal);
-   return new(status,null,guard,unsupported,code);
+   return new(status,null,guard,unsupported,code,KnownFailureKind(message));
   }catch(Exception e)when(e is JsonException or InvalidOperationException or KeyNotFoundException){return new(status,null);}
  }
+ static FailureKind KnownFailureKind(string message) {
+  if(message.Contains("Direct kitchen table writes are blocked.",StringComparison.Ordinal))return FailureKind.guard_context;
+  if(message.Contains("Kitchen history mutations and bulk/direct writes are blocked.",StringComparison.Ordinal))return FailureKind.guard_target;
+  if(message.Contains("Invalid kitchen write context.",StringComparison.Ordinal))return FailureKind.invalid_guard_marker;
+  if(message.Contains("Invalid kitchen execution context.",StringComparison.Ordinal))return FailureKind.invalid_execution_context;
+  if(message.Contains("Kitchen validation:",StringComparison.Ordinal))return FailureKind.validation_prefix;
+  if(message.Contains("Kitchen request JSON is invalid.",StringComparison.Ordinal))return FailureKind.invalid_json;
+  if(message.Contains("RequestJson is required.",StringComparison.Ordinal))return FailureKind.request_required;
+  return FailureKind.unknown;
+ }
+ public static string? ValidatedCode(string? code)=>code is {Length:10} && code.StartsWith("0x",StringComparison.Ordinal) && code.AsSpan(2).ToArray().All(x=>x is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F')?code:null;
  public static string SafeError(Exception error)=>error is AcceptanceFault f&&f.Message.All(c=>c is >= 'a' and <= 'z' or '_')?f.Message:"acceptance_failed_details_suppressed";
 }
 public sealed class AcceptanceTransport:IAcceptanceTransport,IDisposable {
