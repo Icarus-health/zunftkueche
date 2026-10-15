@@ -119,11 +119,42 @@ await Test("duplicate relevant package paths suppress all additive facts while r
  var success=await PatchFacts("""{"error":{"code":"0x80040265","message":"invalid zip","@Microsoft.PowerApps.CDS.ErrorDetails.OperationStatus":1}}""",204);
  Assert(success["Flags"]!.AsArray().Count==0&&success["OperationStatus"]==null);
 });
+await Test("only three exact invocations select offline strict or explicit package maintenance",()=>{
+ Assert(Invocation.Parse([])==ExecutionMode.Offline&&Invocation.Parse(["--execute"])==ExecutionMode.Strict&&Invocation.Parse(["--execute-exclusive-package-content"])==ExecutionMode.ExclusivePackageOnly);
+ foreach(var args in new[]{new[]{"--execute","--execute-exclusive-package-content"},new[]{"--mode","exclusive"},new[]{"--execute-exclusive-package-content","anything"},new[]{"--execute-exclusive-package-content=true"},new[]{"--url",Target.Url}}){
+  bool rejected=false;try{Invocation.Parse(args);}catch(DeploymentException){rejected=true;}Assert(rejected);
+ }
+ return Task.CompletedTask;
+});
+await Test("explicit package maintenance requires stable metadata file metadata before one update-only PATCH",async()=>{
+ foreach(var scenario in new[]{"old","new","refused_old","ambiguous_new","unconfirmed","bad_hash","bad_identity","wrong_name","no_concurrency","bad_etag"}){
+  using var handler=new Fake(scenario){ExpectedIfMatch="*"};using var updater=new FixedPackageUpdater(()=>Task.FromResult("synthetic-token"),Fake.ObjectId,handler);
+  string? result=null;try{result=await updater.ExecuteExclusivePackageContentAsync();}catch(DeploymentException){ }
+  bool write=scenario is "old" or "refused_old" or "ambiguous_new" or "unconfirmed";
+  Assert(handler.Writes==(write?1:0)&&handler.SafeMutation&&updater.ConcurrencyMode=="exclusive_writer_no_atomic_cas");
+  Assert(result==(scenario is "old" or "ambiguous_new"?"updated_exact":scenario=="new"?"already_current":scenario=="refused_old"?"unchanged_prior":scenario=="unconfirmed"?"unconfirmed":null));
+  if(write)Assert(handler.PackageRequests.Take(4).SequenceEqual(new[]{"row","file","row","patch"})&&handler.FileReads==2&&handler.PackageReads==3);
+ }
+});
+await Test("maintenance second snapshot drift or absence blocks before mutation",async()=>{
+ foreach(var drift in new[]{"etag","file","id","name","unique","version","state","missing"}){
+  using var handler=new Fake("old"){ExpectedIfMatch="*",PrewriteDrift=drift};using var updater=new FixedPackageUpdater(()=>Task.FromResult("synthetic-token"),Fake.ObjectId,handler);
+  bool rejected=false;try{await updater.ExecuteExclusivePackageContentAsync();}catch(DeploymentException){rejected=true;}
+  Assert(rejected&&handler.Writes==0&&handler.FileReads==1&&handler.PackageReads==2);
+ }
+});
+await Test("strict refusal never falls back or permits a second maintenance call",async()=>{
+ using var handler=new Fake("refused_old"){PatchResponse=()=>new(HttpStatusCode.PreconditionFailed)};
+ using var updater=new FixedPackageUpdater(()=>Task.FromResult("synthetic-token"),Fake.ObjectId,handler);
+ Assert(await updater.ExecuteAsync()=="unchanged_prior"&&handler.Writes==1&&handler.SafeMutation);
+ Assert(handler.PackageRequests.Take(3).SequenceEqual(new[]{"row","file","patch"})&&updater.ConcurrencyMode=="exact_etag");
+ bool rejected=false;try{await updater.ExecuteExclusivePackageContentAsync();}catch(DeploymentException){rejected=true;}Assert(rejected&&handler.Writes==1);
+});
 Console.WriteLine($"{passed} passed; {failed} failed");return failed==0?0:1;
 sealed class Fake(string scenario):HttpMessageHandler {
  public const string ObjectId="00000000-0000-0000-0000-000000000001";
  const string Actor="00000000-0000-0000-0000-000000000002",Currency="00000000-0000-0000-0000-000000000003";
- public string? Prefer;
+ public string? Prefer,PrewriteDrift;public string ExpectedIfMatch="W/\"12345\"";public int PackageReads;public List<string> PackageRequests=[];
  public Func<HttpResponseMessage>? PatchResponse;public Exception? PatchException;
  public int Writes,FileReads,PostWriteReads;public bool SafeMutation=true;
  readonly byte[] prior=File.ReadAllBytes(Profiles.PriorPath),current=File.ReadAllBytes(Profiles.CurrentPath);
@@ -131,8 +162,8 @@ sealed class Fake(string scenario):HttpMessageHandler {
   string path=request.RequestUri!.PathAndQuery[("/api/data/v9.2/").Length..];
   if(request.RequestUri.Host!=new Uri(Target.Url).Host)throw new Exception("bad_host");
   if(request.Method==HttpMethod.Patch){
-   Writes++;Prefer=request.Headers.TryGetValues("Prefer",out var preferences)?string.Join("",preferences):null;var body=JsonNode.Parse(await request.Content!.ReadAsStringAsync())!.AsObject();
-   SafeMutation &= path==$"pluginpackages({FixedPackageUpdater.PackageId})"&&request.Headers.IfMatch.Single().ToString()=="W/\"12345\""&&body.Count==1&&body["content"]!.GetValue<string>()==Convert.ToBase64String(current);
+   PackageRequests.Add("patch");Writes++;Prefer=request.Headers.TryGetValues("Prefer",out var preferences)?string.Join("",preferences):null;var body=JsonNode.Parse(await request.Content!.ReadAsStringAsync())!.AsObject();
+   SafeMutation &= path==$"pluginpackages({FixedPackageUpdater.PackageId})"&&request.Headers.IfMatch.Single().ToString()==ExpectedIfMatch&&body.Count==1&&body["content"]!.GetValue<string>()==Convert.ToBase64String(current);
    if(PatchException!=null)throw PatchException;
    if(PatchResponse!=null)return PatchResponse();
    if(scenario=="ambiguous_new")throw new TaskCanceledException("private-token");
@@ -146,15 +177,21 @@ sealed class Fake(string scenario):HttpMessageHandler {
   if(path.StartsWith("transactioncurrencies("))return Json(new JsonObject{["isocurrencycode"]=scenario=="bad_currency"?"USD":"EUR"});
   if(path.StartsWith("EntityDefinitions("))return Json(new JsonObject{["IsOptimisticConcurrencyEnabled"]=scenario!="no_concurrency"});
   if(path==$"pluginpackages({FixedPackageUpdater.PackageId})/package/$value"){
-   FileReads++;byte[] bytes=scenario=="new"||(Writes>0&&scenario!="refused_old")?current:prior;
+   PackageRequests.Add("file");FileReads++;byte[] bytes=scenario=="new"||(Writes>0&&scenario!="refused_old")?current:prior;
    if(scenario=="bad_hash"||(scenario=="unconfirmed"&&Writes>0)){bytes=bytes.ToArray();bytes[0]^=1;}
    if(scenario is "large" or "no_length_large")bytes=new byte[500000];
    if(scenario=="no_length_large")return new(HttpStatusCode.OK){Content=new StreamContent(new UnboundedStream(bytes))};
    return new(scenario=="redirect"?HttpStatusCode.Redirect:HttpStatusCode.OK){Content=new ByteArrayContent(bytes)};
   }
   if(path.StartsWith($"pluginpackages({FixedPackageUpdater.PackageId})")){
+   PackageRequests.Add("row");PackageReads++;
+   if(PackageReads==2&&Writes==0&&PrewriteDrift=="missing")return new(HttpStatusCode.NotFound);
    if(scenario=="missing"||(scenario=="missing_after"&&Writes>0))return new(HttpStatusCode.NotFound);
-   return Json(new JsonObject{["pluginpackageid"]=FixedPackageUpdater.PackageId,["name"]=scenario=="wrong_name"?"wrong":"zk_Zunftkueche.Dataverse",["uniquename"]=scenario=="wrong_unique"?"wrong":"zk_Zunftkueche.Dataverse",["version"]=scenario=="wrong_version"?"2.0.0":"1.0.0",["statecode"]=scenario=="inactive"?1:0,["package"]=scenario=="no_file"?null:Currency,["@odata.etag"]=scenario=="bad_etag"?"private-etag":"W/\"12345\""});
+   var packageRow=new JsonObject{["pluginpackageid"]=FixedPackageUpdater.PackageId,["name"]=scenario=="wrong_name"?"wrong":"zk_Zunftkueche.Dataverse",["uniquename"]=scenario=="wrong_unique"?"wrong":"zk_Zunftkueche.Dataverse",["version"]=scenario=="wrong_version"?"2.0.0":"1.0.0",["statecode"]=scenario=="inactive"?1:0,["package"]=scenario=="no_file"?null:Currency,["@odata.etag"]=scenario=="bad_etag"?"private-etag":"W/\"12345\""};
+   if(PackageReads==2&&Writes==0&&PrewriteDrift!=null){
+    switch(PrewriteDrift){case "etag":packageRow["@odata.etag"]="W/\"12346\"";break;case "file":packageRow["package"]=Actor;break;case "id":packageRow["pluginpackageid"]=Actor;break;case "name":packageRow["name"]="other";break;case "unique":packageRow["uniquename"]="other";break;case "version":packageRow["version"]="2.0.0";break;case "state":packageRow["statecode"]=1;break;}
+   }
+   return Json(packageRow);
   }
   throw new Exception("unexpected_path");
  }

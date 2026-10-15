@@ -16,6 +16,7 @@ public sealed record PatchDiagnostic(int? HttpStatus=null,string? DataverseCode=
 }
 public sealed class FixedPackageUpdater:IDataverseTransport,IDisposable {
  public PatchDiagnostic PatchDiagnostic { get; private set; } = new();
+ public string ConcurrencyMode { get; private set; } = "exact_etag";
  public const string PackageId="70a54daa-73c8-f111-a05c-7ced8d5f6e0d";
  const string Row="pluginpackages("+PackageId+")";
  const string RowQuery=Row+"?$select=pluginpackageid,name,uniquename,version,statecode,package";
@@ -26,22 +27,28 @@ public sealed class FixedPackageUpdater:IDataverseTransport,IDisposable {
   this.token=token;this.objectId=objectId;
   client=new(handler??new HttpClientHandler{AllowAutoRedirect=false,UseCookies=false}){Timeout=TimeSpan.FromMinutes(3)};
  }
- public async Task<string> ExecuteAsync() {
+ public Task<string> ExecuteAsync()=>ExecuteCoreAsync(false);
+ public Task<string> ExecuteExclusivePackageContentAsync()=>ExecuteCoreAsync(true);
+ private async Task<string> ExecuteCoreAsync(bool exclusivePackageOnly) {
   if(started)throw new DeploymentException("updater_already_used");started=true;
+  ConcurrencyMode=exclusivePackageOnly?"exclusive_writer_no_atomic_cas":"exact_etag";
   Profiles.ValidateLocal();
   if(!Guid.TryParseExact(objectId,"D",out var oid)||oid==Guid.Empty)throw new DeploymentException("invalid_identity_object");
   await new ResourceEngine(this,objectId).AuthenticateTargetAsync();
   var capability=await SendAsync(HttpMethod.Get,Concurrency);
   if(capability?["IsOptimisticConcurrencyEnabled"]?.GetValue<bool>()!=true)throw new DeploymentException("package_concurrency_required");
-  string etag=await ReadIdentity();
+  var identity=await ReadIdentity();
   byte[] prior=Profiles.ReadPinned(Profiles.PriorPath,Profiles.PriorHash,Profiles.PriorLength);
   byte[] current=Profiles.ReadPinned(Profiles.CurrentPath,Seed.PackageHash,PackageFileDownload.ExpectedLength);
   var before=await ReadFile();
   if(before.AsSpan().SequenceEqual(current))return "already_current";
   if(!before.AsSpan().SequenceEqual(prior))throw new DeploymentException("unexpected_existing_package_bytes");
+  // This bracket detects observed drift; it is not atomic CAS or a guarantee of exclusive authorship.
+  // Root must separately ensure the controlled package-only maintenance window.
+  if(exclusivePackageOnly&&identity!=await ReadIdentity())throw new DeploymentException("package_prewrite_identity_changed");
   try {
    using var request=await Request(HttpMethod.Patch,Row);
-   request.Headers.IfMatch.Add(EntityTagHeaderValue.Parse(etag));
+   request.Headers.IfMatch.Add(exclusivePackageOnly?EntityTagHeaderValue.Any:EntityTagHeaderValue.Parse(identity.ETag));
    request.Headers.Add("Prefer","odata.include-annotations=\"Microsoft.PowerApps.CDS.ErrorDetails.OperationStatus,Microsoft.PowerApps.CDS.ErrorDetails.SubErrorCode\"");
    request.Content=new StringContent(new JsonObject{["content"]=Convert.ToBase64String(current)}.ToJsonString(),Encoding.UTF8,"application/json");
    using var timeout=new CancellationTokenSource(client.Timeout);
@@ -115,13 +122,14 @@ public sealed class FixedPackageUpdater:IDataverseTransport,IDisposable {
   Scan(error);if(hasInner)Scan(inner);
   PatchDiagnostic=PatchDiagnostic with { Flags=found.Order(StringComparer.Ordinal).ToArray(),OperationStatus=Number("OperationStatus"),SubErrorCode=Number("SubErrorCode") };
  }
- async Task<string> ReadIdentity() {
+ private sealed record IdentitySnapshot(string ETag,string FileId);
+ async Task<IdentitySnapshot> ReadIdentity() {
   var row=await SendAsync(HttpMethod.Get,RowQuery)??throw new DeploymentException("package_missing");
   ResourceEngine.RequireMatch(row,new JsonObject{["pluginpackageid"]=PackageId,["name"]="zk_Zunftkueche.Dataverse",["uniquename"]="zk_Zunftkueche.Dataverse",["version"]="1.0.0",["statecode"]=0});
-  ResourceEngine.Id(row,"package");
+  string fileId=ResourceEngine.Id(row,"package");
   string? etag=row["@odata.etag"]?.GetValue<string>();
   if(etag==null||!Regex.IsMatch(etag,"\\AW/\"[0-9]{1,20}\"\\z",RegexOptions.CultureInvariant))throw new DeploymentException("package_etag_required");
-  return etag;
+  return new(etag,fileId);
  }
  // ResourceEngine is reused for exact account/object/organization/language/currency checks.
  // Public interface is read-only and rejects every path outside this small fixed set.
