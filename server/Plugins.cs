@@ -193,6 +193,16 @@ namespace Zunftkueche
             catch (Exception) { mask = 0; count = 0; presence = 0; }
             return "[zk_guard_target_v1;m=" + mask.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";n=" + count.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";i=" + presence.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]";
         }
+        // Exact platform decoration observed in this workspace's synchronous Update pipeline.
+        // This shape is never authority: source, actor, workspace and business-field checks still apply.
+        private static bool ObservedWorkspaceDecoration(Entity target, Guid workspace, Guid actor)
+        {
+            return target.Attributes.Count == 6 && workspace != Guid.Empty && actor != Guid.Empty
+                && target.Contains("zk_kitchenworkspaceid") && target["zk_kitchenworkspaceid"] is Guid id && id == target.Id && id == workspace
+                && target.Contains("modifiedby") && target["modifiedby"] is EntityReference modifier && modifier.LogicalName == "systemuser" && modifier.Id == actor
+                && target.Contains("modifiedon") && target["modifiedon"] is DateTime timestamp && timestamp.Kind == DateTimeKind.Utc
+                && target.Contains("modifiedonbehalfby") && target["modifiedonbehalfby"] == null;
+        }
         // Refusal-only bookkeeping measurement. No values or arbitrary attribute names leave this method.
         private static string DecorationDiagnostic(IPluginExecutionContext c, Entity target, Guid workspace)
         {
@@ -239,7 +249,7 @@ namespace Zunftkueche
             if (c.Mode != 0 || c.Stage != 20 || !c.IsInTransaction || parent == null || parent.MessageName != "zk_KitchenCommit" || parent.Stage != 30 || parent.Mode != 0 || !parent.IsInTransaction || c.InitiatingUserId != parent.InitiatingUserId || c.UserId != parent.UserId || c.UserId != c.InitiatingUserId || !c.InputParameters.Contains("Target") || !(c.InputParameters["Target"] is Entity target))
                 throw new InvalidPluginExecutionException("Direct kitchen table writes are blocked. " + GuardDiagnostic(c));
             RequestBinding(parent, out Guid workspace, out string operationId);
-            bool valid = c.MessageName == "Update" && target.LogicalName == "zk_kitchenworkspace" && target.Id == workspace && target.Attributes.Count == 2 && target.Contains("zk_state") && target.Contains("zk_revision");
+            bool valid = c.MessageName == "Update" && target.LogicalName == "zk_kitchenworkspace" && target.Id == workspace && target.Contains("zk_state") && target.Contains("zk_revision") && (target.Attributes.Count == 2 || ObservedWorkspaceDecoration(target, workspace, c.InitiatingUserId));
             if (c.MessageName == "Create" && target.LogicalName == "zk_kitchenoperation")
                 valid = target.GetAttributeValue<EntityReference>("zk_workspace")?.Id == workspace && target.GetAttributeValue<string>("zk_operationid") == operationId && target.GetAttributeValue<string>("zk_actor") == c.InitiatingUserId.ToString("D");
             if (!valid)

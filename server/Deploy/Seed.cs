@@ -5,7 +5,7 @@ using Zunftkueche;
 namespace Kitchen.Deploy;
 public static class Seed {
     public const string OriginalHash = "d38bf0ac7c2bf34211c1df01af1869dd97522da24e2bde1a284e3e505844a15f";
-    public const string PackageHash = "54534e6c1053e1e41fbd4eab6741183f53996e18995b0924c7f695f619ed865b";
+    public const string PackageHash = "6d74048606fd199b06a20c2856752eb56e87e7bd6bb9d634bdef80387c596247";
     public const string WorkspaceId = "45deaf94-5661-4110-8f16-3d2678c09f04";
     public static string Hash(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
     public static JsonObject Normalize(byte[] bytes) {

@@ -58,7 +58,7 @@ try {
 namespace Kitchen.Deploy {
     public sealed record Options(string Phase, bool DryRun, string Url, string ContractPath, string SeedPath, string PackagePath) {
         public static Options Parse(string[] args) {
-            string phase = "inspect", url = Target.Url, contract = "server/deployment/registration.json", seed = "import/2026.json", package = "server/artifacts/guard-target-diagnostic-v4/Zunftkueche.Dataverse.1.0.0.nupkg";
+            string phase = "inspect", url = Target.Url, contract = "server/deployment/registration.json", seed = "import/2026.json", package = "server/artifacts/guard-target-normalization-v5/Zunftkueche.Dataverse.1.0.0.nupkg";
             bool dry = false; var seen = new HashSet<string>();
             for (int i = 0; i < args.Length; i++) {
                 string flag = args[i]; if (!seen.Add(flag)) throw new DeploymentException("duplicate_argument");
