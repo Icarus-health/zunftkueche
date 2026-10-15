@@ -4,7 +4,7 @@ using Newtonsoft.Json.Linq;
 using Kitchen.Deploy;
 using Zunftkueche;
 namespace Kitchen.Acceptance;
-public sealed record Check(string Name,bool Passed,int? Status=null,string? NumericCode=null,int? Revision=null,int? Count=null,string? Hash=null,bool? GuardDenied=null,FailureKind? FailureKind=null);
+public sealed record Check(string Name,bool Passed,int? Status=null,string? NumericCode=null,int? Revision=null,int? Count=null,string? Hash=null,bool? GuardDenied=null,FailureKind? FailureKind=null,int? GuardMask=null,int? ParentKind=null);
 public sealed class Evidence {
  public List<Check> Checks {get;}=[];
  public bool RootReleaseAllowed {get;internal set;}

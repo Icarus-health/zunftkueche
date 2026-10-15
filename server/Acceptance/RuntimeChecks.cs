@@ -29,7 +29,7 @@ public static class RuntimeChecks {
   async Task<JObject> PostOnce(Probe request,Fingerprint prior) {
    try {
     var outcome=await transport.ProbeAsync(request);
-    if(!outcome.Success)evidence.Checks.Add(new("commit_http_refused",false,outcome.Status,Diagnosis.ValidatedCode(outcome.NumericCode),GuardDenied:outcome.GuardDenied,FailureKind:Enum.IsDefined(outcome.FailureKind)?outcome.FailureKind:FailureKind.unknown));
+    if(!outcome.Success)evidence.Checks.Add(new("commit_http_refused",false,outcome.Status,Diagnosis.ValidatedCode(outcome.NumericCode),GuardDenied:outcome.GuardDenied,FailureKind:Enum.IsDefined(outcome.FailureKind)?outcome.FailureKind:FailureKind.unknown,GuardMask:Diagnosis.HasSafeGuardFacts(outcome)?outcome.GuardMask:null,ParentKind:Diagnosis.HasSafeGuardFacts(outcome)?outcome.ParentKind:null));
     return Checks.Result(outcome);
    } catch(Exception) {
     try {

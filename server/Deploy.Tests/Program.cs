@@ -97,7 +97,7 @@ using var transport=new WebApiTransport(Target.Url,()=>Task.FromResult("syntheti
 await Reject(()=>transport.SendAsync(HttpMethod.Post,"pluginpackages",new JsonObject()));Assert(stream.ReadBytes<=8193);
 });
 await Test("package file GET uses exact authenticated route and returns reviewed bytes",async()=>{
-var bytes=File.ReadAllBytes("server/artifacts/Zunftkueche.Dataverse.1.0.0.nupkg");int calls=0;
+var bytes=File.ReadAllBytes("server/artifacts/guard-diagnostic-v1/Zunftkueche.Dataverse.1.0.0.nupkg");int calls=0;
 using var t=new WebApiTransport(Target.Url,()=>Task.FromResult("synthetic-token"),new ResponseHandler(()=>new(System.Net.HttpStatusCode.OK){Content=new ByteArrayContent(bytes)},r=>{calls++;Assert(r.Method==HttpMethod.Get&&r.RequestUri!.AbsoluteUri==Target.Url+"/api/data/v9.2/pluginpackages(00000000-0000-0000-0000-000000000030)/package/$value"&&r.Headers.Authorization?.Parameter=="synthetic-token"&&r.Content==null);}));
 Assert((await ((IDataverseTransport)t).ReadPackageFileAsync("00000000-0000-0000-0000-000000000030")).SequenceEqual(bytes)&&calls==1);
 });
@@ -106,11 +106,11 @@ int tokens=0;using var t=new WebApiTransport(Target.Url,()=>{tokens++;return Tas
 foreach(var id in new[]{"","00000000-0000-0000-0000-000000000000","bad","../other","00000000000000000000000000000030","00000000-0000-0000-0000-000000000030)/fileid/$value"})await Reject(()=>((IDataverseTransport)t).ReadPackageFileAsync(id));Assert(tokens==0);
 });
 await Test("package file reads are bounded and reject short oversized partial and refusal responses",async()=>{
-foreach(var length in new[]{0,290279,290280,290281,400000}){
+foreach(var length in new[]{0,PackageFileDownload.ExpectedLength-1,PackageFileDownload.ExpectedLength,PackageFileDownload.ExpectedLength+1,400000}){
 using var stream=new CountingErrorStream(new byte[length]);int calls=0;
 using var t=new WebApiTransport(Target.Url,()=>Task.FromResult("secret"),new ResponseHandler(()=>new(System.Net.HttpStatusCode.OK){Content=new StreamContent(stream)},_=>calls++));
-if(length==290280)Assert((await ((IDataverseTransport)t).ReadPackageFileAsync("00000000-0000-0000-0000-000000000030")).Length==length);
-else await Reject(()=>((IDataverseTransport)t).ReadPackageFileAsync("00000000-0000-0000-0000-000000000030"));Assert(calls==1&&stream.ReadBytes<=290281);
+if(length==PackageFileDownload.ExpectedLength)Assert((await ((IDataverseTransport)t).ReadPackageFileAsync("00000000-0000-0000-0000-000000000030")).Length==length);
+else await Reject(()=>((IDataverseTransport)t).ReadPackageFileAsync("00000000-0000-0000-0000-000000000030"));Assert(calls==1&&stream.ReadBytes<=PackageFileDownload.ExpectedLength+1);
 }
 foreach(var status in new[]{206,204,302,400,404,500}){
 using var t=new WebApiTransport(Target.Url,()=>Task.FromResult("secret"),new ResponseHandler(()=>new((System.Net.HttpStatusCode)status){Content=new StringContent("{\"error\":{\"code\":\"0x80040265\",\"message\":\"private-token https://private.example\"}}") }));
@@ -324,7 +324,7 @@ await Test("backend rejects missing malformed or different package files before 
 foreach(var defect in new[]{"missing","malformed","short","oversize","different","error"})await CheckPackage("zk_Zunftkueche.Dataverse",true,defect);
 });
 async Task CheckPackage(string? existingName,bool reject,string? fileDefect=null) {
-byte[] bytes=File.ReadAllBytes("server/artifacts/Zunftkueche.Dataverse.1.0.0.nupkg");string content=Convert.ToBase64String(bytes);int reads=0,assemblyReads=0,fileReads=0;
+byte[] bytes=File.ReadAllBytes("server/artifacts/guard-diagnostic-v1/Zunftkueche.Dataverse.1.0.0.nupkg");string content=Convert.ToBase64String(bytes);int reads=0,assemblyReads=0,fileReads=0;
 JsonObject? stored=existingName==null?null:Package(existingName);
 JsonObject Package(string name){var row=new JsonObject{["pluginpackageid"]="00000000-0000-0000-0000-000000000030",["uniquename"]="zk_Zunftkueche.Dataverse",["version"]="1.0.0",["content"]=null,["package"]=fileDefect=="missing"?null:fileDefect=="malformed"?"unsafe-id":"00000000-0000-0000-0000-000000000031",["statecode"]=0};if(name!="")row["name"]=name;return row;}
 await CheckRelationship("zk_workspace",false,afterTables:async(p,f,e)=>{
@@ -345,7 +345,7 @@ foreach(var api in new[]{"zk_KitchenLoad","zk_KitchenCommit"})foreach(var row in
 });
 async Task CheckApis(bool create,string? driftApi=null,int driftRow=0,string driftField="",bool missing=false) {
 const string typeId="00000000-0000-0000-0000-000000000040";int posts=0,apiReads=0;
-var bytes=File.ReadAllBytes("server/artifacts/Zunftkueche.Dataverse.1.0.0.nupkg");
+var bytes=File.ReadAllBytes("server/artifacts/guard-diagnostic-v1/Zunftkueche.Dataverse.1.0.0.nupkg");
 JsonObject Api(string name)=>new(){["customapiid"]="00000000-0000-0000-0000-000000000041",["uniquename"]=name,["name"]=name,["displayname"]=name,["description"]=name=="zk_KitchenLoad"?"Lädt den gemeinsamen Küchenbestand.":"Speichert eine geprüfte Änderung am Küchenbestand.",["iscustomizable"]=new JsonObject{["Value"]=false},["bindingtype"]=0,["isfunction"]=false,["isprivate"]=false,["allowedcustomprocessingsteptype"]=0,["workflowsdkstepenabled"]=false,["executeprivilegename"]=name=="zk_KitchenLoad"?"prvReadzk_kitchenworkspace":"prvWritezk_kitchenworkspace",["_plugintypeid_value"]=typeId,["boundentitylogicalname"]=null,["CustomAPIRequestParameters"]=new JsonArray(new JsonObject{["uniquename"]="RequestJson",["name"]=name+".RequestJson",["displayname"]="RequestJson",["type"]=10,["isoptional"]=false,["logicalentityname"]=null,["description"]="JSON-Anfrage für den Küchenbestand.",["iscustomizable"]=new JsonObject{["Value"]=false}}),["CustomAPIResponseProperties"]=new JsonArray(new JsonObject{["uniquename"]="ResultJson",["name"]=name+".ResultJson",["displayname"]="ResultJson",["type"]=10,["logicalentityname"]=null,["description"]="JSON-Ergebnis des Küchenvorgangs.",["iscustomizable"]=new JsonObject{["Value"]=false}})};
 var stored=new Dictionary<string,JsonObject>();
 if(!create)foreach(var name in new[]{"zk_KitchenLoad","zk_KitchenCommit"})stored[name]=Api(name);

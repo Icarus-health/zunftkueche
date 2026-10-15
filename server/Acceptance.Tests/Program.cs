@@ -283,9 +283,23 @@ await Test("transport stops error response reads at diagnostic bound and emits n
  Assert(stream.BytesRead<=8193&&!result.GuardDenied&&result.NumericCode==null&&result.Value==null);
 });
 await Test("package prerequisite download delegates to bounded byte reader",async()=>{
-var bytes=File.ReadAllBytes("server/artifacts/Zunftkueche.Dataverse.1.0.0.nupkg");int calls=0;
+var bytes=File.ReadAllBytes("server/artifacts/guard-diagnostic-v1/Zunftkueche.Dataverse.1.0.0.nupkg");int calls=0;
 using var handler=new ResponseHandler(request=>{calls++;Assert(request.Method==HttpMethod.Get&&request.RequestUri!.AbsoluteUri==Target.Url+"/api/data/v9.2/pluginpackages(00000000-0000-0000-0000-000000000030)/package/$value"&&request.Headers.Authorization?.Parameter=="synthetic-token");return new(System.Net.HttpStatusCode.OK){Content=new ByteArrayContent(bytes)};});
 using var transport=new AcceptanceTransport(Target.Url,()=>Task.FromResult("synthetic-token"),handler);
 Assert((await ((IDataverseTransport)transport).ReadPackageFileAsync("00000000-0000-0000-0000-000000000030")).SequenceEqual(bytes)&&calls==1);
+});
+await Test("fixed guard suffix exposes only bounded canonical numeric facts",async()=>{
+ Outcome Parse(string message,int status=400,string code="0x80040265")=>Diagnosis.Refusal(status,System.Text.Encoding.UTF8.GetBytes(new JsonObject{["error"]=new JsonObject{["code"]=code,["message"]=message}}.ToJsonString()));
+ const string prefix="Direct kitchen table writes are blocked. ";
+ var good=Parse(prefix+"[zk_guard_v1;m=2048;p=1]");
+ var json=System.Text.Json.JsonSerializer.SerializeToNode(good)!;
+ Assert(json["GuardMask"]?.GetValue<int>()==2048&&json["ParentKind"]?.GetValue<int>()==1);
+ foreach(var suffix in new[]{"[zk_guard_v1;m=-1;p=1]","[zk_guard_v1;m=01;p=1]","[zk_guard_v1;m=32768;p=1]","[zk_guard_v1;m=1;p=11]","[zk_guard_v2;m=1;p=1]","[zk_guard_v1;m=999999999999;p=1]","[zk_guard_v1;m=1;p=1] [zk_guard_v1;m=1;p=1]","[zk_guard_v1;m=1;p=1] secret"}){
+  var r=System.Text.Json.JsonSerializer.SerializeToNode(Parse(prefix+suffix))!;Assert(r["GuardMask"]==null&&r["ParentKind"]==null);
+ }
+ foreach(var r in new[]{Parse(prefix+"[zk_guard_v1;m=1;p=1]",403),Parse(prefix+"[zk_guard_v1;m=1;p=1]",400,"0x80004005"),Parse(prefix+prefix+"[zk_guard_v1;m=1;p=1]")})Assert(System.Text.Json.JsonSerializer.SerializeToNode(r)!["GuardMask"]==null);
+ var fake=new RuntimeFake{Refusal=good};var e=new Evidence();await Reject(()=>fake.Run(e));
+ var row=System.Text.Json.JsonSerializer.SerializeToNode(e.Checks.Single(c=>c.Name=="commit_http_refused"))!;
+ Assert(row["GuardMask"]?.GetValue<int>()==2048&&row["ParentKind"]?.GetValue<int>()==1&&fake.WriteRequests==1&&fake.Commits==0);
 });
 Console.WriteLine($"{passed} passed; {failed} failed");return failed==0?0:1;

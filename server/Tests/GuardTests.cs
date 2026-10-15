@@ -50,6 +50,38 @@ static class GuardTests
             catch (InvalidPluginExecutionException) { return; }
             throw new Exception("guard allowed bypass");
         }
+        check("guard diagnostic reports each failed first-gate condition without remote values", () => {
+            var parentValues = ((ContextProxy)(object)parent).Values;
+            void Case(Action<Dictionary<string, object?>, Dictionary<string, object?>> change, int mask, int kind = 1) {
+                var pv = new Dictionary<string, object?>(parentValues);
+                pv["SharedVariables"] = new ParameterCollection { { "zk.KitchenCommit.InternalWrite.v1", workspace + "|private-marker" } };
+                var c = Context("Update", target); c["ParentContext"] = ContextProxy.Create(pv); change(c, pv);
+                try { Execute(c); throw new Exception("expected denial"); }
+                catch (InvalidPluginExecutionException e) {
+                    var expected = "Direct kitchen table writes are blocked. [zk_guard_v1;m=" + mask + ";p=" + kind + "]";
+                    if (e.Message != expected) throw new Exception("diagnostic mismatch: expected mask " + mask);
+                }
+            }
+            Case((c,p) => c["Mode"] = 1, 1);
+            Case((c,p) => c["Stage"] = 10, 2);
+            Case((c,p) => c["IsInTransaction"] = false, 4);
+            Case((c,p) => c["ParentContext"] = null, 8, 0);
+            // Proxy copies dictionaries: mutate the instantiated parent for parent cases.
+            void Parent(string key, object value, int mask, int kind=1) => Case((c,p) => ((ContextProxy)(object)c["ParentContext"]!).Values[key]=value, mask, kind);
+            Parent("MessageName", "private-parent", 16, 10);
+            Parent("Stage", 20, 32); Parent("Mode", 1, 64); Parent("IsInTransaction", false, 128);
+            Parent("InitiatingUserId", Guid.NewGuid(), 256); Parent("UserId", Guid.NewGuid(), 512);
+            Case((c,p) => c["UserId"] = Guid.NewGuid(), 512+1024);
+            Case((c,p) => { var other=Guid.NewGuid(); c["UserId"]=other; ((ContextProxy)(object)c["ParentContext"]!).Values["UserId"]=other; }, 1024);
+            Case((c,p) => { c["Mode"]=1; c["InputParameters"]=null; }, 0, 0);
+            Parent("SharedVariables", new ParameterCollection(), 2048);
+            Parent("SharedVariables", new ParameterCollection {{"zk.KitchenCommit.InternalWrite.v1", 123}}, 4096);
+            Case((c,p) => c["InputParameters"] = new ParameterCollection(), 8192);
+            Case((c,p) => c["InputParameters"] = new ParameterCollection {{"Target", "private-target"}}, 16384);
+            Case((c,p) => { c["Mode"]=1; c["Stage"]=10; c["IsInTransaction"]=false; }, 7);
+            var names = new[]{"Create","Update","Delete","CreateMultiple","UpdateMultiple","Upsert","UpsertMultiple","DeleteMultiple"};
+            for(int i=0;i<names.Length;i++) Parent("MessageName",names[i],16,i+2);
+        });
         check("real guard allows only expected internal workspace update", () => Execute(Context("Update", target)));
         check("real guard blocks direct API context and forged caller flags", () => { var c = Context("Update", target); c["ParentContext"] = null; Denied(c); });
         check("real guard blocks another workspace", () => { var other = new Entity("zk_kitchenworkspace", Guid.NewGuid()) { ["zk_state"] = "{}", ["zk_revision"] = 1 }; Denied(Context("Update", other)); });

@@ -92,12 +92,43 @@ namespace Zunftkueche
     }
     public sealed class KitchenWriteGuardPlugin : IPlugin
     {
+        // Called only after the original guard has already denied the operation.
+        private static string GuardDiagnostic(IPluginExecutionContext c)
+        {
+            int mask = 0, kind = 0;
+            try
+            {
+                if (c.Mode != 0) mask |= 1;
+                if (c.Stage != 20) mask |= 2;
+                if (!c.IsInTransaction) mask |= 4;
+                var p = c.ParentContext;
+                if (p == null) mask |= 8;
+                else
+                {
+                    var names = new[] { "zk_KitchenCommit", "Create", "Update", "Delete", "CreateMultiple", "UpdateMultiple", "Upsert", "UpsertMultiple", "DeleteMultiple" };
+                    int index = Array.IndexOf(names, p.MessageName); kind = index < 0 ? 10 : index + 1;
+                    if (p.MessageName != "zk_KitchenCommit") mask |= 16;
+                    if (p.Stage != 30) mask |= 32;
+                    if (p.Mode != 0) mask |= 64;
+                    if (!p.IsInTransaction) mask |= 128;
+                    if (c.InitiatingUserId != p.InitiatingUserId) mask |= 256;
+                    if (c.UserId != p.UserId) mask |= 512;
+                    if (!p.SharedVariables.Contains(PluginHost.InternalWrite)) mask |= 2048;
+                    else if (!(p.SharedVariables[PluginHost.InternalWrite] is string)) mask |= 4096;
+                }
+                if (c.UserId != c.InitiatingUserId) mask |= 1024;
+                if (!c.InputParameters.Contains("Target")) mask |= 8192;
+                else if (!(c.InputParameters["Target"] is Entity)) mask |= 16384;
+            }
+            catch (Exception) { mask = 0; kind = 0; } // Diagnosis must never replace or bypass denial.
+            return "[zk_guard_v1;m=" + mask.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";p=" + kind.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]";
+        }
         public void Execute(IServiceProvider provider)
         {
             var c = (IPluginExecutionContext)(provider.GetService(typeof(IPluginExecutionContext)) ?? throw new InvalidPluginExecutionException("Execution context missing."));
             var parent = c.ParentContext;
             if (c.Mode != 0 || c.Stage != 20 || !c.IsInTransaction || parent == null || parent.MessageName != "zk_KitchenCommit" || parent.Stage != 30 || parent.Mode != 0 || !parent.IsInTransaction || c.InitiatingUserId != parent.InitiatingUserId || c.UserId != parent.UserId || c.UserId != c.InitiatingUserId || !parent.SharedVariables.Contains(PluginHost.InternalWrite) || !(parent.SharedVariables[PluginHost.InternalWrite] is string marker) || !c.InputParameters.Contains("Target") || !(c.InputParameters["Target"] is Entity target))
-                throw new InvalidPluginExecutionException("Direct kitchen table writes are blocked.");
+                throw new InvalidPluginExecutionException("Direct kitchen table writes are blocked. " + GuardDiagnostic(c));
             var parts = marker.Split(new[] { '|' }, 2);
             Guid workspace;
             if (parts.Length != 2 || !Guid.TryParse(parts[0], out workspace))

@@ -7,7 +7,7 @@ using Kitchen.Deploy;
 namespace Kitchen.Acceptance;
 [JsonConverter(typeof(JsonStringEnumConverter<FailureKind>))]
 public enum FailureKind { unknown, guard_context, guard_target, invalid_guard_marker, invalid_execution_context, validation_prefix, invalid_json, request_required }
-public sealed record Outcome(int Status, JsonNode? Value, bool GuardDenied=false, bool Unsupported=false, string? NumericCode=null,FailureKind FailureKind=FailureKind.unknown) {
+public sealed record Outcome(int Status, JsonNode? Value, bool GuardDenied=false, bool Unsupported=false, string? NumericCode=null,FailureKind FailureKind=FailureKind.unknown,int? GuardMask=null,int? ParentKind=null) {
  public bool Success=>Status is >=200 and <=299;
 }
 public interface IAcceptanceTransport:IDataverseTransport {
@@ -29,9 +29,21 @@ public static class Diagnosis {
    // Microsoft documents this exact refusal; an unrecognized status/code/text fails closed.
    bool unsupported=status==400 && code!=null &&
     string.Equals(message,"DeleteMultiple has not yet been implemented.",StringComparison.Ordinal);
-   return new(status,null,guard,unsupported,code,KnownFailureKind(message));
+   var kind=KnownFailureKind(message);
+   var facts=GuardFacts(status,code,kind,message);
+   return new(status,null,guard,unsupported,code,kind,facts.Mask,facts.Parent);
   }catch(Exception e)when(e is JsonException or InvalidOperationException or KeyNotFoundException){return new(status,null);}
  }
+ static (int? Mask,int? Parent) GuardFacts(int status,string? code,FailureKind kind,string message) {
+  if(status is not (400 or 500)||code!="0x80040265"||kind!=FailureKind.guard_context)return (null,null);
+  const string prefix="Direct kitchen table writes are blocked. ";
+  // Exact full message: no remote prefix/suffix, duplicate markers or unknown versions.
+  var match=System.Text.RegularExpressions.Regex.Match(message,@"\ADirect kitchen table writes are blocked\. \[zk_guard_v1;m=(0|[1-9][0-9]{0,4});p=(0|[1-9][0-9]?)\]\z",System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+  if(!message.StartsWith(prefix,StringComparison.Ordinal)||!match.Success)return (null,null);
+  if(!int.TryParse(match.Groups[1].Value,out int mask)||mask>32767||!int.TryParse(match.Groups[2].Value,out int parent)||parent>10)return (null,null);
+  return (mask,parent);
+ }
+ public static bool HasSafeGuardFacts(Outcome o)=>o.Status is 400 or 500&&o.NumericCode=="0x80040265"&&o.FailureKind==FailureKind.guard_context&&o.GuardMask is >=0 and <=32767&&o.ParentKind is >=0 and <=10;
  static FailureKind KnownFailureKind(string message) {
   if(message.Contains("Direct kitchen table writes are blocked.",StringComparison.Ordinal))return FailureKind.guard_context;
   if(message.Contains("Kitchen history mutations and bulk/direct writes are blocked.",StringComparison.Ordinal))return FailureKind.guard_target;
