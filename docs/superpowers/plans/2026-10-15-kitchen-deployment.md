@@ -62,3 +62,14 @@ Only https://org1d76e28a.crm17.dynamics.com, organization5ded2106-01c8-f111-be88
 - [x] Root verifies owner browser workflow, provider-side persisted data, retry/idempotence/conflict/direct-write behavior and source preservation with explicitly marked test data only. Do not infer ordinary-user roles from admin success or weaken write guard to make testing pass.
 - [x] Final whole change review; one grouped fix wave and scoped re-review if needed. Record unverified live boundaries precisely.
 - [ ] Fresh tests/build as changes require, source hashes; package source/usage/status/proof in outputs with no credentials/private working test state. Preserve existing originals and historical deliverables.
+
+### Genehmigte Erweiterung: Schreiber, 15.10.2026
+
+Die ursprüngliche Erstbereitstellung galt nur Vorstand. Der Nutzer hat später ausdrücklich die persönliche Teams-Regel für Schreiber und Schreiber als Küchen-Bearbeiter genehmigt. Aktueller Zugriffskreis ist deshalb Vorstand + Schreiber, kein weiterer Teamnutzer. Diese spätere Freigabe ersetzt die frühere Owner-only-Beschränkung für diesen gezielten Ausbau.
+
+- [x] Schreiber als App-Benutzer ohne Mitbesitz/E-Mail-Einladung geteilt, nach eigener Portal-Neuladung Besitzer+Benutzer/0Einladungen bestätigt.
+- [x] Zwei vorhandene App-Pässe zugeteilt; persönliche Teams-Upload-Regel ausschließlich Schreiber direkt wirksam zugewiesen.
+- [x] Neue Rollenrechte gemessen und zwei sichere Teilstopps bewahrt; separat geprüfter genauer Observed10-Pfad,155 Tests.
+- [x] Tatsächliche leere Dokumentdienst-Konfiguration zuerst lesend bestätigt, danach Rolle und einzelnen Workspace gezielt zugewiesen und nachgelesen, Eigentümer/Revision2 unverändert.
+- [ ] Gewöhnliche Schreiber-Anmeldung und tatsächliches Load/Save/Reload prüfen; Nutzer-Anmeldung angefragt.
+- [ ] Persönlichen Teams-Upload nach Microsoft-Verteilung, Installation und echtes Teams-Verhalten prüfen. Aktuell im Client noch nicht verfügbar; kein Orgkatalog-Upload oder CSP-Eingriff.

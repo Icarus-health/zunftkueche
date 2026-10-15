@@ -4,9 +4,11 @@
     "environment": "Zunftküche with Dataverse, EU/EFTA, German, EUR",
     "environmentAccessGroup": "Existing Zunft Microsoft 365 Team, explicitly approved by user",
     "appUsers": [
-      "Vorstand@Schelmenzunft.onmicrosoft.com"
+      "Vorstand@Schelmenzunft.onmicrosoft.com",
+      "Schreiber@Schelmenzunft.onmicrosoft.com"
     ],
-    "otherUserGrantsApproved": false
+    "otherUserGrantsApproved": false,
+    "schreiberEditorExplicitlyApproved": true
   },
   "liveEnvironment": {
     "name": "Zunftküche",
@@ -261,28 +263,40 @@
     },
     "codeAppListBeforePublication": "Official pa app list: success=true, items=[]",
     "appSharingReadback": {
-      "source": "Actual Maker Zugriff verwalten dialog in DuckDuckGo",
-      "peopleAndGroups": 1,
-      "ownerDisplayName": "Sören Kube",
-      "ownerAccountConfirmedByPlayerProfile": "Vorstand@Schelmenzunft.onmicrosoft.com",
-      "pendingInvitations": 0,
-      "additionalRecipients": 0,
-      "newGrantsMade": false
+      "status": "Schreiber_User_shared_success_UI",
+      "owner": "Vorstand@Schelmenzunft.onmicrosoft.com",
+      "addedAppUser": "Schreiber@Schelmenzunft.onmicrosoft.com",
+      "coowner": false,
+      "emailInvitation": false,
+      "actualUISuccess": "Alle Berechtigungsänderungen wurden erfolgreich gespeichert.",
+      "independentModernReadback": {
+        "ownPageReload": true,
+        "peopleAndGroups": 2,
+        "roles": [
+          "Besitzer",
+          "Benutzer"
+        ],
+        "pendingInvitations": 0,
+        "dataRolesForAddedUser": "Keine Rollen zugewiesen",
+        "note": "Both accounts use identical display name Sören Kube; added User identity comes from exact prior UPN selection and saved success, count/role independently reloaded. Search is display-name based and did not match UPN.",
+        "observedBeforeDataGrant": true
+      },
+      "dataEditorRoleAndWorkspaceShare": "confirmed_by_provider_readback"
     },
     "teamsIntegration": {
-      "status": "custom_personal_package_in_development",
+      "status": "reviewed_package_ready_Schreiber_personal_upload_pending",
       "automaticAddToTeamsFailed": true,
       "automaticTemplateAppId": "ba1cabe6-dfd2-4334-96c0-0dcdf86e18e5",
       "actualValidationError": "Required property 'outline' not found in JSON. Path 'icons', line 31, position 13.",
       "officialProjectReference": "https://github.com/microsoft/PowerAppsCodeApps/discussions/447",
       "automaticFeatureSupported": false,
       "customIntegrationExplicitlyApproved": true,
-      "accountVerifiedInTeamsUI": "Vorstand@Schelmenzunft.onmicrosoft.com",
-      "personalUploadDisabledByCurrentPolicy": true,
+      "accountVerifiedInTeamsUI": "Schreiber@Schelmenzunft.onmicrosoft.com",
+      "personalUploadDisabledByCurrentPolicy": false,
       "adminManageAppsUploadAvailable": true,
       "customPackageUploaded": false,
       "cspChanged": false,
-      "otherUserGrantsMade": false,
+      "otherUserGrantsMade": true,
       "userSelectedMetadataUrls": {
         "websiteUrl": "https://schelmenzunft.de/",
         "privacyUrl": "https://schelmenzunft.de/datenschutz/",
@@ -297,7 +311,7 @@
       "orgDefaultCustomAppAvailability": "Everyone",
       "adminCatalogUploadPerformed": false,
       "personalSetupPolicyDraft": {
-        "name": "Zunftkueche Vorstand",
+        "name": "Zunftkueche Schreiber",
         "uploadCustomApps": true,
         "userPinning": true,
         "pins": [
@@ -308,19 +322,138 @@
           "Calling",
           "OneDrive"
         ],
-        "assignedUsersIntended": [
-          "Vorstand@Schelmenzunft.onmicrosoft.com"
+        "saved": true,
+        "userActionTimeApproval": "explicit_Schreiber_instead_of_Vorstand",
+        "assignedUsers": [
+          "Schreiber@Schelmenzunft.onmicrosoft.com"
         ],
-        "saved": false,
-        "userActionTimeApproval": "pending"
-      }
+        "assignmentUISuccess": "Your changes to the policy assignment for the selected users were saved.",
+        "effectivePolicyPropagationVerified": true,
+        "effectivePolicyReadback": {
+          "source": "Independent actual Teams Admin user profile policy tab",
+          "userObjectId": "fe2f887e-cec7-4417-863e-dfd52ed174e4",
+          "account": "Schreiber@Schelmenzunft.onmicrosoft.com",
+          "effectivePolicy": "Zunftkueche Schreiber",
+          "assignmentType": "Direct assignment",
+          "otherPolicies": "Global (Org-wide default)",
+          "clientPersonalUploadOptionAvailable": false
+        },
+        "effectivePolicyPropagationNote": "Provider-side effective assignment verified; client propagation is separate and not yet confirmed."
+      },
+      "nativeTeamsAccountVerified": "Schreiber@Schelmenzunft.onmicrosoft.com",
+      "nativePersonalUploadOptionObserved": false,
+      "nativeUploadDialog": "Only Submit app to organization currently; no upload performed",
+      "otherUserGrantsScope": "Only explicitly authorized Schreiber; app User share, targeted personal upload policy, exact editor role and single-workspace data grant confirmed. Actual Schreiber browser acceptance and personal Teams upload/installation remain pending."
+    },
+    "appSharingReadbackBeforeSchreiber": {
+      "source": "Actual Maker Zugriff verwalten dialog in DuckDuckGo",
+      "peopleAndGroups": 1,
+      "ownerDisplayName": "Sören Kube",
+      "ownerAccountConfirmedByPlayerProfile": "Vorstand@Schelmenzunft.onmicrosoft.com",
+      "pendingInvitations": 0,
+      "additionalRecipients": 0,
+      "newGrantsMade": false
+    },
+    "schreiberDataAccess": {
+      "authorized": true,
+      "reviewedCommit": "93420dea44c546c6135bb4e27ab32057b7347d31",
+      "independentReview": "observed_profile_approved_0_findings",
+      "tests": 155,
+      "snapshot": "/private/tmp/kitchen-access-93420de-20261015",
+      "inspectSession": "65313",
+      "inspectedSystemUserId": "4ee486b9-9fc8-f111-a05c-7ced8d5f6c91",
+      "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+      "initialDirectRoleIds": [],
+      "initialEffectivePrivileges": 0,
+      "initialWorkspaceRights": [],
+      "workspaceRevision": 2,
+      "executeSession": "69079",
+      "result": "role_and_single_workspace_share_confirmed",
+      "roleAssigned": true,
+      "workspaceShared": true,
+      "businessDataWrites": false,
+      "automaticRetry": false,
+      "next": "Actual Schreiber browser Load/Save/Reload acceptance; Teams client propagation separately pending.",
+      "roleDiagnostic": {
+        "session": "70897",
+        "writes": 0,
+        "readCalls": 16,
+        "fixedAadObjectIdVerified": "fe2f887e-cec7-4417-863e-dfd52ed174e4",
+        "roleId": "660a97b9-a8c8-f111-a05c-7ced8d5f6c91",
+        "actualRolePrivilegeCount": 9,
+        "roleAssignedToSchreiber": false,
+        "directAndTeamRolesEmpty": true,
+        "effectivePrivileges": 0,
+        "workspaceRights": "None",
+        "ownerVorstand": true,
+        "workspaceRevision": 2,
+        "evidence": "docs/schreiber-role-diagnostic-2026-10-15.json"
+      },
+      "rolePreparation": {
+        "reviewedCommit": "72b7b633b326088b06f7e18b2907b2bc3da9ea27",
+        "independentReview": "approved_0_findings",
+        "tests": 104,
+        "session": "57963",
+        "singleReplaceAttempt": true,
+        "result": "stopped_exact_six_unconfirmed",
+        "postPrivilegeCount": 10,
+        "roleAssigned": false,
+        "workspaceShared": false,
+        "independentReadOnlySession": "75623",
+        "actualPrivileges": "6 planned kitchen +4 retained Global SharePoint data/document defaults",
+        "effectiveSchreiberPrivileges": 0,
+        "workspaceRights": "None",
+        "workspaceOwnerUnchanged": true,
+        "workspaceRevision": 2,
+        "automaticRetry": false,
+        "evidence": [
+          "docs/schreiber-role-preparation-result-2026-10-15.json",
+          "docs/schreiber-role-after-preparation-2026-10-15.json"
+        ]
+      },
+      "observedProfile": {
+        "reviewedCommit": "93420dea44c546c6135bb4e27ab32057b7347d31",
+        "independentReview": "approved_0_findings",
+        "tests": 155,
+        "inspectSession": "65313",
+        "executeSession": "69079",
+        "kitchenAccessReady": true,
+        "effectivePrivilegeCount": 10,
+        "assignedRoleId": "660a97b9-a8c8-f111-a05c-7ced8d5f6c91",
+        "workspaceRights": [
+          "ReadAccess",
+          "WriteAccess",
+          "AppendToAccess"
+        ],
+        "ownerVorstandUnchanged": true,
+        "workspaceRevision": 2,
+        "sharePointManagedIdentities": 0,
+        "sharePointSites": 0,
+        "sharePointDocumentLocations": 0,
+        "sharePointAclOrIntegrationChanges": false,
+        "rolePrivilegeMutationsInGrantPhase": false,
+        "automaticRetry": false,
+        "schreiberAppAcceptance": "not_performed"
+      },
+      "initialSixOnlyAttempt": {
+        "reviewedCommit": "40b17d71e4a246dd6b872fe359f382811b2bcfd2",
+        "tests": 53,
+        "inspectSession": "96431",
+        "executeSession": "70969",
+        "result": "stopped_role_privileges_drift_after_role_creation",
+        "roleAssigned": false,
+        "workspaceShared": false,
+        "snapshot": "/private/tmp/kitchen-access-40b17d7-20261015"
+      },
+      "userAuthenticationPending": true,
+      "browserAttempt": "Normal player automatically selected Vorstand; user asked to sign in as Schreiber in separate DuckDuckGo window. No Schreiber UI acceptance inferred."
     }
   },
   "licensing": {
     "tenantPerAppPasses": 10,
-    "kitchenEnvironmentAllocated": 1,
+    "kitchenEnvironmentAllocated": 2,
     "usedInKitchenEnvironment": 0,
-    "verification": "Native PPAC exact environment licensing page independently reloaded after Save; assigned licenses 1, used 0",
+    "verification": "15.10 Native PPAC exact environment allocation saved1→2 for authorized Vorstand+Schreiber; independent page reload confirms2 assigned,0 usage reported;8 tenant passes remain unallocated; no new purchase.",
     "newPurchase": false,
     "appRuntimeEntitlementVerified": true,
     "officialCodeAppsLicenseReference": "https://learn.microsoft.com/en-us/power-apps/developer/code-apps/overview",
@@ -342,7 +475,9 @@
       "autoReviewRejectionResolved": true
     },
     "vorstandMicrosoft365LicenseCurrent": "Microsoft 365 Business Basic",
-    "appRuntimeEntitlementEvidence": "Actual authorized owner app Load/Save/Reload succeeded. License consumption counter has not been refreshed; historical used0 retained."
+    "appRuntimeEntitlementEvidence": "Actual authorized owner app Load/Save/Reload succeeded. License consumption counter has not been refreshed; historical used0 retained.",
+    "codeAppsAppPassSupportReference": "https://learn.microsoft.com/en-us/power-apps/developer/code-apps/overview#license-end-users-with-power-apps-premium",
+    "codeAppsAppPassSupport": "Current Microsoft documentation lists App Pass as alternative to Premium/PAYG/auto-claim. Existing capacity and2environmentallocation live verified; Schreiber runtime still pending."
   },
   "providerInspection": {
     "authentication": "success",
@@ -375,7 +510,7 @@
     "relationshipRepeatError": "HTTP404 0x80040217 on second explicit attempt after independent readback",
     "relationshipCreateIssueResolved": true,
     "receiptKeyReadOnlyEvidence": "Fixed metadata diagnostic77829: exact two logical columns, reverse order, Active",
-    "latestSuccessfulPhase": "Actual scoped owner runtime25963 + denials-only11975, private CodeApp22505, browser save/reload and independent verify18929 revision2",
+    "latestSuccessfulPhase": "Owner publication/browser/revision2 evidence plus targeted Schreiber role and singleworkspace grant69079; ordinary Schreiber UI remains pending.",
     "canaryPreparationStop": null,
     "intrinsicStepIdentity": {
       "readOnlySession": "34024",
@@ -493,7 +628,7 @@
     "channelCount": 1,
     "channelName": "General",
     "channelMembership": "standard",
-    "initialAppScope": "personal_Vorstand_only",
+    "initialAppScope": "Historical initial personal Vorstand scope; later explicit user approval adds Schreiber as kitchen editor and personal Teams uploader.",
     "source": "Microsoft Teams connector profile, list_teams, list_channels; no writes"
   }
 }

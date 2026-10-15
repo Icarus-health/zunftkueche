@@ -1,0 +1,135 @@
+{
+  "mode": "readonly_role_diagnosis",
+  "writes": 0,
+  "readCalls": 16,
+  "facts": [
+    {
+      "resource": "fixed_identity_workspace",
+      "userId": "4ee486b9-9fc8-f111-a05c-7ced8d5f6c91",
+      "aad": "fe2f887e-cec7-4417-863e-dfd52ed174e4",
+      "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+      "enabled": true,
+      "workspaceId": "45deaf94-5661-4110-8f16-3d2678c09f04",
+      "ownerVorstand": true,
+      "revision": 2
+    },
+    {
+      "resource": "team_assignment",
+      "teamId": "ebcc1a23-86c7-f111-a05a-002248da9a3e",
+      "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+      "roleIds": []
+    },
+    {
+      "resource": "direct_assignments",
+      "roleIds": []
+    },
+    {
+      "resource": "named_role_count",
+      "role": "Zunftküche Bearbeiter",
+      "count": 1
+    },
+    {
+      "resource": "named_role_count",
+      "role": "App Opener",
+      "count": 0
+    },
+    {
+      "resource": "role_definition",
+      "id": "660a97b9-a8c8-f111-a05c-7ced8d5f6c91",
+      "role": "Zunftküche Bearbeiter",
+      "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+      "isManaged": false,
+      "templateId": null,
+      "parentRootRoleId": "660a97b9-a8c8-f111-a05c-7ced8d5f6c91",
+      "parentRoleId": null,
+      "privilegeCount": 9,
+      "privileges": [
+        {
+          "id": "fecbd29c-df64-4ede-a611-47226b402c22",
+          "name": "prvReadSharePointData",
+          "depth": "Global",
+          "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+          "recordFilterId": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "id": "94c3ac2c-eb23-41cb-a903-4e2e49e910b4",
+          "name": "prvReadSdkMessage",
+          "depth": "Global",
+          "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+          "recordFilterId": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "id": "cfdd12cf-090b-4599-8302-771962d2350a",
+          "name": "prvWriteSharePointData",
+          "depth": "Global",
+          "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+          "recordFilterId": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "id": "122e085f-8c52-47e8-8415-875dee1c961e",
+          "name": "prvReadSdkMessageProcessingStepImage",
+          "depth": "Global",
+          "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+          "recordFilterId": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "id": "db10a828-ec49-4035-8b7e-c58efaf169ec",
+          "name": "prvReadSdkMessageProcessingStep",
+          "depth": "Global",
+          "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+          "recordFilterId": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "id": "f5b50296-a212-488a-be92-cbcca8971717",
+          "name": "prvReadPluginAssembly",
+          "depth": "Global",
+          "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+          "recordFilterId": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "id": "5eb85025-363b-46ea-a77e-ce24159cd231",
+          "name": "prvCreateSharePointData",
+          "depth": "Global",
+          "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+          "recordFilterId": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "id": "9365005c-4703-473b-8d3c-d073cfd8670c",
+          "name": "prvReadPluginType",
+          "depth": "Global",
+          "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+          "recordFilterId": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "id": "d71fc8d0-99bc-430e-abd7-d95c64f11e9c",
+          "name": "prvReadSharePointDocument",
+          "depth": "Global",
+          "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+          "recordFilterId": "00000000-0000-0000-0000-000000000000"
+        }
+      ]
+    },
+    {
+      "resource": "effective_privileges",
+      "count": 0,
+      "teamDepths": "normalized_basic_not_authoritative",
+      "privileges": []
+    },
+    {
+      "resource": "workspace_access",
+      "rights": [
+        "None"
+      ]
+    },
+    {
+      "resource": "fixed_identity_workspace",
+      "userId": "4ee486b9-9fc8-f111-a05c-7ced8d5f6c91",
+      "aad": "fe2f887e-cec7-4417-863e-dfd52ed174e4",
+      "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+      "enabled": true,
+      "workspaceId": "45deaf94-5661-4110-8f16-3d2678c09f04",
+      "ownerVorstand": true,
+      "revision": 2
+    }
+  ]
+}

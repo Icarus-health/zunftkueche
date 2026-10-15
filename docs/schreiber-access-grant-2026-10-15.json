@@ -1,0 +1,178 @@
+{
+  "mode": "ExecuteObservedRole",
+  "facts": [
+    {
+      "resource": "sharepoint_configuration_absent",
+      "managedIdentities": 0,
+      "sites": 0,
+      "documentLocations": 0
+    },
+    {
+      "resource": "access_inventory",
+      "userId": "4ee486b9-9fc8-f111-a05c-7ced8d5f6c91",
+      "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+      "directRoleIds": [],
+      "teamCount": 1,
+      "effectivePrivilegeCount": 0,
+      "effectiveKitchenPrivilegesComplete": false,
+      "workspaceRights": [],
+      "workspaceRevision": 2
+    },
+    {
+      "resource": "access_plan",
+      "roleStatus": "exact",
+      "roleAssignment": false,
+      "workspaceAccessComplete": false,
+      "platformAppOpeningRights": "separate_review_no_automatic_grant"
+    },
+    {
+      "resource": "sharepoint_configuration_absent",
+      "managedIdentities": 0,
+      "sites": 0,
+      "documentLocations": 0
+    },
+    {
+      "resource": "access_inventory",
+      "userId": "4ee486b9-9fc8-f111-a05c-7ced8d5f6c91",
+      "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+      "directRoleIds": [],
+      "teamCount": 1,
+      "effectivePrivilegeCount": 0,
+      "effectiveKitchenPrivilegesComplete": false,
+      "workspaceRights": [],
+      "workspaceRevision": 2
+    },
+    {
+      "resource": "sharepoint_configuration_absent",
+      "managedIdentities": 0,
+      "sites": 0,
+      "documentLocations": 0
+    },
+    {
+      "resource": "sharepoint_configuration_absent",
+      "managedIdentities": 0,
+      "sites": 0,
+      "documentLocations": 0
+    },
+    {
+      "resource": "existing_role",
+      "id": "660a97b9-a8c8-f111-a05c-7ced8d5f6c91",
+      "privilegeCount": 10
+    },
+    {
+      "resource": "access_inventory",
+      "userId": "4ee486b9-9fc8-f111-a05c-7ced8d5f6c91",
+      "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+      "directRoleIds": [
+        "660a97b9-a8c8-f111-a05c-7ced8d5f6c91"
+      ],
+      "teamCount": 1,
+      "effectivePrivilegeCount": 10,
+      "effectiveKitchenPrivilegesComplete": true,
+      "workspaceRights": [],
+      "workspaceRevision": 2
+    },
+    {
+      "resource": "user_role_assignment",
+      "status": "confirmed_by_readback"
+    },
+    {
+      "resource": "sharepoint_configuration_absent",
+      "managedIdentities": 0,
+      "sites": 0,
+      "documentLocations": 0
+    },
+    {
+      "resource": "existing_role",
+      "id": "660a97b9-a8c8-f111-a05c-7ced8d5f6c91",
+      "privilegeCount": 10
+    },
+    {
+      "resource": "access_inventory",
+      "userId": "4ee486b9-9fc8-f111-a05c-7ced8d5f6c91",
+      "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+      "directRoleIds": [
+        "660a97b9-a8c8-f111-a05c-7ced8d5f6c91"
+      ],
+      "teamCount": 1,
+      "effectivePrivilegeCount": 10,
+      "effectiveKitchenPrivilegesComplete": true,
+      "workspaceRights": [],
+      "workspaceRevision": 2
+    },
+    {
+      "resource": "sharepoint_configuration_absent",
+      "managedIdentities": 0,
+      "sites": 0,
+      "documentLocations": 0
+    },
+    {
+      "resource": "sharepoint_configuration_absent",
+      "managedIdentities": 0,
+      "sites": 0,
+      "documentLocations": 0
+    },
+    {
+      "resource": "existing_role",
+      "id": "660a97b9-a8c8-f111-a05c-7ced8d5f6c91",
+      "privilegeCount": 10
+    },
+    {
+      "resource": "access_inventory",
+      "userId": "4ee486b9-9fc8-f111-a05c-7ced8d5f6c91",
+      "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+      "directRoleIds": [
+        "660a97b9-a8c8-f111-a05c-7ced8d5f6c91"
+      ],
+      "teamCount": 1,
+      "effectivePrivilegeCount": 10,
+      "effectiveKitchenPrivilegesComplete": true,
+      "workspaceRights": [
+        "AppendToAccess",
+        "ReadAccess",
+        "WriteAccess"
+      ],
+      "workspaceRevision": 2
+    },
+    {
+      "resource": "workspace_share",
+      "status": "confirmed_by_readback"
+    },
+    {
+      "resource": "sharepoint_configuration_absent",
+      "managedIdentities": 0,
+      "sites": 0,
+      "documentLocations": 0
+    },
+    {
+      "resource": "existing_role",
+      "id": "660a97b9-a8c8-f111-a05c-7ced8d5f6c91",
+      "privilegeCount": 10
+    },
+    {
+      "resource": "access_inventory",
+      "userId": "4ee486b9-9fc8-f111-a05c-7ced8d5f6c91",
+      "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+      "directRoleIds": [
+        "660a97b9-a8c8-f111-a05c-7ced8d5f6c91"
+      ],
+      "teamCount": 1,
+      "effectivePrivilegeCount": 10,
+      "effectiveKitchenPrivilegesComplete": true,
+      "workspaceRights": [
+        "AppendToAccess",
+        "ReadAccess",
+        "WriteAccess"
+      ],
+      "workspaceRevision": 2
+    },
+    {
+      "resource": "access_result",
+      "status": "ten_privileges_assignment_and_effective_workspace_rights_verified",
+      "workspaceRevision": 2,
+      "ownerUnchanged": true
+    }
+  ],
+  "kitchenAccessReady": true,
+  "schreiberAppAcceptance": "not_performed"
+}

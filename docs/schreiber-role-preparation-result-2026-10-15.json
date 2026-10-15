@@ -1,0 +1,18 @@
+{
+  "error": "preparation_exact_six_unconfirmed",
+  "facts": [
+    {
+      "resource": "role_preparation",
+      "status": "exact_nine_unassigned_verified",
+      "roleId": "660a97b9-a8c8-f111-a05c-7ced8d5f6c91",
+      "workspaceRevision": 2
+    },
+    {
+      "resource": "role_preparation",
+      "status": "canonical_readback_not_exact_six_stop",
+      "roleId": "660a97b9-a8c8-f111-a05c-7ced8d5f6c91",
+      "privilegeCount": 10
+    }
+  ],
+  "kitchenAccessReady": false
+}

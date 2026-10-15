@@ -1,0 +1,31 @@
+{
+  "mode": "InspectObservedRole",
+  "facts": [
+    {
+      "resource": "sharepoint_configuration_absent",
+      "managedIdentities": 0,
+      "sites": 0,
+      "documentLocations": 0
+    },
+    {
+      "resource": "access_inventory",
+      "userId": "4ee486b9-9fc8-f111-a05c-7ced8d5f6c91",
+      "businessUnitId": "eacc1a23-86c7-f111-a05a-002248da9a3e",
+      "directRoleIds": [],
+      "teamCount": 1,
+      "effectivePrivilegeCount": 0,
+      "effectiveKitchenPrivilegesComplete": false,
+      "workspaceRights": [],
+      "workspaceRevision": 2
+    },
+    {
+      "resource": "access_plan",
+      "roleStatus": "exact",
+      "roleAssignment": false,
+      "workspaceAccessComplete": false,
+      "platformAppOpeningRights": "separate_review_no_automatic_grant"
+    }
+  ],
+  "kitchenAccessReady": false,
+  "schreiberAppAcceptance": "not_performed"
+}
