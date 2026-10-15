@@ -43,3 +43,22 @@ Only new helper/docs/report files staged; Root decisions/status files left untou
 Role operations are not an atomic multi-step transaction. Root needs a controlled one-writer window; post-readbacks detect visible drift but cannot exclude an external administrator race. An unconfirmed write stops without retry. A partial-created role is preserved and a subsequent run refuses an incomplete existing definition, requiring explicit diagnosis instead of automatic repair. Receipt privileges necessarily apply globally because the receipt table is organization-owned. `RetrieveUserPrivileges` output is not used to claim full inherited depth; each actual team role is read separately. Record payload content is never retrieved or logged; only stable revision/owner is checked, not a new business-state hash.
 
 Official API references and exact usage are linked in `docs/Schreiber-access.md`. Provider acceptance of new-role defaults and the six-right role remains untested; unexpected defaults fail closed. Independent scoped review required before Root's first live inspect/execute.
+
+## Review fix round 1 — enforce independent effective privileges
+
+Review I1 (Important) confirmed: the former effective-privilege readback parsed GUIDs but did not enforce the kitchen subset. This could report ready despite missing effective receipt rights or a contradictory extra effective kitchen privilege.
+
+The focused correction rejects every metadata-resolved kitchen privilege outside the six allowed IDs on **every** inventory read. Inventory now records whether all six desired IDs are effective. Partial sets remain valid non-ready pre-provisioning inventory, but inspect cannot report ready with a partial set. Execute requires completeness immediately after confirmed role assignment, before GrantAccess, after GrantAccess and at final readiness. No retry or broader grant is introduced. Actual direct/team role definitions still determine depth; normalized Basic depths in RetrieveUserPrivileges are not mistaken for the actual team-role depths. Unrelated existing platform privilege IDs remain preserved and are not granted by this helper.
+
+Independent effective-response fixtures cover forbidden receipt Delete at initial inspection and after each of four writes; missing receipt Append under an existing assignment, after new assignment and after sharing; inspect non-readiness; actual role Global depth with normalized effective Basic; and unrelated existing platform privilege preservation. The original no-retry, drift, target, role and readback tests remain in the focused suite.
+
+Both RED and GREEN used these exact commands from the repository directory:
+
+```sh
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home ../dotnet10/dotnet build server/Access/Tests --no-restore --disable-build-servers -p:UseSharedCompilation=false -m:1
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home ../dotnet10/dotnet server/Access/Tests/bin/Debug/net10.0/Kitchen.Access.Tests.dll
+```
+
+Tests were added and actually executed before changing production code for this fix. RED: **44 passed, 9 failed**, exit1; failures were the nine missing effective-enforcement behaviors. GREEN: **53 passed, 0 failed**, exit0. Both builds exit0, **0 errors / 3 existing NU1900 feed warnings / no compiler warnings**. No restore, broad suites, provider, authentication, browser or package operations. No build remains active.
+
+Self-review: both inspect and execute readiness require the six effective IDs; every call to InspectAccess rejects forbidden kitchen IDs; missing post-assignment rights stop before further grants; missing uncommitted assignment still retains the original unconfirmed-write stop. No effective-depth inference added. Only FixedAccess.cs, its focused tests and this report are included in this corrective commit. Root's newly observed Schreiber AAD ID is left for Root's read-only identity cross-check rather than expanding this review fix. All original target, workspace/owner/revision, role/depth, additive-only, no-retry and package contracts remain unchanged. Ready for scoped rereview; no provider execution has occurred.

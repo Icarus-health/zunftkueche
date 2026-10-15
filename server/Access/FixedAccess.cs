@@ -49,7 +49,7 @@ public sealed class FixedAccess(IDataverseTransport transport,string objectId) {
     private string? roleId;
     public List<object> Facts {get;}=[];
     private sealed record Privilege(string Id,string Name,string Depth);
-    private sealed record Inventory(HashSet<string> Assigned,HashSet<string> Rights);
+    private sealed record Inventory(HashSet<string> Assigned,HashSet<string> Rights,bool EffectiveKitchenComplete);
     private static string Text(JsonNode row,string key)=>row[key]?.GetValue<string>()??throw new DeploymentException("required_access_field_missing");
     private static string Id(JsonNode row,string key)=>ResourceEngine.Id(row,key);
     private Task<JsonObject[]> Rows(string path)=>engine.Rows(path);
@@ -69,7 +69,7 @@ public sealed class FixedAccess(IDataverseTransport transport,string objectId) {
         var role=await FindRole();
         if(role!=null){roleId=Id(role,"roleid");await ExactRole(false);}
         Facts.Add(new{resource="access_plan",roleStatus=roleId==null?"missing":"exact",roleAssignment=roleId!=null&&inventory.Assigned.Contains(roleId),workspaceAccessComplete=Complete(inventory.Rights),platformAppOpeningRights="separate_review_no_automatic_grant"});
-        if(!execute)return roleId!=null&&inventory.Assigned.Contains(roleId)&&Complete(inventory.Rights);
+        if(!execute)return roleId!=null&&inventory.Assigned.Contains(roleId)&&Complete(inventory.Rights)&&inventory.EffectiveKitchenComplete;
         if(roleId==null) {
             await Boundary();
             await Write("role_create","roles",new JsonObject{["name"]=RoleName,["businessunitid@odata.bind"]=$"/businessunits({businessUnit})"},async()=>{
@@ -95,19 +95,23 @@ public sealed class FixedAccess(IDataverseTransport transport,string objectId) {
         inventory=await InspectAccess();
         if(!inventory.Assigned.Contains(roleId!)) {
             await Write("user_role_assignment",$"systemusers({user})/systemuserroles_association/$ref",new JsonObject{["@odata.id"]=$"{Target.Url}/api/data/v9.2/roles({roleId})"},async()=>{
-                await ExactRole(false);var after=await AfterStep();return after.Assigned.Contains(roleId!);
+                await ExactRole(false);var after=await AfterStep();
+                if(after.Assigned.Contains(roleId!))RequireEffective(after);
+                return after.Assigned.Contains(roleId!);
             });
         }
         await Boundary();await ExactRole(false);
         inventory=await InspectAccess();
         Require(inventory.Assigned.Contains(roleId!),"role_assignment_missing");
+        RequireEffective(inventory);
         if(!Complete(inventory.Rights)) {
             await Write("workspace_share","GrantAccess",new JsonObject {
                 ["Target"]=new JsonObject{["@odata.type"]="Microsoft.Dynamics.CRM.zk_kitchenworkspace",["zk_kitchenworkspaceid"]=Workspace},
                 ["PrincipalAccess"]=new JsonObject{["Principal"]=new JsonObject{["@odata.type"]="Microsoft.Dynamics.CRM.systemuser",["systemuserid"]=user},["AccessMask"]=DesiredAccess}
-            },async()=>{await ExactRole(false);var after=await AfterStep();return Complete(after.Rights)&&after.Assigned.Contains(roleId!);});
+            },async()=>{await ExactRole(false);var after=await AfterStep();RequireEffective(after);return Complete(after.Rights)&&after.Assigned.Contains(roleId!);});
         }
         await ExactRole(false);inventory=await AfterStep();
+        RequireEffective(inventory);
         Require(inventory.Assigned.Contains(roleId!)&&Complete(inventory.Rights),"access_final_readback_incomplete");
         Facts.Add(new{resource="access_result",status="six_privileges_assignment_and_effective_workspace_rights_verified",workspaceRevision=revision,ownerUnchanged=true});
         return true;
@@ -199,15 +203,22 @@ public sealed class FixedAccess(IDataverseTransport transport,string objectId) {
         var effective=await Get($"systemusers({user})/Microsoft.Dynamics.CRM.RetrieveUserPrivileges()");
         var effectivePrivileges=effective["RolePrivileges"] as JsonArray??throw new DeploymentException("effective_privileges_unavailable");
         // RetrieveUserPrivileges reports team privileges at Basic, so actual team-role depths above are inspected separately.
-        foreach(var p in effectivePrivileges)Id(p!,"PrivilegeId");
+        var effectiveIds=new HashSet<string>();
+        foreach(var p in effectivePrivileges) {
+            var id=Id(p!,"PrivilegeId");
+            Require(!kitchenPrivilegeIds.Contains(id)||wanted.Any(w=>w.Id==id),"effective_kitchen_privileges_broader_than_plan");
+            effectiveIds.Add(id);
+        }
+        bool effectiveKitchenComplete=wanted.All(w=>effectiveIds.Contains(w.Id));
         var target=Uri.EscapeDataString(new JsonObject{["@odata.id"]=$"zk_kitchenworkspaces({Workspace})"}.ToJsonString());
         var access=await Get($"systemusers({user})/Microsoft.Dynamics.CRM.RetrievePrincipalAccess(Target=@target)?@target={target}");
         var rights=ParseRights(Text(access,"AccessRights"));
         Require(rights.All(r=>r is "ReadAccess" or "WriteAccess" or "AppendToAccess"),"existing_workspace_access_broader_than_plan");
         Require(originalAssignments.IsSubsetOf(assigned),"existing_role_assignment_changed");
-        Facts.Add(new{resource="access_inventory",userId=user,businessUnitId=businessUnit,directRoleIds=assigned.Order().ToArray(),teamCount=teams.Length,effectivePrivilegeCount=effectivePrivileges.Count,workspaceRights=rights.Order().ToArray(),workspaceRevision=revision});
-        return new(assigned,rights);
+        Facts.Add(new{resource="access_inventory",userId=user,businessUnitId=businessUnit,directRoleIds=assigned.Order().ToArray(),teamCount=teams.Length,effectivePrivilegeCount=effectivePrivileges.Count,effectiveKitchenPrivilegesComplete=effectiveKitchenComplete,workspaceRights=rights.Order().ToArray(),workspaceRevision=revision});
+        return new(assigned,rights,effectiveKitchenComplete);
     }
+    private static void RequireEffective(Inventory inventory)=>Require(inventory.EffectiveKitchenComplete,"effective_kitchen_privileges_incomplete");
     private static HashSet<string> ParseRights(string text) {
         if(text=="None")return [];
         var parts=text.Split(',',StringSplitOptions.TrimEntries);var rights=parts.ToHashSet(StringComparer.Ordinal);

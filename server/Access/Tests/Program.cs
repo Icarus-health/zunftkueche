@@ -44,13 +44,22 @@ await Test("businessunit drifts during step stops remaining writes",()=>Refuses(
 await Test("assignment binding contains only fixed exact role",async()=>{var f=new Fake{RoleExists=true,ExactPrivileges=true};await new FixedAccess(f,Fake.ObjectId).Run(true);Check(f.Writes[0].Body!.AsObject().Count==1);Check(f.Writes[0].Body!["@odata.id"]!.GetValue<string>()=="https://org1d76e28a.crm17.dynamics.com/api/data/v9.2/roles("+Fake.Role+")");Check(f.Writes[1].Body!["PrincipalAccess"]!["Principal"]!["systemuserid"]!.GetValue<string>()==Fake.User);});
 await Test("malformed create readback stops without assignment",()=>Refuses(new Fake{MalformedAfterCreate=true},"role_identity_drift",1));
 await Test("existing unrelated role removal during assignment stops sharing",()=>Refuses(new Fake{OriginalRole=true,DropOriginalRoleAfter=3},"existing_role_assignment_changed",3));
+foreach(int step in new[]{0,1,2,3,4})
+ await Test("forbidden effective kitchen privilege stops at inventory step "+step,()=>Refuses(new Fake{EffectiveForbiddenFromStep=step},"effective_kitchen_privileges_broader_than_plan",step));
+await Test("inspect cannot report ready with missing effective receipt Append",async()=>{var f=new Fake{RoleExists=true,ExactPrivileges=true,Assigned=true,Shared=true,EffectiveMissingFromStep=0};Check(!await new FixedAccess(f,Fake.ObjectId).Run(false));Check(f.Writes.Count==0);});
+await Test("existing assignment with missing effective receipt Append stops before share",()=>Refuses(new Fake{RoleExists=true,ExactPrivileges=true,Assigned=true,EffectiveMissingFromStep=0},"effective_kitchen_privileges_incomplete"));
+await Test("missing effective privilege after new assignment stops further grant",()=>Refuses(new Fake{EffectiveMissingFromStep=3},"effective_kitchen_privileges_incomplete",3));
+await Test("effective privilege disappears after share cannot claim final ready",()=>Refuses(new Fake{EffectiveMissingFromStep=4},"effective_kitchen_privileges_incomplete",4));
+await Test("normalized effective team depths do not replace actual role depths",async()=>{var f=new Fake{RoleExists=true,ExactPrivileges=true,Assigned=true,Shared=true,TeamRole=true,NormalizeEffectiveDepth=true};Check(await new FixedAccess(f,Fake.ObjectId).Run(true));Check(f.Writes.Count==0);});
+await Test("unrelated effective platform privilege is preserved",async()=>{var f=new Fake{RoleExists=true,ExactPrivileges=true,Assigned=true,Shared=true,OtherEffectivePrivilege=true};Check(await new FixedAccess(f,Fake.ObjectId).Run(true));Check(f.Writes.Count==0);});
 Console.WriteLine($"{passed} passed, {failed} failed");return failed==0?0:1;
 
 sealed class Fake : IDataverseTransport {
  public const string Admin="11111111-1111-4111-8111-111111111111",User="22222222-2222-4222-8222-222222222222",Bu="33333333-3333-4333-8333-333333333333",Role="44444444-4444-4444-8444-444444444444",Other="55555555-5555-4555-8555-555555555555",ObjectId="66666666-6666-4666-8666-666666666666",Workspace="45deaf94-5661-4110-8f16-3d2678c09f04";
  public static readonly string[] PrivilegeIds=Enumerable.Range(1,16).Select(n=>$"77777777-7777-4777-8777-{n:D12}").ToArray();
- public bool RoleExists,ExactPrivileges,Assigned,Shared,WrongOrg,MissingUser,DuplicateUser,Disabled,ApplicationUser,OwnerDrift,DuplicateRole,ExtraPrivilege,WrongDepth,AutomaticBaseline,DuplicatePrivilege,ApiDrift,PagedUsers,TeamRole,BroadAccess,UnknownAccess,RoleBuDrift,DuplicateRolePrivilege,MalformedAfterCreate,OriginalRole;
+ public bool RoleExists,ExactPrivileges,Assigned,Shared,WrongOrg,MissingUser,DuplicateUser,Disabled,ApplicationUser,OwnerDrift,DuplicateRole,ExtraPrivilege,WrongDepth,AutomaticBaseline,DuplicatePrivilege,ApiDrift,PagedUsers,TeamRole,BroadAccess,UnknownAccess,RoleBuDrift,DuplicateRolePrivilege,MalformedAfterCreate,OriginalRole,NormalizeEffectiveDepth,OtherEffectivePrivilege;
  public int Revision=2,ThrowStep,DropStep,ChangeAfterStep,UserBuAfterStep,DropOriginalRoleAfter;
+ public int EffectiveForbiddenFromStep=-1,EffectiveMissingFromStep=-1;
  public List<string> Reads=[];
  public List<string> Events=[];
  public List<(string Path,JsonNode? Body)> Writes=[];
@@ -70,7 +79,14 @@ sealed class Fake : IDataverseTransport {
   else if(path.Contains("systemuserroles_association")){var rr=new List<JsonNode>();if(Assigned)rr.Add(Row(("roleid",Role),("_businessunitid_value",Bu)));if(OriginalRole&&(DropOriginalRoleAfter==0||Writes.Count<DropOriginalRoleAfter))rr.Add(Row(("roleid",Other),("_businessunitid_value",Bu)));result=Rows(rr.ToArray());}
   else if(path.Contains("teammembership_association"))result=TeamRole?Rows(Row(("teamid",Other))):Rows();
   else if(path.Contains("teamroles_association"))result=Rows(Row(("roleid",Role)));
-  else if(path.Contains("RetrieveUserPrivileges"))result=new JsonObject{["RolePrivileges"]=Assigned?RolePrivileges():new JsonArray()};
+  else if(path.Contains("RetrieveUserPrivileges")){
+   var effective=Assigned?RolePrivileges():new JsonArray();
+   if(EffectiveMissingFromStep>=0&&Writes.Count>=EffectiveMissingFromStep&&effective.Count==6)effective.RemoveAt(5);
+   if(EffectiveForbiddenFromStep>=0&&Writes.Count>=EffectiveForbiddenFromStep)effective.Add(Row(("PrivilegeId",PrivilegeIds[12]),("Depth","Global")));
+   if(NormalizeEffectiveDepth)foreach(var p in effective)p!["Depth"]="Basic";
+   if(OtherEffectivePrivilege)effective.Add(Row(("PrivilegeId",Other),("Depth","Global")));
+   result=new JsonObject{["RolePrivileges"]=effective};
+  }
   else if(path.Contains("RetrievePrincipalAccess"))result=Row(("AccessRights",UnknownAccess?"SECRET":BroadAccess?"ReadAccess, WriteAccess, AppendToAccess, DeleteAccess":Shared?"ReadAccess, WriteAccess, AppendToAccess":"None"));
   else if(path.StartsWith("EntityDefinitions(")){bool w=path.Contains("zk_kitchenworkspace");var names=w?new[]{"Read","Write","AppendTo","Create","Delete","Assign","Share","Append"}:new[]{"Read","Create","Append","Write","Delete","Assign","Share","AppendTo"};var a=new JsonArray();for(int i=0;i<names.Length;i++)a.Add(Row(("PrivilegeType",names[i]),("PrivilegeId",PrivilegeIds[w?(i<3?i:i+3):(i<3?i+3:i+8)]),("Name","prv"+names[i]+(w?"zk_kitchenworkspace":"zk_kitchenoperation")),("CanBeBasic",w),("CanBeGlobal",true)));if(DuplicatePrivilege)a.Add(a[0]!.DeepClone());result=Row(("LogicalName",w?"zk_kitchenworkspace":"zk_kitchenoperation"),("OwnershipType",w?"UserOwned":"OrganizationOwned"),("TableType","Standard"));result["Privileges"]=a;}
   else if(path.StartsWith("customapis?"))result=Rows(Row(("uniquename","zk_KitchenLoad"),("executeprivilegename",ApiDrift?"SECRET":"prvReadzk_kitchenworkspace")),Row(("uniquename","zk_KitchenCommit"),("executeprivilegename","prvWritezk_kitchenworkspace")));
