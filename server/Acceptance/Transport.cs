@@ -7,7 +7,7 @@ using Kitchen.Deploy;
 namespace Kitchen.Acceptance;
 [JsonConverter(typeof(JsonStringEnumConverter<FailureKind>))]
 public enum FailureKind { unknown, guard_context, guard_target, invalid_guard_marker, invalid_execution_context, validation_prefix, invalid_json, request_required }
-public sealed record Outcome(int Status, JsonNode? Value, bool GuardDenied=false, bool Unsupported=false, string? NumericCode=null,FailureKind FailureKind=FailureKind.unknown,int? GuardMask=null,int? ParentKind=null,int? WrapperMask=null,int? SourceMask=null,int? SourceKind=null) {
+public sealed record Outcome(int Status, JsonNode? Value, bool GuardDenied=false, bool Unsupported=false, string? NumericCode=null,FailureKind FailureKind=FailureKind.unknown,int? GuardMask=null,int? ParentKind=null,int? WrapperMask=null,int? SourceMask=null,int? SourceKind=null,int? GuardVersion=null,int? BindingReason=null,int? TargetMask=null,int? TargetCount=null,int? TargetIdPresence=null) {
  public bool Success=>Status is >=200 and <=299;
 }
 public interface IAcceptanceTransport:IDataverseTransport {
@@ -31,22 +31,36 @@ public static class Diagnosis {
     string.Equals(message,"DeleteMultiple has not yet been implemented.",StringComparison.Ordinal);
    var kind=KnownFailureKind(message);
    var facts=GuardFacts(status,code,kind,message);
-   return new(status,null,guard,unsupported,code,kind,facts.Mask,facts.Parent,facts.Wrapper,facts.Source,facts.Kind);
+   var target=TargetFacts(status,code,kind,message);
+   return new(status,null,guard,unsupported,code,kind,facts.Mask,facts.Parent,facts.Wrapper,facts.Source,facts.Kind,facts.Version,BindingFact(status,code,kind,message),target.Mask,target.Count,target.Presence);
   }catch(Exception e)when(e is JsonException or InvalidOperationException or KeyNotFoundException){return new(status,null);}
  }
- static (int? Mask,int? Parent,int? Wrapper,int? Source,int? Kind) GuardFacts(int status,string? code,FailureKind kind,string message) {
-  if(status is not (400 or 500)||code!="0x80040265"||kind!=FailureKind.guard_context)return (null,null,null,null,null);
-  const string prefix="Direct kitchen table writes are blocked. ";
-  // Exact full message: no remote prefix/suffix, duplicate markers or unknown versions.
-  var match=System.Text.RegularExpressions.Regex.Match(message,@"\ADirect kitchen table writes are blocked\. \[zk_guard_v1;m=(0|[1-9][0-9]{0,4});p=(0|[1-9][0-9]?)\](?: \[zk_guard_chain_v1;w=(0|[1-9][0-9]{0,2});s=(0|[1-9][0-9]{0,4});g=(0|[1-9][0-9]?)\])?\z",System.Text.RegularExpressions.RegexOptions.CultureInvariant);
-  if(!message.StartsWith(prefix,StringComparison.Ordinal)||!match.Success)return (null,null,null,null,null);
-  if(!int.TryParse(match.Groups[1].Value,out int mask)||mask>32767||!int.TryParse(match.Groups[2].Value,out int parent)||parent>10)return (null,null,null,null,null);
-  if(!match.Groups[3].Success)return (mask,parent,null,null,null);
-  if(parent is not (2 or 3)||!int.TryParse(match.Groups[3].Value,out int wrapper)||wrapper>127||!int.TryParse(match.Groups[4].Value,out int source)||source>32767||!int.TryParse(match.Groups[5].Value,out int sourceKind)||sourceKind>10)return (null,null,null,null,null);
-  return (mask,parent,wrapper,source,sourceKind);
+ static (int? Mask,int? Parent,int? Wrapper,int? Source,int? Kind,int? Version) GuardFacts(int status,string? code,FailureKind kind,string message) {
+  if(status is not (400 or 500)||code!="0x80040265"||kind!=FailureKind.guard_context)return (null,null,null,null,null,null);
+  // v1 retains historical marker bits. v2 reserves these bits; versions must match exactly.
+  var match=System.Text.RegularExpressions.Regex.Match(message,@"\ADirect kitchen table writes are blocked\. \[zk_guard_v(?<version>[12]);m=(?<mask>0|[1-9][0-9]{0,4});p=(?<parent>0|[1-9][0-9]?)\](?: \[zk_guard_chain_v\k<version>;w=(?<wrapper>0|[1-9][0-9]{0,2});s=(?<source>0|[1-9][0-9]{0,4});g=(?<kind>0|[1-9][0-9]?)\])?\z",System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+  if(!match.Success)return (null,null,null,null,null,null);
+  int version=int.Parse(match.Groups["version"].Value,System.Globalization.CultureInfo.InvariantCulture);
+  if(!int.TryParse(match.Groups["mask"].Value,out int mask)||mask>32767||!int.TryParse(match.Groups["parent"].Value,out int parent)||parent>10||(version==2&&(mask&6144)!=0))return (null,null,null,null,null,null);
+  if(!match.Groups["wrapper"].Success)return (mask,parent,null,null,null,version);
+  if(parent is not (2 or 3)||!int.TryParse(match.Groups["wrapper"].Value,out int wrapper)||wrapper>127||!int.TryParse(match.Groups["source"].Value,out int source)||source>32767||!int.TryParse(match.Groups["kind"].Value,out int sourceKind)||sourceKind>10||(version==2&&(source&6144)!=0))return (null,null,null,null,null,null);
+  return (mask,parent,wrapper,source,sourceKind,version);
  }
- public static bool HasSafeGuardFacts(Outcome o)=>o.Status is 400 or 500&&o.NumericCode=="0x80040265"&&o.FailureKind==FailureKind.guard_context&&o.GuardMask is >=0 and <=32767&&o.ParentKind is >=0 and <=10;
- public static bool HasSafeChainFacts(Outcome o)=>HasSafeGuardFacts(o)&&o.ParentKind is 2 or 3&&o.WrapperMask is >=0 and <=127&&o.SourceMask is >=0 and <=32767&&o.SourceKind is >=0 and <=10;
+ static int? BindingFact(int status,string? code,FailureKind kind,string message) {
+  if(status is not (400 or 500)||code!="0x80040265"||kind!=FailureKind.guard_context)return null;
+  var match=System.Text.RegularExpressions.Regex.Match(message,@"\ADirect kitchen table writes are blocked\. \[zk_guard_binding_v1;b=([1-5])\]\z",System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+  return match.Success?int.Parse(match.Groups[1].Value,System.Globalization.CultureInfo.InvariantCulture):null;
+ }
+ static (int? Mask,int? Count,int? Presence) TargetFacts(int status,string? code,FailureKind kind,string message) {
+  if(status is not (400 or 500)||code!="0x80040265"||kind!=FailureKind.guard_target)return (null,null,null);
+  var match=System.Text.RegularExpressions.Regex.Match(message,@"\AKitchen history mutations and bulk/direct writes are blocked\. \[zk_guard_target_v1;m=(0|[1-9][0-9]{0,2});n=(0|[1-9][0-9]?);i=([0-3])\]\z",System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+  if(!match.Success||!int.TryParse(match.Groups[1].Value,out int mask)||mask>255||!int.TryParse(match.Groups[2].Value,out int count)||count>63)return (null,null,null);
+  return (mask,count,int.Parse(match.Groups[3].Value,System.Globalization.CultureInfo.InvariantCulture));
+ }
+ public static bool HasSafeGuardFacts(Outcome o)=>o.Status is 400 or 500&&o.NumericCode=="0x80040265"&&o.FailureKind==FailureKind.guard_context&&o.GuardMask is >=0 and <=32767&&o.ParentKind is >=0 and <=10&&o.GuardVersion is 1 or 2&&(o.GuardVersion!=2||(o.GuardMask.Value&6144)==0);
+ public static bool HasSafeChainFacts(Outcome o)=>HasSafeGuardFacts(o)&&o.ParentKind is 2 or 3&&o.WrapperMask is >=0 and <=127&&o.SourceMask is >=0 and <=32767&&o.SourceKind is >=0 and <=10&&(o.GuardVersion!=2||(o.SourceMask.Value&6144)==0);
+ public static bool HasSafeBindingFacts(Outcome o)=>o.Status is 400 or 500&&o.NumericCode=="0x80040265"&&o.FailureKind==FailureKind.guard_context&&o.BindingReason is >=1 and <=5;
+ public static bool HasSafeTargetFacts(Outcome o)=>o.Status is 400 or 500&&o.NumericCode=="0x80040265"&&o.FailureKind==FailureKind.guard_target&&o.TargetMask is >=0 and <=255&&o.TargetCount is >=0 and <=63&&o.TargetIdPresence is >=0 and <=3;
  static FailureKind KnownFailureKind(string message) {
   if(message.Contains("Direct kitchen table writes are blocked.",StringComparison.Ordinal))return FailureKind.guard_context;
   if(message.Contains("Kitchen history mutations and bulk/direct writes are blocked.",StringComparison.Ordinal))return FailureKind.guard_target;

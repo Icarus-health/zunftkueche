@@ -158,6 +158,7 @@ Check("post-write validation-shaped storage faults must escape", () => {
 });
 GuardTests.Run(Check);
 WrapperTests.Run(Check);
+RequestBindingTests.Run(Check,seed);
 Console.WriteLine($"Policy tests: {passed} passed, {failed} failed");
 return failed == 0 ? 0 : 1;
 

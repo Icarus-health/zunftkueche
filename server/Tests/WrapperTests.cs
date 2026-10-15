@@ -13,11 +13,12 @@ static class WrapperTests
         ["SharedVariables"]=new ParameterCollection(),["InputParameters"]=new ParameterCollection()
     };
     static Dictionary<string, object?> Data(IPluginExecutionContext c) => ((ContextProxy)(object)c).Values;
+    static string Binding() => new JObject {{"protocolVersion",1},{"workspaceId",WorkspaceId.ToString("D")},{"operationId","operation"}}.ToString();
     static Entity Update() => new("zk_kitchenworkspace",WorkspaceId) { ["zk_state"]="{}",["zk_revision"]=1 };
     static Entity Receipt() => new("zk_kitchenoperation") { ["zk_workspace"]=new EntityReference("zk_kitchenworkspace",WorkspaceId),["zk_operationid"]="operation",["zk_actor"]=Actor.ToString("D") };
     static (IPluginExecutionContext Current,IPluginExecutionContext Wrapper,IPluginExecutionContext Source) Chain(string message="Update",Entity? entity=null) {
         entity ??= Update();var source=Values("zk_KitchenCommit",30);
-        source["SharedVariables"]=new ParameterCollection{{Marker,WorkspaceId+"|operation"}};
+        source["InputParameters"]=new ParameterCollection{{"RequestJson",Binding()}};
         var s=ContextProxy.Create(source);var wrapper=Values(message,30,entity.LogicalName);wrapper["ParentContext"]=s;
         var w=ContextProxy.Create(wrapper);var current=Values(message,20,entity.LogicalName);current["ParentContext"]=w;current["InputParameters"]=new ParameterCollection{{"Target",entity}};
         return (ContextProxy.Create(current),w,s);
@@ -26,7 +27,7 @@ static class WrapperTests
     static string Denied(IPluginExecutionContext c) { try{Execute(c);}catch(InvalidPluginExecutionException e){return e.Message;}throw new Exception("wrapper allowed bypass"); }
     static void Assert(bool value){if(!value)throw new Exception("wrapper assertion failed");}
     public static void Run(Action<string,Action> check) {
-        check("guard accepts one exact Update wrapper with API-only private marker",()=>Execute(Chain().Current));
+        check("guard accepts one exact Update wrapper with API-only original request",()=>Execute(Chain().Current));
         check("guard accepts one exact Create wrapper for receipt",()=>Execute(Chain("Create",Receipt()).Current));
         check("wrapper each context condition remains mandatory",()=>{
             foreach(var field in new[]{"MessageName","Stage","Mode","IsInTransaction","UserId","InitiatingUserId","PrimaryEntityName"}) {
@@ -36,10 +37,10 @@ static class WrapperTests
                 var x=Chain();Data(x.Current)[field]=field switch {"Stage"=>10,"Mode"=>1,"IsInTransaction"=>false,_=>Guid.NewGuid()};Denied(x.Current);
             }
             foreach(var table in new string?[]{null,"","wrong"}){var x=Chain();Data(x.Current)["PrimaryEntityName"]=table;Denied(x.Current);}
-            foreach(var field in new[]{"MessageName","Stage","Mode","IsInTransaction","UserId","InitiatingUserId","SharedVariables"}) {
-                var x=Chain();Data(x.Source)[field]=field switch {"MessageName"=>"Upsert","Stage"=>20,"Mode"=>1,"IsInTransaction"=>false,"SharedVariables"=>new ParameterCollection(),_=>Guid.NewGuid()};Denied(x.Current);
+            foreach(var field in new[]{"MessageName","Stage","Mode","IsInTransaction","UserId","InitiatingUserId","InputParameters"}) {
+                var x=Chain();Data(x.Source)[field]=field switch {"MessageName"=>"Upsert","Stage"=>20,"Mode"=>1,"IsInTransaction"=>false,"InputParameters"=>new ParameterCollection(),_=>Guid.NewGuid()};Denied(x.Current);
             }
-            var wrongType=Chain();Data(wrongType.Source)["SharedVariables"]=new ParameterCollection{{Marker,123}};Denied(wrongType.Current);
+            var wrongType=Chain();Data(wrongType.Source)["InputParameters"]=new ParameterCollection{{"RequestJson",123}};Denied(wrongType.Current);
             var missing=Chain();Data(missing.Wrapper)["ParentContext"]=null;Denied(missing.Current);
             var deep=Chain();var middle=Values("Update",30,"zk_kitchenworkspace");middle["ParentContext"]=deep.Source;middle["SharedVariables"]=new ParameterCollection{{Marker,WorkspaceId+"|operation"}};Data(deep.Wrapper)["ParentContext"]=ContextProxy.Create(middle);Denied(deep.Current);
         });
@@ -54,18 +55,18 @@ static class WrapperTests
                 var x=Chain(operation,operation=="Create"?Receipt():Update());Data(x.Current)["ParentContext"]=null;Data(x.Current)["SharedVariables"]=new ParameterCollection{{Marker,WorkspaceId+"|operation"},{"tag",WorkspaceId+"|operation"}};Denied(x.Current);
                 foreach(var single in new[]{"Update","Create"}){var child=Chain(single,single=="Create"?Receipt():Update());Data(child.Source)["MessageName"]=operation;Denied(child.Current);}
             }
-            foreach(var place in new[]{"wrapper","current"}){var x=Chain();Data(x.Source)["SharedVariables"]=new ParameterCollection();Data(place=="wrapper"?x.Wrapper:x.Current)["SharedVariables"]=new ParameterCollection{{Marker,WorkspaceId+"|operation"},{"tag",WorkspaceId+"|operation"}};Denied(x.Current);}
-            var parameter=Chain();Data(parameter.Source)["SharedVariables"]=new ParameterCollection();parameter.Current.InputParameters[Marker]=WorkspaceId+"|operation";Denied(parameter.Current);
+            foreach(var place in new[]{"wrapper","current"}){var x=Chain();Data(x.Source)["InputParameters"]=new ParameterCollection();Data(place=="wrapper"?x.Wrapper:x.Current)["SharedVariables"]=new ParameterCollection{{Marker,WorkspaceId+"|operation"},{"tag",WorkspaceId+"|operation"}};Denied(x.Current);}
+            var parameter=Chain();Data(parameter.Source)["InputParameters"]=new ParameterCollection();parameter.Current.InputParameters[Marker]=WorkspaceId+"|operation";Denied(parameter.Current);
             var targets=Chain();Data(targets.Current)["InputParameters"]=new ParameterCollection{{"Targets",new EntityCollection(new[]{Update()})}};Denied(targets.Current);
         });
         check("chain diagnostics identify bounded source and wrapper failures",()=>{
-            var x=Chain();Data(x.Source)["SharedVariables"]=new ParameterCollection();Assert(Denied(x.Current).EndsWith("[zk_guard_chain_v1;w=0;s=2048;g=1]"));
-            x=Chain();Data(x.Wrapper)["ParentContext"]=null;Assert(Denied(x.Current).EndsWith("[zk_guard_chain_v1;w=0;s=8;g=0]"));
-            x=Chain();Data(x.Wrapper)["PrimaryEntityName"]="private-table-sentinel";var message=Denied(x.Current);Assert(message.EndsWith("[zk_guard_chain_v1;w=16;s=0;g=1]")&&!message.Contains("private-table-sentinel")&&!message.Contains(WorkspaceId.ToString()));
+            var x=Chain();Data(x.Source)["InputParameters"]=new ParameterCollection();Assert(Denied(x.Current).EndsWith("[zk_guard_binding_v1;b=1]"));
+            x=Chain();Data(x.Wrapper)["ParentContext"]=null;Assert(Denied(x.Current).EndsWith("[zk_guard_chain_v2;w=0;s=8;g=0]"));
+            x=Chain();Data(x.Wrapper)["PrimaryEntityName"]="private-table-sentinel";var message=Denied(x.Current);Assert(message.EndsWith("[zk_guard_chain_v2;w=16;s=0;g=1]")&&!message.Contains("private-table-sentinel")&&!message.Contains(WorkspaceId.ToString()));
         });
         check("real store performs guarded CAS update then receipt and cleans source marker",()=>{
             foreach(var fail in new[]{false,true}){
-                var source=ContextProxy.Create(Values("zk_KitchenCommit",30));var service=new StoreService(source,fail);var store=new DataverseStore(service,source);
+                var values=Values("zk_KitchenCommit",30);values["InputParameters"]=new ParameterCollection{{"RequestJson",Binding()}};var source=ContextProxy.Create(values);var service=new StoreService(source,fail);var store=new DataverseStore(service,source);
                 try{store.Commit(new Workspace{Id=WorkspaceId,RowVersion="exact-version"},new JObject{{"revision",1}},"operation","hash",Actor,DateTime.UtcNow);Assert(!fail);}catch(InvalidOperationException){Assert(fail);}
                 Assert(!source.SharedVariables.Contains(Marker));Assert(service.Calls.SequenceEqual(fail?new[]{"Update"}:new[]{"Update","Create"}));
             }

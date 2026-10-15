@@ -29,7 +29,12 @@ public static class RuntimeChecks {
   async Task<JObject> PostOnce(Probe request,Fingerprint prior) {
    try {
     var outcome=await transport.ProbeAsync(request);
-    if(!outcome.Success)evidence.Checks.Add(new("commit_http_refused",false,outcome.Status,Diagnosis.ValidatedCode(outcome.NumericCode),GuardDenied:outcome.GuardDenied,FailureKind:Enum.IsDefined(outcome.FailureKind)?outcome.FailureKind:FailureKind.unknown,GuardMask:Diagnosis.HasSafeGuardFacts(outcome)?outcome.GuardMask:null,ParentKind:Diagnosis.HasSafeGuardFacts(outcome)?outcome.ParentKind:null,WrapperMask:Diagnosis.HasSafeChainFacts(outcome)?outcome.WrapperMask:null,SourceMask:Diagnosis.HasSafeChainFacts(outcome)?outcome.SourceMask:null,SourceKind:Diagnosis.HasSafeChainFacts(outcome)?outcome.SourceKind:null));
+    if(!outcome.Success)evidence.Checks.Add(new("commit_http_refused",false,outcome.Status,Diagnosis.ValidatedCode(outcome.NumericCode),
+     GuardDenied:outcome.GuardDenied,FailureKind:Enum.IsDefined(outcome.FailureKind)?outcome.FailureKind:FailureKind.unknown,
+     GuardMask:Diagnosis.HasSafeGuardFacts(outcome)?outcome.GuardMask:null,ParentKind:Diagnosis.HasSafeGuardFacts(outcome)?outcome.ParentKind:null,
+     WrapperMask:Diagnosis.HasSafeChainFacts(outcome)?outcome.WrapperMask:null,SourceMask:Diagnosis.HasSafeChainFacts(outcome)?outcome.SourceMask:null,SourceKind:Diagnosis.HasSafeChainFacts(outcome)?outcome.SourceKind:null,
+     GuardVersion:Diagnosis.HasSafeGuardFacts(outcome)?outcome.GuardVersion:null,BindingReason:Diagnosis.HasSafeBindingFacts(outcome)?outcome.BindingReason:null,
+     TargetMask:Diagnosis.HasSafeTargetFacts(outcome)?outcome.TargetMask:null,TargetCount:Diagnosis.HasSafeTargetFacts(outcome)?outcome.TargetCount:null,TargetIdPresence:Diagnosis.HasSafeTargetFacts(outcome)?outcome.TargetIdPresence:null));
     return Checks.Result(outcome);
    } catch(Exception) {
     try {

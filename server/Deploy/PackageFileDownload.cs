@@ -4,7 +4,7 @@ namespace Kitchen.Deploy;
 
 // Read only the reviewed package file. No arbitrary URL, column, range or redirect is accepted.
 public static class PackageFileDownload {
-    public const int ExpectedLength = 296102;
+    public const int ExpectedLength = 296571;
     public static async Task<byte[]> ReadAsync(HttpClient client, Func<Task<string>> token, string packageId) {
         if (!Guid.TryParseExact(packageId, "D", out var id) || id == Guid.Empty)
             throw new DeploymentException("invalid_package_id");

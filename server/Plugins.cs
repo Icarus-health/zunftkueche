@@ -98,7 +98,7 @@ namespace Zunftkueche
             var names = new[] { "zk_KitchenCommit", "Create", "Update", "Delete", "CreateMultiple", "UpdateMultiple", "Upsert", "UpsertMultiple", "DeleteMultiple" };
             int index = Array.IndexOf(names, p.MessageName); return index < 0 ? 10 : index + 1;
         }
-        // The original fifteen failed-condition bits, applied to one explicitly supplied source.
+        // v2 keeps structural bit positions; former private-marker bits 2048/4096 are reserved.
         private static int ContextMask(IPluginExecutionContext c, IPluginExecutionContext? p)
         {
             int mask = 0;
@@ -114,8 +114,6 @@ namespace Zunftkueche
                 if (!p.IsInTransaction) mask |= 128;
                 if (c.InitiatingUserId != p.InitiatingUserId) mask |= 256;
                 if (c.UserId != p.UserId) mask |= 512;
-                if (!p.SharedVariables.Contains(PluginHost.InternalWrite)) mask |= 2048;
-                else if (!(p.SharedVariables[PluginHost.InternalWrite] is string)) mask |= 4096;
             }
             if (c.UserId != c.InitiatingUserId) mask |= 1024;
             if (!c.InputParameters.Contains("Target")) mask |= 8192;
@@ -143,15 +141,57 @@ namespace Zunftkueche
             int mask = 0, kind = 0;
             try { mask = ContextMask(c, c.ParentContext); kind = ParentKind(c.ParentContext); }
             catch (Exception) { mask = 0; kind = 0; }
-            string result = "[zk_guard_v1;m=" + mask.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";p=" + kind.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]";
+            string result = "[zk_guard_v2;m=" + mask.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";p=" + kind.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]";
             if (kind == 2 || kind == 3)
             {
                 int wrapper = 0, source = 0, sourceKind = 0;
                 try { var p = c.ParentContext; wrapper = WrapperMask(c, p); source = ContextMask(c, p.ParentContext); sourceKind = ParentKind(p.ParentContext); }
                 catch (Exception) { wrapper = 0; source = 0; sourceKind = 0; }
-                result += " [zk_guard_chain_v1;w=" + wrapper.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";s=" + source.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";g=" + sourceKind.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]";
+                result += " [zk_guard_chain_v2;w=" + wrapper.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";s=" + source.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";g=" + sourceKind.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]";
             }
             return result;
+        }
+        private static InvalidPluginExecutionException BindingDenied(int reason) => new InvalidPluginExecutionException("Direct kitchen table writes are blocked. [zk_guard_binding_v1;b=" + reason.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]");
+        private static void RequestBinding(IPluginExecutionContext source, out Guid workspace, out string operationId)
+        {
+            // Input values bind the target only after the exact own API-origin checks succeed.
+            // The sole configured API handler validates the full request before its only writes.
+            if (source.InputParameters == null || !source.InputParameters.Contains("RequestJson")) throw BindingDenied(1);
+            if (!(source.InputParameters["RequestJson"] is string raw)) throw BindingDenied(2);
+            JObject request;
+            try { request = Protocol.Parse(raw); }
+            catch (Exception e) when (e is JsonException || e is ArgumentException || e is InvalidCastException || e is FormatException || e is OverflowException) { throw BindingDenied(3); }
+            try { workspace = Protocol.WorkspaceId(request); }
+            catch (Exception e) when (e is JsonException || e is ArgumentException || e is InvalidCastException || e is FormatException || e is OverflowException) { throw BindingDenied(4); }
+            try { operationId = StatePolicy.Str(request["operationId"], 100); }
+            catch (Exception e) when (e is JsonException || e is ArgumentException || e is InvalidCastException || e is FormatException || e is OverflowException) { throw BindingDenied(5); }
+        }
+        // Refusal-only measurement. Attribute names and values never enter the result.
+        private static string TargetDiagnostic(IPluginExecutionContext c, Entity target, Guid workspace, string operationId)
+        {
+            int mask = 0, count = 0, presence = 0;
+            try
+            {
+                count = Math.Min(target.Attributes.Count, 63);
+                if (target.Contains("zk_kitchenworkspaceid")) presence |= 1;
+                if (target.Contains("zk_kitchenoperationid")) presence |= 2;
+                if (c.MessageName == "Update" && target.LogicalName == "zk_kitchenworkspace")
+                {
+                    if (target.Id != workspace) mask |= 2;
+                    if (target.Attributes.Count != 2) mask |= 4;
+                    if (!target.Contains("zk_state")) mask |= 8;
+                    if (!target.Contains("zk_revision")) mask |= 16;
+                }
+                else if (c.MessageName == "Create" && target.LogicalName == "zk_kitchenoperation")
+                {
+                    if (target.GetAttributeValue<EntityReference>("zk_workspace")?.Id != workspace) mask |= 32;
+                    if (target.GetAttributeValue<string>("zk_operationid") != operationId) mask |= 64;
+                    if (target.GetAttributeValue<string>("zk_actor") != c.InitiatingUserId.ToString("D")) mask |= 128;
+                }
+                else mask = 1;
+            }
+            catch (Exception) { mask = 0; count = 0; presence = 0; }
+            return "[zk_guard_target_v1;m=" + mask.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";n=" + count.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";i=" + presence.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]";
         }
         public void Execute(IServiceProvider provider)
         {
@@ -159,17 +199,14 @@ namespace Zunftkueche
             var parent = c.ParentContext;
             if (parent != null && (parent.MessageName == "Create" || parent.MessageName == "Update") && WrapperMask(c, parent) == 0)
                 parent = parent.ParentContext;
-            if (c.Mode != 0 || c.Stage != 20 || !c.IsInTransaction || parent == null || parent.MessageName != "zk_KitchenCommit" || parent.Stage != 30 || parent.Mode != 0 || !parent.IsInTransaction || c.InitiatingUserId != parent.InitiatingUserId || c.UserId != parent.UserId || c.UserId != c.InitiatingUserId || !parent.SharedVariables.Contains(PluginHost.InternalWrite) || !(parent.SharedVariables[PluginHost.InternalWrite] is string marker) || !c.InputParameters.Contains("Target") || !(c.InputParameters["Target"] is Entity target))
+            if (c.Mode != 0 || c.Stage != 20 || !c.IsInTransaction || parent == null || parent.MessageName != "zk_KitchenCommit" || parent.Stage != 30 || parent.Mode != 0 || !parent.IsInTransaction || c.InitiatingUserId != parent.InitiatingUserId || c.UserId != parent.UserId || c.UserId != c.InitiatingUserId || !c.InputParameters.Contains("Target") || !(c.InputParameters["Target"] is Entity target))
                 throw new InvalidPluginExecutionException("Direct kitchen table writes are blocked. " + GuardDiagnostic(c));
-            var parts = marker.Split(new[] { '|' }, 2);
-            Guid workspace;
-            if (parts.Length != 2 || !Guid.TryParse(parts[0], out workspace))
-                throw new InvalidPluginExecutionException("Invalid kitchen write context.");
+            RequestBinding(parent, out Guid workspace, out string operationId);
             bool valid = c.MessageName == "Update" && target.LogicalName == "zk_kitchenworkspace" && target.Id == workspace && target.Attributes.Count == 2 && target.Contains("zk_state") && target.Contains("zk_revision");
             if (c.MessageName == "Create" && target.LogicalName == "zk_kitchenoperation")
-                valid = target.GetAttributeValue<EntityReference>("zk_workspace")?.Id == workspace && target.GetAttributeValue<string>("zk_operationid") == parts[1] && target.GetAttributeValue<string>("zk_actor") == c.InitiatingUserId.ToString("D");
+                valid = target.GetAttributeValue<EntityReference>("zk_workspace")?.Id == workspace && target.GetAttributeValue<string>("zk_operationid") == operationId && target.GetAttributeValue<string>("zk_actor") == c.InitiatingUserId.ToString("D");
             if (!valid)
-                throw new InvalidPluginExecutionException("Kitchen history mutations and bulk/direct writes are blocked.");
+                throw new InvalidPluginExecutionException("Kitchen history mutations and bulk/direct writes are blocked. " + TargetDiagnostic(c, target, workspace, operationId));
         }
     }
 }

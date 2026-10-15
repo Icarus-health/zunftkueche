@@ -1,6 +1,7 @@
 using System.Reflection;
 using Microsoft.Xrm.Sdk;
 using Zunftkueche;
+using Newtonsoft.Json.Linq;
 public class ContextProxy : DispatchProxy
 {
     public readonly Dictionary<string, object?> Values = new();
@@ -37,7 +38,8 @@ static class GuardTests
     {
         var actor = Guid.NewGuid();
         var workspace = FakeStore.WorkspaceId;
-        var parent = ContextProxy.Create(new() { { "MessageName", "zk_KitchenCommit" }, { "Mode", 0 }, { "Stage", 30 }, { "IsInTransaction", true }, { "UserId", actor }, { "InitiatingUserId", actor }, { "SharedVariables", new ParameterCollection { { "zk.KitchenCommit.InternalWrite.v1", workspace + "|operation" } } } });
+        var binding = new JObject {{"protocolVersion",1},{"workspaceId",workspace.ToString("D")},{"operationId","operation"}}.ToString();
+        var parent = ContextProxy.Create(new() { { "InputParameters", new ParameterCollection {{"RequestJson",binding}} }, { "MessageName", "zk_KitchenCommit" }, { "Mode", 0 }, { "Stage", 30 }, { "IsInTransaction", true }, { "UserId", actor }, { "InitiatingUserId", actor }, { "SharedVariables", new ParameterCollection { { "zk.KitchenCommit.InternalWrite.v1", workspace + "|operation" } } } });
         var target = new Entity("zk_kitchenworkspace", workspace) { ["zk_state"] = "{}", ["zk_revision"] = 1 };
         Dictionary<string, object?> Context(string message, Entity entity) => new() { { "ParentContext", parent }, { "MessageName", message }, { "Stage", 20 }, { "Mode", 0 }, { "IsInTransaction", true }, { "UserId", actor }, { "InitiatingUserId", actor }, { "InputParameters", new ParameterCollection { { "Target", entity } } } };
         void Execute(Dictionary<string, object?> values) => new KitchenWriteGuardPlugin().Execute(new GuardProvider(ContextProxy.Create(values)));
@@ -58,8 +60,8 @@ static class GuardTests
                 var c = Context("Update", target); c["ParentContext"] = ContextProxy.Create(pv); change(c, pv);
                 try { Execute(c); throw new Exception("expected denial"); }
                 catch (InvalidPluginExecutionException e) {
-                    var expected = "Direct kitchen table writes are blocked. [zk_guard_v1;m=" + mask + ";p=" + kind + "]";
-                    if (kind == 2 || kind == 3) expected += " [zk_guard_chain_v1;w=" + (kind == 2 ? 17 : 16) + ";s=8;g=0]";
+                    var expected = "Direct kitchen table writes are blocked. [zk_guard_v2;m=" + mask + ";p=" + kind + "]";
+                    if (kind == 2 || kind == 3) expected += " [zk_guard_chain_v2;w=" + (kind == 2 ? 17 : 16) + ";s=8;g=0]";
                     if (e.Message != expected) throw new Exception("diagnostic mismatch: expected mask " + mask);
                 }
             }
@@ -75,8 +77,6 @@ static class GuardTests
             Case((c,p) => c["UserId"] = Guid.NewGuid(), 512+1024);
             Case((c,p) => { var other=Guid.NewGuid(); c["UserId"]=other; ((ContextProxy)(object)c["ParentContext"]!).Values["UserId"]=other; }, 1024);
             Case((c,p) => { c["Mode"]=1; c["InputParameters"]=null; }, 0, 0);
-            Parent("SharedVariables", new ParameterCollection(), 2048);
-            Parent("SharedVariables", new ParameterCollection {{"zk.KitchenCommit.InternalWrite.v1", 123}}, 4096);
             Case((c,p) => c["InputParameters"] = new ParameterCollection(), 8192);
             Case((c,p) => c["InputParameters"] = new ParameterCollection {{"Target", "private-target"}}, 16384);
             Case((c,p) => { c["Mode"]=1; c["Stage"]=10; c["IsInTransaction"]=false; }, 7);

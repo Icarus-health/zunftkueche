@@ -2,7 +2,7 @@ using Kitchen.Deploy;
 namespace Kitchen.Acceptance;
 public sealed record AcceptanceOptions(string Phase,bool Execute,string Url,string ContractPath,string SeedPath,string PackagePath) {
  public static AcceptanceOptions Parse(string[] args) {
-  string phase="inspect",url=Target.Url,contract="server/deployment/registration.json",seed="import/2026.json",package="server/artifacts/guard-wrapper-v2/Zunftkueche.Dataverse.1.0.0.nupkg";
+  string phase="inspect",url=Target.Url,contract="server/deployment/registration.json",seed="import/2026.json",package="server/artifacts/guard-request-binding-v3/Zunftkueche.Dataverse.1.0.0.nupkg";
   bool execute=false;var seen=new HashSet<string>();
   for(int i=0;i<args.Length;i++) {
    string flag=args[i];if(!seen.Add(flag))throw new AcceptanceFault("duplicate_argument");
