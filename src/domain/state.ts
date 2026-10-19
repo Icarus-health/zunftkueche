@@ -1,3 +1,4 @@
+import {requireActiveLocation,requirePurchasingLocation,requireReceiptLocation} from "./locations.ts";
 import { prepareOrder, recipeCost } from "./kitchen.ts";
 import type { PlanLine, Source } from "./kitchen.ts";
 import { purchasingNeeds } from "./workflow.ts";
@@ -73,6 +74,7 @@ export interface KitchenState {
     dates: Record<string, string | null>;
     deliveryAddress?: string;
     contact?: string;
+    purchasingLocation?: string | null;
     locations?: Array<{name:string;historicalNames:string[]}>;
   };
   suppliers: Supplier[];
@@ -478,6 +480,13 @@ export function applyOperation(
         const historicalNames=l.historicalNames.map((raw:unknown)=>{const v=text(raw,"Historischer Ort",100);if(aliases.has(v)||!historical.has(v))throw new Error("Historische Zuordnung ist ungültig.");aliases.add(v);return v;});
         return {name,historicalNames};
       });
+      for (const location of next.event.locations!)
+        if (location.historicalNames.some(alias => alias !== location.name && names.has(alias)))
+          throw new Error("Historischer Ort ist zugleich ein anderer aktiver Ort.");
+      if (Object.hasOwn(p, "purchasingLocation"))
+        next.event.purchasingLocation = p.purchasingLocation === null ? null : text(p.purchasingLocation, "Ort", 100);
+      if (next.event.purchasingLocation != null && !names.has(next.event.purchasingLocation))
+        throw new Error("Der Ort für die Küchenplanung muss aktiv sein.");
       // Dates share the same validation as the existing date editor.
     }
     case "event.dates": {
@@ -516,7 +525,7 @@ export function applyOperation(
           time: null,
           unitPriceCents: article.unitPriceCents,
           category: article.category,
-          location: "Küche",
+          location: requirePurchasingLocation(next),
           purchaseGenerated: true,
           purchaseForWeekend: true,
         };
@@ -589,7 +598,7 @@ export function applyOperation(
         date: date(p.date),
         grossCents,
         netCents,
-        scope: text(p.scope, "Zuordnung", 100),
+        scope: requireReceiptLocation(next,text(p.scope, "Zuordnung", 100),!!existing),
         documentUrl: sharepoint(p.documentUrl),
         lines,
       };
@@ -665,7 +674,7 @@ export function applyOperation(
         unitPriceCents: article.unitPriceCents,
         note: text(p.note, "Notiz", 1000, true),
         category: article.category,
-        location: next.event.locations?.[0]?.name ?? "Küche",
+        location: requirePurchasingLocation(next),
       });
       break;
     }
@@ -729,7 +738,7 @@ export function applyOperation(
         day: "Allgemein",
         type: "Anfangsbestand",
         quantity: quantity(p.quantity)!,
-        location: text(p.location ?? "Küche", "Ort", 100),
+        location: requireActiveLocation(next,text(p.location ?? requirePurchasingLocation(next), "Ort", 100)),
       });
       break;
     }
@@ -758,7 +767,7 @@ export function applyOperation(
         day,
         type,
         quantity: q,
-        location: text(p.location ?? "Küche", "Ort", 100),
+        location: requireActiveLocation(next,text(p.location ?? requirePurchasingLocation(next), "Ort", 100)),
         note: text(p.note, "Notiz", 1000, true),
       });
       break;

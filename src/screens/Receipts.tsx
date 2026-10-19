@@ -1,3 +1,4 @@
+import {activeLocations,historicalLocations,newEntryLocation,sameLocation} from "../domain/locations.ts";
 import { ResponsiveTable } from "../components/MobileItemCard.tsx";
 import { useState } from "react";
 import {
@@ -24,7 +25,6 @@ import {
   parseMoney,
   receiptTotals,
   receiptOriginalLabel,
-  configuredLocations,
 } from "../ui/facts.ts";
 export default function Receipts(props: ScreenProps) {
   const {navigate} = useDraftNavigation();
@@ -34,12 +34,10 @@ export default function Receipts(props: ScreenProps) {
     [status, setStatus] = useState("Alle"),
     [scope, setScope] = useState("Alle"),
     [search, setSearch] = useState("");
-  const scopes = [
-    ...new Set([...configuredLocations(state), ...state.invoices.map((i) => i.scope)]),
-  ];
+  const scopes = historicalLocations(state);
   const invoices = state.invoices.filter(
     (i) =>
-      (scope === "Alle" || i.scope === scope) &&
+      (scope === "Alle" || sameLocation(state,i.scope,scope)) &&
       (status === "Alle" || i.status === status) &&
       `${i.number} ${state.suppliers.find((s) => s.id === i.supplierId)?.name ?? ""}`
         .toLowerCase()
@@ -294,7 +292,7 @@ function ReceiptEditor({
     [net, setNet] = useState(
       amount(item?.netCents == null ? null : item.netCents / 100),
     ),
-    [scope, setScope] = useState(item?.scope ?? configuredLocations(state)[0] ?? "Küche"),
+    [scope, setScope] = useState(item?.scope ?? newEntryLocation(state)),
     [url, setUrl] = useState(item?.documentUrl ?? ""),
     [error, setError] = useState("");
   const [lines, setLines] = useState(
@@ -307,13 +305,7 @@ function ReceiptEditor({
       net: amount(l.netCents === null ? null : l.netCents / 100),
     })),
   );
-  const scopes = [
-      ...new Set([
-        ...configuredLocations(state),
-        ...state.invoices.map((i) => i.scope),
-        scope,
-      ]),
-    ],
+  const scopes = item ? historicalLocations(state) : activeLocations(state),
     articles = state.articles.filter((a) => a.supplierId === supplierId);
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -415,8 +407,9 @@ function ReceiptEditor({
           )}
         </>
       )}
+      {!item && !activeLocations(state).length && <p role="status">Für einen neuen Beleg bitte zuerst einen aktiven Ort in den Einstellungen einrichten.</p>}
       <form onSubmit={save}>
-        <fieldset disabled={busy}>
+        <fieldset disabled={busy || (!item && !activeLocations(state).length)}>
           {immutable && (
             <Notice>
               Die wirtschaftlichen Angaben dieses Originalbelegs sind fest. Du

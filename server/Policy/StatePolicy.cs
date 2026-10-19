@@ -208,14 +208,19 @@ namespace Zunftkueche
             Require(Number(e["schemaVersion"], 2) == 2, "Unsupported schema.");
             Fields(e,"schemaVersion event suppliers articles planLines menu invoices sales movements orders dishPlan lessons sourceNotice revision operationIds operationRequests archivedEvents");
             var ev = Obj(e["event"]);
-            Fields(ev,"id name year status dates deliveryAddress contact locations");
-            OptionalString(ev,"deliveryAddress",1000);OptionalString(ev,"contact",200);
+            Fields(ev,"id name year status dates deliveryAddress contact locations purchasingLocation");
+            OptionalString(ev,"deliveryAddress",1000);OptionalString(ev,"contact",200);OptionalString(ev,"purchasingLocation",100);
             if(ev["locations"]!=null) {
                 var names=new HashSet<string>();var aliases=new HashSet<string>();
                 var historical=new HashSet<string>(Arr(e["planLines"]).Concat(Arr(e["movements"])).Select(v=>(string?)v["location"]??"").Concat(Arr(e["invoices"]).Select(v=>(string?)v["scope"]??"")));
                 Require(Arr(ev["locations"]).Count<=100,"Too many locations.");
                 foreach(var item in Arr(ev["locations"])) {var location=Obj(item);Fields(location,"name historicalNames");Require(names.Add(Str(location["name"],100)),"Duplicate location.");foreach(var alias in Arr(location["historicalNames"]))Require(historical.Contains(Str(alias,100))&&aliases.Add(Str(alias,100)),"Invalid historical location mapping.");}
             }
+            if(ev["locations"] is JArray configured) {
+                var active=new HashSet<string>(configured.Select(l=>Str(l["name"],100)));
+                foreach(var l in configured)foreach(var alias in Arr(l["historicalNames"]))Require((string?)alias==(string?)l["name"]||!active.Contains(Str(alias,100)),"Alias conflicts with another active place.");
+                if(!Null(ev["purchasingLocation"]))Require(active.Contains(Str(ev["purchasingLocation"],100)),"Purchasing location must be active.");
+            } else if(!Null(ev["purchasingLocation"])) Require(new[]{"Küche","Bar","Zunftscheuer","Brunnen","Mitwirkende / Aufbau / Probe"}.Contains(Str(ev["purchasingLocation"],100)),"Purchasing location must be active.");
             Str(ev["id"], 500);
             Str(ev["name"]);
             Str(ev["status"], 100);
@@ -397,6 +402,18 @@ namespace Zunftkueche
                 else
                     Require(Null(o["totalCents"]), "Incomplete order prices require null total.");
             }
+            if(previous != null && ev["locations"] is JArray activeConfiguration) {
+                var active=new HashSet<string>(activeConfiguration.Select(l=>Str(l["name"],100)));
+                var historical=new HashSet<string>(Arr(previous["planLines"]).Concat(Arr(previous["movements"])).Select(l=>(string?)l["location"]??"Küche").Concat(Arr(previous["invoices"]).Select(l=>(string?)l["scope"]??"")));
+                foreach(var kind in new[]{"movements","planLines","invoices"}) {
+                    var prior=Index(previous[kind]);var field=kind=="invoices"?"scope":"location";
+                    foreach(var row in maps[kind]) {
+                        var location=(string?)row.Value[field]??"Küche";
+                        if(!prior.TryGetValue(row.Key,out var oldRow))Require(active.Contains(location),"New entry location must be active.");
+                        else if(!JToken.DeepEquals(oldRow[field],row.Value[field]))Require(active.Contains(location)||(kind=="invoices"&&historical.Contains(location)),"Changed entry location must be active or an existing receipt correction location.");
+                    }
+                }
+            }
             foreach(var lesson in maps["lessons"].Values) {Fields(lesson,"id note");Str(lesson["note"],4000,true);}
             if (previous == null)
                 return;
@@ -518,7 +535,7 @@ namespace Zunftkueche
                 var prior=old[targetId];var updated=next[targetId];
                 Same(prior["sourceNotice"],updated["sourceNotice"],"Source notice changed.");
                 Same(prior["schemaVersion"],updated["schemaVersion"],"Schema changed.");
-                if(!row.CanConfigure)foreach(var field in new[]{"id","name","year","dates","deliveryAddress","contact","locations"})Same(prior["event"]![field],updated["event"]![field],"Configuration permission required.");
+                if(!row.CanConfigure)foreach(var field in new[]{"id","name","year","dates","deliveryAddress","contact","locations","purchasingLocation"})Same(prior["event"]![field],updated["event"]![field],"Configuration permission required.");
                 if(!row.CanClose) { Same(prior["event"]!["status"],updated["event"]!["status"],"Closure permission required."); Same(prior["lessons"],updated["lessons"],"Closure history permission required."); }
             }
         }

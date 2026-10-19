@@ -1,3 +1,4 @@
+import {newEntryLocation} from "./domain/locations.ts";
 import Settings from "./screens/Settings.tsx";
 import {projectEvent} from "./domain/event-context.ts";
 import {defaultPreferences,loadPreferences,savePreferences} from "./data/preferences.ts";
@@ -103,6 +104,8 @@ export default function App() {
     mode = repository.repo?.mode ?? "microsoft";
   const readOnly = repository.repo?.canWrite !== true;
   function updatePreferences(value:UserPreferences) {
+    const eventId=value.selectedEventId||state?.event.id;
+    if(state && eventId && [state.event.id,...(state.archivedEvents??[]).map(e=>e.event.id)].includes(eventId))value={...value,lastLocation:newEntryLocation(projectEvent(state,eventId),value.lastLocation)};
     setPreferences(value);setViewEvent(value.selectedEventId||null);
     try {savePreferences(localStorage,repository.repo?.identity??null,value);}catch {setLoadError("Persönliche Auswahl konnte auf diesem Gerät nicht gespeichert werden.");}
   }
@@ -111,6 +114,7 @@ export default function App() {
     const next=await repository.repo!.load();
     let preferenceStorage:Storage|undefined;try{preferenceStorage=window.localStorage;}catch{}
     const value=loadPreferences(preferenceStorage,repository.repo!.identity??null,[next.event.id,...(next.archivedEvents??[]).map(e=>e.event.id)]);
+    value.lastLocation=newEntryLocation(projectEvent(next,value.selectedEventId),value.lastLocation);
     setPreferences(value);setViewEvent(value.selectedEventId);setSupplier(value.lastSupplierId);setScreen(value.startScreen as Screen);setState(next);
   }
   useEffect(() => {
@@ -125,6 +129,13 @@ export default function App() {
   useEffect(() => {
     if(!identityScope){setPreferences({...defaultPreferences});setViewEvent(null);setSupplier("");}
   },[identityScope]);
+  useEffect(() => {
+    if(!state)return;
+    const id=preferences.selectedEventId||state.event.id;
+    if(![state.event.id,...(state.archivedEvents??[]).map(e=>e.event.id)].includes(id))return;
+    const lastLocation=newEntryLocation(projectEvent(state,id),preferences.lastLocation);
+    if(lastLocation!==preferences.lastLocation)updatePreferences({...preferences,lastLocation});
+  },[state,preferences.selectedEventId,preferences.lastLocation]);
   useEffect(() => {
     if (!pending) return;
     const handler = (e: BeforeUnloadEvent) => {

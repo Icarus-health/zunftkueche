@@ -1,3 +1,4 @@
+import {activeLocations,legacyLocations} from "../domain/locations.ts";
 import type { OrderSnapshot } from "../domain/kitchen.ts";
 import type { KitchenState, Receipt } from "../domain/state.ts";
 export const kitchenDays = ["Freitag", "Samstag"] as const;
@@ -8,14 +9,8 @@ export const deliveryDays = [
   "Sonntag",
   "Allgemein",
 ];
-export const defaultLocations = [
-  "Küche",
-  "Bar",
-  "Zunftscheuer",
-  "Brunnen",
-  "Mitwirkende / Aufbau / Probe",
-];
-export function configuredLocations(state: KitchenState): string[] { return state.event.locations?.length ? state.event.locations.map(l=>l.name) : [...defaultLocations]; }
+export const defaultLocations = legacyLocations;
+export const configuredLocations = activeLocations;
 export function parseMoney(raw: string, precise = false): number | null {
   const value = raw.trim();
   if (!value) return null;

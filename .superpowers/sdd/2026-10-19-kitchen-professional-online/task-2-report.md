@@ -29,3 +29,25 @@ Read `docs/protocol-v2-migration.md` before publication. Public Custom API JSON-
 ## Limits / next work
 
 No current Dataverse ownership, actual two-user UI behavior, deployed v2 release or physical phone acceptance is claimed. Parent independently reviews and performs coordinated host acceptance. Live destination configuration belongs to Task 5; closure workflows belong to Task 4. Storage remains the bounded canonical aggregate. V1 pending reconciliation intentionally needs separately reviewed read-only evidence and a user decision; a missing receipt is not treated as permission to discard an ambiguous request. No material requirement ambiguity remains.
+
+## Fix round 1 — independent review I1 / I2
+
+Addressed both Important findings without provider actions or generated API changes.
+
+- One `src/domain/locations.ts` resolution rule now serves purchasing, stock, analysis, historic filters and entry choices. Only explicit confirmed aliases are resolved; raw stored labels remain untouched. An optional owner-only `event.purchasingLocation` selects an active culinary place. Without that setting, only the literal/explicitly aliased legacy `Küche` is a fallback. The first active place is never implicitly the kitchen. Existing configurations with neither selection nor confirmed kitchen mapping now require an owner choice rather than producing unsafe purchase suggestions. A wrong explicit alias can combine balances incorrectly; no spelling-based or automatic mapping is made.
+- Manual/generated purchase rows use that culinary place. Coverage and opening stock resolve the same confirmed aliases; unrelated places remain excluded. Analysis uses the same rule and identifies an unset culinary place honestly. A known zero stays zero; absent opening stays unknown.
+- Active new-entry choices are separate from historical filter/correction choices. New movements, plan rows and receipts in configured events require active canonical labels in both reducer and server semantic validation. Existing receipt corrections can retain historical labels. Remembered locations are checked against the selected event's active choices on load, selection/configuration change and entry initialization. Explicit `locations:[]` means no active places and does not resurrect defaults; new input is disabled/explained and domain/server calls reject it. Legacy absence retains the previous vocabulary and validation behavior. New order snapshots of existing plan facts remain historical copies, not raw-label rewrites.
+- Settings exposes the culinary place choice and explains empty configuration; ambiguous aliases that coincide with another active place are rejected on both TS and C# boundaries. New optional field is included in closed-schema and owner-only difference checks. Existing source records, snapshots and imports remain unchanged.
+
+RED commands and observed failures:
+- `node --experimental-strip-types --test tests/locations.test.mjs`: 5 failures on the reviewed implementation, including planned coverage mismatch, missing inactive-entry rejection, and first-place manual-plan assignment. Added helpers were initially absent.
+- `../dotnet/dotnet run --project server/Tests/Kitchen.Policy.Tests.csproj --no-restore --disable-build-servers -p:UseSharedCompilation=false -- import/2026.json` with the documented local environment: 74 passed / 3 failed. Server accepted inactive new entries and empty-active-list writes; explicit planning location was not yet recognized.
+
+GREEN commands and results:
+- `npm test`: 143 passed / 0 failed. Seven location behavior tests cover mapped purchasing coverage, preserved zero, unrelated-place exclusion, explicit planning selection, empty-vs-absent configuration, historical availability, remembered-choice sanitation, inactive new-entry denial, historical correction, generated/manual plan location, raw-label preservation and ambiguous mappings.
+- `npm run build`: TypeScript and production build passed.
+- `npm run build:server`: 98 passed / 0 failed; plugin package built and verified. TS/C# v2 corpus additionally covers explicit culinary configuration, active canonical movement/manual plan/receipt creation and empty configuration preserving existing facts. Dedicated server cases reject inactive new movement/receipt/plan candidates and enforce owner-only culinary-place changes.
+- Existing synthetic acceptance suite rebuilt with the documented net10 no-shared-compiler command and executed locally: 41 passed / 0 failed.
+- `git diff --check`: clean. M1 remains explicit: NU1900 indicates the vulnerability feed was unavailable; behavioral tests/build passed, but this run did not complete a dependency vulnerability audit. No warning-free or audit-passed claim is made.
+
+Independent rereview and actual coordinated Microsoft acceptance remain parent-owned gates. No new live app, upload, grant, deployment, synthetic provider file or billable service was created.

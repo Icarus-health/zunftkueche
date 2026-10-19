@@ -171,6 +171,7 @@ if(args.Length>2)Check("actual TS protocol v2 candidate target signature and arc
  foreach(var q in (JArray)corpus["requests"]!){store.Receipt=null;var response=Protocol.Commit(q.ToString(),actor,true,store);if((string?)response["status"]!="saved"||!JToken.DeepEquals(Protocol.Canonical(response["state"]!),Protocol.Canonical(q["candidateState"]!))||(string?)response["targetEventId"]!=(string?)q["targetEventId"])throw new Exception("v2 parity failed: "+q["operationId"]);}
 });
 EventContextTests.Run(Check,seed);
+LocationTests.Run(Check,seed);
 GuardTests.Run(Check);
 WrapperTests.Run(Check);
 RequestBindingTests.Run(Check,seed);

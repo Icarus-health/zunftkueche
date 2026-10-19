@@ -1,3 +1,4 @@
+import {historicalLocations,purchasingLocation,sameLocation} from "../domain/locations.ts";
 import { ResponsiveTable } from "../components/MobileItemCard.tsx";
 import { useState } from "react";
 import { Printer } from "@phosphor-icons/react";
@@ -20,12 +21,11 @@ import {
   kitchenDays,
   receiptTotals,
   eventDate,
-  configuredLocations,
 } from "../ui/facts.ts";
 export default function Analysis({ state, busy, commit, go }: ScreenProps) {
   const {navigate} = useDraftNavigation();
   const [tab, setTab] = useState("Verkäufe erfassen"),
-    [scope, setScope] = useState("Küche"),
+    [scope, setScope] = useState(purchasingLocation(state) ?? "Alle"),
     [search, setSearch] = useState("");
   const expected = state.menu.length * 2,
     entered = state.sales.filter(
@@ -36,7 +36,7 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
     ),
     revenue = summarizeSales(sales),
     scoped = state.invoices.filter(
-      (i) => scope === "Alle" || i.scope === scope,
+      (i) => scope === "Alle" || sameLocation(state,i.scope,scope),
     ),
     costs = receiptTotals(scoped),
     menu = state.menu.filter((m) =>
@@ -44,12 +44,10 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
     );
   const stockArticles = state.articles.filter((a) =>
     state.movements.some(
-      (m) => m.articleId === a.id && (m.location ?? "Küche") === "Küche",
+      (m) => m.articleId === a.id && sameLocation(state,m.location,purchasingLocation(state)),
     ),
   );
-  const scopes = [
-    ...new Set([...configuredLocations(state), ...state.invoices.map((i) => i.scope)]),
-  ];
+  const scopes = historicalLocations(state);
   return (
     <>
       <Heading
@@ -355,7 +353,7 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
               </button>
             </section>
           </div>
-          <h2>Bestand Küche · Rechnung und Zählung</h2>
+          <h2>Bestand {purchasingLocation(state) ?? "· Küchenort offen"} · Rechnung und Zählung</h2>
           {stockArticles.length ? (
             <div className="table-card">
               <ResponsiveTable>

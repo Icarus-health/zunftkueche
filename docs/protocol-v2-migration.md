@@ -29,3 +29,9 @@ New pending bytes use `zunftkueche.pending.v2.<organization>.<user>.<workspace>`
 5. Keep original receipt bytes, historical snapshots and 512 KiB limit intact. Report actual device/host evidence separately from synthetic tests.
 
 The old DenialContinuation checkpoint and legacy ExpectedState helper deliberately remain protocol-1 historical evidence. They are not migration routines and must not be executed against this release. The active RuntimeChecks builder now uses protocol 2 and confirmed load identity; original continuation artifacts/hashes remain untouched. No live scripts were run in Task 2.
+
+## Location clarification after Task 2 review
+
+Optional owner-only `event.purchasingLocation` selects the active culinary planning place. If absent, only the literal legacy `Küche` or its explicitly confirmed alias identifies that place; array position never does. An explicit null means not selected. Active configuration without a matching kitchen or selection blocks purchasing calculations/creation until configured. This prevents an unrelated Bar from becoming kitchen stock merely because it appears first.
+
+`event.locations` absent preserves legacy vocabulary/validation. An explicitly empty array means no active places: no new movement, receipt or purchase entry can use historical labels to bypass it. New entries in configured events require an active canonical name. Historical filters and existing receipt corrections may retain historically used labels; original records are not rewritten. Alias resolution is used only for reads/calculations and cannot ambiguously map another active place. Incorrect user-confirmed aliases can combine balances incorrectly, so mappings and purchasing location must be intentionally reviewed by the owner. No mapping is inferred from similar spelling.

@@ -1,3 +1,4 @@
+import {activeLocations,historicalLocations,newEntryLocation,sameLocation} from "../domain/locations.ts";
 import { useDraftGuard } from "../hooks/useDraftGuard.ts";
 import { DiscardChangesDialog } from "../components/DiscardChangesDialog.tsx";
 import { ResponsiveTable } from "../components/MobileItemCard.tsx";
@@ -15,7 +16,7 @@ import {
 } from "../components/shared.tsx";
 import { parseQuantity } from "../domain/kitchen.ts";
 import { stockSummary } from "../domain/workflow.ts";
-import { deliveryDays, configuredLocations } from "../ui/facts.ts";
+import { deliveryDays } from "../ui/facts.ts";
 const kinds = [
   ["stock.opening", "Anfangsbestand", "Anfangsbestand"],
   ["delivery.record", "Lieferung", "Lieferung"],
@@ -39,7 +40,7 @@ export default function Deliveries({
     [article, setArticle] = useState(state.articles[0]?.id ?? ""),
     [day, setDay] = useState("Freitag"),
     [raw, setRaw] = useState(""),
-    [location, setLocation] = useState(lastLocation && [...configuredLocations(state),...state.movements.map(m=>m.location)].includes(lastLocation) ? lastLocation : configuredLocations(state)[0] ?? "Küche"),
+    [location, setLocation] = useState(newEntryLocation(state,lastLocation)),
     [note, setNote] = useState(""),
     [error, setError] = useState(""),
     [search, setSearch] = useState("");
@@ -51,12 +52,7 @@ export default function Deliveries({
     ),
     selected = state.articles.find((a) => a.id === article),
     kind = kinds.find((k) => k[0] === type)![1],
-    locations = [
-      ...new Set([
-        ...configuredLocations(state),
-        ...state.movements.map((m) => m.location),
-      ]),
-    ],
+    locations = tab === "Erfassen" ? activeLocations(state) : historicalLocations(state),
     summary = selected ? stockSummary(state, selected.id, location) : null;
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -80,7 +76,7 @@ export default function Deliveries({
   }
   const entries = state.movements.filter(
     (m) =>
-      m.location === location &&
+      sameLocation(state,m.location,location) &&
       (!supplier ||
         state.articles.some(
           (a) => a.id === m.articleId && a.supplierId === supplier,
@@ -97,7 +93,7 @@ export default function Deliveries({
       <Tabs
         items={["Erfassen", "Bestandsübersicht"]}
         value={tab}
-        onChange={setTab}
+        onChange={next=>{setTab(next);if(next==="Erfassen")setLocation(newEntryLocation(state,location));}}
         label="Lageransicht"
       />
       <div className="toolbar">
@@ -133,6 +129,7 @@ export default function Deliveries({
                 navigate(() => setLocation(value));
               }}
           >
+            {!locations.length && <option value="">Kein aktiver Ort eingerichtet</option>}
             {locations.map((l) => (
               <option key={l}>{l}</option>
             ))}
@@ -161,8 +158,9 @@ export default function Deliveries({
                   <Truck size={24} />
                   {kind} erfassen
                 </h2>
+                {!activeLocations(state).length && <p role="status">Bitte zuerst einen aktiven Ort in den Einstellungen einrichten. Historische Bestände bleiben in der Bestandsübersicht sichtbar.</p>}
                 <form onSubmit={save}>
-                  <fieldset disabled={busy}>
+                  <fieldset disabled={busy || !activeLocations(state).includes(location)}>
                     <label>
                       Art der Erfassung
                       <select
@@ -357,7 +355,7 @@ export default function Deliveries({
                         <button
                           className="text-button"
                           onClick={() => {
-                            navigate(() => {setArticle(a.id);setTab("Erfassen");});
+                            navigate(() => {setArticle(a.id);setLocation(newEntryLocation(state,location));setTab("Erfassen");});
                           }}
                         >
                           Erfassen
