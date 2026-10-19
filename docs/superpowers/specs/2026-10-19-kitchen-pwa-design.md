@@ -1,5 +1,7 @@
 # Eigenständige Zunftküche als PWA
 
+**Überholt durch die anschließende Nutzerkorrektur vom 19. Oktober 2026:** Die Lösung soll ohne zusätzliche laufende Kosten möglichst mit den vorhandenen Microsoft-Lizenzen betrieben werden. Render und andere kostenpflichtige Hosting-Angebote sind nicht freigegeben. Der folgende Entwurf bleibt als historische Alternative erhalten und ist keine aktive Umsetzungsfreigabe. Zunächst wird die bereits funktionierende Power-Apps-Code-App mit Dataverse weitergenutzt; ein App-Symbol oder eigenes Browserfenster ist getrennt von einer eigenständigen/offlinefähigen PWA zu bewerten.
+
 Stand 19. Oktober 2026. Konkreter Entwurf zur Prüfung; die eigenständige PWA ist noch nicht implementiert und kostenpflichtiges Hosting noch nicht beauftragt. Der Nutzer hat den Wechsel zur PWA und die Weiterentwicklung beauftragt und fragt nach Hosting und Entwicklung. Dieser Entwurf konkretisiert den neuen Betrieb und die Umstellung.
 
 ## Ziel und vorhandener Stand
