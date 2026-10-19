@@ -221,10 +221,10 @@ test("Originalbelegbeträge bleiben unveränderbar, Ergänzungen bewahren Origin
   );
   assert.throws(
     () =>
-      apply(s, "invoice.update", { ...original, grossCents: 1, netCents: 1 }),
+      apply(s, "invoice.update", { reason: "Testkorrektur laut Beleg",  ...original, grossCents: 1, netCents: 1 }),
     /Originalbeleg/,
   );
-  s = apply(s, "invoice.update", {
+  s = apply(s, "invoice.update", { reason: "Testkorrektur laut Beleg",
     ...original,
     scope: "Küche",
     documentUrl: "https://test.sharepoint.com/sites/kueche/beleg.pdf",
@@ -237,7 +237,7 @@ test("Originalbelegbeträge bleiben unveränderbar, Ergänzungen bewahren Origin
   assert.equal(updated.corrected, true);
   assert.equal(updated.corrections.length, 1);
   assert.deepEqual(updated.corrections[0].before, original);
-  const linked = apply(structuredClone(seed), "invoice.link", {
+  const linked = apply(structuredClone(seed), "invoice.link", { reason: "Testkorrektur laut Beleg",
     id: original.id,
     url: "https://test.sharepoint.com/sites/kueche/original.pdf",
   }).invoices.find((i) => i.id === original.id);
@@ -249,7 +249,7 @@ test("Korrektur einer Listenangabe ohne Original bewahrt Ausgangswerte und alle 
   const original = structuredClone(
     s.invoices.find((i) => i.id === "r-rewe-list-1"),
   );
-  s = apply(s, "invoice.update", {
+  s = apply(s, "invoice.update", { reason: "Testkorrektur laut Beleg",
     ...original,
     grossCents: 2000,
     netCents: 1000,
@@ -257,7 +257,7 @@ test("Korrektur einer Listenangabe ohne Original bewahrt Ausgangswerte und alle 
   let updated = s.invoices.find((i) => i.id === original.id);
   assert.deepEqual(updated.sourceBaseline, original);
   assert.equal(updated.corrected, true);
-  s = apply(s, "invoice.update", { ...updated, grossCents: 3000 });
+  s = apply(s, "invoice.update", { reason: "Testkorrektur laut Beleg",  ...updated, grossCents: 3000 });
   updated = s.invoices.find((i) => i.id === original.id);
   assert.equal(updated.grossCents, 3000);
   assert.deepEqual(updated.sourceBaseline, original);

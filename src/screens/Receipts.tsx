@@ -1,4 +1,10 @@
-import {activeLocations,historicalLocations,newEntryLocation,sameLocation} from "../domain/locations.ts";
+import { AuditStamp } from "../components/CorrectionDialog.tsx";
+import {
+  activeLocations,
+  historicalLocations,
+  newEntryLocation,
+  sameLocation,
+} from "../domain/locations.ts";
 import { ResponsiveTable } from "../components/MobileItemCard.tsx";
 import { useState } from "react";
 import {
@@ -27,7 +33,7 @@ import {
   receiptOriginalLabel,
 } from "../ui/facts.ts";
 export default function Receipts(props: ScreenProps) {
-  const {navigate} = useDraftNavigation();
+  const { navigate } = useDraftNavigation();
   const { state, busy, mode } = props,
     [selected, setSelected] = useState<string | null>(null),
     [adding, setAdding] = useState(false),
@@ -37,7 +43,7 @@ export default function Receipts(props: ScreenProps) {
   const scopes = historicalLocations(state);
   const invoices = state.invoices.filter(
     (i) =>
-      (scope === "Alle" || sameLocation(state,i.scope,scope)) &&
+      (scope === "Alle" || sameLocation(state, i.scope, scope)) &&
       (status === "Alle" || i.status === status) &&
       `${i.number} ${state.suppliers.find((s) => s.id === i.supplierId)?.name ?? ""}`
         .toLowerCase()
@@ -68,10 +74,13 @@ export default function Receipts(props: ScreenProps) {
       <div className="toolbar receipt-filters">
         <label>
           Zuordnung
-          <select value={scope} onChange={(e) => {
-                const value = e.target.value;
-                navigate(() => setScope(value));
-              }}>
+          <select
+            value={scope}
+            onChange={(e) => {
+              const value = e.target.value;
+              navigate(() => setScope(value));
+            }}
+          >
             <option value="Alle">Alle Zuordnungen</option>
             {scopes.map((s) => (
               <option key={s}>{s}</option>
@@ -80,10 +89,13 @@ export default function Receipts(props: ScreenProps) {
         </label>
         <label>
           Originalstatus
-          <select value={status} onChange={(e) => {
-                const value = e.target.value;
-                navigate(() => setStatus(value));
-              }}>
+          <select
+            value={status}
+            onChange={(e) => {
+              const value = e.target.value;
+              navigate(() => setStatus(value));
+            }}
+          >
             <option value="Alle">Alle Belege</option>
             {[
               ...new Set([
@@ -104,9 +116,9 @@ export default function Receipts(props: ScreenProps) {
             placeholder="Nummer oder Lieferant"
             value={search}
             onChange={(e) => {
-                const value = e.target.value;
-                navigate(() => setSearch(value));
-              }}
+              const value = e.target.value;
+              navigate(() => setSearch(value));
+            }}
           />
         </label>
       </div>
@@ -279,9 +291,7 @@ function ReceiptEditor({
   item,
   onClose,
 }: ScreenProps & { item?: Receipt; onClose: () => void }) {
-  const immutable = Boolean(
-    item?.source && item.status === "Original vorhanden",
-  );
+  const [reason, setReason] = useState("");
   const [supplierId, setSupplier] = useState(
       item?.supplierId ?? state.suppliers[0]?.id ?? "",
     ),
@@ -311,28 +321,29 @@ function ReceiptEditor({
     e.preventDefault();
     try {
       const payload = {
-        ...(item ? { id: item.id } : {}),
-        supplierId: immutable ? item!.supplierId : supplierId,
-        number: immutable ? item!.number : number,
-        date: immutable
-          ? (item!.date ?? null)
-          : String(new FormData(e.currentTarget).get("documentDate") ?? "") ||
-            null,
-        grossCents: immutable ? item!.grossCents : parseMoney(gross),
-        netCents: immutable ? item!.netCents : parseMoney(net),
+        supplierId,
+        number,
+        date:
+          String(new FormData(e.currentTarget).get("documentDate") ?? "") ||
+          null,
+        grossCents: parseMoney(gross),
+        netCents: parseMoney(net),
         scope,
         documentUrl: url || null,
-        lines: immutable
-          ? item!.lines
-          : lines.map((l) => ({
-              ...(l.articleId ? { articleId: l.articleId } : {}),
-              name: l.name,
-              quantity: parseQuantity(l.quantity),
-              unit: l.unit,
-              netCents: parseMoney(l.net),
-            })),
+        lines: lines.map((l) => ({
+          ...(l.articleId ? { articleId: l.articleId } : {}),
+          name: l.name,
+          quantity: parseQuantity(l.quantity),
+          unit: l.unit,
+          netCents: parseMoney(l.net),
+        })),
       };
-      if (await commit(item ? "invoice.update" : "invoice.save", payload))
+      if (
+        await commit(
+          item ? "invoice.correct" : "invoice.save",
+          item ? { invoiceId: item.id, changes: payload, reason } : payload,
+        )
+      )
         onClose();
       else setError("Noch nicht gespeichert. Bitte den Hinweis oben beachten.");
     } catch (e) {
@@ -345,6 +356,12 @@ function ReceiptEditor({
       onClose={onClose}
     >
       {item && (
+        <Notice>
+          Änderungen werden als Berichtigung gespeichert. Original,
+          Ausgangsstand und frühere Korrekturen bleiben erhalten.
+        </Notice>
+      )}
+      {item && (
         <>
           <div className="receipt-status-row">
             <span className="badge">{receiptOriginalLabel(item, mode)}</span>
@@ -352,14 +369,7 @@ function ReceiptEditor({
               <span className="badge amber">Ergänzt / korrigiert</span>
             )}
           </div>
-          <ReceiptFacts
-            item={item}
-            title={
-              immutable
-                ? "Beträge und Positionen aus dem Original"
-                : "Aktueller erfasster Stand"
-            }
-          />
+          <ReceiptFacts item={item} title="Aktueller erfasster Stand" />
           {item.documentUrl && (
             <a
               className="button secondary"
@@ -386,7 +396,7 @@ function ReceiptEditor({
           {item.sourceBaseline && (
             <details className="correction-history">
               <summary>
-                Ursprünglicher Quellenstand und Änderungsverlauf (
+                Erster bewahrter Stand und Änderungsverlauf (
                 {item.corrections?.length ?? 0})
               </summary>
               <p>
@@ -395,27 +405,46 @@ function ReceiptEditor({
               </p>
               <ReceiptFacts
                 item={item.sourceBaseline}
-                title="Unveränderter ursprünglicher Quellenstand"
+                title="Unveränderter Ausgangsstand"
               />
               {item.corrections?.map((c) => (
                 <details key={c.operationId}>
                   <summary>Stand vor Änderung · Revision {c.revision}</summary>
+                  <p>
+                    {c.reason ?? "Historischer Eintrag ohne erfassten Grund"}
+                  </p>
+                  <AuditStamp entry={c} />
                   <ReceiptFacts item={c.before} title="Vorheriger Stand" />
+                  {c.after && (
+                    <ReceiptFacts
+                      item={c.after}
+                      title="Bestätigter neuer Stand"
+                    />
+                  )}
                 </details>
               ))}
             </details>
           )}
         </>
       )}
-      {!item && !activeLocations(state).length && <p role="status">Für einen neuen Beleg bitte zuerst einen aktiven Ort in den Einstellungen einrichten.</p>}
+      {!item && !activeLocations(state).length && (
+        <p role="status">
+          Für einen neuen Beleg bitte zuerst einen aktiven Ort in den
+          Einstellungen einrichten.
+        </p>
+      )}
       <form onSubmit={save}>
         <fieldset disabled={busy || (!item && !activeLocations(state).length)}>
-          {immutable && (
-            <Notice>
-              Die wirtschaftlichen Angaben dieses Originalbelegs sind fest. Du
-              kannst die Zuordnung ergänzen und ein SharePoint-Dokument
-              verknüpfen; die Quelle und der Verlauf bleiben erhalten.
-            </Notice>
+          {item && (
+            <label>
+              Korrekturgrund
+              <textarea
+                required
+                maxLength={1000}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </label>
           )}
           {item?.source && item.status === "Original fehlt" && (
             <Notice>
@@ -429,7 +458,6 @@ function ReceiptEditor({
               Lieferant
               <select
                 value={supplierId}
-                disabled={immutable}
                 onChange={(e) => {
                   setSupplier(e.target.value);
                   setLines(lines.map((l) => ({ ...l, articleId: "" })));
@@ -447,7 +475,6 @@ function ReceiptEditor({
               <input
                 required
                 value={number}
-                readOnly={immutable}
                 maxLength={100}
                 onChange={(e) => setNumber(e.target.value)}
               />
@@ -460,7 +487,6 @@ function ReceiptEditor({
                 name="documentDate"
                 type="date"
                 defaultValue={item?.date ?? ""}
-                readOnly={immutable}
               />
             </label>
             <label>
@@ -478,7 +504,6 @@ function ReceiptEditor({
               <input
                 inputMode="decimal"
                 value={gross}
-                readOnly={immutable}
                 onChange={(e) => setGross(e.target.value)}
                 placeholder="Offen"
               />
@@ -488,13 +513,12 @@ function ReceiptEditor({
               <input
                 inputMode="decimal"
                 value={net}
-                readOnly={immutable}
                 onChange={(e) => setNet(e.target.value)}
                 placeholder="Offen"
               />
             </label>
           </div>
-          {!immutable && (
+          {
             <>
               <h3 className="form-section-title">Positionen (optional)</h3>
               {lines.map((l, i) => (
@@ -621,7 +645,7 @@ function ReceiptEditor({
                 Belegposition ergänzen
               </button>
             </>
-          )}
+          }
           <label>
             SharePoint-Original (optional)
             <input
@@ -642,7 +666,7 @@ function ReceiptEditor({
           )}
           <div className="modal-actions">
             <button className="button primary" type="submit">
-              {item ? "Ergänzung / Änderung speichern" : "Beleg speichern"}
+              {item ? "Berichtigung speichern" : "Beleg speichern"}
             </button>
           </div>
         </fieldset>

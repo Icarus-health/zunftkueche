@@ -1,4 +1,11 @@
-import {requireActiveLocation,requirePurchasingLocation,requireReceiptLocation} from "./locations.ts";
+import { movementQuantity, salePrice, receiptSnapshot } from "./corrections.ts";
+import type { ValueCorrection, AuditEntry } from "./corrections.ts";
+import { nextOrderStatus } from "./order-status.ts";
+import {
+  requireActiveLocation,
+  requirePurchasingLocation,
+  requireReceiptLocation,
+} from "./locations.ts";
 import { prepareOrder, recipeCost } from "./kitchen.ts";
 import type { PlanLine, Source } from "./kitchen.ts";
 import { purchasingNeeds } from "./workflow.ts";
@@ -48,11 +55,15 @@ export interface Receipt {
   lines: ReceiptLine[];
   sourceBaseline?: ReceiptSnapshot;
   corrected?: boolean;
-  corrections?: Array<{
-    operationId: string;
-    revision: number;
-    before: ReceiptSnapshot;
-  }>;
+  corrections?: Array<
+    AuditEntry & {
+      operationId: string;
+      revision: number;
+      before: ReceiptSnapshot;
+      after?: ReceiptSnapshot;
+      reason?: string;
+    }
+  >;
 }
 export type ReceiptSnapshot = Omit<
   Receipt,
@@ -75,7 +86,7 @@ export interface KitchenState {
     deliveryAddress?: string;
     contact?: string;
     purchasingLocation?: string | null;
-    locations?: Array<{name:string;historicalNames:string[]}>;
+    locations?: Array<{ name: string; historicalNames: string[] }>;
   };
   suppliers: Supplier[];
   articles: Article[];
@@ -99,6 +110,8 @@ export interface KitchenState {
     note?: string;
   }>;
   orders: any[];
+  movementCorrections?: ValueCorrection[];
+  salePriceCorrections?: ValueCorrection[];
   dishPlan: DishPlan[];
   lessons: any[];
   sourceNotice: string;
@@ -232,8 +245,7 @@ function economicFacts(
     ]),
   ]);
 }
-function preserveSourceHistory(receipt: Receipt, op: Operation): void {
-  if (!receipt.source) return;
+function preserveReceiptHistory(receipt: Receipt, op: Operation): void {
   const {
     sourceBaseline: _baseline,
     corrected: _corrected,
@@ -243,7 +255,12 @@ function preserveSourceHistory(receipt: Receipt, op: Operation): void {
   receipt.sourceBaseline ??= structuredClone(before);
   receipt.corrections = [
     ...(receipt.corrections ?? []),
-    { operationId: op.id, revision: op.baseRevision + 1, before },
+    {
+      operationId: op.id,
+      revision: op.baseRevision + 1,
+      before,
+      reason: text(op.payload.reason, "Korrekturgrund", 1000),
+    },
   ];
   receipt.corrected = true;
 }
@@ -260,7 +277,11 @@ function requestSignature(op: Operation): string {
     return value;
   };
   const result = JSON.stringify(
-    canonical({ type: op.type, payload: op.payload, ...(op.targetEventId ? {targetEventId: op.targetEventId} : {}) }),
+    canonical({
+      type: op.type,
+      payload: op.payload,
+      ...(op.targetEventId ? { targetEventId: op.targetEventId } : {}),
+    }),
   );
   if (result.length > 50000) throw new Error("Vorgang ist zu umfangreich.");
   return result;
@@ -291,7 +312,7 @@ export function applyOperation(
   if (op.baseRevision !== (state.revision ?? 0))
     return { status: "conflict", state };
   const next = structuredClone(state),
-    p = op.payload;
+    p = structuredClone(op.payload);
   switch (op.type) {
     case "supplier.save": {
       const id = p.id === undefined ? op.id : text(p.id, "ID", 100),
@@ -426,6 +447,8 @@ export function applyOperation(
         dates: {},
       };
       next.sales = [];
+      next.movementCorrections = [];
+      next.salePriceCorrections = [];
       next.movements = [];
       next.invoices = [];
       next.orders = [];
@@ -466,26 +489,59 @@ export function applyOperation(
     }
     case "event.settings": {
       next.event.name = text(p.name, "Veranstaltungsname");
-      if (!Number.isInteger(p.year) || p.year < 1900 || p.year > 2200) throw new Error("Jahr ist ungültig.");
+      if (!Number.isInteger(p.year) || p.year < 1900 || p.year > 2200)
+        throw new Error("Jahr ist ungültig.");
       next.event.year = p.year;
-      next.event.deliveryAddress = text(p.deliveryAddress, "Lieferadresse", 1000, true);
+      next.event.deliveryAddress = text(
+        p.deliveryAddress,
+        "Lieferadresse",
+        1000,
+        true,
+      );
       next.event.contact = text(p.contact, "Ansprechpartner", 200, true);
-      if (!Array.isArray(p.locations) || p.locations.length > 100) throw new Error("Orte sind ungültig.");
-      const names = new Set<string>(), aliases = new Set<string>();
-      const historical = new Set([...next.planLines.map(l=>l.location), ...next.movements.map(l=>l.location), ...next.invoices.map(l=>l.scope)].filter(Boolean));
-      next.event.locations = p.locations.map((l:any) => {
+      if (!Array.isArray(p.locations) || p.locations.length > 100)
+        throw new Error("Orte sind ungültig.");
+      const names = new Set<string>(),
+        aliases = new Set<string>();
+      const historical = new Set(
+        [
+          ...next.planLines.map((l) => l.location),
+          ...next.movements.map((l) => l.location),
+          ...next.invoices.map((l) => l.scope),
+        ].filter(Boolean),
+      );
+      next.event.locations = p.locations.map((l: any) => {
         const name = text(l.name, "Ort", 100);
-        if(names.has(name)||!Array.isArray(l.historicalNames))throw new Error("Orte sind nicht eindeutig.");
+        if (names.has(name) || !Array.isArray(l.historicalNames))
+          throw new Error("Orte sind nicht eindeutig.");
         names.add(name);
-        const historicalNames=l.historicalNames.map((raw:unknown)=>{const v=text(raw,"Historischer Ort",100);if(aliases.has(v)||!historical.has(v))throw new Error("Historische Zuordnung ist ungültig.");aliases.add(v);return v;});
-        return {name,historicalNames};
+        const historicalNames = l.historicalNames.map((raw: unknown) => {
+          const v = text(raw, "Historischer Ort", 100);
+          if (aliases.has(v) || !historical.has(v))
+            throw new Error("Historische Zuordnung ist ungültig.");
+          aliases.add(v);
+          return v;
+        });
+        return { name, historicalNames };
       });
       for (const location of next.event.locations!)
-        if (location.historicalNames.some(alias => alias !== location.name && names.has(alias)))
-          throw new Error("Historischer Ort ist zugleich ein anderer aktiver Ort.");
+        if (
+          location.historicalNames.some(
+            (alias) => alias !== location.name && names.has(alias),
+          )
+        )
+          throw new Error(
+            "Historischer Ort ist zugleich ein anderer aktiver Ort.",
+          );
       if (Object.hasOwn(p, "purchasingLocation"))
-        next.event.purchasingLocation = p.purchasingLocation === null ? null : text(p.purchasingLocation, "Ort", 100);
-      if (next.event.purchasingLocation != null && !names.has(next.event.purchasingLocation))
+        next.event.purchasingLocation =
+          p.purchasingLocation === null
+            ? null
+            : text(p.purchasingLocation, "Ort", 100);
+      if (
+        next.event.purchasingLocation != null &&
+        !names.has(next.event.purchasingLocation)
+      )
         throw new Error("Der Ort für die Küchenplanung muss aktiv sein.");
       // Dates share the same validation as the existing date editor.
     }
@@ -541,6 +597,81 @@ export function applyOperation(
         )
           line.quantity = 0;
       break;
+    }
+    case "movement.correct": {
+      const original = next.movements.find((m) => m.id === p.movementId);
+      if (!original) throw new Error("Buchung nicht gefunden.");
+      const after = quantity(p.replacementQuantity)!;
+      const before = movementQuantity(next, original);
+      if (before === after) throw new Error("Menge ist unverändert.");
+      (next.movementCorrections ??= []).push({
+        operationId: op.id,
+        revision: op.baseRevision + 1,
+        targetId: original.id,
+        before,
+        after,
+        reason: text(p.reason, "Korrekturgrund", 1000),
+      });
+      break;
+    }
+    case "sales.correctPrice": {
+      const original = next.sales.find((s) => s.id === p.saleId);
+      if (!original) throw new Error("Verkaufsposition nicht gefunden.");
+      const after = money(p.priceCents);
+      if (after === null)
+        throw new Error("Berichtigter Preis muss bekannt sein.");
+      const before = salePrice(next, original);
+      if (before === after) throw new Error("Preis ist unverändert.");
+      (next.salePriceCorrections ??= []).push({
+        operationId: op.id,
+        revision: op.baseRevision + 1,
+        targetId: original.id,
+        before,
+        after,
+        reason: text(p.reason, "Korrekturgrund", 1000),
+      });
+      break;
+    }
+    case "order.mark": {
+      const order = next.orders.find((o) => o.id === p.orderId);
+      if (!order) throw new Error("Bestellfassung nicht gefunden.");
+      nextOrderStatus(order, p.status);
+      (order.statusHistory ??= []).push({
+        operationId: op.id,
+        revision: op.baseRevision + 1,
+        status: p.status,
+        note: text(p.note, "Notiz", 1000, true),
+      });
+      order.status = p.status;
+      break;
+    }
+    case "invoice.correct": {
+      const existing = next.invoices.find((i) => i.id === p.invoiceId);
+      if (!existing) throw new Error("Beleg nicht gefunden.");
+      if (
+        !p.changes ||
+        typeof p.changes !== "object" ||
+        Array.isArray(p.changes) ||
+        Object.keys(p.changes).some(
+          (k) =>
+            ![
+              "supplierId",
+              "number",
+              "date",
+              "grossCents",
+              "netCents",
+              "scope",
+              "documentUrl",
+              "lines",
+            ].includes(k),
+        )
+      )
+        throw new Error("Belegänderung ist ungültig.");
+      Object.assign(p, {
+        ...receiptSnapshot(existing),
+        ...p.changes,
+        reason: text(p.reason, "Korrekturgrund", 1000),
+      });
     }
     case "invoice.save":
     case "invoice.update": {
@@ -598,7 +729,11 @@ export function applyOperation(
         date: date(p.date),
         grossCents,
         netCents,
-        scope: requireReceiptLocation(next,text(p.scope, "Zuordnung", 100),!!existing),
+        scope: requireReceiptLocation(
+          next,
+          text(p.scope, "Zuordnung", 100),
+          !!existing,
+        ),
         documentUrl: sharepoint(p.documentUrl),
         lines,
       };
@@ -606,23 +741,27 @@ export function applyOperation(
         const changedFacts = economicFacts(existing) !== economicFacts(values);
         const original =
           !!existing.source && existing.status === "Original vorhanden";
-        if (original && changedFacts)
+        if (original && changedFacts && op.type !== "invoice.correct")
           throw new Error(
-            "Wirtschaftliche Angaben des Originalbelegs bleiben unveränderbar. Zuordnung und Dokumentlink können ergänzt werden.",
+            "Wirtschaftliche Angaben des Originalbelegs brauchen eine ausdrückliche Berichtigung mit Grund. Zuordnung und Dokumentlink können ergänzt werden.",
           );
+        const changes =
+          original && op.type !== "invoice.correct"
+            ? { scope: values.scope, documentUrl: values.documentUrl }
+            : values;
+        const before = receiptSnapshot(existing);
         if (
-          changedFacts ||
-          existing.scope !== values.scope ||
-          existing.documentUrl !== values.documentUrl
+          JSON.stringify(before) !== JSON.stringify({ ...before, ...changes })
         )
-          preserveSourceHistory(existing, op);
-        if (original)
-          Object.assign(existing, {
-            scope: values.scope,
-            documentUrl: values.documentUrl,
-          });
-        else Object.assign(existing, values);
-      } else next.invoices.push({ id, ...values, status: "Erfasst" });
+          preserveReceiptHistory(existing, op);
+        Object.assign(existing, changes);
+        const last = existing.corrections?.at(-1);
+        if (last?.operationId === op.id) last.after = receiptSnapshot(existing);
+      } else {
+        const receipt: Receipt = { id, ...values, status: "Erfasst" };
+        receipt.sourceBaseline = receiptSnapshot(receipt);
+        next.invoices.push(receipt);
+      }
       break;
     }
     case "plan.quantity": {
@@ -738,7 +877,10 @@ export function applyOperation(
         day: "Allgemein",
         type: "Anfangsbestand",
         quantity: quantity(p.quantity)!,
-        location: requireActiveLocation(next,text(p.location ?? requirePurchasingLocation(next), "Ort", 100)),
+        location: requireActiveLocation(
+          next,
+          text(p.location ?? requirePurchasingLocation(next), "Ort", 100),
+        ),
       });
       break;
     }
@@ -767,7 +909,10 @@ export function applyOperation(
         day,
         type,
         quantity: q,
-        location: requireActiveLocation(next,text(p.location ?? requirePurchasingLocation(next), "Ort", 100)),
+        location: requireActiveLocation(
+          next,
+          text(p.location ?? requirePurchasingLocation(next), "Ort", 100),
+        ),
         note: text(p.note, "Notiz", 1000, true),
       });
       break;
@@ -798,7 +943,10 @@ export function applyOperation(
         (s) => s.menuId === p.menuId && s.day === p.day,
       );
       if (!sale) throw new Error("Verkaufsposition nicht gefunden.");
-      if (sale.priceCents !== null)
+      if (
+        sale.priceCents !== null ||
+        next.salePriceCorrections?.some((c) => c.targetId === sale.id)
+      )
         throw new Error("Bereits erfasster Verkaufspreis bleibt erhalten.");
       if (
         typeof p.priceCents !== "number" ||
@@ -851,8 +999,10 @@ export function applyOperation(
       if (!receipt) throw new Error("Beleg nicht gefunden.");
       const url = sharepoint(p.url);
       if (!url) throw new Error("Link fehlt.");
-      if (receipt.documentUrl !== url) preserveSourceHistory(receipt, op);
+      if (receipt.documentUrl !== url) preserveReceiptHistory(receipt, op);
       receipt.documentUrl = url;
+      if (receipt.corrections?.at(-1)?.operationId === op.id)
+        receipt.corrections.at(-1)!.after = receiptSnapshot(receipt);
       break;
     }
     default:

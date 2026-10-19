@@ -190,7 +190,7 @@ test("Belege lassen sich ergänzen/ändern, verweigern doppelte Nummern und ung�
   };
   s = apply(s, "invoice.save", p);
   const id = s.invoices[0].id;
-  s = apply(s, "invoice.update", {
+  s = apply(s, "invoice.update", { reason: "Testkorrektur laut Beleg",
     ...p,
     id,
     grossCents: 2380,

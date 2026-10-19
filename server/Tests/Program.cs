@@ -63,7 +63,8 @@ Check("source missing-original corrections require true baseline and history", (
     ExpectReject(() => StatePolicy.Validate(next, seed));
     receipt["sourceBaseline"] = before.DeepClone();
     receipt["corrected"] = true;
-    receipt["corrections"] = new JArray(new JObject { { "operationId", "correction" }, { "revision", 1 }, { "before", before } });
+    var after=(JObject)before.DeepClone();after["grossCents"]=999999;
+    receipt["corrections"] = new JArray(new JObject { { "operationId", "correction" }, { "revision", 1 }, { "before", before }, {"after",after},{"reason","Betrag abgelesen"} });
     StatePolicy.Validate(next, seed);
     var tampered = (JObject)next.DeepClone();
     tampered["invoices"]!.OfType<JObject>().First(r => (string?)r["id"] == (string?)receipt["id"])["sourceBaseline"]!["grossCents"] = 1;
@@ -168,8 +169,25 @@ Check("non-owner closure and unknown configuration fail closed", () => {
 if(args.Length>2)Check("actual TS protocol v2 candidate target signature and archive parity",()=>{
  using var reader=new Newtonsoft.Json.JsonTextReader(new StringReader(File.ReadAllText(args[2]))){DateParseHandling=Newtonsoft.Json.DateParseHandling.None};var corpus=JObject.Load(reader);
  var store=new FakeStore((JObject)corpus["initial"]!);store.Row.CanConfigure=true;store.Row.CanClose=true;
- foreach(var q in (JArray)corpus["requests"]!){store.Receipt=null;var response=Protocol.Commit(q.ToString(),actor,true,store);if((string?)response["status"]!="saved"||!JToken.DeepEquals(Protocol.Canonical(response["state"]!),Protocol.Canonical(q["candidateState"]!))||(string?)response["targetEventId"]!=(string?)q["targetEventId"])throw new Exception("v2 parity failed: "+q["operationId"]);}
+ IEnumerable<JObject> Audits(JToken value)=>value is JContainer container ? container.Descendants().OfType<JObject>().Where(o=>o["operationId"]!=null&&o["revision"]!=null) : Enumerable.Empty<JObject>();
+ JObject WithoutConfirmations(JObject value){var result=(JObject)value.DeepClone();foreach(var item in Audits(result)){item.Remove("actorId");item.Remove("confirmedAt");}return result;}
+ foreach(var request in (JArray)corpus["requests"]!){
+  var q=(JObject)request.DeepClone();var known=Audits(store.Row.State).ToDictionary(v=>(string)v["operationId"]!);
+  foreach(var entry in Audits(q["candidateState"]!))if(known.TryGetValue((string)entry["operationId"]!,out var confirmed)){entry["actorId"]=confirmed["actorId"]?.DeepClone();entry["confirmedAt"]=confirmed["confirmedAt"]?.DeepClone();}
+  store.Receipt=null;var response=Protocol.Commit(q.ToString(),actor,true,store);
+  if((string?)response["status"]!="saved"||!JToken.DeepEquals(Protocol.Canonical(WithoutConfirmations((JObject)response["state"]!)),Protocol.Canonical(WithoutConfirmations((JObject)q["candidateState"]!)))||(string?)response["targetEventId"]!=(string?)q["targetEventId"])throw new Exception("v2 parity failed: "+q["operationId"]);
+  foreach(var entry in Audits(response["state"]!).Where(v=>(string?)v["operationId"]==(string?)q["operationId"]))if((string?)entry["actorId"]!=actor.ToString("D")||entry["confirmedAt"]==null)throw new Exception("Missing server confirmation");
+ }
+
 });
+if(args.Length>3) {
+ using var reader=new Newtonsoft.Json.JsonTextReader(new StringReader(File.ReadAllText(args[3]))){DateParseHandling=Newtonsoft.Json.DateParseHandling.None};
+ var file=JObject.Load(reader);var stored=file["state"] as JObject ?? file;
+ Check("actual local legacy schema stays rejected by Microsoft policy",()=>{try{StatePolicy.Validate(stored,stored);}catch(ArgumentException ex){if(ex.Message=="Unsupported schema.")return;throw;}throw new Exception("Legacy schema unexpectedly accepted");});
+ Check("actual local corpus closed fields validate after explicit in-memory schema-only projection",()=>{var projected=(JObject)stored.DeepClone();foreach(var e in StatePolicy.Events(projected))e.Value["schemaVersion"]=2;StatePolicy.Validate(projected,projected);});
+}
+CorrectionTests.Run(Check,seed);
+OrderStatusTests.Run(Check,seed);
 EventContextTests.Run(Check,seed);
 LocationTests.Run(Check,seed);
 GuardTests.Run(Check);

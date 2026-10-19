@@ -23,12 +23,12 @@ apply("order.prepare", { supplierId: "s-wiggenhauser", day: "Mittwoch" });
 apply("article.price", { articleId: "a-1", priceCents: 234.56 });
 apply("sales.quantity", { menuId: "m-1", day: "Freitag", quantity: 10 });
 apply("menu.price", { menuId: "m-1", priceCents: 900 });
-apply("invoice.link", {
+apply("invoice.link", { reason: "Testkorrektur laut Beleg",
   id: state.invoices[0].id,
   url: "https://example.sharepoint.com/doc.pdf",
 });
 const missing = state.invoices.find((r) => r.status === "Original fehlt");
-apply("invoice.update", { ...missing, grossCents: 99999, netCents: 90000 });
+apply("invoice.update", { reason: "Testkorrektur laut Beleg",  ...missing, grossCents: 99999, netCents: 90000 });
 const old = state.event.id;
 apply("event.create", {
   name: "Synthetic next event",

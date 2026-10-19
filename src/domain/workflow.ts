@@ -1,4 +1,5 @@
-import {purchasingLocation,sameLocation} from "./locations.ts";
+import { movementQuantity } from "./corrections.ts";
+import { purchasingLocation, sameLocation } from "./locations.ts";
 import type { KitchenState } from "./state.ts";
 
 export function stockSummary(
@@ -6,9 +7,12 @@ export function stockSummary(
   articleId: string,
   location: string | null = purchasingLocation(state),
 ) {
-  const movements = state.movements.filter(
-    (m) => m.articleId === articleId && sameLocation(state,m.location,location),
-  );
+  const movements = state.movements
+    .map((m) => ({ ...m, quantity: movementQuantity(state, m) }))
+    .filter(
+      (m) =>
+        m.articleId === articleId && sameLocation(state, m.location, location),
+    );
   const opening =
     movements.filter((m) => m.type === "Anfangsbestand").at(-1)?.quantity ??
     null;
@@ -64,7 +68,8 @@ export function purchasingNeeds(
     demand = new Map<string, { required: bigint; missing: string[] }>(),
     missing: string[] = [];
   const location = purchasingLocation(state);
-  if (location === null) missing.push("Aktiver Ort für die Küchenplanung fehlt.");
+  if (location === null)
+    missing.push("Aktiver Ort für die Küchenplanung fehlt.");
   const dishes = state.menu.flatMap((menu) =>
     days.map((day) => ({
       menuId: menu.id,
@@ -111,7 +116,8 @@ export function purchasingNeeds(
   const rows = [...demand].map(([articleId, d]): PurchasingRow => {
     const article = state.articles.find((a) => a.id === articleId),
       issues = [...d.missing];
-    if(location === null) issues.push("Aktiver Ort für die Küchenplanung fehlt.");
+    if (location === null)
+      issues.push("Aktiver Ort für die Küchenplanung fehlt.");
     const opening =
         day === "Gesamt" ? stockSummary(state, articleId).opening : 0,
       packSize = article?.packSize ?? null;
@@ -127,7 +133,7 @@ export function purchasingNeeds(
         !l.purchaseGenerated &&
         (days.concat("Allgemein").includes(l.day) ||
           l.purchaseForWeekend === true) &&
-        sameLocation(state,l.location,location),
+        sameLocation(state, l.location, location),
     );
     if (coverage.some((l) => l.quantity === null))
       issues.push("Manuelle Einkaufsmenge ist offen.");

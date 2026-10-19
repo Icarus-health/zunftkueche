@@ -1,4 +1,13 @@
-import {historicalLocations,purchasingLocation,sameLocation} from "../domain/locations.ts";
+import {
+  CorrectionDialog,
+  AuditStamp,
+} from "../components/CorrectionDialog.tsx";
+import { effectiveSales, salePrice } from "../domain/corrections.ts";
+import {
+  historicalLocations,
+  purchasingLocation,
+  sameLocation,
+} from "../domain/locations.ts";
 import { ResponsiveTable } from "../components/MobileItemCard.tsx";
 import { useState } from "react";
 import { Printer } from "@phosphor-icons/react";
@@ -17,13 +26,11 @@ import {
   Tabs,
   SourceDetails,
 } from "../components/shared.tsx";
-import {
-  kitchenDays,
-  receiptTotals,
-  eventDate,
-} from "../ui/facts.ts";
+import { kitchenDays, receiptTotals, eventDate } from "../ui/facts.ts";
 export default function Analysis({ state, busy, commit, go }: ScreenProps) {
-  const {navigate} = useDraftNavigation();
+  const [correcting, setCorrecting] = useState<string | null>(null);
+  const correction = effectiveSales(state).find((s) => s.id === correcting);
+  const { navigate } = useDraftNavigation();
   const [tab, setTab] = useState("Verkäufe erfassen"),
     [scope, setScope] = useState(purchasingLocation(state) ?? "Alle"),
     [search, setSearch] = useState("");
@@ -31,12 +38,12 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
     entered = state.sales.filter(
       (s) => kitchenDays.some((day) => day === s.day) && s.quantity !== null,
     ).length;
-  const sales = state.sales.filter((s) =>
+  const sales = effectiveSales(state).filter((s) =>
       kitchenDays.some((day) => day === s.day),
     ),
     revenue = summarizeSales(sales),
     scoped = state.invoices.filter(
-      (i) => scope === "Alle" || sameLocation(state,i.scope,scope),
+      (i) => scope === "Alle" || sameLocation(state, i.scope, scope),
     ),
     costs = receiptTotals(scoped),
     menu = state.menu.filter((m) =>
@@ -44,12 +51,31 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
     );
   const stockArticles = state.articles.filter((a) =>
     state.movements.some(
-      (m) => m.articleId === a.id && sameLocation(state,m.location,purchasingLocation(state)),
+      (m) =>
+        m.articleId === a.id &&
+        sameLocation(state, m.location, purchasingLocation(state)),
     ),
   );
   const scopes = historicalLocations(state);
   return (
     <>
+      {correction && (
+        <CorrectionDialog
+          title="Verkaufspreis berichtigen"
+          label="Berichtigter Stückpreis (€)"
+          value={salePrice(state, correction)}
+          money
+          busy={busy}
+          onClose={() => setCorrecting(null)}
+          onSave={(priceCents, reason) =>
+            commit("sales.correctPrice", {
+              saleId: correction.id,
+              priceCents,
+              reason,
+            })
+          }
+        />
+      )}
       <Heading
         eyebrow={`${state.event.name} ${state.event.year}`}
         title="Auswertung mit klarer Grundlage"
@@ -80,9 +106,9 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
                 type="search"
                 value={search}
                 onChange={(e) => {
-                const value = e.target.value;
-                navigate(() => setSearch(value));
-              }}
+                  const value = e.target.value;
+                  navigate(() => setSearch(value));
+                }}
               />
             </label>
             <span className="muted">
@@ -126,7 +152,7 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
                         />
                       </td>
                       {kitchenDays.map((day) => {
-                        const sale = state.sales.find(
+                        const sale = effectiveSales(state).find(
                           (s) => s.menuId === m.id && s.day === day,
                         );
                         return (
@@ -145,7 +171,32 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
                               }
                             />
                             {sale && (
-                              <small>Erfasst zu {euros(sale.priceCents)}</small>
+                              <div>
+                                <small>
+                                  Wirksamer Preis {euros(sale.priceCents)} ·
+                                  ursprünglich{" "}
+                                  {euros(
+                                    state.sales.find((s) => s.id === sale.id)!
+                                      .priceCents,
+                                  )}
+                                </small>
+                                <button
+                                  className="text-button"
+                                  disabled={busy}
+                                  onClick={() => setCorrecting(sale.id)}
+                                >
+                                  Preis berichtigen
+                                </button>
+                                {(state.salePriceCorrections ?? [])
+                                  .filter((c) => c.targetId === sale.id)
+                                  .map((c) => (
+                                    <div key={c.operationId}>
+                                      {euros(c.before)} → {euros(c.after)} ·{" "}
+                                      {c.reason}
+                                      <AuditStamp entry={c} />
+                                    </div>
+                                  ))}
+                              </div>
                             )}
                             {sale && sale.priceCents === null && (
                               <label>
@@ -184,10 +235,13 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
           <div className="toolbar">
             <label>
               Belege nach Zuordnung
-              <select value={scope} onChange={(e) => {
-                const value = e.target.value;
-                navigate(() => setScope(value));
-              }}>
+              <select
+                value={scope}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  navigate(() => setScope(value));
+                }}
+              >
                 <option value="Alle">Alle Zuordnungen</option>
                 {scopes.map((s) => (
                   <option key={s}>{s}</option>
@@ -262,7 +316,7 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
                             (p) => p.menuId === m.id && p.day === day,
                           )?.quantity ?? null,
                         sold =
-                          state.sales.find(
+                          effectiveSales(state).find(
                             (s) => s.menuId === m.id && s.day === day,
                           )?.quantity ?? null;
                       return (
@@ -353,7 +407,10 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
               </button>
             </section>
           </div>
-          <h2>Bestand {purchasingLocation(state) ?? "· Küchenort offen"} · Rechnung und Zählung</h2>
+          <h2>
+            Bestand {purchasingLocation(state) ?? "· Küchenort offen"} ·
+            Rechnung und Zählung
+          </h2>
           {stockArticles.length ? (
             <div className="table-card">
               <ResponsiveTable>

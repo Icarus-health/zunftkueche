@@ -1,4 +1,14 @@
-import {activeLocations,historicalLocations,newEntryLocation,sameLocation} from "../domain/locations.ts";
+import {
+  CorrectionDialog,
+  AuditStamp,
+} from "../components/CorrectionDialog.tsx";
+import { movementQuantity } from "../domain/corrections.ts";
+import {
+  activeLocations,
+  historicalLocations,
+  newEntryLocation,
+  sameLocation,
+} from "../domain/locations.ts";
 import { useDraftGuard } from "../hooks/useDraftGuard.ts";
 import { DiscardChangesDialog } from "../components/DiscardChangesDialog.tsx";
 import { ResponsiveTable } from "../components/MobileItemCard.tsx";
@@ -33,26 +43,34 @@ export default function Deliveries({
   saveError,
   lastLocation,
 }: ScreenProps) {
-  const {navigate, pending} = useDraftNavigation();
+  const [correcting, setCorrecting] = useState<string | null>(null);
+  const correction = state.movements.find((m) => m.id === correcting);
+  const { navigate, pending } = useDraftNavigation();
   const [tab, setTab] = useState("Erfassen"),
     [type, setType] = useState<string>("delivery.record"),
     [supplier, setSupplier] = useState(""),
     [article, setArticle] = useState(state.articles[0]?.id ?? ""),
     [day, setDay] = useState("Freitag"),
     [raw, setRaw] = useState(""),
-    [location, setLocation] = useState(newEntryLocation(state,lastLocation)),
+    [location, setLocation] = useState(newEntryLocation(state, lastLocation)),
     [note, setNote] = useState(""),
     [error, setError] = useState(""),
     [search, setSearch] = useState("");
-  const draft = useDraftGuard({dirty: raw !== "" || note !== "", onDiscard: () => {
-    setRaw(""); setNote(""); setError("");
-  }});
+  const draft = useDraftGuard({
+    dirty: raw !== "" || note !== "",
+    onDiscard: () => {
+      setRaw("");
+      setNote("");
+      setError("");
+    },
+  });
   const articles = state.articles.filter(
       (a) => !supplier || a.supplierId === supplier,
     ),
     selected = state.articles.find((a) => a.id === article),
     kind = kinds.find((k) => k[0] === type)![1],
-    locations = tab === "Erfassen" ? activeLocations(state) : historicalLocations(state),
+    locations =
+      tab === "Erfassen" ? activeLocations(state) : historicalLocations(state),
     summary = selected ? stockSummary(state, selected.id, location) : null;
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -76,7 +94,7 @@ export default function Deliveries({
   }
   const entries = state.movements.filter(
     (m) =>
-      sameLocation(state,m.location,location) &&
+      sameLocation(state, m.location, location) &&
       (!supplier ||
         state.articles.some(
           (a) => a.id === m.articleId && a.supplierId === supplier,
@@ -85,7 +103,28 @@ export default function Deliveries({
   );
   return (
     <>
-      {draft.confirming && <DiscardChangesDialog onDiscard={draft.confirmDiscard} onKeepEditing={draft.keepEditing} />}
+      {draft.confirming && (
+        <DiscardChangesDialog
+          onDiscard={draft.confirmDiscard}
+          onKeepEditing={draft.keepEditing}
+        />
+      )}
+      {correction && (
+        <CorrectionDialog
+          title="Menge berichtigen"
+          label="Berichtigte Menge"
+          value={movementQuantity(state, correction)}
+          busy={busy}
+          onClose={() => setCorrecting(null)}
+          onSave={(replacementQuantity, reason) =>
+            commit("movement.correct", {
+              movementId: correction.id,
+              replacementQuantity,
+              reason,
+            })
+          }
+        />
+      )}
       <Heading eyebrow="Tatsächliche Mengen" title="Lieferungen und Lager">
         Anfang, Zu- und Abgänge ausdrücklich erfassen; gezählte Reste bleiben
         separat.
@@ -93,7 +132,11 @@ export default function Deliveries({
       <Tabs
         items={["Erfassen", "Bestandsübersicht"]}
         value={tab}
-        onChange={next=>{setTab(next);if(next==="Erfassen")setLocation(newEntryLocation(state,location));}}
+        onChange={(next) => {
+          setTab(next);
+          if (next === "Erfassen")
+            setLocation(newEntryLocation(state, location));
+        }}
         label="Lageransicht"
       />
       <div className="toolbar">
@@ -106,7 +149,10 @@ export default function Deliveries({
               const value = e.target.value;
               navigate(() => {
                 setSupplier(value);
-                setArticle(state.articles.find(a => !value || a.supplierId === value)?.id ?? "");
+                setArticle(
+                  state.articles.find((a) => !value || a.supplierId === value)
+                    ?.id ?? "",
+                );
                 setError("");
               });
             }}
@@ -125,11 +171,13 @@ export default function Deliveries({
             value={location}
             disabled={pending}
             onChange={(e) => {
-                const value = e.target.value;
-                navigate(() => setLocation(value));
-              }}
+              const value = e.target.value;
+              navigate(() => setLocation(value));
+            }}
           >
-            {!locations.length && <option value="">Kein aktiver Ort eingerichtet</option>}
+            {!locations.length && (
+              <option value="">Kein aktiver Ort eingerichtet</option>
+            )}
             {locations.map((l) => (
               <option key={l}>{l}</option>
             ))}
@@ -158,16 +206,29 @@ export default function Deliveries({
                   <Truck size={24} />
                   {kind} erfassen
                 </h2>
-                {!activeLocations(state).length && <p role="status">Bitte zuerst einen aktiven Ort in den Einstellungen einrichten. Historische Bestände bleiben in der Bestandsübersicht sichtbar.</p>}
+                {!activeLocations(state).length && (
+                  <p role="status">
+                    Bitte zuerst einen aktiven Ort in den Einstellungen
+                    einrichten. Historische Bestände bleiben in der
+                    Bestandsübersicht sichtbar.
+                  </p>
+                )}
                 <form onSubmit={save}>
-                  <fieldset disabled={busy || !activeLocations(state).includes(location)}>
+                  <fieldset
+                    disabled={
+                      busy || !activeLocations(state).includes(location)
+                    }
+                  >
                     <label>
                       Art der Erfassung
                       <select
                         value={type}
                         onChange={(e) => {
                           const value = e.target.value;
-                          navigate(() => { setType(value); setError(""); });
+                          navigate(() => {
+                            setType(value);
+                            setError("");
+                          });
                         }}
                       >
                         {kinds.map(([value, label]) => (
@@ -183,7 +244,10 @@ export default function Deliveries({
                         value={article}
                         onChange={(e) => {
                           const value = e.target.value;
-                          navigate(() => { setArticle(value); setError(""); });
+                          navigate(() => {
+                            setArticle(value);
+                            setError("");
+                          });
                         }}
                       >
                         {articles.map((a) => (
@@ -198,7 +262,10 @@ export default function Deliveries({
                         Tag
                         <select
                           value={day}
-                          onChange={(e) => { const value = e.target.value; navigate(() => setDay(value)); }}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            navigate(() => setDay(value));
+                          }}
                         >
                           {deliveryDays.map((d) => (
                             <option key={d}>{d}</option>
@@ -293,9 +360,30 @@ export default function Deliveries({
                               {m.day} · {m.location}
                             </small>
                             {m.note && <p>{m.note}</p>}
+                            <small>
+                              Ursprünglich: {amount(m.quantity)}{" "}
+                              {selected?.unit}
+                            </small>
+                            {(state.movementCorrections ?? [])
+                              .filter((c) => c.targetId === m.id)
+                              .map((c) => (
+                                <div key={c.operationId}>
+                                  {amount(c.before)} → {amount(c.after)} ·{" "}
+                                  {c.reason}
+                                  <AuditStamp entry={c} />
+                                </div>
+                              ))}
+                            <button
+                              className="text-button"
+                              disabled={busy}
+                              onClick={() => setCorrecting(m.id)}
+                            >
+                              Berichtigen
+                            </button>
                           </div>
                           <strong>
-                            {amount(m.quantity)} {selected?.unit}
+                            {amount(movementQuantity(state, m))}{" "}
+                            {selected?.unit}
                           </strong>
                         </div>
                       ))}
@@ -355,7 +443,11 @@ export default function Deliveries({
                         <button
                           className="text-button"
                           onClick={() => {
-                            navigate(() => {setArticle(a.id);setLocation(newEntryLocation(state,location));setTab("Erfassen");});
+                            navigate(() => {
+                              setArticle(a.id);
+                              setLocation(newEntryLocation(state, location));
+                              setTab("Erfassen");
+                            });
                           }}
                         >
                           Erfassen
@@ -370,6 +462,50 @@ export default function Deliveries({
             <p className="empty-inline">Keine Artikel vorhanden.</p>
           )}
         </div>
+      )}
+      {tab === "Bestandsübersicht" && (
+        <section>
+          <h2>Buchungen am ausgewählten Ort</h2>
+          {state.movements
+            .filter(
+              (m) =>
+                sameLocation(state, m.location, location) &&
+                (!supplier ||
+                  state.articles.find((a) => a.id === m.articleId)
+                    ?.supplierId === supplier),
+            )
+            .slice()
+            .reverse()
+            .map((m) => (
+              <div className="entry-row" key={m.id}>
+                <div>
+                  <strong>
+                    {state.articles.find((a) => a.id === m.articleId)?.name} ·{" "}
+                    {m.type}
+                  </strong>
+                  <small>
+                    {m.day} · {m.location} · ursprünglich {amount(m.quantity)} ·
+                    wirksam {amount(movementQuantity(state, m))}
+                  </small>
+                  {(state.movementCorrections ?? [])
+                    .filter((c) => c.targetId === m.id)
+                    .map((c) => (
+                      <div key={c.operationId}>
+                        {amount(c.before)} → {amount(c.after)} · {c.reason}
+                        <AuditStamp entry={c} />
+                      </div>
+                    ))}
+                </div>
+                <button
+                  className="text-button"
+                  disabled={busy}
+                  onClick={() => setCorrecting(m.id)}
+                >
+                  Berichtigen
+                </button>
+              </div>
+            ))}
+        </section>
       )}
       <Notice>
         Alle Bestände gelten für den ausgewählten Ort. Unbekannter Anfang bleibt

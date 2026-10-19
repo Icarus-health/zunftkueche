@@ -22,7 +22,7 @@ namespace Zunftkueche
     }
     public static class Protocol
     {
-        public static readonly HashSet<string> Operations = new HashSet<string> { "supplier.save", "article.save", "menu.save", "dish.quantity", "dish.fillMissing", "event.create", "event.settings", "event.dates", "purchase.apply", "invoice.save", "invoice.update", "plan.quantity", "plan.schedule", "plan.add", "menu.price", "article.price", "order.prepare", "stock.opening", "delivery.record", "stock.count", "stock.waste", "stock.return", "stock.consume", "sales.quantity", "sales.price", "recipe.save", "invoice.link" };
+        public static readonly HashSet<string> Operations = new HashSet<string> { "movement.correct", "sales.correctPrice", "invoice.correct", "order.mark", "supplier.save", "article.save", "menu.save", "dish.quantity", "dish.fillMissing", "event.create", "event.settings", "event.dates", "purchase.apply", "invoice.save", "invoice.update", "plan.quantity", "plan.schedule", "plan.add", "menu.price", "article.price", "order.prepare", "stock.opening", "delivery.record", "stock.count", "stock.waste", "stock.return", "stock.consume", "sales.quantity", "sales.price", "recipe.save", "invoice.link" };
         public static JObject Parse(string raw)
         {
             StatePolicy.Require(raw != null && Encoding.UTF8.GetByteCount(raw) <= 655360, "Request too large.");
@@ -64,7 +64,7 @@ namespace Zunftkueche
         }
         static JObject Identity(Workspace row) => new JObject {{"organizationId",row.OrganizationId.ToString("D")},{"userId",row.UserId.ToString("D")},{"workspaceId",row.Id.ToString("D")}};
         static JObject Response(Workspace row, string targetEventId, string operationId, string status, int? appliedRevision) => new JObject { { "protocolVersion", 2 }, { "workspaceId", row.Id.ToString("D") }, { "targetEventId", targetEventId }, { "canEdit",row.CanWrite }, { "canConfigure",row.CanConfigure }, { "canClose",row.CanClose }, { "identity",Identity(row) }, { "operationId", operationId }, { "status", status }, { "appliedRevision", appliedRevision.HasValue ? new JValue(appliedRevision.Value) : JValue.CreateNull() }, { "state", row.State.DeepClone() } };
-        static JObject PrepareCandidate(JToken? proposed, Workspace row, string operationId, string signature, string targetEventId, string operationType)
+        static JObject PrepareCandidate(JToken? proposed, Workspace row, string operationId, string signature, string targetEventId, string operationType, Guid actor, DateTime timestamp)
         {
             var candidate = (JObject)StatePolicy.Obj(proposed).DeepClone();
             StatePolicy.Validate(candidate, row.State);
@@ -76,21 +76,7 @@ namespace Zunftkueche
             candidate["revision"] = checked(row.Revision + 1);
             candidate["operationIds"] = ids;
             candidate["operationRequests"] = signatures;
-            // Newly appended receipt corrections belong to this commit, irrespective of browser metadata.
-            var oldEvents = StatePolicy.Events(row.State);
-            foreach (var e in StatePolicy.Events(candidate))
-                if (oldEvents.TryGetValue(e.Key, out var prior))
-                    foreach (var invoice in StatePolicy.Arr(e.Value["invoices"]).OfType<JObject>())
-                    {
-                        var oldInvoice = StatePolicy.Arr(prior["invoices"]).OfType<JObject>().FirstOrDefault(v => (string?)v["id"] == (string?)invoice["id"]);
-                        var history = invoice["corrections"] as JArray;
-                        int count = (oldInvoice?["corrections"] as JArray)?.Count ?? 0;
-                        if (history != null && history.Count > count)
-                        {
-                            history[count]["operationId"] = operationId;
-                            history[count]["revision"] = row.Revision + 1;
-                        }
-                    }
+            StatePolicy.StampEconomicHistory(candidate,row.State,operationId,row.Revision+1,actor,timestamp);
             StatePolicy.Validate(candidate, row.State);
             StatePolicy.ValidateScope(candidate, row, targetEventId, operationType);
             return candidate;
@@ -127,11 +113,12 @@ namespace Zunftkueche
                 return Response(row, targetEventId, operationId, "conflict", null);
             StatePolicy.Require(!StatePolicy.Arr(row.State["operationIds"]).Any(v => (string?)v == operationId), "Operation ID already exists without matching receipt.");
             JObject candidate;
+            var timestamp=DateTime.UtcNow;
             try
             {
                 // No storage calls in this validation-only boundary. Receipts and caller checks above
                 // MUST remain outside it: their failure cannot prove an earlier attempt did not commit.
-                candidate = PrepareCandidate(q["candidateState"], row, operationId, signature, targetEventId, (string)operation["type"]!);
+                candidate = PrepareCandidate(q["candidateState"], row, operationId, signature, targetEventId, (string)operation["type"]!,actor,timestamp);
             }
             catch (ArgumentException)
             {
@@ -142,7 +129,7 @@ namespace Zunftkueche
             }
             StatePolicy.Require(inTransaction, "Synchronous Dataverse transaction required.");
             StatePolicy.Require(!string.IsNullOrWhiteSpace(row.RowVersion), "RowVersion required.");
-            store.Commit(row, candidate, operationId, hash, actor, DateTime.UtcNow);
+            store.Commit(row, candidate, operationId, hash, actor, timestamp);
             var saved = new Workspace { Id = id, State = candidate, Revision = row.Revision + 1, CanWrite = row.CanWrite, CanConfigure = row.CanConfigure, CanClose = row.CanClose, OrganizationId=row.OrganizationId, UserId=row.UserId };
             return Response(saved, targetEventId, operationId, "saved", (int)candidate["revision"]!);
         }

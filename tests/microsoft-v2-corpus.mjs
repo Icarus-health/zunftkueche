@@ -17,4 +17,15 @@ apply(original,'stock.opening',{articleId:'a-1',quantity:0,location:'Halle Küch
 apply(original,'plan.add',{articleId:'a-1',supplierId:'s-wiggenhauser',day:'Freitag',quantity:10,time:'',note:''});
 apply(original,'invoice.save',{supplierId:'s-wiggenhauser',number:'synthetic-location',date:null,grossCents:100,netCents:90,scope:'Halle Küche',documentUrl:null,lines:[]});
 apply(original,'event.settings',{name:corpus.initial.event.name,year:2026,dates:{Mittwoch:'2026-02-11'},deliveryAddress:'Synthetic address',contact:'Synthetic contact',locations:[],purchasingLocation:null});
+apply(original,'movement.correct',{movementId:'v2-8',replacementQuantity:100,reason:'Synthetic opening correction'});
+apply(original,'movement.correct',{movementId:'v2-8',replacementQuantity:10,reason:'Synthetic recount'});
+apply(original,'menu.price',{menuId:'m-1',priceCents:50});
+const saleId=`v2-${corpus.requests.length}`;
+apply(original,'sales.quantity',{menuId:'m-1',day:'Freitag',quantity:2});
+apply(original,'sales.correctPrice',{saleId,priceCents:500,reason:'Synthetic decimal correction'});
+apply(original,'menu.price',{menuId:'m-1',priceCents:900});
+apply(original,'invoice.correct',{invoiceId:'v2-10',changes:{grossCents:200},reason:'Synthetic receipt correction'});
+apply(original,'invoice.correct',{invoiceId:state.archivedEvents.find(e=>e.event.id===original).invoices[0].id,changes:{grossCents:9999999},reason:'Synthetic imported receipt economic correction'});
+apply(original,'order.mark',{orderId:'v2-2',status:'bestellt',note:'Synthetic manual order'});
+apply(original,'order.mark',{orderId:'v2-2',status:'bestaetigt',note:'Synthetic confirmation'});
 mkdirSync('server/Tests/obj' ,{recursive:true});writeFileSync('server/Tests/obj/protocol-v2-corpus.json',JSON.stringify(corpus));

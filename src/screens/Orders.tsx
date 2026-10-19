@@ -1,3 +1,5 @@
+import { AuditStamp } from "../components/CorrectionDialog.tsx";
+import { orderPlanningChanged } from "../domain/order-status.ts";
 import { ResponsiveTable } from "../components/MobileItemCard.tsx";
 import { useEffect, useState } from "react";
 import {
@@ -37,7 +39,7 @@ export default function Orders({
   saveError,
   initialSupplier,
 }: ScreenProps & { initialSupplier: string }) {
-  const {navigate, pending} = useDraftNavigation();
+  const { navigate, pending } = useDraftNavigation();
   const [supplier, setSupplier] = useState(
       state.suppliers.some((s) => s.id === initialSupplier)
         ? initialSupplier
@@ -51,6 +53,10 @@ export default function Orders({
     >(null),
     [tab, setTab] = useState("Planung"),
     [adding, setAdding] = useState(false);
+  const [marking, setMarking] = useState<string | null>(null),
+    [markNote, setMarkNote] = useState(""),
+    [markError, setMarkError] = useState("");
+  const markOrder = state.orders.find((o) => o.id === marking);
   useEffect(() => {
     if (
       initialSupplier &&
@@ -115,14 +121,18 @@ export default function Orders({
           <button
             className={tab === "Planung" ? "selected" : ""}
             disabled={pending}
-            onClick={() => { if (tab !== "Planung") navigate(() => setTab("Planung")); }}
+            onClick={() => {
+              if (tab !== "Planung") navigate(() => setTab("Planung"));
+            }}
           >
             Bestellmengen
           </button>
           <button
             className={tab === "Vorbereitet" ? "selected" : ""}
             disabled={pending}
-            onClick={() => { if (tab !== "Vorbereitet") navigate(() => setTab("Vorbereitet")); }}
+            onClick={() => {
+              if (tab !== "Vorbereitet") navigate(() => setTab("Vorbereitet"));
+            }}
           >
             Vorbereitete Versionen ({prepared.length})
           </button>
@@ -268,23 +278,57 @@ export default function Orders({
               .slice()
               .reverse()
               .map((o) => (
-                <button
-                  className="prepared-row"
-                  key={o.id}
-                  onClick={() => setPreview(o)}
-                >
-                  <ClipboardText size={25} />
-                  <span>
-                    <strong>
-                      {o.day} · {o.lines.length} Positionen
-                    </strong>
-                    <small>
-                      {new Date(o.createdAt).toLocaleString("de-DE")} ·{" "}
-                      {o.status}
-                    </small>
-                  </span>
-                  <Eye size={22} />
-                </button>
+                <div key={o.id} className="form-card">
+                  <button
+                    className="prepared-row"
+                    onClick={() => setPreview(o)}
+                  >
+                    <ClipboardText size={25} />
+                    <span>
+                      <strong>
+                        {o.day} · {o.lines.length} Positionen
+                      </strong>
+                      <small>
+                        {new Date(o.createdAt).toLocaleString("de-DE")} ·{" "}
+                        {o.status === "bestellt"
+                          ? "Bestellt"
+                          : o.status === "bestaetigt"
+                            ? "Bestätigt"
+                            : o.status}
+                      </small>
+                    </span>
+                    <Eye size={22} />
+                  </button>
+                  {orderPlanningChanged(state, o) && (
+                    <p className="badge amber">
+                      Lebende Planung weicht von dieser Fassung ab.
+                    </p>
+                  )}
+                  {(o.statusHistory ?? []).map((entry: any) => (
+                    <div key={entry.operationId}>
+                      {entry.status === "bestellt"
+                        ? "Manuell als bestellt markiert"
+                        : "Bestätigung erfasst"}{" "}
+                      · {entry.note}
+                      <AuditStamp entry={entry} />
+                    </div>
+                  ))}
+                  {o.status !== "bestaetigt" && (
+                    <button
+                      className="button secondary"
+                      disabled={busy}
+                      onClick={() => {
+                        setMarking(o.id);
+                        setMarkNote("");
+                        setMarkError("");
+                      }}
+                    >
+                      {o.status === "Vorbereitet"
+                        ? "Als bestellt markieren"
+                        : "Bestätigung erfassen"}
+                    </button>
+                  )}
+                </div>
               ))
           ) : (
             <div className="empty">
@@ -296,6 +340,62 @@ export default function Orders({
             </div>
           )}
         </div>
+      )}
+      {markOrder && (
+        <Modal
+          title={
+            markOrder.status === "Vorbereitet"
+              ? "Bestellung manuell markieren"
+              : "Bestätigung erfassen"
+          }
+          onClose={() => setMarking(null)}
+        >
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (
+                await commit("order.mark", {
+                  orderId: markOrder.id,
+                  status:
+                    markOrder.status === "Vorbereitet"
+                      ? "bestellt"
+                      : "bestaetigt",
+                  note: markNote,
+                })
+              )
+                setMarking(null);
+              else
+                setMarkError(
+                  "Noch nicht gespeichert. Bitte den Hinweis oben beachten.",
+                );
+            }}
+          >
+            <fieldset disabled={busy}>
+              <p>
+                Diese Markierung dokumentiert deinen bereits erfolgten Kontakt
+                mit dem Lieferanten. Die App sendet keine Nachricht.
+              </p>
+              {orderPlanningChanged(state, markOrder) && (
+                <Notice>
+                  Die lebende Planung wurde verändert. Du markierst die
+                  ausgewählte gespeicherte Fassung.
+                </Notice>
+              )}
+              <label>
+                Notiz (optional)
+                <textarea
+                  maxLength={1000}
+                  value={markNote}
+                  onChange={(e) => setMarkNote(e.target.value)}
+                />
+              </label>
+              {markError && <p role="alert">{markError}</p>}
+              <button className="button primary" type="submit">
+                Markierung speichern
+              </button>
+            </fieldset>
+          </form>
+        </Modal>
       )}
       {adding && (
         <AddPosition
@@ -344,8 +444,18 @@ export default function Orders({
               </tbody>
             </ResponsiveTable>
             <p className="muted">
-              {previewHeader.deliveryAddress && <span>Lieferadresse: {previewHeader.deliveryAddress}<br/></span>}
-              {previewHeader.contact && <span>Ansprechpartner: {previewHeader.contact}<br/></span>}
+              {previewHeader.deliveryAddress && (
+                <span>
+                  Lieferadresse: {previewHeader.deliveryAddress}
+                  <br />
+                </span>
+              )}
+              {previewHeader.contact && (
+                <span>
+                  Ansprechpartner: {previewHeader.contact}
+                  <br />
+                </span>
+              )}
               {formatDeliveryDate(previewHeader.deliveryDate)} · Versandstatus:
               offen.
             </p>

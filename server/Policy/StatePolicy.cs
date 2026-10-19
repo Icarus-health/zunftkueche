@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 namespace Zunftkueche
 {
-    public static class StatePolicy
+    public static partial class StatePolicy
     {
         public const int StateBytes = 524288;
         static readonly string[] Collections = { "suppliers", "articles", "planLines", "menu", "invoices", "sales", "movements", "orders", "dishPlan", "lessons" };
@@ -144,7 +144,6 @@ namespace Zunftkueche
             clone.Remove("corrections");
             return clone;
         }
-        static JArray Economics(JObject r) => new JArray(new[] { "supplierId", "number", "date", "grossCents", "netCents", "lines" }.Select(k => r[k]?.DeepClone() ?? JValue.CreateNull()));
         static string InvoiceKey(JObject r) => Str(r["supplierId"], 500) + "\n" + Str(r["number"], 100).Trim().ToUpperInvariant();
         static void Receipt(JObject r, Dictionary<string, JObject> suppliers, Dictionary<string, JObject> articles, bool snapshot = false)
         {
@@ -206,7 +205,7 @@ namespace Zunftkueche
         static void Event(JObject e, JObject? previous)
         {
             Require(Number(e["schemaVersion"], 2) == 2, "Unsupported schema.");
-            Fields(e,"schemaVersion event suppliers articles planLines menu invoices sales movements orders dishPlan lessons sourceNotice revision operationIds operationRequests archivedEvents");
+            Fields(e,"schemaVersion event suppliers articles planLines menu invoices sales movements orders dishPlan lessons sourceNotice revision operationIds operationRequests archivedEvents movementCorrections salePriceCorrections");
             var ev = Obj(e["event"]);
             Fields(ev,"id name year status dates deliveryAddress contact locations purchasingLocation");
             OptionalString(ev,"deliveryAddress",1000);OptionalString(ev,"contact",200);OptionalString(ev,"purchasingLocation",100);
@@ -282,18 +281,21 @@ namespace Zunftkueche
             foreach (var r in maps["invoices"].Values)
             {
                 Receipt(r, suppliers, articles);
+                if(previous!=null&&!Index(previous["invoices"]).ContainsKey((string)r["id"]!)){Same(r["sourceBaseline"],Snapshot(r),"New receipt baseline missing.");Require(History(r,"corrections").Count==0,"New receipt cannot invent history.");Require(Null(r["source"]),"New manual receipt cannot invent imported origin.");}
                 if (r["corrected"] != null)
                     Require(r["corrected"]!.Type == JTokenType.Boolean, "Invalid correction flag.");
                 if (r["sourceBaseline"] != null)
                 {
                     Receipt(Obj(r["sourceBaseline"]), suppliers, articles, true);
-                    Require(!Null(r["source"]), "Baseline without source.");
                 }
                 if (r["corrections"] != null)
                     foreach (var v in Arr(r["corrections"]))
                     {
                         var c = Obj(v);
-                        Fields(c,"operationId revision before");
+                        Fields(c,"operationId revision before after reason actorId confirmedAt");
+                        Audit(c);
+                        if(c["reason"]!=null)Str(c["reason"],1000);
+                        if(c["after"]!=null)Receipt(Obj(c["after"]),suppliers,articles,true);
                         Str(c["operationId"], 100);
                         Number(c["revision"], int.MaxValue);
                         Receipt(Obj(c["before"]), suppliers, articles, true);
@@ -339,7 +341,8 @@ namespace Zunftkueche
             var previousOrders = previous == null ? null : Index(previous["orders"]);
             foreach (var o in maps["orders"].Values)
             {
-                Fields(o,"id supplierId day status createdAt lines groups totalCents context");
+                Fields(o,"id supplierId day status createdAt lines groups totalCents context statusHistory");
+                JObject? priorOrder=null;previousOrders?.TryGetValue((string)o["id"]!,out priorOrder);OrderHistory(o,priorOrder);
                 Ref(o, "supplierId", suppliers);
                 Day(o["day"]);
                 // Absent context is a legacy snapshot; never reconstruct its history.
@@ -364,7 +367,7 @@ namespace Zunftkueche
                         Same(context["deliveryDate"], ev["dates"]![(string)o["day"]!] ?? JValue.CreateNull(), "New order date context mismatch.");
                     }
                 }
-                Require((string?)o["status"] == "Vorbereitet", "Invalid order status.");
+
                 DateTimeOffset dt;
                 Require(DateTimeOffset.TryParse(Str(o["createdAt"], 50), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out dt), "Invalid snapshot timestamp.");
                 var lines = Arr(o["lines"]);
@@ -415,6 +418,8 @@ namespace Zunftkueche
                 }
             }
             foreach(var lesson in maps["lessons"].Values) {Fields(lesson,"id note");Str(lesson["note"],4000,true);}
+            ValueHistory(e,previous,"movementCorrections","movements","quantity",4);
+            ValueHistory(e,previous,"salePriceCorrections","sales","priceCents",0);
             if (previous == null)
                 return;
             foreach (var k in Collections)
@@ -427,7 +432,7 @@ namespace Zunftkueche
                     var after = Arr(e[k]);
                     Require(after.Count >= before.Count, "Append-only history removed.");
                     for (int i = 0; i < before.Count; i++)
-                        Same(before[i], after[i], "Append-only history changed or reordered.");
+                        Same(k=="orders"?OrderSnapshot(Obj(before[i])):before[i], k=="orders"?OrderSnapshot(Obj(after[i])):after[i], "Append-only history changed or reordered.");
                 }
                 foreach (var pair in old)
                 {
@@ -441,7 +446,7 @@ namespace Zunftkueche
                     if (k == "orders" || k == "movements" || k == "lessons")
                     {
                         Require(now.ContainsKey(pair.Key), "Append-only history removed.");
-                        Same(p, now[pair.Key], "Append-only history changed.");
+                        Same(k=="orders"?OrderSnapshot(p):p, k=="orders"?OrderSnapshot(now[pair.Key]):now[pair.Key], "Append-only history changed.");
                     }
                 }
             }
@@ -467,13 +472,11 @@ namespace Zunftkueche
             foreach (var pair in Index(previous["invoices"]))
             {
                 var old = pair.Value;
-                if (Null(old["source"]))
-                    continue;
-                Require(maps["invoices"].ContainsKey(pair.Key), "Source invoice removed.");
+                Require(maps["invoices"].ContainsKey(pair.Key), "Invoice history removed.");
                 var n = maps["invoices"][pair.Key];
-                Same(old["status"], n["status"], "Source status changed.");
-                if ((string?)old["status"] == "Original vorhanden")
-                    Same(Economics(old), Economics(n), "Original economics changed.");
+                Same(old["status"], n["status"], "Invoice status changed.");
+                Same(old["source"],n["source"],"Invoice provenance changed.");
+                Same(old["localPath"],n["localPath"],"Invoice local origin changed.");
                 var before = Snapshot(old);
                 bool changed = !JToken.DeepEquals(before, Snapshot(n));
                 var history = old["corrections"] as JArray ?? new JArray();
@@ -490,6 +493,8 @@ namespace Zunftkueche
                 if (changed)
                 {
                     Same(nextHistory.Last!["before"], before, "Incorrect correction snapshot.");
+                    Same(nextHistory.Last!["after"], Snapshot(n), "Incorrect correction after snapshot.");
+                    Str(nextHistory.Last!["reason"],1000);
                     Require((bool?)n["corrected"] == true, "Correction flag missing.");
                 }
                 else
@@ -525,6 +530,9 @@ namespace Zunftkueche
             Require(create ? row.CanConfigure && next.Count==old.Count+1 : next.Count==old.Count, "Event creation requires configuration permission.");
             if(create) {
                 Require(!old.ContainsKey((string)candidate["event"]!["id"]!), "New event must be canonical root.");
+                foreach(var field in new[]{"movements","sales","invoices","orders","lessons"})
+                    Require(Arr(candidate[field]).Count==0,"New event cannot invent posted history.");
+                Require(History(candidate,"movementCorrections").Count==0 && History(candidate,"salePriceCorrections").Count==0,"New event cannot invent corrections.");
                 foreach(var e in old)Same(Slice(e.Value),Slice(next[e.Key]),"Creation changed existing event.");
             } else {
                 Same(row.State["event"]!["id"],candidate["event"]!["id"],"Canonical root cannot switch.");
