@@ -9,6 +9,7 @@ import { SavePendingContext } from '../../src/components/shared.tsx';
 import source from '../../import/2026.json';
 import type { KitchenState } from '../../src/domain/state.ts';
 import '../../src/styles.css';
+import {ReceiptIntakeHarness} from './receipt-intake-harness.tsx';
 const screens = {Planning, Orders, Analysis, Deliveries};
 const name = new URLSearchParams(location.search).get('screen') || 'Planning';
 const Screen = screens[name as keyof typeof screens] ?? Planning;
@@ -22,8 +23,8 @@ function Harness() {
       <label className="checkbox-label"><input type="checkbox" checked={pending} onChange={event => setPending(event.target.checked)} />Simulate pending write</label>
       <output>Commit attempts: {attempts}</output>
     </header>
-    <main><Screen state={fixture} busy={pending} readOnly={false} mode="local" saveError="" initialSupplier={fixture.suppliers[0]?.id ?? ''}
-      commit={async () => {setAttempts(value=>value+1);return false;}} go={()=>{}} /></main>
+    <main>{name==='ReceiptIntake' ? <ReceiptIntakeHarness state={fixture}/> : <Screen state={fixture} busy={pending} readOnly={false} mode="local" saveError="" initialSupplier={fixture.suppliers[0]?.id ?? ''}
+      commit={async () => {setAttempts(value=>value+1);return false;}} go={()=>{}} />}</main>
   </SavePendingContext>;
 }
 createRoot(document.getElementById('root')!).render(<Harness/>);

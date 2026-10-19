@@ -11,3 +11,17 @@ test('two authorized simulated accounts can read the same original, while a chan
 test('two concurrent app attempts permit only one create',async()=>{const f=fixture();await Promise.allSettled([f.repo().upload(request()),f.repo().upload(request())]);assert.equal(f.creates,1);});
 test('existing original with different content is preserved and never replaced',async()=>{const f=fixture();f.api.find=async()=>({bytes:Uint8Array.of(1),version:'etag-other',itemId:'2',connectorIdentifier:'other'});await assert.rejects(()=>f.repo().upload(request()),/Originalinhalt/);assert.equal(f.creates,0);});
 test('cancel before upload does not create or reserve an original',async()=>{const f=fixture(),controller=new AbortController();controller.abort();await assert.rejects(()=>f.repo().upload({...request(),signal:controller.signal}),/Abgebrochen/);assert.equal(f.creates,0);assert.equal(f.row,null);});
+
+import {runtimeFixture} from './document-runtime-fixture.mjs';
+for(const failure of ['lostCreate','lostLink'])test(`actual runtime ${failure} recovery reads and verifies the one existing original`,async()=>{
+ const f=runtimeFixture({[failure]:true});await assert.rejects(()=>f.repository().upload(request()),/lost/);
+ const ref=await f.repository().upload(request());assert.equal(ref.itemId,'1');assert.equal(f.creates,1);
+ assert.equal(f.values.size,0);assert.equal(f.row.status,'linked');
+});
+test('actual runtime pending claim replay remains read-only when both continuations resume after lost acknowledgment',async()=>{
+ const f=runtimeFixture({lostClaim:true});await assert.rejects(()=>f.repository().upload(request()),/lost/);
+ const results=await Promise.allSettled([f.repository().upload(request()),f.repository().upload(request())]);
+ assert.ok(results.every(result=>result.status==='rejected'));assert.equal(f.creates,0);
+ const claims=f.calls.filter(q=>q.action==='upload.claim');assert.equal(new Set(claims.map(q=>q.requestId)).size,1);
+ assert.ok(claims.length>=2);
+});

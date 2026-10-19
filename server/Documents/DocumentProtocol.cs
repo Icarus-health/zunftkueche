@@ -95,7 +95,7 @@ namespace Zunftkueche
                 var replay=StatePolicy.Arr(prior["history"]).Select(StatePolicy.Obj).FirstOrDefault(h=>(string?)h["requestId"]==requestId);
                 if(replay!=null) {
                     StatePolicy.Require((string?)replay["requestHash"]==hash && (string?)replay["actorId"]==actor.ToString("D"),"Document request replay mismatch.");
-                    return Response(q,prior);
+                    return Response(q,prior,"replayed",replay);
                 }
             }
             JObject next;
@@ -106,7 +106,7 @@ namespace Zunftkueche
                 Text(value["principal"],512);
                 if(prior!=null) {
                     StatePolicy.Require(value.Properties().All(p=>JToken.DeepEquals(prior[p.Name],p.Value)),"Upload ID already bound to different original.");
-                    return Response(q,prior);
+                    return Response(q,prior,"existing",null);
                 }
                 next=value; next["id"]=id.ToString("D"); next["status"]="selected";
             }
@@ -136,10 +136,10 @@ namespace Zunftkueche
             history.Add(new JObject { {"requestId",requestId},{"requestHash",hash},{"action",action},{"actorId",actor.ToString("D")},{"recordedAt",DateTime.UtcNow.ToString("o")},{"value",snapshot} });
             next["history"]=history;
             StatePolicy.Require(Encoding.UTF8.GetByteCount(next.ToString(Formatting.None))<=MaxPayload,"Document history limit reached; preserve and review before continuing.");
-            persist=()=>Response(q,source.SaveDocumentRow(row.Id,id,draft,next,(string?)prior?["rowVersion"]));
+            persist=()=>Response(q,source.SaveDocumentRow(row.Id,id,draft,next,(string?)prior?["rowVersion"]),"applied",(JObject)history.Last!);
             return null;
         }
-        static JObject Response(JObject q,JObject value) => new JObject { {"protocolVersion",2},{"workspaceId",q["workspaceId"]!.DeepClone()},{"identity",q["identity"]!.DeepClone()},{"view","documents"},{"value",value} };
+        static JObject Response(JObject q,JObject value,string outcome,JObject? acknowledgment) => new JObject { {"protocolVersion",2},{"workspaceId",q["workspaceId"]!.DeepClone()},{"identity",q["identity"]!.DeepClone()},{"view","documents"},{"outcome",outcome},{"acknowledgment",acknowledgment?.DeepClone()},{"value",value} };
         public static void ValidateOriginal(JObject value) {
             StatePolicy.Require(Regex.IsMatch(Text(value["sha256"],64),"^[a-f0-9]{64}$"),"Invalid original hash.");
             StatePolicy.Require(new[]{"image/jpeg","image/png","application/pdf"}.Contains(Text(value["mimeType"],30)),"Unsupported original type.");

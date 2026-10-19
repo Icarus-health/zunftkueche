@@ -32,7 +32,7 @@ export interface ExtractDraft {
 export interface DocumentStore {
   list(): Promise<{ documents: DocumentRow[]; drafts: ExtractDraft[] }>;
   begin(value: OriginalInfo & { uploadId: string; eventId: string; principal: string }): Promise<DocumentRow>;
-  claim(value: DocumentRow): Promise<DocumentRow>;
+  claim(value: DocumentRow): Promise<{row: DocumentRow; createAuthorized: boolean}>;
   link(value: DocumentRow & { ref: DocumentRef }): Promise<DocumentRow>;
   saveDraft(value: ExtractDraft): Promise<ExtractDraft>;
 }
@@ -107,6 +107,7 @@ export function originalStorageName(row: Pick<DocumentRow,'uploadId'|'mimeType'>
 }
 export function createDocumentRepository({api,store}: {api: DocumentProvider;store: DocumentStore}): DocumentRepository {
   let sessionPrincipal: string | undefined;
+  const activeUploads=new Set<string>();
   async function principal() {
     const current = await api.identity();
     if (!current || sessionPrincipal && sessionPrincipal !== current) throw new Error('Konto hat sich geändert. Vorgang gesperrt; App neu laden.');
@@ -127,28 +128,34 @@ export function createDocumentRepository({api,store}: {api: DocumentProvider;sto
   return {
     list,
     async upload({uploadId,eventId,file,signal}) {
-      const stop=()=>{if(signal?.aborted)throw new Error('Abgebrochen. Ein bereits gestarteter Upload kann dennoch gespeichert sein; Wiederaufnahme prüft den Ausgang.');};
-      stop(); const info=await validateOriginal(file); originalStorageName({uploadId,mimeType:info.mimeType});
-      const user=await principal(); stop();
-      let row=await boundary(()=>store.begin({...info,uploadId,eventId,principal:user}));
-      if (row.eventId!==eventId || row.principal!==user || row.sha256!==info.sha256 || row.size!==info.size || row.mimeType!==info.mimeType || row.originalName!==info.originalName) throw new Error('Upload-ID: Datei oder Zuordnung weicht ab.');
-      const name=originalStorageName(row);
-      let existing=await boundary(()=>api.find(name)); stop();
-      if (!existing) {
-        if(row.status!=='selected')throw new Error('Unklarer Uploadausgang. Original noch nicht auffindbar; kein erneuter Upload. Bitte später wieder aufnehmen.');
-        row=await boundary(()=>store.claim(row)); stop();
-        // Exactly one CAS winner creates. After this claim, all retries are read-only.
-        const uploadBytes=new Uint8Array(await file.arrayBuffer());
-        await boundary(()=>api.create(name,uploadBytes));
-        existing=await boundary(()=>api.find(name));
-        if(!existing)throw new Error('Unklarer Uploadausgang. Original noch nicht auffindbar.');
-      }
-      await verify(existing,info,row.ref); stop();
-      const ref:DocumentRef={...info,provider:'sharepoint',siteCollectionId:SHAREPOINT_TARGET.siteCollectionId,webId:SHAREPOINT_TARGET.webId,libraryId:SHAREPOINT_TARGET.libraryId,
-        itemId:existing.itemId,version:existing.version,connectorIdentifier:existing.connectorIdentifier,
-        webUrl:`${SHAREPOINT_TARGET.siteUrl}${SHAREPOINT_TARGET.folder}/${encodeURIComponent(name)}`};
-      if(row.status!=='linked')await boundary(()=>store.link({...row,ref}));
-      return ref;
+      if(activeUploads.has(uploadId))throw new Error('Dieser Upload läuft bereits. Bitte den laufenden Vorgang abwarten.');
+      activeUploads.add(uploadId);
+      try {
+        const stop=()=>{if(signal?.aborted)throw new Error('Abgebrochen. Ein bereits gestarteter Upload kann dennoch gespeichert sein; Wiederaufnahme prüft den Ausgang.');};
+        stop(); const info=await validateOriginal(file); originalStorageName({uploadId,mimeType:info.mimeType});
+        const user=await principal(); stop();
+        let row=await boundary(()=>store.begin({...info,uploadId,eventId,principal:user}));
+        if (row.eventId!==eventId || row.principal!==user || row.sha256!==info.sha256 || row.size!==info.size || row.mimeType!==info.mimeType || row.originalName!==info.originalName) throw new Error('Upload-ID: Datei oder Zuordnung weicht ab.');
+        const name=originalStorageName(row);
+        let existing=await boundary(()=>api.find(name)); stop();
+        if (!existing) {
+          if(row.status!=='selected')throw new Error('Unklarer Uploadausgang. Original noch nicht auffindbar; kein erneuter Upload. Bitte später wieder aufnehmen.');
+          const claim=await boundary(()=>store.claim(row)); row=claim.row; stop();
+          // Only this freshly applied claim continuation may create. Replays only read.
+          if(claim.createAuthorized) {
+            const uploadBytes=new Uint8Array(await file.arrayBuffer());
+            await boundary(()=>api.create(name,uploadBytes));
+          }
+          existing=await boundary(()=>api.find(name));
+          if(!existing)throw new Error('Unklarer Uploadausgang. Original noch nicht auffindbar.');
+        }
+        await verify(existing,info,row.ref); stop();
+        const ref:DocumentRef={...info,provider:'sharepoint',siteCollectionId:SHAREPOINT_TARGET.siteCollectionId,webId:SHAREPOINT_TARGET.webId,libraryId:SHAREPOINT_TARGET.libraryId,
+          itemId:existing.itemId,version:existing.version,connectorIdentifier:existing.connectorIdentifier,
+          webUrl:`${SHAREPOINT_TARGET.siteUrl}${SHAREPOINT_TARGET.folder}/${encodeURIComponent(name)}`};
+        if(row.status!=='linked')await boundary(()=>store.link({...row,ref}));
+        return ref;
+      } finally { activeUploads.delete(uploadId); }
     },
     async getOriginal(ref) {
       if(ref.provider!=='sharepoint'||ref.siteCollectionId!==SHAREPOINT_TARGET.siteCollectionId||ref.webId!==SHAREPOINT_TARGET.webId||ref.libraryId!==SHAREPOINT_TARGET.libraryId)throw new Error('Originalziel ungültig.');

@@ -1,0 +1,160 @@
+
+> build:server
+> bash server/build.sh
+
+  Wiederherzustellende Projekte werden ermittelt...
+CSSM_ModuleLoad(): One or more parameters passed to a function were not valid.
+  Alle Projekte sind für die Wiederherstellung auf dem neuesten Stand.
+  Wiederherzustellende Projekte werden ermittelt...
+CSSM_ModuleLoad(): One or more parameters passed to a function were not valid.
+  Alle Projekte sind für die Wiederherstellung auf dem neuesten Stand.
+Created 13 sequential reducer states for C# compatibility tests.
+PASS actual normalized source schema and fractional unit prices
+PASS unsupported schema
+PASS negative quantity
+PASS invalid cents precision
+PASS duplicate entity ID
+PASS broken supplier reference
+PASS invalid date
+PASS invalid document URL
+PASS changed source hash
+PASS removed source record
+PASS original receipt economics
+PASS lost event history
+PASS changed referenced article unit
+PASS excessive aggregate
+PASS malformed archivedEvents rejected
+PASS missing required money
+PASS missing required quantity
+PASS prepared snapshots and recorded prices survive archive switches
+PASS append-only histories cannot be reordered
+PASS append-only movement history
+PASS new duplicate invoice rejected while imported duplicate labels survive
+PASS source missing-original corrections require true baseline and history
+PASS prior operation signatures cannot be removed
+PASS actual TypeScript reducer operation corpus
+PASS legacy order context remains optional
+PASS snapshot context field required: supplierName
+PASS snapshot context field bounded: supplierName
+PASS snapshot context immutable: supplierName
+PASS new snapshot context agrees with current facts: supplierName
+PASS snapshot context field required: eventName
+PASS snapshot context field bounded: eventName
+PASS snapshot context immutable: eventName
+PASS new snapshot context agrees with current facts: eventName
+PASS snapshot context field required: eventYear
+PASS snapshot context field bounded: eventYear
+PASS snapshot context immutable: eventYear
+PASS new snapshot context agrees with current facts: eventYear
+PASS snapshot context field required: deliveryDate
+PASS snapshot context field bounded: deliveryDate
+PASS snapshot context immutable: deliveryDate
+PASS new snapshot context agrees with current facts: deliveryDate
+PASS snapshot context cannot be null
+PASS archived snapshot context cannot be altered
+PASS fractional protocol version rejected
+PASS successful commit forwards CAS version and owns metadata
+PASS matching receipt checked before stale revision
+PASS receipt rejects changed bytes and wrong actor
+PASS stale version is conflict without write
+PASS transaction and reader guards deny mutation
+PASS race failure escapes without success
+PASS candidate validation has an exact-hash pre-write rejection envelope
+PASS post-write validation-shaped storage faults must escape
+PASS non-owner renamed metadata cannot alter event configuration
+PASS non-owner closure and unknown configuration fail closed
+PASS net evidence requires owner and isolated exact-revision confirmation
+PASS closure denies editor and forged snapshot under a renamed operation
+PASS reopen cannot piggyback economic edits even for owner
+PASS actual TS protocol v2 candidate target signature and archive parity
+PASS net evidence requires owner and isolated exact-revision confirmation
+PASS closure denies editor and forged snapshot under a renamed operation
+PASS actual TS protocol v2 candidate target signature and archive parity
+PASS net evidence requires owner and isolated exact-revision confirmation
+PASS closure denies editor and forged snapshot under a renamed operation
+PASS actual TS protocol v2 candidate target signature and archive parity
+PASS backup real store reads exact raw workspace and every receipt page without any write
+PASS backup denies nonowner and foreign identity before complete reads
+PASS backup fails closed on workspace drift receipt drift pagination faults and unknown nested schema
+PASS reservation is idempotent and claim cannot authorize a second upload
+PASS replayed acknowledgment is immutable while current row can advance
+PASS manual draft source binding, explicit review, versions and immutable history
+PASS document caller, workspace/event and transaction boundaries fail closed
+PASS closed selected event rejects document and draft writes preserving existing rows
+PASS document guard binds exact own API action, caller, row and payload
+PASS document direct, bulk and SYSTEM-origin writes denied
+PASS document view fails closed on unavailable dedicated store, without falling back to aggregate
+PASS restored immutable receipt preserves exact request replay without a second write
+PASS closed state semantically denies writes even under innocent operation names
+PASS owner cannot change status without a closure history transition
+PASS manual baseline migration stamps actor time and retries exactly once
+PASS imported provenance cannot be removed swapped or history fabricated
+PASS movement sale corrections preserve originals bind effective before and protect prior events
+PASS new event cannot fabricate posted correction history
+PASS manual source-less invoice cannot bypass correction history
+PASS source-less invoice cannot invent or swap provenance
+PASS order marked manually then confirmed with immutable contents and server audit
+PASS confirmation cannot skip ordered status or invent history on a new order
+PASS owner configuration allowed with semantic scope and culinary edits allowed for editor
+PASS unknown top event nested fields cannot become deferred privileged data
+PASS explicit archived target may change but root and sibling remain unchanged
+PASS version one fails with explicit reload and no writes
+PASS identity mismatch denies before candidate and receipt writes
+PASS configured locations reject inactive new movements and receipts without rewriting history
+PASS empty configured locations preserve old records but deny new entries
+PASS explicit purchasing location must be active and owner authorized
+PASS guard diagnostic reports each failed first-gate condition without remote values
+PASS real guard allows only expected internal workspace update
+PASS real guard blocks direct API context and forged caller flags
+PASS real guard blocks another workspace
+PASS real guard denies workspace Create
+PASS real guard denies workspace Delete
+PASS real guard denies workspace Upsert
+PASS real guard denies workspace CreateMultiple
+PASS real guard denies workspace UpdateMultiple
+PASS real guard denies workspace UpsertMultiple
+PASS real guard denies workspace DeleteMultiple
+PASS real guard blocks actor mismatch and nontransactional write
+PASS real guard allows internal receipt creation
+PASS real guard denies receipt update and delete even internally
+PASS guard accepts one exact Update wrapper with API-only original request
+PASS guard accepts one exact Create wrapper for receipt
+PASS wrapper each context condition remains mandatory
+PASS wrapped target and receipt gates remain exact
+PASS direct and merged bulk or Upsert cannot counterfeit commit authority
+PASS chain diagnostics identify bounded source and wrapper failures
+PASS real store performs guarded CAS update then receipt and cleans source marker
+PASS source request authorizes binding with absent or untrusted late marker
+PASS source binding failures are fixed and cannot use current wrapper or tag copies
+PASS target diagnostics measure extra primary ID without permitting it
+PASS target diagnostic failure remains fixed unknown
+PASS observed six-field workspace accepts only authorized direct and one-wrapper writes
+PASS observed decorations reject every missing wrong extra and hybrid shape
+PASS observed decoration cannot authorize direct bulk Upsert or forged request paths
+PASS decoration types nulls mismatches and timestamp kinds are fixed facts
+PASS decoration diagnostic errors cannot authorize or emit exception text
+PASS actual owner capabilities fail closed for editor team owner and read-only owner
+PASS real host validates before snapshot-bound direct and wrapped CAS receipt writes
+PASS correction crosses direct wrapped host with server actor time and one immutable receipt
+PASS real host rejects invalid requests and permission before write and handles conflict replay
+PASS host attempt counter observes dispatch even when the guard rejects before accepted write
+PASS real host CAS service fault escapes without receipt and still cleans marker
+Policy tests: 130 passed, 0 failed
+  Kitchen.Dataverse -> /Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/server/bin/Release/net462/Kitchen.Dataverse.dll
+
+Der Buildvorgang wurde erfolgreich ausgeführt.
+    0 Warnung(en)
+    0 Fehler
+
+Verstrichene Zeit 00:00:21.35
+  Das Paket "/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/server/artifacts/Zunftkueche.Dataverse.1.0.0.nupkg" wurde erfolgreich erstellt.
+{
+  "package": "Zunftkueche.Dataverse.1.0.0.nupkg",
+  "sha256": "03e138cb2aacc1d1e8094b89fc0b2be0ae8718462251f4ef9a0d7630cf3426d3",
+  "runtimeAssemblies": [
+    "lib/net462/Kitchen.Dataverse.dll",
+    "lib/net462/Newtonsoft.Json.dll"
+  ],
+  "compiledTarget": "net462",
+  "liveDataverseVerified": false
+}

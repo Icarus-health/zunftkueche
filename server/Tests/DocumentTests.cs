@@ -28,9 +28,23 @@ static class DocumentTests
     {
         check("reservation is idempotent and claim cannot authorize a second upload",()=>{
             var store=new Store(seed);var begin=Original(store);var first=Apply(store,"upload.begin",begin);var same=Apply(store,"upload.begin",begin);Assert(store.Writes==1&&JToken.DeepEquals(first,same));
-            var claim=Request(store,"upload.claim",first);var claimed=Protocol.Commit(claim.ToString(),Actor,true,store);var replay=Protocol.Commit(claim.ToString(),Actor,true,store);Assert(store.Writes==2&&JToken.DeepEquals(claimed,replay));
+            var claim=Request(store,"upload.claim",first);var claimed=Protocol.Commit(claim.ToString(),Actor,true,store);var replay=Protocol.Commit(claim.ToString(),Actor,true,store);Assert(store.Writes==2&&(string?)claimed["outcome"]=="applied"&&(string?)replay["outcome"]=="replayed"&&JToken.DeepEquals(claimed["acknowledgment"],replay["acknowledgment"]));
             Reject(()=>Apply(store,"upload.claim",(JObject)claimed["value"]!));Assert(store.Writes==2);
             begin["sha256"]=new string('b',64);Reject(()=>Apply(store,"upload.begin",begin));
+        });
+        check("replayed acknowledgment is immutable while current row can advance",()=>{
+            var store=new Store(seed);
+            var row=Apply(store,"upload.begin",Original(store));
+            var claim=Request(store,"upload.claim",row);
+            var applied=Protocol.Commit(claim.ToString(),Actor,true,store);
+            var linked=(JObject)applied["value"]!.DeepClone();
+            linked["ref"]=Linked(new Store(seed))["ref"]!.DeepClone();
+            Apply(store,"upload.link",linked);
+            var replay=Protocol.Commit(claim.ToString(),Actor,true,store);
+            Assert((string?)replay["outcome"]=="replayed" && (string?)replay["value"]!["status"]=="linked");
+            Assert(JToken.DeepEquals(applied["acknowledgment"],replay["acknowledgment"]));
+            Assert((string?)replay["acknowledgment"]!["value"]!["status"]=="uploading");
+            Assert(replay["acknowledgment"]!["value"]!["rowVersion"]==null && store.Writes==3);
         });
         check("manual draft source binding, explicit review, versions and immutable history",()=>{
             var store=new Store(seed);var row=Linked(store);var draft=new JObject{{"schemaVersion",1},{"id",Guid.NewGuid().ToString("D")},{"eventId",row["eventId"]!.DeepClone()},{"source","manual"},{"parserVersion",null},{"modelVersion",null},{"promptVersion",null},{"reviewStatus","editing"},{"pages",new JArray(new JObject{{"documentId",row["id"]!.DeepClone()},{"documentRowVersion",row["rowVersion"]!.DeepClone()},{"version","etag-1"},{"sha256",new string('a',64)},{"originalReviewed",false}})},{"header",new JObject{{"supplierId",""},{"number","manual"},{"date",""},{"scope",""},{"grossCents",null}}},{"lines",new JArray()}};
@@ -56,19 +70,20 @@ static class DocumentTests
         });
         check("document guard binds exact own API action, caller, row and payload",()=>{
             var store=new Store(seed);var q=Request(store,"upload.begin",Original(store));var saved=(JObject)Protocol.Commit(q.ToString(),Actor,true,store)["value"]!;saved.Remove("rowVersion");
-            var target=new Entity("zk_kitchendocument",Upload){["zk_workspace"]=new EntityReference("zk_kitchenworkspace",store.Row.Id),["zk_eventid"]=(string)saved["eventId"]!,["zk_payload"]=saved.ToString(Newtonsoft.Json.Formatting.None),["zk_actor"]=Actor.ToString("D"),["zk_recordedat"]=DateTime.UtcNow};
+            var target=new Entity("zk_kitchendocument",Upload){["zk_workspace"]=new EntityReference("zk_kitchenworkspace",store.Row.Id),["zk_eventid"]=(string)saved["eventId"]!,["zk_payload"]=saved.ToString(Newtonsoft.Json.Formatting.None),["zk_actor"]=Actor.ToString("D"),["zk_recordedat"]=DateTime.Parse((string)saved["history"]!.Last!["recordedAt"]!,System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.RoundtripKind)};
             var parent=ContextProxy.Create(new(){{"MessageName","zk_KitchenCommit"},{"Stage",30},{"Mode",0},{"IsInTransaction",true},{"UserId",Actor},{"InitiatingUserId",Actor},{"InputParameters",new ParameterCollection{{"RequestJson",q.ToString()}}}});
             Dictionary<string,object?> Context()=>new(){{"ParentContext",parent},{"Mode",0},{"Stage",20},{"IsInTransaction",true},{"UserId",Actor},{"InitiatingUserId",Actor},{"MessageName","Create"},{"PrimaryEntityName","zk_kitchendocument"},{"InputParameters",new ParameterCollection{{"Target",target}}}};
             new KitchenDocumentWriteGuardPlugin().Execute(new GuardProvider(ContextProxy.Create(Context())));
-            foreach(var mutation in new[]{"actor","target","field","transaction","action"}) {
-                var c=Context();var originalId=target.Id;var originalRequest=q.ToString();
+            foreach(var mutation in new[]{"actor","target","field","transaction","action","audit-time"}) {
+                var c=Context();var originalId=target.Id;var originalRequest=q.ToString();var originalTime=target["zk_recordedat"];
+                if(mutation=="audit-time")target["zk_recordedat"]=((DateTime)originalTime).AddMinutes(1);
                 if(mutation=="actor")c["UserId"]=Guid.NewGuid();
                 if(mutation=="target")target.Id=Guid.NewGuid();
                 if(mutation=="field")target["ownerid"]=new EntityReference("systemuser",Actor);
                 if(mutation=="transaction")c["IsInTransaction"]=false;
                 if(mutation=="action")parent.InputParameters["RequestJson"]=new JObject{{"protocolVersion",2},{"workspaceId",store.Row.Id.ToString("D")},{"operationId","normal"}}.ToString();
                 var denied=false;try{new KitchenDocumentWriteGuardPlugin().Execute(new GuardProvider(ContextProxy.Create(c)));}catch(InvalidPluginExecutionException){denied=true;}
-                target.Id=originalId;target.Attributes.Remove("ownerid");parent.InputParameters["RequestJson"]=originalRequest;Assert(denied);
+                target["zk_recordedat"]=originalTime;target.Id=originalId;target.Attributes.Remove("ownerid");parent.InputParameters["RequestJson"]=originalRequest;Assert(denied);
             }
         });
         check("document direct, bulk and SYSTEM-origin writes denied",()=>{

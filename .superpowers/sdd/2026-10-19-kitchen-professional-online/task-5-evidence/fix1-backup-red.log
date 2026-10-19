@@ -1,0 +1,322 @@
+TAP version 13
+# Subtest: document contract requires inventories even when they are actually empty
+ok 1 - document contract requires inventories even when they are actually empty
+  ---
+  duration_ms: 17.351041
+  type: 'test'
+  ...
+# Subtest: full document/draft/byte relationships survive separate local restore and missing bytes stay incomplete
+ok 2 - full document/draft/byte relationships survive separate local restore and missing bytes stay incomplete
+  ---
+  duration_ms: 299.8565
+  type: 'test'
+  ...
+# Subtest: correctly rehashed raw draft with invalid money/provenance still rejects
+ok 3 - correctly rehashed raw draft with invalid money/provenance still rejects
+  ---
+  duration_ms: 1.699958
+  type: 'test'
+  ...
+# Subtest: rehashed documents native id contradiction rejects import and restore before writes
+not ok 4 - rehashed documents native id contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.6015
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed documents native workspace contradiction rejects import and restore before writes
+not ok 5 - rehashed documents native workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.171875
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed documents native missing-workspace contradiction rejects import and restore before writes
+not ok 6 - rehashed documents native missing-workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.519083
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed documents native workspace-type contradiction rejects import and restore before writes
+not ok 7 - rehashed documents native workspace-type contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.519
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed documents native event contradiction rejects import and restore before writes
+not ok 8 - rehashed documents native event contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.739291
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed documents native actor contradiction rejects import and restore before writes
+not ok 9 - rehashed documents native actor contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.657917
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed documents native time contradiction rejects import and restore before writes
+not ok 10 - rehashed documents native time contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.592709
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed documents native missing-audit contradiction rejects import and restore before writes
+not ok 11 - rehashed documents native missing-audit contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.616792
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed drafts native id contradiction rejects import and restore before writes
+not ok 12 - rehashed drafts native id contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.242375
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed drafts native workspace contradiction rejects import and restore before writes
+not ok 13 - rehashed drafts native workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.43725
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed drafts native missing-workspace contradiction rejects import and restore before writes
+not ok 14 - rehashed drafts native missing-workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.024167
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed drafts native workspace-type contradiction rejects import and restore before writes
+not ok 15 - rehashed drafts native workspace-type contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.3175
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed drafts native event contradiction rejects import and restore before writes
+not ok 16 - rehashed drafts native event contradiction rejects import and restore before writes
+  ---
+  duration_ms: 2.972666
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed drafts native actor contradiction rejects import and restore before writes
+not ok 17 - rehashed drafts native actor contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.204042
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed drafts native time contradiction rejects import and restore before writes
+not ok 18 - rehashed drafts native time contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.389917
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed drafts native missing-audit contradiction rejects import and restore before writes
+not ok 19 - rehashed drafts native missing-audit contradiction rejects import and restore before writes
+  ---
+  duration_ms: 2.956958
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:34:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:46:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rehashed historical draft with absent original rejects import and restore
+not ok 20 - rehashed historical draft with absent original rejects import and restore
+  ---
+  duration_ms: 3.596833
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:56:1'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:59:46)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: unknown historical row version or original version never claims complete
+not ok 21 - unknown historical row version or original version never claims complete
+  ---
+  duration_ms: 2.2685
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:62:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    true !== false
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: false
+  actual: true
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:65:56)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..21
+# tests 21
+# suites 0
+# pass 3
+# fail 18
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 519.699834

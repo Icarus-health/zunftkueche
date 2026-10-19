@@ -1,0 +1,9 @@
+PASS reservation is idempotent and claim cannot authorize a second upload
+PASS replayed acknowledgment is immutable while current row can advance
+PASS manual draft source binding, explicit review, versions and immutable history
+PASS document caller, workspace/event and transaction boundaries fail closed
+PASS closed selected event rejects document and draft writes preserving existing rows
+PASS document guard binds exact own API action, caller, row and payload
+PASS document direct, bulk and SYSTEM-origin writes denied
+PASS document view fails closed on unavailable dedicated store, without falling back to aggregate
+8 passed, 0 failed

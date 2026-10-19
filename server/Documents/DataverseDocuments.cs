@@ -63,7 +63,7 @@ namespace Zunftkueche
             target["zk_eventid"]=(string)payload["eventId"]!;
             target["zk_payload"]=payload.ToString(Formatting.None);
             target["zk_actor"]=context.InitiatingUserId.ToString("D");
-            target["zk_recordedat"]=DateTime.UtcNow;
+            target["zk_recordedat"]=DateTime.Parse((string)payload["history"]!.Last!["recordedAt"]!,System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.RoundtripKind);
             if(rowVersion==null)service.Create(target);
             else service.Execute(new UpdateRequest{Target=target,ConcurrencyBehavior=ConcurrencyBehavior.IfRowVersionMatches});
             return DocumentPayload(service.Retrieve(table,id,new ColumnSet(true)),workspace,draft);
@@ -108,6 +108,9 @@ namespace Zunftkueche
             var last=StatePolicy.Arr(payload["history"]).LastOrDefault() as JObject;
             Require(last!=null&&(string?)last["actorId"]==c.InitiatingUserId.ToString("D")&&(string?)last["requestId"]==(string?)q["requestId"]
                 &&(string?)last["requestHash"]==Protocol.Hash(Protocol.Canonical(q).ToString(Formatting.None)));
+            Require(DateTime.TryParse((string?)last!["recordedAt"],System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.RoundtripKind,out var recordedAt)
+                && recordedAt.Kind==DateTimeKind.Utc && recordedAt==(DateTime)target["zk_recordedat"]);
         }
     }
 }

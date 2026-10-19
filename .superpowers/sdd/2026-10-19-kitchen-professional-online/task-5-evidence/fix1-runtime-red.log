@@ -1,0 +1,38 @@
+TAP version 13
+# Subtest: unknown claim outcome is replayed with same request before resuming upload; no new create
+ok 1 - unknown claim outcome is replayed with same request before resuming upload; no new create
+  ---
+  duration_ms: 9.7885
+  type: 'test'
+  ...
+# Subtest: independent runtime continuations sharing the same pending claim never create twice
+not ok 2 - independent runtime continuations sharing the same pending claim never create twice
+  ---
+  duration_ms: 2.890875
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-runtime.test.mjs:18:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    2 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 2
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-runtime.test.mjs:24:9)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 1
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 156.543083

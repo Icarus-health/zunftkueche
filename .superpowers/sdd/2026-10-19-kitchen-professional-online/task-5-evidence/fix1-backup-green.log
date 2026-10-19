@@ -1,0 +1,136 @@
+TAP version 13
+# Subtest: document contract requires inventories even when they are actually empty
+ok 1 - document contract requires inventories even when they are actually empty
+  ---
+  duration_ms: 17.452333
+  type: 'test'
+  ...
+# Subtest: full document/draft/byte relationships survive separate local restore and missing bytes stay incomplete
+ok 2 - full document/draft/byte relationships survive separate local restore and missing bytes stay incomplete
+  ---
+  duration_ms: 267.383583
+  type: 'test'
+  ...
+# Subtest: correctly rehashed raw draft with invalid money/provenance still rejects
+ok 3 - correctly rehashed raw draft with invalid money/provenance still rejects
+  ---
+  duration_ms: 1.717875
+  type: 'test'
+  ...
+# Subtest: rehashed documents native id contradiction rejects import and restore before writes
+ok 4 - rehashed documents native id contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.625625
+  type: 'test'
+  ...
+# Subtest: rehashed documents native workspace contradiction rejects import and restore before writes
+ok 5 - rehashed documents native workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.803667
+  type: 'test'
+  ...
+# Subtest: rehashed documents native missing-workspace contradiction rejects import and restore before writes
+ok 6 - rehashed documents native missing-workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.174792
+  type: 'test'
+  ...
+# Subtest: rehashed documents native workspace-type contradiction rejects import and restore before writes
+ok 7 - rehashed documents native workspace-type contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.457875
+  type: 'test'
+  ...
+# Subtest: rehashed documents native event contradiction rejects import and restore before writes
+ok 8 - rehashed documents native event contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.142583
+  type: 'test'
+  ...
+# Subtest: rehashed documents native actor contradiction rejects import and restore before writes
+ok 9 - rehashed documents native actor contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.783916
+  type: 'test'
+  ...
+# Subtest: rehashed documents native time contradiction rejects import and restore before writes
+ok 10 - rehashed documents native time contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.569709
+  type: 'test'
+  ...
+# Subtest: rehashed documents native missing-audit contradiction rejects import and restore before writes
+ok 11 - rehashed documents native missing-audit contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.779
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native id contradiction rejects import and restore before writes
+ok 12 - rehashed drafts native id contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.399167
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native workspace contradiction rejects import and restore before writes
+ok 13 - rehashed drafts native workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.497875
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native missing-workspace contradiction rejects import and restore before writes
+ok 14 - rehashed drafts native missing-workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.961916
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native workspace-type contradiction rejects import and restore before writes
+ok 15 - rehashed drafts native workspace-type contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.316417
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native event contradiction rejects import and restore before writes
+ok 16 - rehashed drafts native event contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.412834
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native actor contradiction rejects import and restore before writes
+ok 17 - rehashed drafts native actor contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.571875
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native time contradiction rejects import and restore before writes
+ok 18 - rehashed drafts native time contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.586875
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native missing-audit contradiction rejects import and restore before writes
+ok 19 - rehashed drafts native missing-audit contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.706625
+  type: 'test'
+  ...
+# Subtest: rehashed historical draft with absent original rejects import and restore
+ok 20 - rehashed historical draft with absent original rejects import and restore
+  ---
+  duration_ms: 5.171459
+  type: 'test'
+  ...
+# Subtest: unknown historical row version or original version never claims complete
+ok 21 - unknown historical row version or original version never claims complete
+  ---
+  duration_ms: 12.007834
+  type: 'test'
+  ...
+1..21
+# tests 21
+# suites 0
+# pass 21
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 528.533709

@@ -1,0 +1,298 @@
+TAP version 13
+# Subtest: document contract requires inventories even when they are actually empty
+ok 1 - document contract requires inventories even when they are actually empty
+  ---
+  duration_ms: 22.528583
+  type: 'test'
+  ...
+# Subtest: full document/draft/byte relationships survive separate local restore and missing bytes stay incomplete
+ok 2 - full document/draft/byte relationships survive separate local restore and missing bytes stay incomplete
+  ---
+  duration_ms: 262.961959
+  type: 'test'
+  ...
+# Subtest: correctly rehashed raw draft with invalid money/provenance still rejects
+ok 3 - correctly rehashed raw draft with invalid money/provenance still rejects
+  ---
+  duration_ms: 2.228
+  type: 'test'
+  ...
+# Subtest: rehashed documents native id contradiction rejects import and restore before writes
+ok 4 - rehashed documents native id contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.723792
+  type: 'test'
+  ...
+# Subtest: rehashed documents native workspace contradiction rejects import and restore before writes
+ok 5 - rehashed documents native workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.022959
+  type: 'test'
+  ...
+# Subtest: rehashed documents native missing-workspace contradiction rejects import and restore before writes
+ok 6 - rehashed documents native missing-workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.583792
+  type: 'test'
+  ...
+# Subtest: rehashed documents native workspace-type contradiction rejects import and restore before writes
+ok 7 - rehashed documents native workspace-type contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.310375
+  type: 'test'
+  ...
+# Subtest: rehashed documents native event contradiction rejects import and restore before writes
+ok 8 - rehashed documents native event contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.913958
+  type: 'test'
+  ...
+# Subtest: rehashed documents native actor contradiction rejects import and restore before writes
+ok 9 - rehashed documents native actor contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.221166
+  type: 'test'
+  ...
+# Subtest: rehashed documents native time contradiction rejects import and restore before writes
+ok 10 - rehashed documents native time contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.480583
+  type: 'test'
+  ...
+# Subtest: rehashed documents native missing-audit contradiction rejects import and restore before writes
+ok 11 - rehashed documents native missing-audit contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.090208
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native id contradiction rejects import and restore before writes
+ok 12 - rehashed drafts native id contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.67775
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native workspace contradiction rejects import and restore before writes
+ok 13 - rehashed drafts native workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.7535
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native missing-workspace contradiction rejects import and restore before writes
+ok 14 - rehashed drafts native missing-workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.901
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native workspace-type contradiction rejects import and restore before writes
+ok 15 - rehashed drafts native workspace-type contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.428333
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native event contradiction rejects import and restore before writes
+ok 16 - rehashed drafts native event contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.918625
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native actor contradiction rejects import and restore before writes
+ok 17 - rehashed drafts native actor contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.864375
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native time contradiction rejects import and restore before writes
+ok 18 - rehashed drafts native time contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.692166
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native missing-audit contradiction rejects import and restore before writes
+ok 19 - rehashed drafts native missing-audit contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.996
+  type: 'test'
+  ...
+# Subtest: rehashed historical draft with absent original rejects import and restore
+ok 20 - rehashed historical draft with absent original rejects import and restore
+  ---
+  duration_ms: 4.971
+  type: 'test'
+  ...
+# Subtest: unknown historical row version or original version never claims complete
+ok 21 - unknown historical row version or original version never claims complete
+  ---
+  duration_ms: 10.321583
+  type: 'test'
+  ...
+# Subtest: unchanged source in an earlier draft snapshot remains complete with actual current evidence
+ok 22 - unchanged source in an earlier draft snapshot remains complete with actual current evidence
+  ---
+  duration_ms: 1.859917
+  type: 'test'
+  ...
+# Subtest: historical document reference needs its own exact manifest even when current pages no longer use it
+ok 23 - historical document reference needs its own exact manifest even when current pages no longer use it
+  ---
+  duration_ms: 5.501708
+  type: 'test'
+  ...
+# Subtest: timeout after provider success resumes by reading original, never creating twice
+ok 24 - timeout after provider success resumes by reading original, never creating twice
+  ---
+  duration_ms: 22.472458
+  type: 'test'
+  ...
+# Subtest: link failure exposes uploaded-unlinked and recovers same original
+ok 25 - link failure exposes uploaded-unlinked and recovers same original
+  ---
+  duration_ms: 2.883708
+  type: 'test'
+  ...
+# Subtest: ambiguous absent file does not permit another create
+ok 26 - ambiguous absent file does not permit another create
+  ---
+  duration_ms: 1.18125
+  type: 'test'
+  ...
+# Subtest: revoked document right refuses original read
+ok 27 - revoked document right refuses original read
+  ---
+  duration_ms: 1.264958
+  type: 'test'
+  ...
+# Subtest: two authorized simulated accounts can read the same original, while a changed account cannot resume its upload
+ok 28 - two authorized simulated accounts can read the same original, while a changed account cannot resume its upload
+  ---
+  duration_ms: 2.892875
+  type: 'test'
+  ...
+# Subtest: two concurrent app attempts permit only one create
+ok 29 - two concurrent app attempts permit only one create
+  ---
+  duration_ms: 2.142625
+  type: 'test'
+  ...
+# Subtest: existing original with different content is preserved and never replaced
+ok 30 - existing original with different content is preserved and never replaced
+  ---
+  duration_ms: 0.600291
+  type: 'test'
+  ...
+# Subtest: cancel before upload does not create or reserve an original
+ok 31 - cancel before upload does not create or reserve an original
+  ---
+  duration_ms: 0.179
+  type: 'test'
+  ...
+# Subtest: actual runtime lostCreate recovery reads and verifies the one existing original
+ok 32 - actual runtime lostCreate recovery reads and verifies the one existing original
+  ---
+  duration_ms: 2.703208
+  type: 'test'
+  ...
+# Subtest: actual runtime lostLink recovery reads and verifies the one existing original
+ok 33 - actual runtime lostLink recovery reads and verifies the one existing original
+  ---
+  duration_ms: 2.228875
+  type: 'test'
+  ...
+# Subtest: actual runtime pending claim replay remains read-only when both continuations resume after lost acknowledgment
+ok 34 - actual runtime pending claim replay remains read-only when both continuations resume after lost acknowledgment
+  ---
+  duration_ms: 1.8865
+  type: 'test'
+  ...
+# Subtest: unknown claim outcome is replayed with same request before resuming upload; no new create
+ok 35 - unknown claim outcome is replayed with same request before resuming upload; no new create
+  ---
+  duration_ms: 9.155125
+  type: 'test'
+  ...
+# Subtest: independent runtime continuations sharing the same pending claim never create twice
+ok 36 - independent runtime continuations sharing the same pending claim never create twice
+  ---
+  duration_ms: 3.310709
+  type: 'test'
+  ...
+# Subtest: one repository refuses an overlapping upload continuation before provider creation
+ok 37 - one repository refuses an overlapping upload continuation before provider creation
+  ---
+  duration_ms: 0.98075
+  type: 'test'
+  ...
+# Subtest: resumed pending claim cannot create even when its first server acknowledgment is applied
+ok 38 - resumed pending claim cannot create even when its first server acknowledgment is applied
+  ---
+  duration_ms: 1.137458
+  type: 'test'
+  ...
+# Subtest: receipt text survives Escape and close until discard is confirmed
+ok 39 - receipt text survives Escape and close until discard is confirmed
+  ---
+  duration_ms: 1.154167
+  type: 'test'
+  ...
+# Subtest: unchanged dialogs close immediately; cancellation also cancels pending navigation
+ok 40 - unchanged dialogs close immediately; cancellation also cancels pending navigation
+  ---
+  duration_ms: 0.11375
+  type: 'test'
+  ...
+# Subtest: form comparison detects text, dates, recipe removal and reversions without treating defaults as edits
+ok 41 - form comparison detects text, dates, recipe removal and reversions without treating defaults as edits
+  ---
+  duration_ms: 1.648167
+  type: 'test'
+  ...
+# Subtest: closing a modal consults its dirty standalone descendants without discarding other screen fields
+ok 42 - closing a modal consults its dirty standalone descendants without discarding other screen fields
+  ---
+  duration_ms: 0.548
+  type: 'test'
+  ...
+# Subtest: local tab and filter requests wait for dirty fields and cancellation leaves their destination unchanged
+ok 43 - local tab and filter requests wait for dirty fields and cancellation leaves their destination unchanged
+  ---
+  duration_ms: 0.444
+  type: 'test'
+  ...
+# Subtest: modal closure can exclude its own registry entry and invoke its own form guard exactly once
+ok 44 - modal closure can exclude its own registry entry and invoke its own form guard exactly once
+  ---
+  duration_ms: 2.455416
+  type: 'test'
+  ...
+# Subtest: header-first and line-first manual edits without pages use the existing navigation guard
+ok 45 - header-first and line-first manual edits without pages use the existing navigation guard
+  ---
+  duration_ms: 0.86925
+  type: 'test'
+  ...
+# Subtest: removing the last original stays dirty against the saved draft baseline
+ok 46 - removing the last original stays dirty against the saved draft baseline
+  ---
+  duration_ms: 0.076791
+  type: 'test'
+  ...
+# Subtest: focused invalid raw money and quantity stay intact on keep-editing and failed save
+ok 47 - focused invalid raw money and quantity stay intact on keep-editing and failed save
+  ---
+  duration_ms: 0.340667
+  type: 'test'
+  ...
+# Subtest: raw valid focused values parse only at save, unknown blanks stay null, queue is dirty
+ok 48 - raw valid focused values parse only at save, unknown blanks stay null, queue is dirty
+  ---
+  duration_ms: 0.069542
+  type: 'test'
+  ...
+1..48
+# tests 48
+# suites 0
+# pass 48
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 627.592542

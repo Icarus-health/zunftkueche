@@ -254,42 +254,105 @@ async function validateStoredHistory(row:Record<string,unknown>,draft:boolean):P
   }
   if(await backupHash(history[history.length-1].value)!==await backupHash(payload))throw new Error('Letzter Dokument-/Entwurfstand stimmt nicht.');
 }
+/** Required native metadata is independent evidence, not another copy of the payload. */
+async function validateDocumentRaw(row:Record<string,unknown>, draft:boolean):Promise<void> {
+  const raw=row.rawRow as Record<string,unknown>|undefined;
+  const table=draft?'zk_kitchendraft':'zk_kitchendocument';
+  if(!raw || raw[table+'id']!==row.id || raw['@rowVersion']!==row.rowVersion
+    || raw.zk_eventid!==row.eventId || typeof raw.zk_payload!=='string') {
+    throw new Error('Dokument-/Entwurf-Rohzeile: native Identität oder Beziehung stimmt nicht.');
+  }
+  const workspace=raw.zk_workspace as Record<string,unknown>|undefined;
+  if(!workspace || typeof workspace!=='object' || Array.isArray(workspace)
+    || Object.keys(workspace).sort().join(',')!=='id,logicalName,name,rowVersion'
+    || workspace.logicalName!=='zk_kitchenworkspace' || workspace.id!==row.workspaceId
+    || !(workspace.name===null || typeof workspace.name==='string')
+    || !(workspace.rowVersion===null || typeof workspace.rowVersion==='string')) {
+    throw new Error('Dokument-/Entwurf-Rohzeile: native Workspace-Beziehung fehlt oder ist unbekannt.');
+  }
+  const formatted=raw['@formattedValues'];
+  if(!formatted || typeof formatted!=='object' || Array.isArray(formatted)
+    || Object.values(formatted).some(value=>typeof value!=='string')) {
+    throw new Error('Dokument-/Entwurf-Rohzeile: native Formatmetadaten fehlen.');
+  }
+  const history=row.history as Record<string,unknown>[];
+  const last=history[history.length-1];
+  // Dataverse DateTime readback has millisecond precision; keep full source timestamps too.
+  if(raw.zk_actor!==last.actorId || typeof raw.zk_recordedat!=='string'
+    || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3,7}Z$/.test(raw.zk_recordedat)
+    || Date.parse(raw.zk_recordedat)!==Date.parse(String(last.recordedAt))) {
+    throw new Error('Dokument-/Entwurf-Rohzeile: native Auditangaben stimmen nicht.');
+  }
+  const {rowVersion,rawRow,...payload}=row;
+  if(await backupHash(JSON.parse(raw.zk_payload))!==await backupHash(payload)) {
+    throw new Error('Dokument-/Entwurf-Rohzeile: Nutzdaten stimmen nicht.');
+  }
+}
 async function inspectDocumentStores(value:BackupInputs, missing:string[]):Promise<void> {
   const documents=new Map<string,Record<string,unknown>>();
-  const events=new Set([value.state.event.id,...(value.state.archivedEvents??[]).map(event=>event.event.id)]);
+  const events=[value.state,...(value.state.archivedEvents??[])];
+  const eventIds=new Set(events.map(event=>event.event.id));
+  const snapshots=(row:Record<string,unknown>)=>(row.history as {value:Record<string,unknown>}[]).map(entry=>entry.value);
+  function requireOriginal(id:string,ref:import('./documents.ts').DocumentRef,historical:boolean) {
+    const original=value.documentManifest.find(original=>original.id===id && original.sha256===ref.sha256
+      && original.version===ref.version && original.itemId===ref.itemId);
+    const context=historical?'historisch versioniertes':'versioniertes';
+    if(!original)missing.push(`Dokument ${id}: ${context} Original fehlt`);
+    else if(original.bytesBase64===undefined)missing.push(`Dokument ${id}: ${context} Originalbytes nicht unabhängig gelesen`);
+  }
   for(const row of value.documents??[]) {
-    if(typeof row.id!=='string'||documents.has(row.id)||row.workspaceId!==value.workspaceId||!events.has(String(row.eventId))||!row.rowVersion||!Array.isArray(row.history)||!row.history.length)throw new Error('Dokumentinventar: Identität, Beziehung oder Verlauf ungültig.');
+    if(typeof row.id!=='string' || documents.has(row.id) || row.workspaceId!==value.workspaceId
+      || !eventIds.has(String(row.eventId)) || typeof row.rowVersion!=='string' || !row.rowVersion) {
+      throw new Error('Dokumentinventar: Identität oder Beziehung ungültig.');
+    }
     await validateStoredHistory(row,false);
+    await validateDocumentRaw(row,false);
     documents.set(row.id,row);
-    const raw=row.rawRow as Record<string,unknown>|undefined;
-    if(!raw||raw['@rowVersion']!==row.rowVersion||typeof raw.zk_payload!=='string')throw new Error('Dokument-/Entwurf-Rohzeile fehlt.');
-    const {rowVersion,rawRow,...payload}=row;
-    if(await backupHash(JSON.parse(raw.zk_payload))!==await backupHash(payload))throw new Error('Dokument-Rohzeile stimmt nicht.');
-    const ref=row.ref as import('./documents.ts').DocumentRef|undefined;
-    if(!ref || row.status!=='linked') {missing.push(`Dokument ${row.id}: Upload oder Verknüpfung unbestätigt`);continue;}
-    if(ref.sha256!==row.sha256||ref.size!==row.size||ref.originalName!==row.originalName||ref.mimeType!==row.mimeType)throw new Error('Dokumentreferenz stimmt nicht.');
-    const original=value.documentManifest.find(original=>original.id===row.id);
-    if(original&&original.bytesBase64===undefined)missing.push(`Dokument ${row.id}: Originalbytes nicht unabhängig gelesen`);
-    if(!original||original.sha256!==ref.sha256||original.version!==ref.version||original.itemId!==ref.itemId)missing.push(`Dokument ${row.id}: versioniertes Original fehlt`);
+    if(!row.ref || row.status!=='linked')missing.push(`Dokument ${row.id}: Upload oder Verknüpfung unbestätigt`);
+    // An older retained external reference is still required, even when no current draft uses it.
+    const history=snapshots(row);
+    for(const [index,snapshot] of history.entries()) {
+      const ref=snapshot.ref as import('./documents.ts').DocumentRef|undefined;
+      if(ref)requireOriginal(row.id,ref,index<history.length-1);
+    }
   }
   const drafts=new Set<string>();
   for(const row of value.drafts??[]) {
-    if(typeof row.id!=='string'||drafts.has(row.id)||row.workspaceId!==value.workspaceId||!events.has(String(row.eventId))||!row.rowVersion||!Array.isArray(row.history)||!row.history.length||row.schemaVersion!==1||row.source!=='manual')throw new Error('Entwurfinventar ungültig.');
+    if(typeof row.id!=='string' || drafts.has(row.id) || row.workspaceId!==value.workspaceId
+      || !eventIds.has(String(row.eventId)) || typeof row.rowVersion!=='string' || !row.rowVersion) {
+      throw new Error('Entwurfinventar ungültig.');
+    }
     await validateStoredHistory(row,true);
-    const event=[value.state,...(value.state.archivedEvents??[])].find(event=>event.event.id===row.eventId)!;
-    const header=row.header as {supplierId:string};
-    if(header.supplierId&&!event.suppliers.some(s=>s.id===header.supplierId))throw new Error('Entwurf-Lieferantenbeziehung ungültig.');
-    if((row.lines as {articleId:string}[]).some(line=>line.articleId&&!event.articles.some(article=>article.id===line.articleId)))throw new Error('Entwurf-Artikelbeziehung ungültig.');
-    if((row.pages as {documentId:string}[]).reduce((sum,page)=>sum+Number(documents.get(page.documentId)?.size??0),0)>20971520)throw new Error('Entwurf-Originalumfang überschritten.');
+    await validateDocumentRaw(row,true);
     drafts.add(row.id);
-    const raw=row.rawRow as Record<string,unknown>|undefined;
-    if(!raw||raw['@rowVersion']!==row.rowVersion||typeof raw.zk_payload!=='string')throw new Error('Entwurf-Rohzeile fehlt.');
-    const {rowVersion,rawRow,...payload}=row;
-    if(await backupHash(JSON.parse(raw.zk_payload))!==await backupHash(payload))throw new Error('Entwurf-Rohzeile stimmt nicht.');
-    if(!Array.isArray(row.pages)||row.pages.length===0||row.pages.length>10)throw new Error('Entwurf-Seiten ungültig.');
-    for(const page of row.pages as import('./documents.ts').DraftPage[]) {
-      const document=documents.get(page.documentId),ref=document?.ref as import('./documents.ts').DocumentRef|undefined;
-      if(!document||document.eventId!==row.eventId||document.rowVersion!==page.documentRowVersion||!ref||ref.version!==page.version||ref.sha256!==page.sha256)throw new Error('Entwurf-Originalbeziehung ungültig.');
+    const event=events.find(event=>event.event.id===row.eventId)!;
+    const history=snapshots(row);
+    for(const [index,snapshot] of history.entries()) {
+      const historical=index<history.length-1;
+      const header=snapshot.header as {supplierId:string};
+      if(header.supplierId&&!event.suppliers.some(s=>s.id===header.supplierId))throw new Error('Entwurf-Lieferantenbeziehung ungültig.');
+      if((snapshot.lines as {articleId:string}[]).some(line=>line.articleId&&!event.articles.some(article=>article.id===line.articleId)))throw new Error('Entwurf-Artikelbeziehung ungültig.');
+      const pages=snapshot.pages as import('./documents.ts').DraftPage[];
+      if(pages.reduce((sum,page)=>sum+Number(documents.get(page.documentId)?.size??0),0)>20971520)throw new Error('Entwurf-Originalumfang überschritten.');
+      for(const page of pages) {
+        const document=documents.get(page.documentId);
+        if(!document || document.eventId!==row.eventId)throw new Error('Entwurf-Originalbeziehung ungültig.');
+        const source=snapshots(document).find(snapshot=>{
+          const ref=snapshot.ref as import('./documents.ts').DocumentRef|undefined;
+          return ref?.version===page.version && ref.sha256===page.sha256;
+        });
+        if(!source) {
+          if(!historical)throw new Error('Entwurf-Originalbeziehung ungültig.');
+          missing.push(`Entwurf ${row.id}: historischer Originalstand ${page.documentId} nicht belegt`);
+        } else requireOriginal(page.documentId,source.ref as import('./documents.ts').DocumentRef,historical);
+        // History deliberately contains no invented native RowVersion. Only current readback
+        // attests one. An older reference needs evidence this source contract does not retain.
+        const currentRef=document.ref as import('./documents.ts').DocumentRef|undefined;
+        if(document.rowVersion!==page.documentRowVersion || currentRef?.version!==page.version || currentRef?.sha256!==page.sha256) {
+          if(!historical)throw new Error('Entwurf-Originalbeziehung: aktuelle RowVersion stimmt nicht.');
+          missing.push(`Entwurf ${row.id}: historische Dokument-RowVersion ${page.documentRowVersion} nicht belegt`);
+        }
+      }
     }
   }
 }
