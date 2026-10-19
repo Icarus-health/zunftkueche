@@ -12,6 +12,7 @@ import { Heading, Jump, Empty, Notice } from "../components/shared.tsx";
 import { missingDishCells, eventDate } from "../ui/facts.ts";
 import { purchasingNeeds } from "../domain/workflow.ts";
 export default function Home({ state, go }: ScreenProps) {
+  const closed = state.event.status === "Abgeschlossen";
   const openRecipes = state.menu.filter(
       (m) => m.recipeStatus !== "Bestätigt",
     ).length,
@@ -51,9 +52,9 @@ export default function Home({ state, go }: ScreenProps) {
       <Heading
         title="Deine Küche im Überblick"
         action={
-          <button className="button primary" onClick={() => go("Planung")}>
+          <button className="button primary" onClick={() => go(closed ? "Auswertung" : "Planung")}>
             <ForkKnife size={24} />
-            Planung öffnen
+            {closed ? "Abschluss und Berichte öffnen" : "Planung öffnen"}
             <ArrowRight size={19} />
           </button>
         }

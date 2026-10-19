@@ -1,3 +1,4 @@
+import {receiptFieldLabels, receiptProposalLabel} from '../ui/receipt-display.ts';
 import ReceiptReview from './ReceiptReview.tsx';
 import {suppliedText} from '../ocr/receipt-parser.ts';
 import {useEffect,useRef,useState} from 'react';
@@ -7,7 +8,7 @@ import type {DocumentRepository,DocumentRow,ExtractDraft} from '../data/document
 import {DocumentPreview} from '../components/DocumentPreview.tsx';
 import {requestDraftNavigation,useDraftGuard} from '../hooks/useDraftGuard.ts';
 import {DiscardChangesDialog} from '../components/DiscardChangesDialog.tsx';
-import {createReceiptEdit,parseReceiptEdit,receiptEditDirty,replaceReceiptDraft} from '../ui/receipt-intake-draft.ts';
+import {createReceiptEdit,parseReceiptEdit,receiptEditDirty,replaceReceiptDraft,receiptReadyForReview} from '../ui/receipt-intake-draft.ts';
 import {ReceiptAcceptanceSession} from '../ui/receipt-acceptance.ts';
 
 export default function ReceiptIntake({state,documents:repo,readOnly,onClose,commit,busy}:ScreenProps&{documents:DocumentRepository;onClose:()=>void}) {
@@ -27,6 +28,7 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
   const blocked=readOnly||closed||!!draft.acceptance;
   const helperText=draft.textAssist?.text??'';
   const [saved,setSaved]=useState(()=>JSON.stringify(edit));
+  const [editingReviewed,setEditingReviewed]=useState(false);
   function setDraft(next:ExtractDraft|((current:ExtractDraft)=>ExtractDraft)) {
     acceptance.edit(()=>setEdit(current=>replaceReceiptDraft(current,typeof next==='function'?next(current.draft):next)));
   }
@@ -35,6 +37,8 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
     setEdit(next);
     setSaved(JSON.stringify(next));
     setViewed([]);
+    setPreview(null);
+    setEditingReviewed(false);
   }
   function resetDraft(value:ExtractDraft) {acceptance.edit(()=>replaceEditor(value));}
   function changeRaw(value:string,lineId?:string,field:'quantity'|'grossCents'='grossCents') {
@@ -52,6 +56,8 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
   const [message,setMessage]=useState(''),[step,setStep]=useState(0);
   const [viewed,setViewed]=useState<string[]>([]);
   const [uploadStatuses,setUploadStatuses]=useState<Record<string,string>>({});
+  const reviewReady=receiptReadyForReview(edit,saved,queue.length);
+  const showReview=reviewReady && (!editingReviewed || !!draft.acceptance);
   const root=useRef<HTMLElement|null>(null);
   const abort=useRef<AbortController|null>(null);
   const guard=useDraftGuard({
@@ -198,14 +204,13 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
       Diese Veranstaltung ist abgeschlossen. Originale und Entwürfe bleiben lesbar; neue Uploads und Änderungen
       sind gesperrt. Erst nach begründeter Wiederöffnung kann weiter erfasst werden.
     </p>}
-    <p>Manuelle Erfassung · keine automatische Erkennung aktiv. Originale liegen in SharePoint;
-      der Prüfentwurf bleibt getrennt von den Küchenbuchungen.</p>
-    <p>Vorläufige Schutzgrenzen: JPEG, PNG oder PDF; 5 MiB je Original, Bilder höchstens 24 Millionen Pixel
+    <p>Original ansehen → Angaben prüfen → Entwurf speichern → Beleg bewusst übernehmen. Manuelle Erfassung; automatische Erkennung ist ausgeschaltet.</p>
+    <details className="history-details"><summary>Dateiformate und Schutzgrenzen</summary><p>Originale liegen in SharePoint; der Prüfentwurf bleibt getrennt von den Küchenbuchungen.</p><p>Vorläufige Schutzgrenzen: JPEG, PNG oder PDF; 5 MiB je Original, Bilder höchstens 24 Millionen Pixel
       und 8192 Pixel Kantenlänge, höchstens 10 geordnete Originale und 20 MiB pro Entwurf.
       Die Gerätegrenzen sind noch in der echten App zu prüfen. Ein PDF wird vollständig aufbewahrt;
-      keine Seiten werden abgeschnitten.</p>
+      keine Seiten werden abgeschnitten.</p><p>HEIC bitte vorab als JPEG/PNG exportieren oder die Kamera auf ein kompatibles Format stellen.</p></details>
 
-    <fieldset disabled={working||blocked}>
+    {!showReview && <fieldset disabled={working||blocked} className="intake-upload">
       <label>Foto aufnehmen
         <input type="file" accept="image/jpeg,image/png" capture="environment" onChange={event=>{
           void select(Array.from(event.target.files??[]));event.target.value='';
@@ -216,7 +221,6 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
           void select(Array.from(event.target.files??[]));event.target.value='';
         }}/>
       </label>
-      <p>HEIC bitte vorab als JPEG/PNG exportieren oder die Kamera auf ein kompatibles Format stellen.</p>
       {queue.map((entry,index)=><div key={entry.uploadId} className="panel">
         <span>{index+1}. {entry.file.name} · {(entry.file.size/1024).toFixed(0)} KiB</span>
         <button type="button" onClick={()=>setPreview({blob:entry.file,name:entry.file.name})}>Vorschau</button>
@@ -226,7 +230,7 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
         <details><summary>Technische Angaben</summary><small>Upload-ID: {entry.uploadId}</small></details>
       </div>)}
       <button className="button primary" disabled={!queue.length} onClick={upload}>Originale hochladen</button>
-    </fieldset>
+    </fieldset>}
     {working && <p role="status">Verbindung wird geprüft / Vorgang läuft …</p>}
     {operation==='upload' && <div role="status">
       <p>{step} Originale abgeschlossen.</p>
@@ -237,8 +241,8 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
     {message && <p role="status">{message}</p>}
     {preview && <DocumentPreview blob={preview.blob} name={preview.name}/>}
 
-    <section className="panel">
-      <h3>Gespeicherte Originale und offene Uploads</h3>
+    {rows.length > 0 && <details className="panel history-details">
+      <summary>Gespeicherte Originale und offene Uploads ({rows.length})</summary>
       {rows.map(row=><div className="panel" key={row.id}>
         <strong>{row.originalName}</strong>
         <p>{row.status==='linked' ? 'Dokument verknüpft'
@@ -256,12 +260,12 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
           }}/>
         </label>}
       </div>)}
-    </section>
+    </details>}
 
     <section className="panel">
       <h3>Manueller Prüfplatz</h3>
-      <button disabled={working||busy} onClick={()=>requestDraftNavigation(()=>resetDraft(fresh()))}>Neuen Prüfentwurf beginnen</button>
-      <label>Gespeicherten Entwurf öffnen
+      <button className="button secondary" disabled={working||readOnly||closed} onClick={()=>requestDraftNavigation(()=>resetDraft(fresh()))}>Neuen Prüfentwurf beginnen</button>
+      {drafts.length > 0 && <label>Gespeicherten Entwurf öffnen
         <select disabled={working} value="" onChange={event=>{
           const value=drafts.find(draft=>draft.id===event.target.value);
           if(value)requestDraftNavigation(()=>resetDraft(value));
@@ -271,13 +275,14 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
             {draft.header.number||'Ohne Nummer'} · {draft.reviewStatus==='accepted'?'übernommen':draft.reviewStatus==='reviewed'?'geprüft':'in Bearbeitung'}
           </option>)}
         </select>
-      </label>
-      <fieldset disabled={working||blocked||busy}>
+      </label>}
+      {showReview && !blocked && <button className="button secondary" disabled={working} onClick={()=>requestDraftNavigation(()=>setEditingReviewed(true))}>Angaben weiter bearbeiten</button>}
+      {!showReview && <fieldset disabled={working||blocked||busy}>
         <details><summary>Text freiwillig als Vorschlagshilfe einfügen</summary>
           <p>Hier eingefügter Text wird lokal ausgewertet. Das ist keine automatische PDF-/Fotoerkennung. Herkunft, Seitenzuordnung und Vollständigkeit des Textes sind nicht verifiziert. Jeder Vorschlag muss am Original geprüft werden.</p>
           <label>Belegtext<textarea maxLength={16000} value={helperText} onChange={e=>{setDraft({...draft,reviewStatus:'editing',textAssist:{origin:'user-supplied',completeness:'unknown',parserVersion:'receipt-hints-v1',text:e.target.value,proposals:[]}});}}/></label>
           <button onClick={()=>{try{setDraft({...draft,reviewStatus:'editing',textAssist:suppliedText(helperText,state.suppliers)});}catch(e){setMessage((e as Error).message);}}}>Text lokal auswerten</button>
-          {draft.textAssist?.proposals.map(p=><div key={p.field}><p>{({supplierId:'Lieferant',number:'Belegnummer',date:'Datum',grossCents:'Brutto gesamt'})[p.field]}: {p.value??'Offen / mehrdeutig'} · {p.evidence.map(e=>e.quote).join(' / ')}</p><button disabled={p.value===null} onClick={()=>{if(p.value===null)return;if(p.field==='grossCents'){const cents=Number(p.value);if(cents<0){setMessage('Gutschrift / negativer Betrag: separate wirtschaftliche Prüfung erforderlich; keine automatische Übernahme.');return;}changeRaw((cents/100).toFixed(2).replace('.',','));}else changeHeader(p.field,p.value);}}>Diesen Vorschlag ins Feld übernehmen</button></div>)}
+          {draft.textAssist?.proposals.map(p=><div key={p.field}><p>{receiptFieldLabels[p.field]}: {receiptProposalLabel(p,state.suppliers)} · {p.evidence.map(e=>e.quote).join(' / ')}</p><button disabled={p.value===null} onClick={()=>{if(p.value===null)return;if(p.field==='grossCents'){const cents=Number(p.value);if(cents<0){setMessage('Gutschrift / negativer Betrag: separate wirtschaftliche Prüfung erforderlich; keine automatische Übernahme.');return;}changeRaw((cents/100).toFixed(2).replace('.',','));}else changeHeader(p.field,p.value);}}>Diesen Vorschlag ins Feld übernehmen</button></div>)}
         </details>
         {draft.pages.map((page,index)=>{
           const row=rows.find(row=>row.id===page.documentId);
@@ -291,7 +296,7 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
             <button onClick={()=>setDraft({...draft,pages:draft.pages.filter(item=>item!==page),reviewStatus:'editing'})}>
               Aus Entwurf lösen
             </button>
-            <label>
+            <label className="checkbox-label">
               <input type="checkbox" checked={page.originalReviewed} disabled={!viewed.includes(page.documentId)}
                 onChange={event=>setDraft({...draft,reviewStatus:'editing',pages:draft.pages.map(item=>
                   item===page ? {...item,originalReviewed:event.target.checked} : item,
@@ -347,7 +352,7 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
           </button>
         </div>)}
         <button disabled={draft.lines.length>=100} onClick={addLine}>Position ergänzen</button>
-        <label>
+        <label className="checkbox-label">
           <input type="checkbox" checked={draft.reviewStatus==='reviewed'}
             disabled={!draft.pages.length||draft.pages.some(page=>!page.originalReviewed)}
             onChange={event=>setDraft({...draft,reviewStatus:event.target.checked?'reviewed':'editing'})}/>
@@ -355,12 +360,12 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
         </label>
         <button className="button primary" disabled={!draft.pages.length} onClick={save}>Prüfentwurf speichern</button>
 
-      </fieldset>
+      </fieldset>}
     </section>
-    <ReceiptReview key={`${draft.id}:${draft.rowVersion??'new'}`} state={state} documents={repo} rows={rows} edit={edit}
+    {showReview && <ReceiptReview key={`${draft.id}:${draft.rowVersion??'new'}`} state={state} documents={repo} rows={rows} edit={edit}
       busy={working} pending={()=>acceptance.pending} canAccept={!blocked&&!receiptEditDirty(edit,saved,queue.length)&&draft.reviewStatus==='reviewed'&&!!draft.rowVersion}
       onAccept={decisions=>acceptance.accept({edit,state,documents:repo,decisions,commit:payload=>commit('receipt.draft.accept',payload),refresh,currentEdit:()=>currentEdit.current,onPending:setAcceptancePending,
-        onAccepted:accepted=>{replaceEditor(accepted);setMessage('Belegübernahme bestätigt. Preise und Bestände werden separat bearbeitet.');}})}/>
+        onAccepted:accepted=>{replaceEditor(accepted);setMessage('Belegübernahme bestätigt. Preise und Bestände werden separat bearbeitet.');}})}/>}
     {guard.confirming && <DiscardChangesDialog onDiscard={guard.confirmDiscard} onKeepEditing={guard.keepEditing}/>}
   </section>;
 }

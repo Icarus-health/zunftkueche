@@ -38,3 +38,8 @@ export function parseReceiptEdit(edit:ReceiptEdit):ExtractDraft {
     })),
   };
 }
+
+/** Review is a separate step only after an acknowledged, unchanged reviewed save. */
+export function receiptReadyForReview(edit: ReceiptEdit, baseline: string, queued: number): boolean {
+  return !!edit.draft.acceptance || (!!edit.draft.rowVersion && edit.draft.reviewStatus === 'reviewed' && !receiptEditDirty(edit, baseline, queued));
+}

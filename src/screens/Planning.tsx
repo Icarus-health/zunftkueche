@@ -1,3 +1,4 @@
+import {kitchenEditingDisabled} from '../ui/kitchen-editing.ts';
 import {AllocationEditor} from '../components/AllocationEditor.tsx';
 import {allocationSummary} from '../domain/receiving.ts';
 import { ResponsiveTable } from "../components/MobileItemCard.tsx";
@@ -36,6 +37,7 @@ import {
   eventDate,
 } from "../ui/facts.ts";
 export default function Planning(props: ScreenProps) {
+  props = {...props, busy: kitchenEditingDisabled(props)};
   const {navigate} = useDraftNavigation();
   const { state, busy, commit, go, saveError } = props,
     [tab, setTab] = useState("Speisen planen"),
@@ -124,7 +126,7 @@ export default function Planning(props: ScreenProps) {
           </Notice>
           {menus.length ? (
             <div className="table-card">
-              <ResponsiveTable>
+              <ResponsiveTable className="day-comparison-table">
                 <thead>
                   <tr>
                     <th>Speise / Getränk</th>
@@ -147,7 +149,7 @@ export default function Planning(props: ScreenProps) {
                         </small>
                       </td>
                       {kitchenDays.map((day) => (
-                        <td key={day}>
+                        <td key={day} className="day-input-cell">
                           <Quantity
                             whole
                             value={

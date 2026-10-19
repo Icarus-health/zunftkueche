@@ -1,3 +1,5 @@
+import {kitchenEditingDisabled} from '../ui/kitchen-editing.ts';
+import {ordersForContext, receivingSuppliers} from '../ui/order-selection.ts';
 import {orderCsv,downloadReport} from '../data/exports.ts';
 import { AuditStamp } from "../components/CorrectionDialog.tsx";
 import { orderPlanningChanged } from "../domain/order-status.ts";
@@ -35,16 +37,19 @@ import {
 } from "../ui/facts.ts";
 export default function Orders({
   state,
-  busy,
+  busy: pendingWrite,
+  readOnly,
   commit,
   saveError,
   initialSupplier,
 }: ScreenProps & { initialSupplier: string }) {
+  const busy = kitchenEditingDisabled({state, busy: pendingWrite, readOnly});
   const { navigate, pending } = useDraftNavigation();
+  const suppliers = receivingSuppliers(state);
   const [supplier, setSupplier] = useState(
-      state.suppliers.some((s) => s.id === initialSupplier)
+      suppliers.some((s) => s.id === initialSupplier)
         ? initialSupplier
-        : (state.suppliers[0]?.id ?? ""),
+        : (suppliers[0]?.id ?? ""),
     ),
     [day, setDay] = useState("Freitag"),
     [prices, setPrices] = useState(false),
@@ -61,14 +66,14 @@ export default function Orders({
   useEffect(() => {
     if (
       initialSupplier &&
-      state.suppliers.some((s) => s.id === initialSupplier)
+      suppliers.some((s) => s.id === initialSupplier)
     )
       setSupplier(initialSupplier);
   }, [initialSupplier]);
   const snapshot = prepareOrder(state.planLines, supplier, day),
     supplierName =
       state.suppliers.find((s) => s.id === supplier)?.name ?? "Lieferant offen";
-  const prepared = state.orders.filter((o) => o.supplierId === supplier);
+  const prepared = ordersForContext(state, supplier, day);
   const previewHeader = preview ? orderPreviewHeader(state, preview) : null;
   function savePlannedQuantity(id: string, quantity: number | null) {
     const allocated = state.planLines.some(parent => parent.allocations?.some(
@@ -91,13 +96,12 @@ export default function Orders({
               const value = e.target.value;
               navigate(() => {
                 setSupplier(value);
-                setTab("Planung");
               });
             }}
           >
-            {state.suppliers.map((s) => (
+            {suppliers.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name}
+                {s.label}
               </option>
             ))}
           </select>
@@ -113,7 +117,6 @@ export default function Orders({
                 if (d === day && tab === "Planung") return;
                 navigate(() => {
                   setDay(d);
-                  setTab("Planung");
                 });
               }}
             >
@@ -310,7 +313,8 @@ export default function Orders({
                       Lebende Planung weicht von dieser Fassung ab.
                     </p>
                   )}
-                  {(o.statusHistory ?? []).map((entry: any) => (
+                  <details className="history-details"><summary>Verlauf ({o.statusHistory?.length ?? 0})</summary>
+                  {(o.statusHistory ?? []).map((entry: import("../domain/corrections.ts").AuditEntry & {operationId: string; status: string; note: string}) => (
                     <div key={entry.operationId}>
                       {entry.status === "bestellt"
                         ? "Manuell als bestellt markiert"
@@ -319,6 +323,7 @@ export default function Orders({
                       <AuditStamp entry={entry} />
                     </div>
                   ))}
+                  </details>
                   {o.status !== "bestaetigt" && (
                     <button
                       className="button secondary"
@@ -338,7 +343,7 @@ export default function Orders({
               ))
           ) : (
             <div className="empty">
-              <h3>Noch keine Version vorbereitet</h3>
+              <h3>Keine gespeicherte Fassung für {day}</h3>
               <p>
                 Prüfe die Bestellmengen und bereite anschließend eine Version
                 vor.

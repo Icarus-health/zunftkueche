@@ -1,3 +1,4 @@
+import {kitchenEditingDisabled} from '../ui/kitchen-editing.ts';
 import { ResponsiveTable } from "../components/MobileItemCard.tsx";
 import { useState } from "react";
 import { Plus, PencilSimple, MagnifyingGlass } from "@phosphor-icons/react";
@@ -20,6 +21,7 @@ import { articleReferenced, parseMoney } from "../ui/facts.ts";
 type Kind = "Lieferanten" | "Artikel" | "Speisen & Getränke";
 type Editor = { kind: Kind; item?: Supplier | Article | Menu };
 export default function Masters(props: ScreenProps) {
+  props = {...props, busy: kitchenEditingDisabled(props)};
   const {navigate} = useDraftNavigation();
   const { state, busy } = props,
     [tab, setTab] = useState<Kind>("Lieferanten"),

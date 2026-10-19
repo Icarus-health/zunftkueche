@@ -47,7 +47,6 @@ export function EventClosure({ scope, ...props }: ScreenProps & { scope: string 
         Umfang {scope} · {closed && saved?.scope === scope ? 'Gespeicherter Schlussstand' : 'Datenrevision'}{' '}
         {check.revision} · {check.complete ? 'Checkliste vollständig' : 'Angaben noch offen'}
       </p>
-      <ul>{check.open.map(reason => <li key={reason}>{reason}</li>)}</ul>
       <p>
         <strong>{check.resultCents === null ? 'Nettoergebnis offen' : `Nettoerlöse minus Verbrauch: ${euros(check.resultCents)}`}</strong>
         <br />{check.resultReason}
@@ -66,6 +65,8 @@ export function EventClosure({ scope, ...props }: ScreenProps & { scope: string 
         </div>
       ) : <p>Abschluss, Nettobewertung, Wiederöffnung und Erfahrungen benötigen Eigentümerrechte.</p>}
 
+      {check.open.length > 0 && <details className="history-details"><summary>Offene Punkte ({check.open.length})</summary><ul>{check.open.map(reason => <li key={reason}>{reason}</li>)}</ul></details>}
+      <details className="history-details"><summary>Nettogrundlagen ({state.economicEvidence?.length ?? 0})</summary>
       {state.economicEvidence?.map(entry => (
         <div className="detail-row" key={entry.operationId}>
           <div>
@@ -77,6 +78,8 @@ export function EventClosure({ scope, ...props }: ScreenProps & { scope: string 
           </div>
         </div>
       ))}
+      </details>
+      <details className="history-details"><summary>Abschlussverlauf ({state.closureHistory?.length ?? 0})</summary>
       {state.closureHistory?.map(entry => (
         <div key={entry.operationId}>
           <strong>{entry.action === 'close' ? 'Abgeschlossen' : 'Wieder geöffnet'}</strong>
@@ -85,9 +88,12 @@ export function EventClosure({ scope, ...props }: ScreenProps & { scope: string 
           <AuditStamp entry={entry} />
         </div>
       ))}
+      </details>
+      <details className="history-details"><summary>Erfahrungen ({state.lessons.length})</summary>
       {state.lessons.map(lesson => (
         <div key={lesson.id}><p>{lesson.note}</p>{lesson.operationId && <AuditStamp entry={lesson} />}</div>
       ))}
+      </details>
       {editingEvidence && <NetEvidenceEditor {...props} scope={scope} onClose={() => setEditingEvidence(false)} />}
       {action && (
         <Modal title={action === 'close' ? 'Prüfung ausdrücklich bestätigen' : action === 'reopen' ? 'Wieder öffnen mit Grund' : 'Erfahrung festhalten'} onClose={() => setAction(null)}>

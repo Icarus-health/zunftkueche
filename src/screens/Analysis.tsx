@@ -1,3 +1,4 @@
+import {kitchenEditingDisabled} from '../ui/kitchen-editing.ts';
 import {EventClosure} from '../components/EventClosure.tsx';
 import {buildEventExport,toCsv,toPrintHtml,downloadReport} from '../data/exports.ts';
 import {
@@ -30,11 +31,12 @@ import {
 } from "../components/shared.tsx";
 import { kitchenDays, receiptTotals, eventDate } from "../ui/facts.ts";
 export default function Analysis(props:ScreenProps) {
- const {state,busy,commit,go}=props;
+ const {state,commit,go}=props;
+ const busy = kitchenEditingDisabled(props);
   const [correcting, setCorrecting] = useState<string | null>(null);
   const correction = effectiveSales(state).find((s) => s.id === correcting);
   const { navigate } = useDraftNavigation();
-  const [tab, setTab] = useState("Verkäufe erfassen"),
+  const [tab, setTab] = useState(state.event.status === "Abgeschlossen" ? "Abschluss" : "Verkäufe erfassen"),
     [scope, setScope] = useState(purchasingLocation(state) ?? "Alle"),
     [search, setSearch] = useState("");
   const expected = state.menu.length * 2,
@@ -94,11 +96,8 @@ export default function Analysis(props:ScreenProps) {
         Verkäufe mit der Speisenplanung vergleichen und erfasste Ausgaben nach
         Zuordnung ansehen.
       </Heading>
-      <EventClosure {...props} scope={scope}/>
-      <div className="flow-actions"><button className="button secondary" onClick={()=>downloadReport(toCsv(buildEventExport(state,scope)),`Auswertung-${state.event.year}-R${state.revision}.csv`,"text/csv;charset=utf-8")}>CSV · {scope}</button><button className="button secondary" onClick={()=>downloadReport(toPrintHtml(buildEventExport(state,scope)),`Auswertung-${state.event.year}-R${state.revision}.html`,"text/html;charset=utf-8")}>Prüfbare Druckdatei / PDF</button></div>
-      <p>Auswertungen enthalten Umfang, Revision und Quellen. Druckdatei öffnen und als PDF drucken. Dies ist keine Vollsicherung.</p>
       <Tabs
-        items={["Verkäufe erfassen", "Auswertung", "Erfahrungen"]}
+        items={["Verkäufe erfassen", "Auswertung", "Abschluss", "Erfahrungen"]}
         value={tab}
         onChange={setTab}
         label="Abschlussansichten"
@@ -128,7 +127,7 @@ export default function Analysis(props:ScreenProps) {
           </Notice>
           {menu.length ? (
             <div className="table-card">
-              <ResponsiveTable>
+              <ResponsiveTable className="day-comparison-table">
                 <thead>
                   <tr>
                     <th>Speise / Getränk</th>
@@ -162,7 +161,7 @@ export default function Analysis(props:ScreenProps) {
                           (s) => s.menuId === m.id && s.day === day,
                         );
                         return (
-                          <td key={day}>
+                          <td key={day} className="day-input-cell">
                             <Quantity
                               whole
                               value={sale?.quantity ?? null}
@@ -193,6 +192,7 @@ export default function Analysis(props:ScreenProps) {
                                 >
                                   Preis berichtigen
                                 </button>
+                                <details className="history-details"><summary>Preisverlauf ({(state.salePriceCorrections ?? []).filter(c => c.targetId === sale.id).length})</summary>
                                 {(state.salePriceCorrections ?? [])
                                   .filter((c) => c.targetId === sale.id)
                                   .map((c) => (
@@ -202,6 +202,7 @@ export default function Analysis(props:ScreenProps) {
                                       <AuditStamp entry={c} />
                                     </div>
                                   ))}
+                                </details>
                               </div>
                             )}
                             {sale && sale.priceCents === null && (
@@ -454,6 +455,12 @@ export default function Analysis(props:ScreenProps) {
             Lager / Restmengen erfassen
           </button>
         </div>
+      ) : tab === "Abschluss" ? (
+        <>
+      <EventClosure {...props} scope={scope}/>
+      <div className="flow-actions"><button className="button secondary" onClick={()=>downloadReport(toCsv(buildEventExport(state,scope)),`Auswertung-${state.event.year}-R${state.revision}.csv`,"text/csv;charset=utf-8")}>CSV · {scope}</button><button className="button secondary" onClick={()=>downloadReport(toPrintHtml(buildEventExport(state,scope)),`Auswertung-${state.event.year}-R${state.revision}.html`,"text/html;charset=utf-8")}>Prüfbare Druckdatei / PDF</button></div>
+      <p>Auswertungen enthalten Umfang, Revision und Quellen. Druckdatei öffnen und als PDF drucken. Dies ist keine Vollsicherung.</p>
+        </>
       ) : (
         <>
           <Notice>

@@ -1,3 +1,4 @@
+import {kitchenEditingDisabled} from '../ui/kitchen-editing.ts';
 import {ReceivingList} from '../components/ReceivingList.tsx';
 import {
   CorrectionDialog,
@@ -37,6 +38,7 @@ const kinds = [
   ["stock.waste", "Abfall", "Abfall"],
 ] as const;
 export default function Deliveries(props: ScreenProps) {
+  props = {...props, busy: kitchenEditingDisabled(props)};
  const {
   state,
   busy,
@@ -48,7 +50,7 @@ export default function Deliveries(props: ScreenProps) {
   const [correcting, setCorrecting] = useState<string | null>(null);
   const correction = state.movements.find((m) => m.id === correcting);
   const { navigate, pending } = useDraftNavigation();
-  const [tab, setTab] = useState("Erfassen"),
+  const [tab, setTab] = useState("Lieferung annehmen"),
     [type, setType] = useState<string>("delivery.record"),
     [supplier, setSupplier] = useState(""),
     [article, setArticle] = useState(state.articles[0]?.id ?? ""),
@@ -131,9 +133,8 @@ export default function Deliveries(props: ScreenProps) {
         Anfang, Zu- und Abgänge ausdrücklich erfassen; gezählte Reste bleiben
         separat.
       </Heading>
-      <ReceivingList {...props}/>
       <Tabs
-        items={["Erfassen", "Bestandsübersicht"]}
+        items={["Lieferung annehmen", "Erfassen", "Bestandsübersicht"]}
         value={tab}
         onChange={(next) => {
           setTab(next);
@@ -142,6 +143,7 @@ export default function Deliveries(props: ScreenProps) {
         }}
         label="Lageransicht"
       />
+      {tab === "Lieferung annehmen" ? <ReceivingList {...props}/> : <>
       <div className="toolbar">
         <label>
           Lieferant
@@ -510,6 +512,7 @@ export default function Deliveries(props: ScreenProps) {
             ))}
         </section>
       )}
+      </>}
       <Notice>
         Alle Bestände gelten für den ausgewählten Ort. Unbekannter Anfang bleibt
         offen. Rechnerischer Bestand = Anfang + Lieferungen − Rückgaben −

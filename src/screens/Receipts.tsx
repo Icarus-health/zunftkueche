@@ -1,3 +1,4 @@
+import {kitchenEditingDisabled} from '../ui/kitchen-editing.ts';
 import ReceiptIntake from "./ReceiptIntake.tsx";
 import { AuditStamp } from "../components/CorrectionDialog.tsx";
 import {
@@ -35,7 +36,8 @@ import {
 } from "../ui/facts.ts";
 export default function Receipts(props: ScreenProps) {
   const { navigate } = useDraftNavigation();
-  const { state, busy, mode } = props,
+  const busy = kitchenEditingDisabled(props);
+  const { state, mode } = props,
     [selected, setSelected] = useState<string | null>(null),
     [adding, setAdding] = useState(false),
     [status, setStatus] = useState("Alle"),
@@ -74,7 +76,7 @@ export default function Receipts(props: ScreenProps) {
         Rechnungen ergänzen, Unterlagen verknüpfen und den Erfassungsbereich
         klar halten.
       </Heading>
-      {props.documents && <button className="button secondary" disabled={busy||props.readOnly} onClick={()=>navigate(()=>setIntake(true))}>Foto / PDF aufnehmen</button>}
+      {props.documents && <button className="button secondary" disabled={props.busy} onClick={()=>navigate(()=>setIntake(true))}>{state.event.status === "Abgeschlossen" || props.readOnly ? "Originale und Prüfentwürfe ansehen" : "Foto / PDF aufnehmen"}</button>}
       <div className="toolbar receipt-filters">
         <label>
           Zuordnung
@@ -224,6 +226,7 @@ export default function Receipts(props: ScreenProps) {
         <ReceiptEditor
           key={selected ?? "new"}
           {...props}
+          busy={busy}
           item={state.invoices.find((i) => i.id === selected)}
           onClose={() => {
             setSelected(null);

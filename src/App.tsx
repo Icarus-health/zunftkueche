@@ -6,7 +6,7 @@ import {projectEvent} from "./domain/event-context.ts";
 import {defaultPreferences,loadPreferences,savePreferences} from "./data/preferences.ts";
 import type {UserPreferences} from "./data/preferences.ts";
 import { requestDraftNavigation } from "./hooks/useDraftGuard.ts";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChefHat,
   House,
@@ -72,6 +72,16 @@ export default function App() {
     [screen, setScreen] = useState<Screen>("Übersicht"),
     [supplier, setSupplier] = useState(""),
     [viewEvent, setViewEvent] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const navigation = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (mobileMenuOpen) navigation.current?.querySelector<HTMLButtonElement>('[aria-current="page"]')?.focus();
+  }, [mobileMenuOpen]);
+  function closeMobileMenu() {
+    setMobileMenuOpen(false);
+    menuButton.current?.focus();
+  }
   const [preferences,setPreferences]=useState<UserPreferences>({...defaultPreferences});
   const [refreshing, setRefreshing] = useState(false),
     [loadError, setLoadError] = useState(""),
@@ -167,6 +177,7 @@ export default function App() {
     requestDraftNavigation(() => {
       if (supplierId) setSupplier(supplierId);
       setScreen(target);
+      if (mobileMenuOpen) closeMobileMenu();
       controller.clearNotice();
       setLoadError("");
     });
@@ -228,12 +239,18 @@ export default function App() {
   return (
     <SavePendingContext value={saving || Boolean(pending)}>
     <div className={`app-shell density-${preferences.displayDensity}`}>
-      <aside className="sidebar">
+      <aside className="sidebar" onKeyDown={event => { if (event.key === "Escape" && mobileMenuOpen) { event.preventDefault(); closeMobileMenu(); } }}>
         <div className="brand">
           <ChefHat size={34} />
           <strong>Zunftküche</strong>
         </div>
-        <nav aria-label="Küchenverwaltung">
+        <div className="mobile-navigation-bar">
+          <span>Aktuell: <strong>{screen === "Lieferungen" ? "Lieferungen & Lager" : screen}</strong></span>
+          <button ref={menuButton} className="button secondary small" aria-expanded={mobileMenuOpen} aria-controls="kitchen-navigation" onClick={() => mobileMenuOpen ? closeMobileMenu() : setMobileMenuOpen(true)}>
+            {mobileMenuOpen ? "Menü schließen" : "Menü"}
+          </button>
+        </div>
+        <nav ref={navigation} id="kitchen-navigation" className={mobileMenuOpen ? "mobile-menu-open" : ""} aria-label="Küchenverwaltung">
           {nav.map(([name, Icon]) => (
             <button
               key={name}
@@ -300,7 +317,7 @@ export default function App() {
             <div className="context-right">
               <button
                 className="button secondary small"
-                disabled={props.busy || repository.repo?.canConfigure!==true}
+                disabled={props.busy || viewState.event.status === "Abgeschlossen" || repository.repo?.canConfigure!==true}
                 onClick={() => setEventDialog("dates")}
               >
                 <CalendarBlank size={18} />
@@ -326,6 +343,10 @@ export default function App() {
           </details>
         </div>
         <main>
+          {viewState.event.status === "Abgeschlossen" && <div className="closure-banner" role="status">
+            <span><strong>Abgeschlossen · Leseansicht</strong> · Änderungen sind nach begründeter Wiederöffnung möglich.</span>
+            <button className="text-button" onClick={() => go("Auswertung")}>Abschluss und Berichte</button>
+          </div>}
           {error && (
             <div className="alert" role="alert">
               <WarningCircle size={23} />
@@ -451,7 +472,7 @@ function EventEditor({
       onClose={onClose}
     >
       <form onSubmit={save}>
-        <fieldset disabled={busy}>
+        <fieldset disabled={busy || (kind === "dates" && state.event.status === "Abgeschlossen")}>
           {kind === "create" ? (
             <>
               <p>
