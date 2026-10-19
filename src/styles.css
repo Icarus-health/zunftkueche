@@ -2156,3 +2156,145 @@ th small {
   margin: 12vh auto;
   padding: 2rem;
 }
+
+/* Working views: the same facts and controls remain visible at every width. */
+.mobile-item-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  background: #fff;
+  margin: 14px 0;
+}
+.mobile-item-card h3 { display: flex; gap: 10px; align-items: center; }
+.mobile-item-card header p { color: var(--muted); margin-top: 7px; font-size: 14px; }
+.mobile-item-card footer { margin-top: 15px; }
+.overview-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.open-tasks { border: 0; padding: 0; }
+.overview-grid > section { min-width: 0; }
+.context-menu { position: relative; }
+.context-menu > summary { cursor: pointer; color: var(--teal); font-size: 13px; padding: 10px; }
+.context-menu[open] .context-right {
+  position: absolute; top: 100%; right: 0; z-index: 12;
+  width: 280px; padding: 14px; background: #fff;
+  border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 30px #12332820;
+}
+.save-status { position: static; box-shadow: none; width: fit-content; margin-bottom: 14px; }
+.discard-layer {
+  position: fixed; inset: 0; z-index: 100; background: #101c3070;
+  display: grid; place-items: center; padding: 16px;
+}
+.discard-dialog {
+  background: #fff; border-radius: 14px; padding: 24px;
+  width: min(100%, 460px); box-shadow: 0 15px 60px #101c3040;
+}
+.discard-dialog p { margin-top: 14px; color: var(--muted); }
+.discard-dialog .modal-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.discard-dialog .modal-actions .button { margin: 0; }
+.quantity-field input { scroll-margin-block: 100px; }
+@media (max-width: 850px) {
+  .app-shell { display: block; }
+  .sidebar {
+    width: 100%; height: auto; position: static; padding: 12px 16px;
+    border-right: 0; border-bottom: 1px solid var(--line);
+  }
+  .brand { justify-content: flex-start; gap: 9px; margin-bottom: 12px; }
+  .brand strong { display: block; font-size: 19px; }
+  .brand svg { height: 25px; width: 25px; }
+  .sidebar nav { display: flex; flex-direction: row; gap: 6px; flex-wrap: wrap; }
+  .nav-item {
+    flex: 0 1 auto; width: auto; padding: 9px 10px; gap: 6px;
+    min-height: 42px; border-radius: 8px;
+  }
+  .nav-item span { display: inline; font-size: 12px; }
+  .nav-item svg { width: 17px; height: 17px; }
+  .context-bar { min-height: 0; gap: 8px; padding: 12px 16px; align-items: end; }
+  .event-select { min-width: 0; width: auto; flex: 1; }
+  .event-select select { width: 100%; font-size: 14px; min-height: 42px; }
+  .context-menu { flex: 0 0 auto; }
+  .context-menu > summary { font-size: 12px; padding: 10px 0 10px 8px; }
+  .context-menu[open] .context-right { width: 260px; }
+  main { padding: 16px 16px 32px; }
+  .overview-grid { grid-template-columns: minmax(0, 1fr); gap: 26px; }
+  .open-tasks { padding: 0; border: 0; }
+  .page-heading { gap: 14px; margin-bottom: 22px; }
+  .page-heading p { font-size: 14px; }
+  .page-heading h1 { font-size: 26px; }
+  .mobile-item-card { padding: 16px; }
+  .table-card:has(> .responsive-table) { overflow: visible; border: 0; background: transparent; }
+  .table-card > .responsive-table, .responsive-table { min-width: 0; width: 100%; display: block; }
+  .responsive-table > thead { display: none !important; }
+  .responsive-table > tbody { display: grid; gap: 14px; }
+  .responsive-table > tbody > tr {
+    display: grid; grid-template-columns: minmax(0, 1fr);
+    padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff;
+  }
+  .responsive-table > tbody > tr > td,
+  .orders-screen .order-group .responsive-table > tbody > tr > td {
+    display: grid; grid-template-columns: minmax(90px, .85fr) minmax(0, 1.15fr);
+    align-items: start; gap: 6px 12px; padding: 10px 0;
+    border: 0; border-top: 1px solid #edf2f0; min-width: 0;
+    white-space: normal; overflow-wrap: anywhere;
+  }
+  .responsive-table > tbody > tr > td::before {
+    content: attr(data-label); color: var(--muted); font-size: 12px;
+    font-weight: 500; align-self: center;
+  }
+  .responsive-table > tbody > tr > td:first-child {
+    display: block; border-top: 0; padding-top: 0; padding-bottom: 12px;
+  }
+  .responsive-table > tbody > tr > td:first-child::before { content: none; }
+  .responsive-table > tbody > tr > td > :not(:first-child) { grid-column: 2; }
+  .responsive-table td > strong { font-size: 16px; }
+  .responsive-table td small { font-size: 12px; }
+  .responsive-table td:first-child > small { display: block; margin-top: 5px; }
+  .responsive-table .quantity-field { width: 100%; }
+  .responsive-table .quantity-field input,
+  .orders-screen .order-group .quantity-field input {
+    min-height: 44px; min-width: 0; width: 100%; font-size: 16px; padding: 9px;
+  }
+  .responsive-table .quantity-field span { flex: none; font-size: 12px; }
+  .responsive-table .quantity-wrap { min-width: 0; width: 100%; }
+  .table-card td .button, .table-card td .text-button { white-space: normal; }
+  .tabs { gap: 6px; flex-wrap: wrap; overflow: visible; }
+  .tabs button { font-size: 13px; padding: 10px 8px; white-space: normal; }
+  .order-controls { align-items: stretch; }
+  .order-controls label { width: 100%; max-width: none; }
+  .segmented { display: flex; flex-wrap: wrap; }
+  .segmented button { flex: 1 0 auto; font-size: 13px; min-height: 42px; }
+  .order-footer { position: static; margin-top: 20px; padding: 16px 0 96px; }
+  .order-footer .button-row {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+    background: #fff; padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    display: flex; flex-wrap: nowrap; border-top: 1px solid var(--line); box-shadow: 0 -5px 20px #1233280a;
+  }
+  .order-footer .button { min-height: 44px; padding: 10px; white-space: normal; font-size: 13px; }
+  .order-footer .button.primary { flex: 1; }
+  .order-footer .button.secondary { flex: 0 0 auto; }
+  /* While entering a quantity, return the action bar to the document so it cannot cover the keyboard or field. */
+  .app-shell:has(input:focus, textarea:focus, select:focus) .order-footer .button-row { position: static; padding: 12px 0; box-shadow: none; }
+  .app-shell:has(input:focus, textarea:focus, select:focus) .order-footer { padding-bottom: 16px; }
+  .modal-layer { padding: 12px; }
+  .modal { max-height: calc(100dvh - 24px); width: 100%; padding: 18px; }
+  .modal input, .modal select, .modal textarea, .form-card input, .form-card select { font-size: 16px; scroll-margin-block: 70px; }
+  .missing-details { padding: 14px; }
+  .missing-details ul { max-height: 150px; }
+  .source-details { max-width: 100%; }
+  .notice { font-size: 13px; }
+  .form-row { grid-template-columns: minmax(0, 1fr); }
+}
+@media print {
+  .context-menu, .discard-layer { display: none !important; }
+  .responsive-table { display: table; }
+  .responsive-table > thead { display: table-header-group !important; }
+  .responsive-table > tbody { display: table-row-group; }
+  .responsive-table > tbody > tr { display: table-row; }
+  .responsive-table > tbody > tr > td { display: table-cell; }
+  .responsive-table > tbody > tr > td::before { content: none; }
+}
+.secondary-actions > summary { color: var(--teal); cursor: pointer; font-size: 13px; padding: 10px; }
+.secondary-actions[open] .button { margin-top: 8px; }
+@media (max-width: 850px) {
+  .secondary-actions { width: 100%; }
+  .secondary-actions > summary { padding-left: 0; }
+  .secondary-actions .button { white-space: normal; width: 100%; }
+}

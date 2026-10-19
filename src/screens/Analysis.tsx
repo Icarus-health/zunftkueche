@@ -1,3 +1,4 @@
+import { ResponsiveTable } from "../components/MobileItemCard.tsx";
 import { useState } from "react";
 import { Printer } from "@phosphor-icons/react";
 import type { ScreenProps } from "../App.tsx";
@@ -92,7 +93,7 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
           </Notice>
           {menu.length ? (
             <div className="table-card">
-              <table>
+              <ResponsiveTable>
                 <thead>
                   <tr>
                     <th>Speise / Getränk</th>
@@ -166,7 +167,7 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </ResponsiveTable>
             </div>
           ) : (
             <Empty title="Keine Speisen gefunden">
@@ -226,7 +227,7 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
           </Notice>
           <h2>Speisenplanung und Verkäufe je Abend</h2>
           <div className="table-card">
-            <table>
+            <ResponsiveTable>
               <thead>
                 <tr>
                   <th>Speise / Getränk</th>
@@ -261,6 +262,7 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
                       return (
                         <DayComparison
                           key={day}
+                          day={day}
                           planned={planned}
                           sold={sold}
                         />
@@ -269,13 +271,13 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </ResponsiveTable>
           </div>
           <div className="two-column">
             <section>
               <h2>Erfasster Umsatz nach Abend</h2>
               <div className="table-card">
-                <table>
+                <ResponsiveTable>
                   <thead>
                     <tr>
                       <th>Abend</th>
@@ -300,13 +302,13 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
                       );
                     })}
                   </tbody>
-                </table>
+                </ResponsiveTable>
               </div>
             </section>
             <section>
               <h2>Beleggrundlage · {scope}</h2>
               <div className="table-card">
-                <table>
+                <ResponsiveTable>
                   <thead>
                     <tr>
                       <th>Erfassungsart</th>
@@ -338,7 +340,7 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
                       },
                     )}
                   </tbody>
-                </table>
+                </ResponsiveTable>
               </div>
               <button className="text-button" onClick={() => go("Belege")}>
                 Belege ergänzen
@@ -348,7 +350,7 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
           <h2>Bestand Küche · Rechnung und Zählung</h2>
           {stockArticles.length ? (
             <div className="table-card">
-              <table>
+              <ResponsiveTable>
                 <thead>
                   <tr>
                     <th>Artikel</th>
@@ -372,7 +374,7 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
                     );
                   })}
                 </tbody>
-              </table>
+              </ResponsiveTable>
             </div>
           ) : (
             <Empty title="Bestand noch offen">
@@ -427,17 +429,19 @@ function ReactColumns() {
   );
 }
 function DayComparison({
+  day,
   planned,
   sold,
 }: {
+  day: string;
   planned: number | null;
   sold: number | null;
 }) {
   return (
     <>
-      <td>{shownAmount(planned)}</td>
-      <td>{shownAmount(sold)}</td>
-      <td>
+      <td data-label={`${day} · Plan`}>{shownAmount(planned)}</td>
+      <td data-label={`${day} · Verkauft`}>{shownAmount(sold)}</td>
+      <td data-label={`${day} · Abweichung`}>
         {planned === null || sold === null
           ? "Offen"
           : `${sold - planned > 0 ? "+" : ""}${sold - planned}`}

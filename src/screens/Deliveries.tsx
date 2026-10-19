@@ -1,3 +1,4 @@
+import { ResponsiveTable } from "../components/MobileItemCard.tsx";
 import { useState } from "react";
 import { Check, Truck } from "@phosphor-icons/react";
 import type { ScreenProps } from "../App.tsx";
@@ -302,7 +303,7 @@ export default function Deliveries({
         )
       ) : (
         <div className="table-card">
-          <table>
+          <ResponsiveTable>
             <thead>
               <tr>
                 <th>Artikel</th>
@@ -351,7 +352,7 @@ export default function Deliveries({
                   );
                 })}
             </tbody>
-          </table>
+          </ResponsiveTable>
           {!articles.length && (
             <p className="empty-inline">Keine Artikel vorhanden.</p>
           )}

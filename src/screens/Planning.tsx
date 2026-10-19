@@ -1,3 +1,4 @@
+import { ResponsiveTable } from "../components/MobileItemCard.tsx";
 import { useState } from "react";
 import {
   ArrowRight,
@@ -97,6 +98,8 @@ export default function Planning(props: ScreenProps) {
                 placeholder="Name oder Kategorie"
               />
             </label>
+            <details className="secondary-actions">
+              <summary>Weitere Aktionen</summary>
             <button
               className="button secondary"
               disabled={busy || !missingCells.length}
@@ -104,6 +107,7 @@ export default function Planning(props: ScreenProps) {
             >
               Offene Einträge bewusst auf 0 setzen ({missingCells.length})
             </button>
+            </details>
           </div>
           <Notice>
             Leer bedeutet „noch nicht geplant“. Trage 0 ein, wenn eine Speise
@@ -112,7 +116,7 @@ export default function Planning(props: ScreenProps) {
           </Notice>
           {menus.length ? (
             <div className="table-card">
-              <table>
+              <ResponsiveTable>
                 <thead>
                   <tr>
                     <th>Speise / Getränk</th>
@@ -173,7 +177,7 @@ export default function Planning(props: ScreenProps) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </ResponsiveTable>
             </div>
           ) : (
             <Empty title="Keine Speisen gefunden">
@@ -227,7 +231,7 @@ export default function Planning(props: ScreenProps) {
             zusätzlichen Bedarf und rundet auf ganze Gebinde.
           </Notice>
           {needs.missing.length > 0 && (
-            <details className="missing-details" open>
+            <details className="missing-details">
               <summary>
                 {needs.missing.length} offene Angaben bei Speisen / Rezepturen
               </summary>
@@ -252,7 +256,7 @@ export default function Planning(props: ScreenProps) {
           )}
           {needs.rows.length ? (
             <div className="table-card">
-              <table>
+              <ResponsiveTable>
                 <thead>
                   <tr>
                     <th>Artikel</th>
@@ -313,7 +317,7 @@ export default function Planning(props: ScreenProps) {
                     );
                   })}
                 </tbody>
-              </table>
+              </ResponsiveTable>
             </div>
           ) : (
             <Empty
@@ -385,7 +389,7 @@ export default function Planning(props: ScreenProps) {
           </Notice>
           {lines.length ? (
             <div className="table-card">
-              <table>
+              <ResponsiveTable>
                 <thead>
                   <tr>
                     <th>Artikel</th>
@@ -453,7 +457,7 @@ export default function Planning(props: ScreenProps) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </ResponsiveTable>
             </div>
           ) : (
             <Empty title="Keine Einkaufspositionen">
@@ -615,7 +619,7 @@ export default function Planning(props: ScreenProps) {
                 Mengen bleiben erhalten.
               </p>
               <div className="table-card">
-                <table>
+                <ResponsiveTable>
                   <thead>
                     <tr>
                       <th>Speise / Getränk</th>
@@ -632,7 +636,7 @@ export default function Planning(props: ScreenProps) {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </ResponsiveTable>
               </div>
             </>
           ) : (
@@ -644,7 +648,7 @@ export default function Planning(props: ScreenProps) {
                 Lieferungen einteilen.
               </p>
               <div className="table-card">
-                <table>
+                <ResponsiveTable>
                   <thead>
                     <tr>
                       <th>Artikel</th>
@@ -685,7 +689,7 @@ export default function Planning(props: ScreenProps) {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </ResponsiveTable>
               </div>
             </>
           )}

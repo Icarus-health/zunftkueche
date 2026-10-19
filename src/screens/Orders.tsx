@@ -1,3 +1,4 @@
+import { ResponsiveTable } from "../components/MobileItemCard.tsx";
 import { useEffect, useState } from "react";
 import {
   Eye,
@@ -135,7 +136,7 @@ export default function Orders({
                 <small>{group.lines.length} Positionen</small>
               </h2>
               <div className="table-card">
-                <table>
+                <ResponsiveTable>
                   <thead>
                     <tr>
                       <th>Artikel</th>
@@ -176,7 +177,7 @@ export default function Orders({
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </ResponsiveTable>
               </div>
             </section>
           ))}
@@ -310,7 +311,7 @@ export default function Orders({
               </p>
             </div>
             {previewHeader.notice && <p>{previewHeader.notice}</p>}
-            <table>
+            <ResponsiveTable>
               <thead>
                 <tr>
                   <th>Artikel</th>
@@ -329,7 +330,7 @@ export default function Orders({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </ResponsiveTable>
             <p className="muted">
               {formatDeliveryDate(previewHeader.deliveryDate)} · Versandstatus:
               offen.

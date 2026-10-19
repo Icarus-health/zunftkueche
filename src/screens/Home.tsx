@@ -1,3 +1,4 @@
+import { MobileItemCard } from "../components/MobileItemCard.tsx";
 import {
   ArrowRight,
   Truck,
@@ -61,6 +62,16 @@ export default function Home({ state, go }: ScreenProps) {
         {eventDate(state, "Freitag")} · Samstag {eventDate(state, "Samstag")}
       </Heading>
       <div className="overview-grid">
+        <section className="open-tasks">
+          <h2>Nächste Schritte</h2>
+          <p className="muted">
+            Die Karten zeigen den aktuellen Erfassungsstand.
+          </p>
+          {tasks.map(({ title, text, icon: Icon, screen, button }) => (
+            <MobileItemCard key={title} title={<><Icon size={22} />{title}</>}
+              subtitle={text} actions={<Jump onClick={() => go(screen)}>{button}</Jump>} />
+          ))}
+        </section>
         <section>
           <h2>Bestellungen</h2>
           <p className="muted">Lieferant auswählen, danach Liefertag.</p>
@@ -99,24 +110,7 @@ export default function Home({ state, go }: ScreenProps) {
             Stammdaten pflegen
           </button>
         </section>
-        <section className="open-tasks">
-          <h2>Nächste Schritte</h2>
-          <p className="muted">
-            Die Karten zeigen den aktuellen Erfassungsstand.
-          </p>
-          {tasks.map(({ title, text, icon: Icon, screen, button }) => (
-            <div className="task-row" key={title}>
-              <div className="task-icon">
-                <Icon size={30} />
-              </div>
-              <div>
-                <h3>{title}</h3>
-                <p>{text}</p>
-              </div>
-              <Jump onClick={() => go(screen)}>{button}</Jump>
-            </div>
-          ))}
-        </section>
+
       </div>
       <div className="source-footer">
         <span>

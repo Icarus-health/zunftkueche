@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useDraftGuard } from "../hooks/useDraftGuard.ts";
+import { draftFingerprint } from "../ui/draft-guard.ts";
+import { DiscardChangesDialog } from "./DiscardChangesDialog.tsx";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { X, ArrowRight, WarningCircle } from "@phosphor-icons/react";
 import { parseQuantity } from "../domain/kitchen.ts";
 import type { Source } from "../domain/kitchen.ts";
@@ -46,9 +49,17 @@ export function Quantity({
 }) {
   const [raw, setRaw] = useState(amount(value)),
     [error, setError] = useState("");
+  const previous = useRef(value);
+  const currentRaw = useRef(raw);
+  currentRaw.current = raw;
+  const guard = useDraftGuard({dirty: raw !== amount(value), onDiscard: () => {
+    setRaw(amount(value)); setError("");
+  }});
   useEffect(() => {
-    setRaw(amount(value));
-    setError("");
+    if (currentRaw.current === amount(previous.current)) {
+      setRaw(amount(value)); setError("");
+    }
+    previous.current = value;
   }, [value]);
   async function save() {
     if (disabled) return;
@@ -56,8 +67,10 @@ export function Quantity({
       const parsed = parseQuantity(raw);
       if (whole && parsed !== null && !Number.isInteger(parsed))
         throw new Error("Bitte eine ganze Stückzahl eingeben.");
-      if (parsed === value) return;
+      if (parsed === value) { setRaw(amount(value)); return; }
+      const attempt = raw;
       const ok = await onSave(parsed);
+      if (ok && currentRaw.current === attempt) setRaw(amount(parsed));
       setError(
         ok ? "" : "Noch nicht gespeichert. Bitte den Hinweis oben beachten.",
       );
@@ -67,6 +80,7 @@ export function Quantity({
   }
   return (
     <div className="quantity-wrap">
+      {guard.confirming && <DiscardChangesDialog onDiscard={guard.confirmDiscard} onKeepEditing={guard.keepEditing} />}
       <div className="quantity-field">
         <input
           aria-label={label}
@@ -131,26 +145,35 @@ export function Money({
 }) {
   const [raw, setRaw] = useState(value === null ? "" : amount(value / 100)),
     [error, setError] = useState("");
+  const previous = useRef(value);
+  const currentRaw = useRef(raw);
+  currentRaw.current = raw;
+  const display = (cents: number | null) => cents === null ? "" : amount(cents / 100);
+  const guard = useDraftGuard({dirty: raw !== display(value), onDiscard: () => {
+    setRaw(display(value)); setError("");
+  }});
   useEffect(() => {
-    setRaw(value === null ? "" : amount(value / 100));
-    setError("");
+    if (currentRaw.current === display(previous.current)) {
+      setRaw(display(value)); setError("");
+    }
+    previous.current = value;
   }, [value]);
   async function save() {
     if (disabled) return;
     try {
       const price = parseMoney(raw, precise);
-      if (price === value) return;
-      setError(
-        (await onSave(price))
-          ? ""
-          : "Noch nicht gespeichert. Bitte den Hinweis oben beachten.",
-      );
+      if (price === value) { setRaw(display(value)); return; }
+      const attempt = raw;
+      const ok = await onSave(price);
+      if (ok && currentRaw.current === attempt) setRaw(display(price));
+      setError(ok ? "" : "Noch nicht gespeichert. Bitte den Hinweis oben beachten.");
     } catch (e) {
       setError((e as Error).message);
     }
   }
   return (
     <div className="quantity-wrap">
+      {guard.confirming && <DiscardChangesDialog onDiscard={guard.confirmDiscard} onKeepEditing={guard.keepEditing} />}
       <div className={`quantity-field ${precise ? "precise-money" : ""}`}>
         <input
           aria-label={label}
@@ -254,6 +277,7 @@ export function Tabs({
     </div>
   );
 }
+export const SavePendingContext = createContext(false);
 export function Modal({
   title,
   children,
@@ -263,7 +287,23 @@ export function Modal({
   children: React.ReactNode;
   onClose: () => void;
 }) {
+  const pendingSave = useContext(SavePendingContext);
   const ref = useRef<HTMLDivElement>(null);
+  const baseline = useRef<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const guard = useDraftGuard({dirty, onDiscard: onClose});
+  function inspectDraft() {
+    const controls = Array.from(ref.current?.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+      "form input, form select, form textarea",
+    ) ?? []);
+    const fingerprint = draftFingerprint(controls.map(control => ({
+      type: control.type, value: control.value,
+      checked: control instanceof HTMLInputElement ? control.checked : undefined,
+    })));
+    if (baseline.current === null) baseline.current = fingerprint;
+    setDirty(fingerprint !== baseline.current);
+  }
+  useLayoutEffect(inspectDraft);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement;
     ref.current?.focus();
@@ -277,7 +317,7 @@ export function Modal({
   function keyDown(e: React.KeyboardEvent) {
     if (e.key === "Escape") {
       e.stopPropagation();
-      onClose();
+      if (!pendingSave) guard.requestClose();
     }
     if (e.key === "Tab") {
       const items = Array.from(
@@ -310,6 +350,7 @@ export function Modal({
   }
   return (
     <div className="modal-layer">
+      {guard.confirming && <DiscardChangesDialog onDiscard={guard.confirmDiscard} onKeepEditing={guard.keepEditing} />}
       <div
         className="modal"
         role="dialog"
@@ -318,12 +359,16 @@ export function Modal({
         tabIndex={-1}
         ref={ref}
         onKeyDown={keyDown}
+        onInputCapture={inspectDraft}
+        onChangeCapture={inspectDraft}
+        inert={guard.confirming}
       >
         <div className="modal-heading">
           <h2>{title}</h2>
           <button
             className="icon-button"
-            onClick={onClose}
+            onClick={guard.requestClose}
+            disabled={pendingSave}
             aria-label="Schließen"
           >
             <X size={24} />

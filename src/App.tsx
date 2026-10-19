@@ -1,3 +1,4 @@
+import { requestDraftNavigation } from "./hooks/useDraftGuard.ts";
 import { useEffect, useState } from "react";
 import {
   ChefHat,
@@ -19,7 +20,7 @@ import { getRepository } from "./data/repository.ts";
 import type { Repository } from "./data/repository.ts";
 import { SaveController } from "./data/save-controller.ts";
 import type { SaveStatus } from "./data/save-controller.ts";
-import { Modal } from "./components/shared.tsx";
+import { Modal, SavePendingContext } from "./components/shared.tsx";
 import { eventDate, kitchenDays, deriveReadView } from "./ui/facts.ts";
 import Home from "./screens/Home.tsx";
 import Planning from "./screens/Planning.tsx";
@@ -122,11 +123,17 @@ export default function App() {
     });
   }
   function go(target: Screen, supplierId?: string) {
-    if (supplierId) setSupplier(supplierId);
-    setScreen(target);
-    controller.clearNotice();
-    setLoadError("");
+    if (controller.status.pending) return;
+    requestDraftNavigation(() => {
+      if (supplierId) setSupplier(supplierId);
+      setScreen(target);
+      controller.clearNotice();
+      setLoadError("");
+    });
   }
+  useEffect(() => {
+    window.scrollTo({top: 0, behavior: "instant"});
+  }, [screen]);
   async function refresh() {
     if (controller.status.pending) return;
     setRefreshing(true);
@@ -175,6 +182,7 @@ export default function App() {
     ...(state.archivedEvents ?? []).map((a) => a.event),
   ];
   return (
+    <SavePendingContext value={saving || Boolean(pending)}>
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
@@ -187,6 +195,7 @@ export default function App() {
               key={name}
               className={screen === name ? "nav-item active" : "nav-item"}
               title={name}
+              disabled={saving || Boolean(pending)}
               aria-label={
                 name === "Lieferungen" ? "Lieferungen und Lager" : name
               }
@@ -228,8 +237,11 @@ export default function App() {
               value={viewState.event.id}
               disabled={saving || Boolean(pending)}
               onChange={(e) => {
-                if (readOnly) setViewEvent(e.target.value);
-                else void commit("event.switch", { id: e.target.value });
+                const id = e.target.value;
+                requestDraftNavigation(() => {
+                  if (readOnly) setViewEvent(id);
+                  else void commit("event.switch", { id });
+                });
               }}
             >
               {events.map((event) => (
@@ -239,32 +251,35 @@ export default function App() {
               ))}
             </select>
           </label>
-          <div className="context-right">
-            <button
-              className="button secondary small"
-              disabled={props.busy}
-              onClick={() => setEventDialog("dates")}
-            >
-              <CalendarBlank size={18} />
-              Termine
-            </button>
-            <button
-              className="button secondary small"
-              disabled={props.busy}
-              onClick={() => setEventDialog("create")}
-            >
-              <Plus size={18} />
-              Neue Veranstaltung
-            </button>
-            <button
-              className="icon-button"
-              aria-label="Daten neu laden"
-              disabled={saving || Boolean(pending)}
-              onClick={refresh}
-            >
-              <ArrowClockwise size={21} />
-            </button>
-          </div>
+          <details className="context-menu">
+            <summary>Veranstaltung & Daten</summary>
+            <div className="context-right">
+              <button
+                className="button secondary small"
+                disabled={props.busy}
+                onClick={() => setEventDialog("dates")}
+              >
+                <CalendarBlank size={18} />
+                Termine
+              </button>
+              <button
+                className="button secondary small"
+                disabled={props.busy}
+                onClick={() => setEventDialog("create")}
+              >
+                <Plus size={18} />
+                Neue Veranstaltung
+              </button>
+              <button
+                className="icon-button"
+                aria-label="Daten neu laden"
+                disabled={saving || Boolean(pending)}
+                onClick={() => requestDraftNavigation(() => { void refresh(); })}
+              >
+                <ArrowClockwise size={21} />
+              </button>
+            </div>
+          </details>
         </div>
         <main>
           {error && (
@@ -286,7 +301,7 @@ export default function App() {
           )}
           {message && (
             <div className="save-status" role="status">
-              <CheckCircle size={17} />
+              {saving ? <ArrowClockwise size={17} /> : error || pending ? <WarningCircle size={17} /> : <CheckCircle size={17} />}
               {mode === "microsoft" && message === "Lokal gespeichert"
                 ? "Gespeichert"
                 : message}
@@ -328,6 +343,7 @@ export default function App() {
         />
       )}
     </div>
+    </SavePendingContext>
   );
 }
 function EventEditor({

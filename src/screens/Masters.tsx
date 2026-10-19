@@ -1,3 +1,4 @@
+import { ResponsiveTable } from "../components/MobileItemCard.tsx";
 import { useState } from "react";
 import { Plus, PencilSimple, MagnifyingGlass } from "@phosphor-icons/react";
 import type { ScreenProps } from "../App.tsx";
@@ -90,7 +91,7 @@ export default function Masters(props: ScreenProps) {
       {tab === "Lieferanten" ? (
         suppliers.length ? (
           <div className="table-card">
-            <table>
+            <ResponsiveTable>
               <thead>
                 <tr>
                   <th>Lieferant</th>
@@ -124,7 +125,7 @@ export default function Masters(props: ScreenProps) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </ResponsiveTable>
           </div>
         ) : (
           <Empty title="Keine Lieferanten gefunden">
@@ -141,7 +142,7 @@ export default function Masters(props: ScreenProps) {
           )}
           {articles.length ? (
             <div className="table-card">
-              <table>
+              <ResponsiveTable>
                 <thead>
                   <tr>
                     <th>Artikel</th>
@@ -185,7 +186,7 @@ export default function Masters(props: ScreenProps) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </ResponsiveTable>
             </div>
           ) : (
             <Empty title="Keine Artikel gefunden">
@@ -195,7 +196,7 @@ export default function Masters(props: ScreenProps) {
         </>
       ) : menu.length ? (
         <div className="table-card">
-          <table>
+          <ResponsiveTable>
             <thead>
               <tr>
                 <th>Speise / Getränk</th>
@@ -227,7 +228,7 @@ export default function Masters(props: ScreenProps) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </ResponsiveTable>
         </div>
       ) : (
         <Empty title="Keine Speisen oder Getränke gefunden">

@@ -1,3 +1,4 @@
+import { ResponsiveTable } from "../components/MobileItemCard.tsx";
 import { useState } from "react";
 import {
   FilePdf,
@@ -132,7 +133,7 @@ export default function Receipts(props: ScreenProps) {
       </Notice>
       {invoices.length ? (
         <div className="table-card">
-          <table>
+          <ResponsiveTable>
             <thead>
               <tr>
                 <th>Beleg / Lieferant</th>
@@ -183,7 +184,7 @@ export default function Receipts(props: ScreenProps) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </ResponsiveTable>
         </div>
       ) : (
         <Empty title="Keine Belege in dieser Auswahl">
@@ -234,7 +235,7 @@ function ReceiptFacts({
       </div>
       {item.lines.length > 0 && (
         <div className="table-card">
-          <table className="receipt-lines">
+          <ResponsiveTable className="receipt-lines">
             <thead>
               <tr>
                 <th>Position</th>
@@ -254,7 +255,7 @@ function ReceiptFacts({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </ResponsiveTable>
         </div>
       )}
     </div>
