@@ -1,0 +1,118 @@
+TAP version 13
+# Subtest: German printed amounts produce exact integer cents without loosening manual entry
+ok 1 - German printed amounts produce exact integer cents without loosening manual entry
+  ---
+  duration_ms: 1.207375
+  type: 'test'
+  ...
+# Subtest: supplier/date/number/gross proposals retain exact page quotations and provider versions
+ok 2 - supplier/date/number/gross proposals retain exact page quotations and provider versions
+  ---
+  duration_ms: 1.709125
+  type: 'test'
+  ...
+# Subtest: synthetic case Gewichtsware: source content never creates actions or invents unknown fields
+ok 3 - synthetic case Gewichtsware: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.802291
+  type: 'test'
+  ...
+# Subtest: synthetic case Gebinde: source content never creates actions or invents unknown fields
+ok 4 - synthetic case Gebinde: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.160792
+  type: 'test'
+  ...
+# Subtest: synthetic case Pfand: source content never creates actions or invents unknown fields
+ok 5 - synthetic case Pfand: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.116083
+  type: 'test'
+  ...
+# Subtest: synthetic case Rabatt: source content never creates actions or invents unknown fields
+ok 6 - synthetic case Rabatt: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.059542
+  type: 'test'
+  ...
+# Subtest: synthetic case Gutschrift: source content never creates actions or invents unknown fields
+ok 7 - synthetic case Gutschrift: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.102
+  type: 'test'
+  ...
+# Subtest: synthetic case Steuergruppen: source content never creates actions or invents unknown fields
+ok 8 - synthetic case Steuergruppen: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.112166
+  type: 'test'
+  ...
+# Subtest: synthetic case mehrseitig: source content never creates actions or invents unknown fields
+ok 9 - synthetic case mehrseitig: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.304458
+  type: 'test'
+  ...
+# Subtest: synthetic case blass verdreht: source content never creates actions or invents unknown fields
+ok 10 - synthetic case blass verdreht: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.336375
+  type: 'test'
+  ...
+# Subtest: synthetic case nur erste Seite: source content never creates actions or invents unknown fields
+ok 11 - synthetic case nur erste Seite: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.114167
+  type: 'test'
+  ...
+# Subtest: synthetic case unbekanntes Layout: source content never creates actions or invents unknown fields
+ok 12 - synthetic case unbekanntes Layout: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.051792
+  type: 'test'
+  ...
+# Subtest: synthetic case Handlungsanweisung: source content never creates actions or invents unknown fields
+ok 13 - synthetic case Handlungsanweisung: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.039583
+  type: 'test'
+  ...
+# Subtest: ambiguous explicit gross totals stay open
+ok 14 - ambiguous explicit gross totals stay open
+  ---
+  duration_ms: 0.049167
+  type: 'test'
+  ...
+# Subtest: unproved image and PDF engines remain disabled and do not inspect or transmit the document
+ok 15 - unproved image and PDF engines remain disabled and do not inspect or transmit the document
+  ---
+  duration_ms: 0.305542
+  type: 'test'
+  ...
+# Subtest: acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+ok 16 - acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+  ---
+  duration_ms: 4.65225
+  type: 'test'
+  ...
+# Subtest: accepted baseline survives explicit later correction
+ok 17 - accepted baseline survives explicit later correction
+  ---
+  duration_ms: 1.26375
+  type: 'test'
+  ...
+# Subtest: acceptance requires conscious separate decisions and matching operation event/revision
+ok 18 - acceptance requires conscious separate decisions and matching operation event/revision
+  ---
+  duration_ms: 1.431959
+  type: 'test'
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 140.449792

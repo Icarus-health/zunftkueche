@@ -1,0 +1,20 @@
+FAIL intake atomically derives saved fields with immutable baseline and exact replay: Unsupported operation metadata.
+PASS intake bound rejection: draft-version
+PASS intake bound rejection: document-version
+PASS intake bound rejection: external-version
+PASS intake bound rejection: hash
+PASS intake bound rejection: event
+PASS intake bound rejection: payload-event
+PASS intake bound rejection: revision
+PASS intake bound rejection: operation
+PASS intake bound rejection: fields
+PASS intake bound rejection: raw
+PASS intake bound rejection: decisions
+PASS intake bound rejection: source-review
+PASS intake bound rejection: closed
+PASS intake bound rejection: caller
+PASS intake bound rejection: no-transaction
+FAIL intake bound rejection: candidate-injection: Unsupported operation metadata.
+FAIL intake failure after each write escapes and ambient transaction restores all rows: Unsupported operation metadata.
+FAIL two tabs cannot accept one draft twice and accepted draft cannot return to editing: Unsupported operation metadata.
+15 passed, 4 failed

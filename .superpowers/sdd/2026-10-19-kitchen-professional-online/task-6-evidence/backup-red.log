@@ -1,0 +1,220 @@
+TAP version 13
+# Subtest: document contract requires inventories even when they are actually empty
+ok 1 - document contract requires inventories even when they are actually empty
+  ---
+  duration_ms: 15.1845
+  type: 'test'
+  ...
+# Subtest: full document/draft/byte relationships survive separate local restore and missing bytes stay incomplete
+ok 2 - full document/draft/byte relationships survive separate local restore and missing bytes stay incomplete
+  ---
+  duration_ms: 168.812167
+  type: 'test'
+  ...
+# Subtest: correctly rehashed raw draft with invalid money/provenance still rejects
+ok 3 - correctly rehashed raw draft with invalid money/provenance still rejects
+  ---
+  duration_ms: 2.213666
+  type: 'test'
+  ...
+# Subtest: rehashed documents native id contradiction rejects import and restore before writes
+ok 4 - rehashed documents native id contradiction rejects import and restore before writes
+  ---
+  duration_ms: 6.773583
+  type: 'test'
+  ...
+# Subtest: rehashed documents native workspace contradiction rejects import and restore before writes
+ok 5 - rehashed documents native workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.778416
+  type: 'test'
+  ...
+# Subtest: rehashed documents native missing-workspace contradiction rejects import and restore before writes
+ok 6 - rehashed documents native missing-workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.503916
+  type: 'test'
+  ...
+# Subtest: rehashed documents native workspace-type contradiction rejects import and restore before writes
+ok 7 - rehashed documents native workspace-type contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.046208
+  type: 'test'
+  ...
+# Subtest: rehashed documents native event contradiction rejects import and restore before writes
+ok 8 - rehashed documents native event contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.130292
+  type: 'test'
+  ...
+# Subtest: rehashed documents native actor contradiction rejects import and restore before writes
+ok 9 - rehashed documents native actor contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.850583
+  type: 'test'
+  ...
+# Subtest: rehashed documents native time contradiction rejects import and restore before writes
+ok 10 - rehashed documents native time contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.744166
+  type: 'test'
+  ...
+# Subtest: rehashed documents native missing-audit contradiction rejects import and restore before writes
+ok 11 - rehashed documents native missing-audit contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.55325
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native id contradiction rejects import and restore before writes
+ok 12 - rehashed drafts native id contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.758166
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native workspace contradiction rejects import and restore before writes
+ok 13 - rehashed drafts native workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.43225
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native missing-workspace contradiction rejects import and restore before writes
+ok 14 - rehashed drafts native missing-workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.146292
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native workspace-type contradiction rejects import and restore before writes
+ok 15 - rehashed drafts native workspace-type contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.161333
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native event contradiction rejects import and restore before writes
+ok 16 - rehashed drafts native event contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.600458
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native actor contradiction rejects import and restore before writes
+ok 17 - rehashed drafts native actor contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.069791
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native time contradiction rejects import and restore before writes
+ok 18 - rehashed drafts native time contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.962292
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native missing-audit contradiction rejects import and restore before writes
+ok 19 - rehashed drafts native missing-audit contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.260416
+  type: 'test'
+  ...
+# Subtest: rehashed historical draft with absent original rejects import and restore
+ok 20 - rehashed historical draft with absent original rejects import and restore
+  ---
+  duration_ms: 4.540292
+  type: 'test'
+  ...
+# Subtest: unknown historical row version or original version never claims complete
+ok 21 - unknown historical row version or original version never claims complete
+  ---
+  duration_ms: 9.514291
+  type: 'test'
+  ...
+# Subtest: unchanged source in an earlier draft snapshot remains complete with actual current evidence
+ok 22 - unchanged source in an earlier draft snapshot remains complete with actual current evidence
+  ---
+  duration_ms: 1.836542
+  type: 'test'
+  ...
+# Subtest: historical document reference needs its own exact manifest even when current pages no longer use it
+ok 23 - historical document reference needs its own exact manifest even when current pages no longer use it
+  ---
+  duration_ms: 6.372375
+  type: 'test'
+  ...
+# Subtest: accepted draft original/review/raw/history/operation and baseline survive full isolated restore
+not ok 24 - accepted draft original/review/raw/history/operation and baseline survive full isolated restore
+  ---
+  duration_ms: 1.823834
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:97:1'
+  failureType: 'testCodeFailure'
+  error: 'Dokument/Entwurf: unbekanntes Feld.'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    recordFields (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/backup.ts:189:74)
+    validateStoredPayload (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/backup.ts:218:3)
+    validateStoredHistory (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/backup.ts:244:3)
+    inspectDocumentStores (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/backup.ts:325:11)
+    async inspect (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/backup.ts:378:5)
+    async buildKitchenBackup (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/backup.ts:387:19)
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:98:53)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: accepted backup rejects rehashed receipt-missing contradiction
+ok 25 - accepted backup rejects rehashed receipt-missing contradiction
+  ---
+  duration_ms: 2.052709
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed hash contradiction
+ok 26 - accepted backup rejects rehashed hash contradiction
+  ---
+  duration_ms: 1.271625
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed actor contradiction
+ok 27 - accepted backup rejects rehashed actor contradiction
+  ---
+  duration_ms: 1.625083
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed review contradiction
+ok 28 - accepted backup rejects rehashed review contradiction
+  ---
+  duration_ms: 1.312333
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed raw contradiction
+ok 29 - accepted backup rejects rehashed raw contradiction
+  ---
+  duration_ms: 1.903625
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed source contradiction
+ok 30 - accepted backup rejects rehashed source contradiction
+  ---
+  duration_ms: 1.205541
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed downgrade contradiction
+not ok 31 - accepted backup rejects rehashed downgrade contradiction
+  ---
+  duration_ms: 3.064042
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:101:94'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:112:2)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..31
+# tests 31
+# suites 0
+# pass 29
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 447.369417

@@ -1,0 +1,352 @@
+TAP version 13
+# Subtest: document contract requires inventories even when they are actually empty
+ok 1 - document contract requires inventories even when they are actually empty
+  ---
+  duration_ms: 18.292
+  type: 'test'
+  ...
+# Subtest: full document/draft/byte relationships survive separate local restore and missing bytes stay incomplete
+ok 2 - full document/draft/byte relationships survive separate local restore and missing bytes stay incomplete
+  ---
+  duration_ms: 263.10225
+  type: 'test'
+  ...
+# Subtest: correctly rehashed raw draft with invalid money/provenance still rejects
+ok 3 - correctly rehashed raw draft with invalid money/provenance still rejects
+  ---
+  duration_ms: 1.606125
+  type: 'test'
+  ...
+# Subtest: rehashed documents native id contradiction rejects import and restore before writes
+ok 4 - rehashed documents native id contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.400708
+  type: 'test'
+  ...
+# Subtest: rehashed documents native workspace contradiction rejects import and restore before writes
+ok 5 - rehashed documents native workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.325916
+  type: 'test'
+  ...
+# Subtest: rehashed documents native missing-workspace contradiction rejects import and restore before writes
+ok 6 - rehashed documents native missing-workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 5.831417
+  type: 'test'
+  ...
+# Subtest: rehashed documents native workspace-type contradiction rejects import and restore before writes
+ok 7 - rehashed documents native workspace-type contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.989375
+  type: 'test'
+  ...
+# Subtest: rehashed documents native event contradiction rejects import and restore before writes
+ok 8 - rehashed documents native event contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.075375
+  type: 'test'
+  ...
+# Subtest: rehashed documents native actor contradiction rejects import and restore before writes
+ok 9 - rehashed documents native actor contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.102042
+  type: 'test'
+  ...
+# Subtest: rehashed documents native time contradiction rejects import and restore before writes
+ok 10 - rehashed documents native time contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.577084
+  type: 'test'
+  ...
+# Subtest: rehashed documents native missing-audit contradiction rejects import and restore before writes
+ok 11 - rehashed documents native missing-audit contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.380459
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native id contradiction rejects import and restore before writes
+ok 12 - rehashed drafts native id contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.315708
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native workspace contradiction rejects import and restore before writes
+ok 13 - rehashed drafts native workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.106
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native missing-workspace contradiction rejects import and restore before writes
+ok 14 - rehashed drafts native missing-workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.645458
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native workspace-type contradiction rejects import and restore before writes
+ok 15 - rehashed drafts native workspace-type contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.314875
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native event contradiction rejects import and restore before writes
+ok 16 - rehashed drafts native event contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.431167
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native actor contradiction rejects import and restore before writes
+ok 17 - rehashed drafts native actor contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.775709
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native time contradiction rejects import and restore before writes
+ok 18 - rehashed drafts native time contradiction rejects import and restore before writes
+  ---
+  duration_ms: 4.014208
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native missing-audit contradiction rejects import and restore before writes
+ok 19 - rehashed drafts native missing-audit contradiction rejects import and restore before writes
+  ---
+  duration_ms: 3.9645
+  type: 'test'
+  ...
+# Subtest: rehashed historical draft with absent original rejects import and restore
+ok 20 - rehashed historical draft with absent original rejects import and restore
+  ---
+  duration_ms: 4.592583
+  type: 'test'
+  ...
+# Subtest: unknown historical row version or original version never claims complete
+ok 21 - unknown historical row version or original version never claims complete
+  ---
+  duration_ms: 9.903625
+  type: 'test'
+  ...
+# Subtest: unchanged source in an earlier draft snapshot remains complete with actual current evidence
+ok 22 - unchanged source in an earlier draft snapshot remains complete with actual current evidence
+  ---
+  duration_ms: 1.703375
+  type: 'test'
+  ...
+# Subtest: historical document reference needs its own exact manifest even when current pages no longer use it
+ok 23 - historical document reference needs its own exact manifest even when current pages no longer use it
+  ---
+  duration_ms: 5.229042
+  type: 'test'
+  ...
+# Subtest: accepted draft original/review/raw/history/operation and baseline survive full isolated restore
+ok 24 - accepted draft original/review/raw/history/operation and baseline survive full isolated restore
+  ---
+  duration_ms: 202.347791
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed receipt-missing contradiction
+ok 25 - accepted backup rejects rehashed receipt-missing contradiction
+  ---
+  duration_ms: 2.1335
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed hash contradiction
+ok 26 - accepted backup rejects rehashed hash contradiction
+  ---
+  duration_ms: 1.676459
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed actor contradiction
+ok 27 - accepted backup rejects rehashed actor contradiction
+  ---
+  duration_ms: 1.344667
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed review contradiction
+ok 28 - accepted backup rejects rehashed review contradiction
+  ---
+  duration_ms: 1.32075
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed raw contradiction
+ok 29 - accepted backup rejects rehashed raw contradiction
+  ---
+  duration_ms: 1.252334
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed source contradiction
+ok 30 - accepted backup rejects rehashed source contradiction
+  ---
+  duration_ms: 1.524584
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed downgrade contradiction
+ok 31 - accepted backup rejects rehashed downgrade contradiction
+  ---
+  duration_ms: 0.912375
+  type: 'test'
+  ...
+# Subtest: acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+ok 32 - acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+  ---
+  duration_ms: 12.002125
+  type: 'test'
+  ...
+# Subtest: accepted baseline survives explicit later correction
+ok 33 - accepted baseline survives explicit later correction
+  ---
+  duration_ms: 4.799084
+  type: 'test'
+  ...
+# Subtest: acceptance requires conscious separate decisions and matching operation event/revision
+ok 34 - acceptance requires conscious separate decisions and matching operation event/revision
+  ---
+  duration_ms: 3.230792
+  type: 'test'
+  ...
+# Subtest: supplied text proposals preserve unknown provenance and do not overwrite manual fields
+ok 35 - supplied text proposals preserve unknown provenance and do not overwrite manual fields
+  ---
+  duration_ms: 1.66375
+  type: 'test'
+  ...
+# Subtest: fresh original reads precede acceptance; stale versions or read failure leave edit untouched
+ok 36 - fresh original reads precede acceptance; stale versions or read failure leave edit untouched
+  ---
+  duration_ms: 1.674417
+  type: 'test'
+  ...
+# Subtest: lost acceptance acknowledgment reload resends identical immutable request and rejects changed content
+ok 37 - lost acceptance acknowledgment reload resends identical immutable request and rejects changed content
+  ---
+  duration_ms: 8.435334
+  type: 'test'
+  ...
+# Subtest: German printed amounts produce exact integer cents without loosening manual entry
+ok 38 - German printed amounts produce exact integer cents without loosening manual entry
+  ---
+  duration_ms: 1.112958
+  type: 'test'
+  ...
+# Subtest: supplier/date/number/gross proposals retain exact page quotations and provider versions
+ok 39 - supplier/date/number/gross proposals retain exact page quotations and provider versions
+  ---
+  duration_ms: 21.559292
+  type: 'test'
+  ...
+# Subtest: synthetic case Gewichtsware: source content never creates actions or invents unknown fields
+ok 40 - synthetic case Gewichtsware: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.803667
+  type: 'test'
+  ...
+# Subtest: synthetic case Gebinde: source content never creates actions or invents unknown fields
+ok 41 - synthetic case Gebinde: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.422834
+  type: 'test'
+  ...
+# Subtest: synthetic case Pfand: source content never creates actions or invents unknown fields
+ok 42 - synthetic case Pfand: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.371375
+  type: 'test'
+  ...
+# Subtest: synthetic case Rabatt: source content never creates actions or invents unknown fields
+ok 43 - synthetic case Rabatt: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.166875
+  type: 'test'
+  ...
+# Subtest: synthetic case Gutschrift: source content never creates actions or invents unknown fields
+ok 44 - synthetic case Gutschrift: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.249541
+  type: 'test'
+  ...
+# Subtest: synthetic case Steuergruppen: source content never creates actions or invents unknown fields
+ok 45 - synthetic case Steuergruppen: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.145208
+  type: 'test'
+  ...
+# Subtest: synthetic case mehrseitig: source content never creates actions or invents unknown fields
+ok 46 - synthetic case mehrseitig: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.654292
+  type: 'test'
+  ...
+# Subtest: synthetic case blass verdreht: source content never creates actions or invents unknown fields
+ok 47 - synthetic case blass verdreht: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.811917
+  type: 'test'
+  ...
+# Subtest: synthetic case nur erste Seite: source content never creates actions or invents unknown fields
+ok 48 - synthetic case nur erste Seite: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.472167
+  type: 'test'
+  ...
+# Subtest: synthetic case unbekanntes Layout: source content never creates actions or invents unknown fields
+ok 49 - synthetic case unbekanntes Layout: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.069875
+  type: 'test'
+  ...
+# Subtest: synthetic case Handlungsanweisung: source content never creates actions or invents unknown fields
+ok 50 - synthetic case Handlungsanweisung: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.046709
+  type: 'test'
+  ...
+# Subtest: ambiguous explicit gross totals stay open
+ok 51 - ambiguous explicit gross totals stay open
+  ---
+  duration_ms: 0.051542
+  type: 'test'
+  ...
+# Subtest: unproved image and PDF engines remain disabled and do not inspect or transmit the document
+ok 52 - unproved image and PDF engines remain disabled and do not inspect or transmit the document
+  ---
+  duration_ms: 0.319083
+  type: 'test'
+  ...
+# Subtest: acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+ok 53 - acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+  ---
+  duration_ms: 6.828042
+  type: 'test'
+  ...
+# Subtest: accepted baseline survives explicit later correction
+ok 54 - accepted baseline survives explicit later correction
+  ---
+  duration_ms: 1.925291
+  type: 'test'
+  ...
+# Subtest: acceptance requires conscious separate decisions and matching operation event/revision
+ok 55 - acceptance requires conscious separate decisions and matching operation event/revision
+  ---
+  duration_ms: 2.450834
+  type: 'test'
+  ...
+# Subtest: supplied text proposals preserve unknown provenance and do not overwrite manual fields
+ok 56 - supplied text proposals preserve unknown provenance and do not overwrite manual fields
+  ---
+  duration_ms: 0.787208
+  type: 'test'
+  ...
+# Subtest: fresh original reads precede acceptance; stale versions or read failure leave edit untouched
+ok 57 - fresh original reads precede acceptance; stale versions or read failure leave edit untouched
+  ---
+  duration_ms: 1.063916
+  type: 'test'
+  ...
+1..57
+# tests 57
+# suites 0
+# pass 57
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 767.479084

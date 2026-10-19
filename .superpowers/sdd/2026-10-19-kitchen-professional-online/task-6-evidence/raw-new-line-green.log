@@ -1,0 +1,106 @@
+TAP version 13
+# Subtest: receipt text survives Escape and close until discard is confirmed
+ok 1 - receipt text survives Escape and close until discard is confirmed
+  ---
+  duration_ms: 1.001459
+  type: 'test'
+  ...
+# Subtest: unchanged dialogs close immediately; cancellation also cancels pending navigation
+ok 2 - unchanged dialogs close immediately; cancellation also cancels pending navigation
+  ---
+  duration_ms: 0.212833
+  type: 'test'
+  ...
+# Subtest: form comparison detects text, dates, recipe removal and reversions without treating defaults as edits
+ok 3 - form comparison detects text, dates, recipe removal and reversions without treating defaults as edits
+  ---
+  duration_ms: 0.381625
+  type: 'test'
+  ...
+# Subtest: closing a modal consults its dirty standalone descendants without discarding other screen fields
+ok 4 - closing a modal consults its dirty standalone descendants without discarding other screen fields
+  ---
+  duration_ms: 0.331792
+  type: 'test'
+  ...
+# Subtest: local tab and filter requests wait for dirty fields and cancellation leaves their destination unchanged
+ok 5 - local tab and filter requests wait for dirty fields and cancellation leaves their destination unchanged
+  ---
+  duration_ms: 0.382958
+  type: 'test'
+  ...
+# Subtest: modal closure can exclude its own registry entry and invoke its own form guard exactly once
+ok 6 - modal closure can exclude its own registry entry and invoke its own form guard exactly once
+  ---
+  duration_ms: 0.46675
+  type: 'test'
+  ...
+# Subtest: header-first and line-first manual edits without pages use the existing navigation guard
+ok 7 - header-first and line-first manual edits without pages use the existing navigation guard
+  ---
+  duration_ms: 0.902375
+  type: 'test'
+  ...
+# Subtest: removing the last original stays dirty against the saved draft baseline
+ok 8 - removing the last original stays dirty against the saved draft baseline
+  ---
+  duration_ms: 0.076042
+  type: 'test'
+  ...
+# Subtest: focused invalid raw money and quantity stay intact on keep-editing and failed save
+ok 9 - focused invalid raw money and quantity stay intact on keep-editing and failed save
+  ---
+  duration_ms: 0.579959
+  type: 'test'
+  ...
+# Subtest: raw valid focused values parse only at save, unknown blanks stay null, queue is dirty
+ok 10 - raw valid focused values parse only at save, unknown blanks stay null, queue is dirty
+  ---
+  duration_ms: 0.1045
+  type: 'test'
+  ...
+# Subtest: adding a line after saved raw inputs initializes its fields and preserves prior raw values
+ok 11 - adding a line after saved raw inputs initializes its fields and preserves prior raw values
+  ---
+  duration_ms: 1.007667
+  type: 'test'
+  ...
+# Subtest: acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+ok 12 - acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+  ---
+  duration_ms: 4.461792
+  type: 'test'
+  ...
+# Subtest: accepted baseline survives explicit later correction
+ok 13 - accepted baseline survives explicit later correction
+  ---
+  duration_ms: 1.051166
+  type: 'test'
+  ...
+# Subtest: acceptance requires conscious separate decisions and matching operation event/revision
+ok 14 - acceptance requires conscious separate decisions and matching operation event/revision
+  ---
+  duration_ms: 1.67425
+  type: 'test'
+  ...
+# Subtest: supplied text proposals preserve unknown provenance and do not overwrite manual fields
+ok 15 - supplied text proposals preserve unknown provenance and do not overwrite manual fields
+  ---
+  duration_ms: 0.87225
+  type: 'test'
+  ...
+# Subtest: fresh original reads precede acceptance; stale versions or read failure leave edit untouched
+ok 16 - fresh original reads precede acceptance; stale versions or read failure leave edit untouched
+  ---
+  duration_ms: 0.700125
+  type: 'test'
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 146.488542

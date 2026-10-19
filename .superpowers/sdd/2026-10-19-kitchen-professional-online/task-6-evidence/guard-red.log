@@ -1,0 +1,21 @@
+PASS intake atomically derives saved fields with immutable baseline and exact replay
+PASS intake bound rejection: draft-version
+PASS intake bound rejection: document-version
+PASS intake bound rejection: external-version
+PASS intake bound rejection: hash
+PASS intake bound rejection: event
+PASS intake bound rejection: payload-event
+PASS intake bound rejection: revision
+PASS intake bound rejection: operation
+PASS intake bound rejection: fields
+PASS intake bound rejection: raw
+PASS intake bound rejection: decisions
+PASS intake bound rejection: source-review
+PASS intake bound rejection: closed
+PASS intake bound rejection: caller
+PASS intake bound rejection: no-transaction
+PASS intake bound rejection: candidate-injection
+FAIL intake guard admits only exact acceptance target and rejects direct/bulk/invalid parent: Direct document/draft writes are blocked.
+PASS intake failure after each write escapes and ambient transaction restores all rows
+PASS two tabs cannot accept one draft twice and accepted draft cannot return to editing
+19 passed, 1 failed

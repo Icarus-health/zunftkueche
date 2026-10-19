@@ -1,0 +1,1568 @@
+
+> test
+> node --experimental-strip-types --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: unknown tables and missing originals cannot become complete; permission and revision drift rejected
+ok 1 - unknown tables and missing originals cannot become complete; permission and revision drift rejected
+  ---
+  duration_ms: 413.131834
+  type: 'test'
+  ...
+# Subtest: complete synthetic backup restores exclusively into new isolated directory with bytes and receipt proof
+ok 2 - complete synthetic backup restores exclusively into new isolated directory with bytes and receipt proof
+  ---
+  duration_ms: 451.393292
+  type: 'test'
+  ...
+# Subtest: actual receipt identity and original bytes survive; tamper, orphan and link-only manifest fail
+ok 3 - actual receipt identity and original bytes survive; tamper, orphan and link-only manifest fail
+  ---
+  duration_ms: 596.05925
+  type: 'test'
+  ...
+# Subtest: repository backup refuses readers before loading and requires the read-only snapshot source
+ok 4 - repository backup refuses readers before loading and requires the read-only snapshot source
+  ---
+  duration_ms: 0.993625
+  type: 'test'
+  ...
+# Subtest: a correctly rehashed malformed nested value never validates as complete
+ok 5 - a correctly rehashed malformed nested value never validates as complete
+  ---
+  duration_ms: 686.487833
+  type: 'test'
+  ...
+# Subtest: core contract preserves null excluded sources and supports actual restore; unknown contracts and downgrades fail
+ok 6 - core contract preserves null excluded sources and supports actual restore; unknown contracts and downgrades fail
+  ---
+  duration_ms: 356.255625
+  type: 'test'
+  ...
+# Subtest: selected local originals match exact hashes, retain bytes and reject unrelated files and bounds
+ok 7 - selected local originals match exact hashes, retain bytes and reject unrelated files and bounds
+  ---
+  duration_ms: 1.760417
+  type: 'test'
+  ...
+# Subtest: owner App source reads existing Load snapshot twice and never replays a pending commit
+ok 8 - owner App source reads existing Load snapshot twice and never replays a pending commit
+  ---
+  duration_ms: 128.14475
+  type: 'test'
+  ...
+# Subtest: read-only snapshot rejects foreign identity, permission loss and invalid policy hash
+ok 9 - read-only snapshot rejects foreign identity, permission loss and invalid policy hash
+  ---
+  duration_ms: 49.241042
+  type: 'test'
+  ...
+# Subtest: actual generated classes configure before mount and preserve RequestJson/ResultJson mapping
+ok 10 - actual generated classes configure before mount and preserve RequestJson/ResultJson mapping
+  ---
+  duration_ms: 590.452667
+  type: 'test'
+  ...
+# Subtest: actual Vite config isolates private local API and Microsoft host plugin
+ok 11 - actual Vite config isolates private local API and Microsoft host plugin
+  ---
+  duration_ms: 418.479916
+  type: 'test'
+  ...
+# Subtest: actual repository selection in microsoft development has no silent fallback
+ok 12 - actual repository selection in microsoft development has no silent fallback
+  ---
+  duration_ms: 402.981959
+  type: 'test'
+  ...
+# Subtest: actual repository selection in development development has no silent fallback
+ok 13 - actual repository selection in development development has no silent fallback
+  ---
+  duration_ms: 381.376083
+  type: 'test'
+  ...
+# Subtest: every production mode and explicit Microsoft development require Microsoft
+ok 14 - every production mode and explicit Microsoft development require Microsoft
+  ---
+  duration_ms: 3.606
+  type: 'test'
+  ...
+# Subtest: mount waits for completed Microsoft connection
+ok 15 - mount waits for completed Microsoft connection
+  ---
+  duration_ms: 0.736791
+  type: 'test'
+  ...
+# Subtest: failed Microsoft bootstrap never mounts or starts local data
+ok 16 - failed Microsoft bootstrap never mounts or starts local data
+  ---
+  duration_ms: 0.14925
+  type: 'test'
+  ...
+# Subtest: standalone development mounts without loading Microsoft SDK
+ok 17 - standalone development mounts without loading Microsoft SDK
+  ---
+  duration_ms: 0.069291
+  type: 'test'
+  ...
+# Subtest: host context accepts only the fixed environment and has a bounded wait
+ok 18 - host context accepts only the fixed environment and has a bounded wait
+  ---
+  duration_ms: 7.807375
+  type: 'test'
+  ...
+# Subtest: bootstrap screen provides friendly status/error and working reload without clearing storage
+ok 19 - bootstrap screen provides friendly status/error and working reload without clearing storage
+  ---
+  duration_ms: 0.556791
+  type: 'test'
+  ...
+# Subtest: correction replaces effective delivery 100 by 10 while preserving original and replay
+ok 20 - correction replaces effective delivery 100 by 10 while preserving original and replay
+  ---
+  duration_ms: 11.22175
+  type: 'test'
+  ...
+# Subtest: stored sale price correction preserves original and survives later master price
+ok 21 - stored sale price correction preserves original and survives later master price
+  ---
+  duration_ms: 1.196167
+  type: 'test'
+  ...
+# Subtest: manual receipt first confirmed baseline and every before/after remain source-free
+ok 22 - manual receipt first confirmed baseline and every before/after remain source-free
+  ---
+  duration_ms: 6.070792
+  type: 'test'
+  ...
+# Subtest: all sales totals use effective corrected price, not later master
+ok 23 - all sales totals use effective corrected price, not later master
+  ---
+  duration_ms: 2.582541
+  type: 'test'
+  ...
+# Subtest: historic source-less receipt protects first available baseline and every later correction
+ok 24 - historic source-less receipt protects first available baseline and every later correction
+  ---
+  duration_ms: 1.345417
+  type: 'test'
+  ...
+# Subtest: original receipt may be corrected explicitly while source and original economics remain in baseline
+ok 25 - original receipt may be corrected explicitly while source and original economics remain in baseline
+  ---
+  duration_ms: 0.542834
+  type: 'test'
+  ...
+# Subtest: legacy nullable field normalization also records a before/after correction
+ok 26 - legacy nullable field normalization also records a before/after correction
+  ---
+  duration_ms: 0.598958
+  type: 'test'
+  ...
+# Subtest: confirmation placed in a price label portals its buttons into the body instead of the label
+ok 27 - confirmation placed in a price label portals its buttons into the body instead of the label
+  ---
+  duration_ms: 4.735458
+  type: 'test'
+  ...
+# Subtest: background isolation keeps the confirmation interactive and restores existing inert states
+ok 28 - background isolation keeps the confirmation interactive and restores existing inert states
+  ---
+  duration_ms: 0.182708
+  type: 'test'
+  ...
+# Subtest: document contract requires inventories even when they are actually empty
+ok 29 - document contract requires inventories even when they are actually empty
+  ---
+  duration_ms: 54.394667
+  type: 'test'
+  ...
+# Subtest: full document/draft/byte relationships survive separate local restore and missing bytes stay incomplete
+ok 30 - full document/draft/byte relationships survive separate local restore and missing bytes stay incomplete
+  ---
+  duration_ms: 384.107541
+  type: 'test'
+  ...
+# Subtest: correctly rehashed raw draft with invalid money/provenance still rejects
+ok 31 - correctly rehashed raw draft with invalid money/provenance still rejects
+  ---
+  duration_ms: 5.473917
+  type: 'test'
+  ...
+# Subtest: rehashed documents native id contradiction rejects import and restore before writes
+ok 32 - rehashed documents native id contradiction rejects import and restore before writes
+  ---
+  duration_ms: 14.576875
+  type: 'test'
+  ...
+# Subtest: rehashed documents native workspace contradiction rejects import and restore before writes
+ok 33 - rehashed documents native workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 10.481875
+  type: 'test'
+  ...
+# Subtest: rehashed documents native missing-workspace contradiction rejects import and restore before writes
+ok 34 - rehashed documents native missing-workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 12.007292
+  type: 'test'
+  ...
+# Subtest: rehashed documents native workspace-type contradiction rejects import and restore before writes
+ok 35 - rehashed documents native workspace-type contradiction rejects import and restore before writes
+  ---
+  duration_ms: 11.296833
+  type: 'test'
+  ...
+# Subtest: rehashed documents native event contradiction rejects import and restore before writes
+ok 36 - rehashed documents native event contradiction rejects import and restore before writes
+  ---
+  duration_ms: 14.613875
+  type: 'test'
+  ...
+# Subtest: rehashed documents native actor contradiction rejects import and restore before writes
+ok 37 - rehashed documents native actor contradiction rejects import and restore before writes
+  ---
+  duration_ms: 11.487916
+  type: 'test'
+  ...
+# Subtest: rehashed documents native time contradiction rejects import and restore before writes
+ok 38 - rehashed documents native time contradiction rejects import and restore before writes
+  ---
+  duration_ms: 17.410291
+  type: 'test'
+  ...
+# Subtest: rehashed documents native missing-audit contradiction rejects import and restore before writes
+ok 39 - rehashed documents native missing-audit contradiction rejects import and restore before writes
+  ---
+  duration_ms: 15.447208
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native id contradiction rejects import and restore before writes
+ok 40 - rehashed drafts native id contradiction rejects import and restore before writes
+  ---
+  duration_ms: 24.921709
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native workspace contradiction rejects import and restore before writes
+ok 41 - rehashed drafts native workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 28.828667
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native missing-workspace contradiction rejects import and restore before writes
+ok 42 - rehashed drafts native missing-workspace contradiction rejects import and restore before writes
+  ---
+  duration_ms: 31.90875
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native workspace-type contradiction rejects import and restore before writes
+ok 43 - rehashed drafts native workspace-type contradiction rejects import and restore before writes
+  ---
+  duration_ms: 39.054583
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native event contradiction rejects import and restore before writes
+ok 44 - rehashed drafts native event contradiction rejects import and restore before writes
+  ---
+  duration_ms: 29.031792
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native actor contradiction rejects import and restore before writes
+ok 45 - rehashed drafts native actor contradiction rejects import and restore before writes
+  ---
+  duration_ms: 7.90575
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native time contradiction rejects import and restore before writes
+ok 46 - rehashed drafts native time contradiction rejects import and restore before writes
+  ---
+  duration_ms: 8.469125
+  type: 'test'
+  ...
+# Subtest: rehashed drafts native missing-audit contradiction rejects import and restore before writes
+ok 47 - rehashed drafts native missing-audit contradiction rejects import and restore before writes
+  ---
+  duration_ms: 9.327875
+  type: 'test'
+  ...
+# Subtest: rehashed historical draft with absent original rejects import and restore
+ok 48 - rehashed historical draft with absent original rejects import and restore
+  ---
+  duration_ms: 69.533334
+  type: 'test'
+  ...
+# Subtest: unknown historical row version or original version never claims complete
+ok 49 - unknown historical row version or original version never claims complete
+  ---
+  duration_ms: 44.998084
+  type: 'test'
+  ...
+# Subtest: unchanged source in an earlier draft snapshot remains complete with actual current evidence
+ok 50 - unchanged source in an earlier draft snapshot remains complete with actual current evidence
+  ---
+  duration_ms: 5.339708
+  type: 'test'
+  ...
+# Subtest: historical document reference needs its own exact manifest even when current pages no longer use it
+ok 51 - historical document reference needs its own exact manifest even when current pages no longer use it
+  ---
+  duration_ms: 19.0425
+  type: 'test'
+  ...
+# Subtest: accepted draft original/review/raw/history/operation and baseline survive full isolated restore
+ok 52 - accepted draft original/review/raw/history/operation and baseline survive full isolated restore
+  ---
+  duration_ms: 425.168083
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed receipt-missing contradiction
+ok 53 - accepted backup rejects rehashed receipt-missing contradiction
+  ---
+  duration_ms: 5.490333
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed hash contradiction
+ok 54 - accepted backup rejects rehashed hash contradiction
+  ---
+  duration_ms: 5.546959
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed actor contradiction
+ok 55 - accepted backup rejects rehashed actor contradiction
+  ---
+  duration_ms: 2.886292
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed review contradiction
+ok 56 - accepted backup rejects rehashed review contradiction
+  ---
+  duration_ms: 1.612334
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed raw contradiction
+ok 57 - accepted backup rejects rehashed raw contradiction
+  ---
+  duration_ms: 8.774583
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed source contradiction
+ok 58 - accepted backup rejects rehashed source contradiction
+  ---
+  duration_ms: 6.466916
+  type: 'test'
+  ...
+# Subtest: accepted backup rejects rehashed downgrade contradiction
+ok 59 - accepted backup rejects rehashed downgrade contradiction
+  ---
+  duration_ms: 1.593792
+  type: 'test'
+  ...
+# Subtest: original validation accepts JPEG PNG PDF and rejects HEIC and disguised contents
+ok 60 - original validation accepts JPEG PNG PDF and rejects HEIC and disguised contents
+  ---
+  duration_ms: 14.999292
+  type: 'test'
+  ...
+# Subtest: one original is uploaded and reused with exact identity and bytes
+ok 61 - one original is uploaded and reused with exact identity and bytes
+  ---
+  duration_ms: 23.746416
+  type: 'test'
+  ...
+# Subtest: same upload ID cannot change file or event
+ok 62 - same upload ID cannot change file or event
+  ---
+  duration_ms: 16.32275
+  type: 'test'
+  ...
+# Subtest: account switch invalidates in-flight original read
+ok 63 - account switch invalidates in-flight original read
+  ---
+  duration_ms: 4.887
+  type: 'test'
+  ...
+# Subtest: compressed image dimensions are bounded before browser decoding
+ok 64 - compressed image dimensions are bounded before browser decoding
+  ---
+  duration_ms: 0.630125
+  type: 'test'
+  ...
+# Subtest: timeout after provider success resumes by reading original, never creating twice
+ok 65 - timeout after provider success resumes by reading original, never creating twice
+  ---
+  duration_ms: 48.045292
+  type: 'test'
+  ...
+# Subtest: link failure exposes uploaded-unlinked and recovers same original
+ok 66 - link failure exposes uploaded-unlinked and recovers same original
+  ---
+  duration_ms: 10.306166
+  type: 'test'
+  ...
+# Subtest: ambiguous absent file does not permit another create
+ok 67 - ambiguous absent file does not permit another create
+  ---
+  duration_ms: 4.061583
+  type: 'test'
+  ...
+# Subtest: revoked document right refuses original read
+ok 68 - revoked document right refuses original read
+  ---
+  duration_ms: 5.901084
+  type: 'test'
+  ...
+# Subtest: two authorized simulated accounts can read the same original, while a changed account cannot resume its upload
+ok 69 - two authorized simulated accounts can read the same original, while a changed account cannot resume its upload
+  ---
+  duration_ms: 13.962958
+  type: 'test'
+  ...
+# Subtest: two concurrent app attempts permit only one create
+ok 70 - two concurrent app attempts permit only one create
+  ---
+  duration_ms: 7.051041
+  type: 'test'
+  ...
+# Subtest: existing original with different content is preserved and never replaced
+ok 71 - existing original with different content is preserved and never replaced
+  ---
+  duration_ms: 2.416459
+  type: 'test'
+  ...
+# Subtest: cancel before upload does not create or reserve an original
+ok 72 - cancel before upload does not create or reserve an original
+  ---
+  duration_ms: 0.230958
+  type: 'test'
+  ...
+# Subtest: actual runtime lostCreate recovery reads and verifies the one existing original
+ok 73 - actual runtime lostCreate recovery reads and verifies the one existing original
+  ---
+  duration_ms: 55.142708
+  type: 'test'
+  ...
+# Subtest: actual runtime lostLink recovery reads and verifies the one existing original
+ok 74 - actual runtime lostLink recovery reads and verifies the one existing original
+  ---
+  duration_ms: 8.792375
+  type: 'test'
+  ...
+# Subtest: actual runtime pending claim replay remains read-only when both continuations resume after lost acknowledgment
+ok 75 - actual runtime pending claim replay remains read-only when both continuations resume after lost acknowledgment
+  ---
+  duration_ms: 2.805083
+  type: 'test'
+  ...
+# Subtest: unknown claim outcome is replayed with same request before resuming upload; no new create
+ok 76 - unknown claim outcome is replayed with same request before resuming upload; no new create
+  ---
+  duration_ms: 17.947667
+  type: 'test'
+  ...
+# Subtest: independent runtime continuations sharing the same pending claim never create twice
+ok 77 - independent runtime continuations sharing the same pending claim never create twice
+  ---
+  duration_ms: 16.1265
+  type: 'test'
+  ...
+# Subtest: one repository refuses an overlapping upload continuation before provider creation
+ok 78 - one repository refuses an overlapping upload continuation before provider creation
+  ---
+  duration_ms: 3.949
+  type: 'test'
+  ...
+# Subtest: resumed pending claim cannot create even when its first server acknowledgment is applied
+ok 79 - resumed pending claim cannot create even when its first server acknowledgment is applied
+  ---
+  duration_ms: 12.098042
+  type: 'test'
+  ...
+# Subtest: Mengen akzeptieren deutsches Dezimalkomma und unterscheiden offen von null
+ok 80 - Mengen akzeptieren deutsches Dezimalkomma und unterscheiden offen von null
+  ---
+  duration_ms: 2.313792
+  type: 'test'
+  ...
+# Subtest: Bestellversion enthält nur gewählten Lieferanten und Tag und friert Positionen ein
+ok 81 - Bestellversion enthält nur gewählten Lieferanten und Tag und friert Positionen ein
+  ---
+  duration_ms: 9.146125
+  type: 'test'
+  ...
+# Subtest: Unbekannte Portionsgrößen verhindern scheinbar vollständige Rezeptkosten
+ok 82 - Unbekannte Portionsgrößen verhindern scheinbar vollständige Rezeptkosten
+  ---
+  duration_ms: 0.110417
+  type: 'test'
+  ...
+# Subtest: Rezeptkosten: exakte halbe Cent werden aufgerundet
+ok 83 - Rezeptkosten: exakte halbe Cent werden aufgerundet
+  ---
+  duration_ms: 0.072666
+  type: 'test'
+  ...
+# Subtest: Rezeptkosten: nur die Summe wird gerundet, mit voller Mengen- und Preispräzision
+ok 84 - Rezeptkosten: nur die Summe wird gerundet, mit voller Mengen- und Preispräzision
+  ---
+  duration_ms: 0.477958
+  type: 'test'
+  ...
+# Subtest: Rezeptkosten: offene Werte bleiben offen, ausdrücklich null bleibt null Cent
+ok 85 - Rezeptkosten: offene Werte bleiben offen, ausdrücklich null bleibt null Cent
+  ---
+  duration_ms: 0.106042
+  type: 'test'
+  ...
+# Subtest: Rezeptkosten: nicht sicher darstellbare Cent-Summen bleiben unverfügbar
+ok 86 - Rezeptkosten: nicht sicher darstellbare Cent-Summen bleiben unverfügbar
+  ---
+  duration_ms: 0.163458
+  type: 'test'
+  ...
+# Subtest: Bestellwert: exakte halbe Cent werden aufgerundet
+ok 87 - Bestellwert: exakte halbe Cent werden aufgerundet
+  ---
+  duration_ms: 0.13
+  type: 'test'
+  ...
+# Subtest: Bestellwert: nur die Summe wird gerundet, mit voller Mengen- und Preispräzision
+ok 88 - Bestellwert: nur die Summe wird gerundet, mit voller Mengen- und Preispräzision
+  ---
+  duration_ms: 0.486792
+  type: 'test'
+  ...
+# Subtest: Bestellwert: offene Werte bleiben offen, ausdrücklich null bleibt null Cent
+ok 89 - Bestellwert: offene Werte bleiben offen, ausdrücklich null bleibt null Cent
+  ---
+  duration_ms: 0.348584
+  type: 'test'
+  ...
+# Subtest: Bestellwert: nicht sicher darstellbare Cent-Summen bleiben unverfügbar
+ok 90 - Bestellwert: nicht sicher darstellbare Cent-Summen bleiben unverfügbar
+  ---
+  duration_ms: 0.136292
+  type: 'test'
+  ...
+# Subtest: Rezeptkosten bewahren die Anzahl fehlender Angaben
+ok 91 - Rezeptkosten bewahren die Anzahl fehlender Angaben
+  ---
+  duration_ms: 0.059292
+  type: 'test'
+  ...
+# Subtest: Bestellungen sind kein Lagerzugang und fehlender Anfangsbestand bleibt offen
+ok 92 - Bestellungen sind kein Lagerzugang und fehlender Anfangsbestand bleibt offen
+  ---
+  duration_ms: 0.061125
+  type: 'test'
+  ...
+# Subtest: Verkaufszahlen bleiben von fehlenden Erfassungen unterscheidbar
+ok 93 - Verkaufszahlen bleiben von fehlenden Erfassungen unterscheidbar
+  ---
+  duration_ms: 0.058917
+  type: 'test'
+  ...
+# Subtest: Bestellvorschau bewahrt eine Lieferzeit zusätzlich zu einem eigenen Hinweis
+ok 94 - Bestellvorschau bewahrt eine Lieferzeit zusätzlich zu einem eigenen Hinweis
+  ---
+  duration_ms: 0.046917
+  type: 'test'
+  ...
+# Subtest: receipt text survives Escape and close until discard is confirmed
+ok 95 - receipt text survives Escape and close until discard is confirmed
+  ---
+  duration_ms: 5.190041
+  type: 'test'
+  ...
+# Subtest: unchanged dialogs close immediately; cancellation also cancels pending navigation
+ok 96 - unchanged dialogs close immediately; cancellation also cancels pending navigation
+  ---
+  duration_ms: 0.11325
+  type: 'test'
+  ...
+# Subtest: form comparison detects text, dates, recipe removal and reversions without treating defaults as edits
+ok 97 - form comparison detects text, dates, recipe removal and reversions without treating defaults as edits
+  ---
+  duration_ms: 2.310708
+  type: 'test'
+  ...
+# Subtest: closing a modal consults its dirty standalone descendants without discarding other screen fields
+ok 98 - closing a modal consults its dirty standalone descendants without discarding other screen fields
+  ---
+  duration_ms: 0.233458
+  type: 'test'
+  ...
+# Subtest: local tab and filter requests wait for dirty fields and cancellation leaves their destination unchanged
+ok 99 - local tab and filter requests wait for dirty fields and cancellation leaves their destination unchanged
+  ---
+  duration_ms: 0.121709
+  type: 'test'
+  ...
+# Subtest: modal closure can exclude its own registry entry and invoke its own form guard exactly once
+ok 100 - modal closure can exclude its own registry entry and invoke its own form guard exactly once
+  ---
+  duration_ms: 0.172291
+  type: 'test'
+  ...
+# Subtest: rapid field switches never report a second unsent edit as saved or auto-rebase it
+ok 101 - rapid field switches never report a second unsent edit as saved or auto-rebase it
+  ---
+  duration_ms: 1.426708
+  type: 'test'
+  ...
+# Subtest: transport failure keeps the exact pending operation and acknowledgement resolves it once
+ok 102 - transport failure keeps the exact pending operation and acknowledgement resolves it once
+  ---
+  duration_ms: 5.197583
+  type: 'test'
+  ...
+# Subtest: a conflict publishes failure and current data without retrying or overwriting
+ok 103 - a conflict publishes failure and current data without retrying or overwriting
+  ---
+  duration_ms: 1.854041
+  type: 'test'
+  ...
+# Subtest: closure snapshot and reasoned reopen preserve history and block closed edits
+ok 104 - closure snapshot and reasoned reopen preserve history and block closed edits
+  ---
+  duration_ms: 9.632625
+  type: 'test'
+  ...
+# Subtest: checklist never treats gross receipts as net result or absent sales as zero
+ok 105 - checklist never treats gross receipts as net result or absent sales as zero
+  ---
+  duration_ms: 5.800792
+  type: 'test'
+  ...
+# Subtest: two selections remain personal and preserve canonical aggregate
+ok 106 - two selections remain personal and preserve canonical aggregate
+  ---
+  duration_ms: 9.202875
+  type: 'test'
+  ...
+# Subtest: archived target edits only its slice and global revision
+ok 107 - archived target edits only its slice and global revision
+  ---
+  duration_ms: 7.864833
+  type: 'test'
+  ...
+# Subtest: unknown targets and shared switching fail closed; CAS stays global
+ok 108 - unknown targets and shared switching fail closed; CAS stays global
+  ---
+  duration_ms: 2.552417
+  type: 'test'
+  ...
+# Subtest: creation from archive preserves root and archive original exactly
+ok 109 - creation from archive preserves root and archive original exactly
+  ---
+  duration_ms: 5.92825
+  type: 'test'
+  ...
+# Subtest: operation IDs cannot be reused for a different target event
+ok 110 - operation IDs cannot be reused for a different target event
+  ---
+  duration_ms: 54.563459
+  type: 'test'
+  ...
+# Subtest: scoped CSV and printable report retain revision, source references and open values; CSV formulas escaped
+ok 111 - scoped CSV and printable report retain revision, source references and open values; CSV formulas escaped
+  ---
+  duration_ms: 59.06525
+  type: 'test'
+  ...
+# Subtest: order CSV uses immutable historical context after current event and prices change
+ok 112 - order CSV uses immutable historical context after current event and prices change
+  ---
+  duration_ms: 57.808959
+  type: 'test'
+  ...
+# Subtest: confirmed Küche alias covers culinary purchases and known zero without unrelated Bar stock
+ok 113 - confirmed Küche alias covers culinary purchases and known zero without unrelated Bar stock
+  ---
+  duration_ms: 15.972459
+  type: 'test'
+  ...
+# Subtest: explicit purchasing location wins; unrelated first location is never inferred
+ok 114 - explicit purchasing location wins; unrelated first location is never inferred
+  ---
+  duration_ms: 4.887833
+  type: 'test'
+  ...
+# Subtest: active choices exclude retired aliases and empty config has no defaults; history remains readable
+ok 115 - active choices exclude retired aliases and empty config has no defaults; history remains readable
+  ---
+  duration_ms: 0.667292
+  type: 'test'
+  ...
+# Subtest: new movements and invoices reject inactive labels; existing historical correction stays allowed
+ok 116 - new movements and invoices reject inactive labels; existing historical correction stays allowed
+  ---
+  duration_ms: 0.522375
+  type: 'test'
+  ...
+# Subtest: manual and generated purchases use culinary location rather than first active place
+ok 117 - manual and generated purchases use culinary location rather than first active place
+  ---
+  duration_ms: 0.466917
+  type: 'test'
+  ...
+# Subtest: aliases merge only confirmed movement labels and unrelated purchases stay excluded
+ok 118 - aliases merge only confirmed movement labels and unrelated purchases stay excluded
+  ---
+  duration_ms: 2.43775
+  type: 'test'
+  ...
+# Subtest: an alias cannot silently merge two separately active places
+ok 119 - an alias cannot silently merge two separately active places
+  ---
+  duration_ms: 0.4635
+  type: 'test'
+  ...
+# Subtest: near-limit candidate growth is rejected before persistence and corrected save remains possible
+ok 120 - near-limit candidate growth is rejected before persistence and corrected save remains possible
+  ---
+  duration_ms: 175.475792
+  type: 'test'
+  ...
+# Subtest: UTF-8 request cap is checked separately from candidate cap before persistence
+ok 121 - UTF-8 request cap is checked separately from candidate cap before persistence
+  ---
+  duration_ms: 232.292625
+  type: 'test'
+  ...
+# Subtest: metadata collection bounds reject operation history growth before persistence
+ok 122 - metadata collection bounds reject operation history growth before persistence
+  ---
+  duration_ms: 99.808542
+  type: 'test'
+  ...
+# Subtest: exact-hash definitive pre-write server rejection permits a corrected operation
+ok 123 - exact-hash definitive pre-write server rejection permits a corrected operation
+  ---
+  duration_ms: 31.723917
+  type: 'test'
+  ...
+# Subtest: reload recovers valid state after the server definitively rejects a previously ambiguous request
+ok 124 - reload recovers valid state after the server definitively rejects a previously ambiguous request
+  ---
+  duration_ms: 34.921541
+  type: 'test'
+  ...
+# Subtest: wrong hash never clears ambiguous pending bytes
+ok 125 - wrong hash never clears ambiguous pending bytes
+  ---
+  duration_ms: 11.24125
+  type: 'test'
+  ...
+# Subtest: wrong operation never clears ambiguous pending bytes
+ok 126 - wrong operation never clears ambiguous pending bytes
+  ---
+  duration_ms: 9.503667
+  type: 'test'
+  ...
+# Subtest: wrong workspace never clears ambiguous pending bytes
+ok 127 - wrong workspace never clears ambiguous pending bytes
+  ---
+  duration_ms: 5.511666
+  type: 'test'
+  ...
+# Subtest: wrong code never clears ambiguous pending bytes
+ok 128 - wrong code never clears ambiguous pending bytes
+  ---
+  duration_ms: 7.509042
+  type: 'test'
+  ...
+# Subtest: applied revision never clears ambiguous pending bytes
+ok 129 - applied revision never clears ambiguous pending bytes
+  ---
+  duration_ms: 9.780208
+  type: 'test'
+  ...
+# Subtest: malformed state never clears ambiguous pending bytes
+ok 130 - malformed state never clears ambiguous pending bytes
+  ---
+  duration_ms: 4.913208
+  type: 'test'
+  ...
+# Subtest: unknown SDK fault never clears ambiguous pending bytes
+ok 131 - unknown SDK fault never clears ambiguous pending bytes
+  ---
+  duration_ms: 6.215167
+  type: 'test'
+  ...
+# Subtest: production runtime requires pending storage, and storage write failure sends nothing
+ok 132 - production runtime requires pending storage, and storage write failure sends nothing
+  ---
+  duration_ms: 20.186625
+  type: 'test'
+  ...
+# Subtest: timeout retry retains exact candidate bytes and fractional unit price
+ok 133 - timeout retry retains exact candidate bytes and fractional unit price
+  ---
+  duration_ms: 16.326625
+  type: 'test'
+  ...
+# Subtest: pending operation rejects changed payload under same id
+ok 134 - pending operation rejects changed payload under same id
+  ---
+  duration_ms: 6.098875
+  type: 'test'
+  ...
+# Subtest: conflict returns latest server state without rebasing
+ok 135 - conflict returns latest server state without rebasing
+  ---
+  duration_ms: 8.62625
+  type: 'test'
+  ...
+# Subtest: reader capability comes only from successful validated load
+ok 136 - reader capability comes only from successful validated load
+  ---
+  duration_ms: 3.878041
+  type: 'test'
+  ...
+# Subtest: rejects wrong workspace acknowledgement
+ok 137 - rejects wrong workspace acknowledgement
+  ---
+  duration_ms: 8.038
+  type: 'test'
+  ...
+# Subtest: rejects wrong operation acknowledgement
+ok 138 - rejects wrong operation acknowledgement
+  ---
+  duration_ms: 4.146333
+  type: 'test'
+  ...
+# Subtest: rejects missing receipt acknowledgement
+ok 139 - rejects missing receipt acknowledgement
+  ---
+  duration_ms: 21.708334
+  type: 'test'
+  ...
+# Subtest: rejects revision mismatch acknowledgement
+ok 140 - rejects revision mismatch acknowledgement
+  ---
+  duration_ms: 74.102875
+  type: 'test'
+  ...
+# Subtest: rejects missing operation metadata acknowledgement
+ok 141 - rejects missing operation metadata acknowledgement
+  ---
+  duration_ms: 64.054667
+  type: 'test'
+  ...
+# Subtest: rejects malformed state acknowledgement
+ok 142 - rejects malformed state acknowledgement
+  ---
+  duration_ms: 12.326209
+  type: 'test'
+  ...
+# Subtest: unsuccessful SDK result and missing canWrite fail closed
+ok 143 - unsuccessful SDK result and missing canWrite fail closed
+  ---
+  duration_ms: 2.284
+  type: 'test'
+  ...
+# Subtest: saved replay permits current state newer than original receipt
+ok 144 - saved replay permits current state newer than original receipt
+  ---
+  duration_ms: 14.411625
+  type: 'test'
+  ...
+# Subtest: pending envelope survives repository recreation and reload retries the original bytes
+ok 145 - pending envelope survives repository recreation and reload retries the original bytes
+  ---
+  duration_ms: 6.248084
+  type: 'test'
+  ...
+# Subtest: load clones cached state so view mutation cannot change candidate base
+ok 146 - load clones cached state so view mutation cannot change candidate base
+  ---
+  duration_ms: 69.837584
+  type: 'test'
+  ...
+# Subtest: saved receipt must be for exactly the original resulting revision
+ok 147 - saved receipt must be for exactly the original resulting revision
+  ---
+  duration_ms: 16.719459
+  type: 'test'
+  ...
+# Subtest: rejects response missing article identity and required recipe structure
+ok 148 - rejects response missing article identity and required recipe structure
+  ---
+  duration_ms: 3.876334
+  type: 'test'
+  ...
+# Subtest: failed reload revokes cached write capability and unsuccessful commits stay retryable
+ok 149 - failed reload revokes cached write capability and unsuccessful commits stay retryable
+  ---
+  duration_ms: 5.855833
+  type: 'test'
+  ...
+# Subtest: metadata-generated service wrapper returns one stable configured repository
+ok 150 - metadata-generated service wrapper returns one stable configured repository
+  ---
+  duration_ms: 1.792292
+  type: 'test'
+  ...
+# Subtest: responsive table keeps the dish name, both days and quantity units together in each row
+ok 151 - responsive table keeps the dish name, both days and quantity units together in each row
+  ---
+  duration_ms: 8.307125
+  type: 'test'
+  ...
+# Subtest: mobile cards retain their title, context and accessible action
+ok 152 - mobile cards retain their title, context and accessible action
+  ---
+  duration_ms: 0.476333
+  type: 'test'
+  ...
+# Subtest: price columns retain matching labels when optional columns are absent
+ok 153 - price columns retain matching labels when optional columns are absent
+  ---
+  duration_ms: 0.340875
+  type: 'test'
+  ...
+# Subtest: actual planning renders each dish once with the complete Friday/Saturday comparison
+ok 154 - actual planning renders each dish once with the complete Friday/Saturday comparison
+  ---
+  duration_ms: 1733.361208
+  type: 'test'
+  ...
+# Subtest: actual orders keep supplier, day, item and editable quantity in a single control tree
+ok 155 - actual orders keep supplier, day, item and editable quantity in a single control tree
+  ---
+  duration_ms: 31.261541
+  type: 'test'
+  ...
+# Subtest: overview presents actionable next steps before the supplier list
+ok 156 - overview presents actionable next steps before the supplier list
+  ---
+  duration_ms: 28.142
+  type: 'test'
+  ...
+# Subtest: pending writes disable modal dismissal, while an ordinary or read-only preview remains closable
+ok 157 - pending writes disable modal dismissal, while an ordinary or read-only preview remains closable
+  ---
+  duration_ms: 0.97825
+  type: 'test'
+  ...
+# Subtest: pending writes disable local Orders supplier, day and version controls
+ok 158 - pending writes disable local Orders supplier, day and version controls
+  ---
+  duration_ms: 5.02075
+  type: 'test'
+  ...
+# Subtest: pending writes disable shared local planning and analysis tabs
+ok 159 - pending writes disable shared local planning and analysis tabs
+  ---
+  duration_ms: 0.481792
+  type: 'test'
+  ...
+# Subtest: prepared headers retain supplier, event and date through later edits and archive roundtrip
+ok 160 - prepared headers retain supplier, event and date through later edits and archive roundtrip
+  ---
+  duration_ms: 37.845875
+  type: 'test'
+  ...
+# Subtest: unknown date stays unknown after a date is supplied later
+ok 161 - unknown date stays unknown after a date is supplied later
+  ---
+  duration_ms: 2.693584
+  type: 'test'
+  ...
+# Subtest: legacy prepared headers disclose current context; live drafts use current context without historical claim
+ok 162 - legacy prepared headers disclose current context; live drafts use current context without historical claim
+  ---
+  duration_ms: 0.888667
+  type: 'test'
+  ...
+# Subtest: manual order status follows prepared ordered confirmed and preserves snapshot
+ok 163 - manual order status follows prepared ordered confirmed and preserves snapshot
+  ---
+  duration_ms: 14.457459
+  type: 'test'
+  ...
+# Subtest: changed live planning is detected without changing ordered snapshot
+ok 164 - changed live planning is detected without changing ordered snapshot
+  ---
+  duration_ms: 0.951917
+  type: 'test'
+  ...
+# Subtest: Ein verschwundenes Original liefert eine kontrollierte Antwort statt den Server zu beenden
+ok 165 - Ein verschwundenes Original liefert eine kontrollierte Antwort statt den Server zu beenden
+  ---
+  duration_ms: 39.747167
+  type: 'test'
+  ...
+# Subtest: Speicherung überlebt Neustart und dieselbe Lieferung wird nicht zweimal gebucht
+ok 166 - Speicherung überlebt Neustart und dieselbe Lieferung wird nicht zweimal gebucht
+  ---
+  duration_ms: 23.289875
+  type: 'test'
+  ...
+# Subtest: Zwei gleichzeitige Bearbeitungen überschreiben sich nicht
+ok 167 - Zwei gleichzeitige Bearbeitungen überschreiben sich nicht
+  ---
+  duration_ms: 12.089583
+  type: 'test'
+  ...
+# Subtest: preferences isolated by confirmed organization user and workspace
+ok 168 - preferences isolated by confirmed organization user and workspace
+  ---
+  duration_ms: 19.442375
+  type: 'test'
+  ...
+# Subtest: invalid selection and corrupt storage use safe defaults
+ok 169 - invalid selection and corrupt storage use safe defaults
+  ---
+  duration_ms: 0.862416
+  type: 'test'
+  ...
+# Subtest: v1 pending bytes quarantine even corrupt or lost-response bytes without resend or clearing
+ok 170 - v1 pending bytes quarantine even corrupt or lost-response bytes without resend or clearing
+  ---
+  duration_ms: 49.226416
+  type: 'test'
+  ...
+# Subtest: target absent never inferred and response mismatch retains pending bytes
+ok 171 - target absent never inferred and response mismatch retains pending bytes
+  ---
+  duration_ms: 40.144125
+  type: 'test'
+  ...
+# Subtest: account switch loads only its own pending and resets capabilities before failed reload
+ok 172 - account switch loads only its own pending and resets capabilities before failed reload
+  ---
+  duration_ms: 21.083875
+  type: 'test'
+  ...
+# Subtest: acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+ok 173 - acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+  ---
+  duration_ms: 17.335459
+  type: 'test'
+  ...
+# Subtest: accepted baseline survives explicit later correction
+ok 174 - accepted baseline survives explicit later correction
+  ---
+  duration_ms: 1.123916
+  type: 'test'
+  ...
+# Subtest: acceptance requires conscious separate decisions and matching operation event/revision
+ok 175 - acceptance requires conscious separate decisions and matching operation event/revision
+  ---
+  duration_ms: 1.339084
+  type: 'test'
+  ...
+# Subtest: supplied text proposals preserve unknown provenance and do not overwrite manual fields
+ok 176 - supplied text proposals preserve unknown provenance and do not overwrite manual fields
+  ---
+  duration_ms: 1.087667
+  type: 'test'
+  ...
+# Subtest: fresh original reads precede acceptance; stale versions or read failure leave edit untouched
+ok 177 - fresh original reads precede acceptance; stale versions or read failure leave edit untouched
+  ---
+  duration_ms: 0.9735
+  type: 'test'
+  ...
+# Subtest: lost acceptance acknowledgment reload resends identical immutable request and rejects changed content
+ok 178 - lost acceptance acknowledgment reload resends identical immutable request and rejects changed content
+  ---
+  duration_ms: 34.141042
+  type: 'test'
+  ...
+# Subtest: header-first and line-first manual edits without pages use the existing navigation guard
+ok 179 - header-first and line-first manual edits without pages use the existing navigation guard
+  ---
+  duration_ms: 0.909417
+  type: 'test'
+  ...
+# Subtest: removing the last original stays dirty against the saved draft baseline
+ok 180 - removing the last original stays dirty against the saved draft baseline
+  ---
+  duration_ms: 0.079542
+  type: 'test'
+  ...
+# Subtest: focused invalid raw money and quantity stay intact on keep-editing and failed save
+ok 181 - focused invalid raw money and quantity stay intact on keep-editing and failed save
+  ---
+  duration_ms: 0.354583
+  type: 'test'
+  ...
+# Subtest: raw valid focused values parse only at save, unknown blanks stay null, queue is dirty
+ok 182 - raw valid focused values parse only at save, unknown blanks stay null, queue is dirty
+  ---
+  duration_ms: 0.077667
+  type: 'test'
+  ...
+# Subtest: German printed amounts produce exact integer cents without loosening manual entry
+ok 183 - German printed amounts produce exact integer cents without loosening manual entry
+  ---
+  duration_ms: 1.025542
+  type: 'test'
+  ...
+# Subtest: supplier/date/number/gross proposals retain exact page quotations and provider versions
+ok 184 - supplier/date/number/gross proposals retain exact page quotations and provider versions
+  ---
+  duration_ms: 2.913167
+  type: 'test'
+  ...
+# Subtest: synthetic case Gewichtsware: source content never creates actions or invents unknown fields
+ok 185 - synthetic case Gewichtsware: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.789792
+  type: 'test'
+  ...
+# Subtest: synthetic case Gebinde: source content never creates actions or invents unknown fields
+ok 186 - synthetic case Gebinde: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.15125
+  type: 'test'
+  ...
+# Subtest: synthetic case Pfand: source content never creates actions or invents unknown fields
+ok 187 - synthetic case Pfand: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.114875
+  type: 'test'
+  ...
+# Subtest: synthetic case Rabatt: source content never creates actions or invents unknown fields
+ok 188 - synthetic case Rabatt: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.060458
+  type: 'test'
+  ...
+# Subtest: synthetic case Gutschrift: source content never creates actions or invents unknown fields
+ok 189 - synthetic case Gutschrift: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.101708
+  type: 'test'
+  ...
+# Subtest: synthetic case Steuergruppen: source content never creates actions or invents unknown fields
+ok 190 - synthetic case Steuergruppen: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.058792
+  type: 'test'
+  ...
+# Subtest: synthetic case mehrseitig: source content never creates actions or invents unknown fields
+ok 191 - synthetic case mehrseitig: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.269833
+  type: 'test'
+  ...
+# Subtest: synthetic case blass verdreht: source content never creates actions or invents unknown fields
+ok 192 - synthetic case blass verdreht: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.331292
+  type: 'test'
+  ...
+# Subtest: synthetic case nur erste Seite: source content never creates actions or invents unknown fields
+ok 193 - synthetic case nur erste Seite: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.124667
+  type: 'test'
+  ...
+# Subtest: synthetic case unbekanntes Layout: source content never creates actions or invents unknown fields
+ok 194 - synthetic case unbekanntes Layout: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.050625
+  type: 'test'
+  ...
+# Subtest: synthetic case Handlungsanweisung: source content never creates actions or invents unknown fields
+ok 195 - synthetic case Handlungsanweisung: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.041584
+  type: 'test'
+  ...
+# Subtest: ambiguous explicit gross totals stay open
+ok 196 - ambiguous explicit gross totals stay open
+  ---
+  duration_ms: 0.048083
+  type: 'test'
+  ...
+# Subtest: unproved image and PDF engines remain disabled and do not inspect or transmit the document
+ok 197 - unproved image and PDF engines remain disabled and do not inspect or transmit the document
+  ---
+  duration_ms: 0.28775
+  type: 'test'
+  ...
+# Subtest: supplied text is bounded without truncation and offset evidence matches raw multiline source
+ok 198 - supplied text is bounded without truncation and offset evidence matches raw multiline source
+  ---
+  duration_ms: 0.137291
+  type: 'test'
+  ...
+# Subtest: acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+ok 199 - acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+  ---
+  duration_ms: 8.453042
+  type: 'test'
+  ...
+# Subtest: accepted baseline survives explicit later correction
+ok 200 - accepted baseline survives explicit later correction
+  ---
+  duration_ms: 2.099667
+  type: 'test'
+  ...
+# Subtest: acceptance requires conscious separate decisions and matching operation event/revision
+ok 201 - acceptance requires conscious separate decisions and matching operation event/revision
+  ---
+  duration_ms: 2.852416
+  type: 'test'
+  ...
+# Subtest: supplied text proposals preserve unknown provenance and do not overwrite manual fields
+ok 202 - supplied text proposals preserve unknown provenance and do not overwrite manual fields
+  ---
+  duration_ms: 1.49725
+  type: 'test'
+  ...
+# Subtest: fresh original reads precede acceptance; stale versions or read failure leave edit untouched
+ok 203 - fresh original reads precede acceptance; stale versions or read failure leave edit untouched
+  ---
+  duration_ms: 0.76475
+  type: 'test'
+  ...
+# Subtest: acceptance is explicit, partial and replay safe; substitute preserves ordered article
+ok 204 - acceptance is explicit, partial and replay safe; substitute preserves ordered article
+  ---
+  duration_ms: 8.723167
+  type: 'test'
+  ...
+# Subtest: allocation retains source line and preserves total; variant drinks require explicit fractions
+ok 205 - allocation retains source line and preserves total; variant drinks require explicit fractions
+  ---
+  duration_ms: 1.314
+  type: 'test'
+  ...
+# Subtest: allocation snapshots use their day/window quantities and retain original total; unchecked substitute is rejected
+ok 206 - allocation snapshots use their day/window quantities and retain original total; unchecked substitute is rejected
+  ---
+  duration_ms: 12.09275
+  type: 'test'
+  ...
+# Subtest: unconfirmed drink collection never creates additive demand for all choices
+ok 207 - unconfirmed drink collection never creates additive demand for all choices
+  ---
+  duration_ms: 3.920458
+  type: 'test'
+  ...
+# Subtest: Eine abgelehnte Eingabe darf korrigiert werden und wird nicht als ausstehende Buchung behandelt
+ok 208 - Eine abgelehnte Eingabe darf korrigiert werden und wird nicht als ausstehende Buchung behandelt
+  ---
+  duration_ms: 54.735583
+  type: 'test'
+  ...
+# Subtest: Ein Versionskonflikt liefert den aktuellen Stand ohne erfolgreiche Speicherung vorzutäuschen
+ok 209 - Ein Versionskonflikt liefert den aktuellen Stand ohne erfolgreiche Speicherung vorzutäuschen
+  ---
+  duration_ms: 0.215625
+  type: 'test'
+  ...
+# Subtest: Navigation erhält offenen Vorgang und sichtbare Fehlermeldung
+ok 210 - Navigation erhält offenen Vorgang und sichtbare Fehlermeldung
+  ---
+  duration_ms: 2.083417
+  type: 'test'
+  ...
+# Subtest: Retry bestätigt den ursprünglichen Formularvorgang und dieselbe Lieferung bleibt einmal gebucht
+ok 211 - Retry bestätigt den ursprünglichen Formularvorgang und dieselbe Lieferung bleibt einmal gebucht
+  ---
+  duration_ms: 50.906834
+  type: 'test'
+  ...
+# Subtest: Fehlende Verkaufspreise bleiben offen und lassen sich ausdrücklich nachbestätigen
+ok 212 - Fehlende Verkaufspreise bleiben offen und lassen sich ausdrücklich nachbestätigen
+  ---
+  duration_ms: 1.334834
+  type: 'test'
+  ...
+# Subtest: settings preserve historic facts and future orders snapshot address contact
+ok 213 - settings preserve historic facts and future orders snapshot address contact
+  ---
+  duration_ms: 17.359875
+  type: 'test'
+  ...
+# Subtest: all meaningful principal values must match and unknown claims cannot be hidden by Email
+ok 214 - all meaningful principal values must match and unknown claims cannot be hidden by Email
+  ---
+  duration_ms: 2.89
+  type: 'test'
+  ...
+# Subtest: binary download accepts actual Uint8Array and does not turn unknown values into empty images
+ok 215 - binary download accepts actual Uint8Array and does not turn unknown values into empty images
+  ---
+  duration_ms: 6.732375
+  type: 'test'
+  ...
+# Subtest: 2026-Import bewahrt 76 Zeilen, 10 Freitagpositionen und 8 Originalbelege
+ok 216 - 2026-Import bewahrt 76 Zeilen, 10 Freitagpositionen und 8 Originalbelege
+  ---
+  duration_ms: 1.589667
+  type: 'test'
+  ...
+# Subtest: Eine Mengenänderung benötigt die aktuelle Version und bewahrt die importierte Herkunft
+ok 217 - Eine Mengenänderung benötigt die aktuelle Version und bewahrt die importierte Herkunft
+  ---
+  duration_ms: 6.105791
+  type: 'test'
+  ...
+# Subtest: Wiederholte Vorgangs-ID bucht Lieferung einmal; negative Mengen werden abgelehnt
+ok 218 - Wiederholte Vorgangs-ID bucht Lieferung einmal; negative Mengen werden abgelehnt
+  ---
+  duration_ms: 1.059667
+  type: 'test'
+  ...
+# Subtest: Vorbereitete Bestellung ändert sich nach späterer Planung nicht
+ok 219 - Vorbereitete Bestellung ändert sich nach späterer Planung nicht
+  ---
+  duration_ms: 8.641417
+  type: 'test'
+  ...
+# Subtest: Bestellvorbereitung speichert exakte gerundete Cent und wahrt die Server-Wertgrenze
+ok 220 - Bestellvorbereitung speichert exakte gerundete Cent und wahrt die Server-Wertgrenze
+  ---
+  duration_ms: 7.821375
+  type: 'test'
+  ...
+# Subtest: Bestellvorbereitung verweigert übergroße bekannte Werte auch bei offenen anderen Preisen
+ok 221 - Bestellvorbereitung verweigert übergroße bekannte Werte auch bei offenen anderen Preisen
+  ---
+  duration_ms: 1.569917
+  type: 'test'
+  ...
+# Subtest: Bestellvorbereitung bewahrt unbekannte Preise innerhalb der bekannten Wertgrenze
+ok 222 - Bestellvorbereitung bewahrt unbekannte Preise innerhalb der bekannten Wertgrenze
+  ---
+  duration_ms: 1.592125
+  type: 'test'
+  ...
+# Subtest: Verkäufe speichern ausdrücklich null oder 0 und bewahren den Preis zum Erfassungszeitpunkt
+ok 223 - Verkäufe speichern ausdrücklich null oder 0 und bewahren den Preis zum Erfassungszeitpunkt
+  ---
+  duration_ms: 0.78625
+  type: 'test'
+  ...
+# Subtest: Falsche Artikel, inkonsistente Tage und verborgene unbekannte Operationen werden abgelehnt
+ok 224 - Falsche Artikel, inkonsistente Tage und verborgene unbekannte Operationen werden abgelehnt
+  ---
+  duration_ms: 5.620584
+  type: 'test'
+  ...
+# Subtest: Neue Bestellposition verwendet die Artikeleinheit und ergänzt keine erfundenen Einkaufspreise
+ok 225 - Neue Bestellposition verwendet die Artikeleinheit und ergänzt keine erfundenen Einkaufspreise
+  ---
+  duration_ms: 0.916166
+  type: 'test'
+  ...
+# Subtest: Neuer Verkaufspreis verändert den Preis bereits erfasster Verkäufe nicht
+ok 226 - Neuer Verkaufspreis verändert den Preis bereits erfasster Verkäufe nicht
+  ---
+  duration_ms: 0.812625
+  type: 'test'
+  ...
+# Subtest: allocated Orders edit changes only that allocation, retaining original total and snapshot identity
+ok 227 - allocated Orders edit changes only that allocation, retaining original total and snapshot identity
+  ---
+  duration_ms: 13.0485
+  type: 'test'
+  ...
+# Subtest: receipt article without any movement cannot be stock-complete via another article
+ok 228 - receipt article without any movement cannot be stock-complete via another article
+  ---
+  duration_ms: 0.7585
+  type: 'test'
+  ...
+# Subtest: explicit current comparable net evidence yields a bounded result, later facts invalidate it
+ok 229 - explicit current comparable net evidence yields a bounded result, later facts invalidate it
+  ---
+  duration_ms: 1.546416
+  type: 'test'
+  ...
+# Subtest: stock completeness requires purchased, planned, ordered and used articles plus unresolved mappings
+ok 230 - stock completeness requires purchased, planned, ordered and used articles plus unresolved mappings
+  ---
+  duration_ms: 2.739417
+  type: 'test'
+  ...
+# Subtest: net evidence does not manufacture comparable result from incomplete or mixed-scope facts
+ok 231 - net evidence does not manufacture comparable result from incomplete or mixed-scope facts
+  ---
+  duration_ms: 1.385458
+  type: 'test'
+  ...
+# Subtest: CSV explains open checklist and net result; closed export retains confirmed snapshot
+ok 232 - CSV explains open checklist and net result; closed export retains confirmed snapshot
+  ---
+  duration_ms: 3.573083
+  type: 'test'
+  ...
+# Subtest: invoice cents and precise purchase prices reject silent monetary truncation
+ok 233 - invoice cents and precise purchase prices reject silent monetary truncation
+  ---
+  duration_ms: 4.586625
+  type: 'test'
+  ...
+# Subtest: conscious zero preview includes null and absent cells but never entered zero or positive dishes
+ok 234 - conscious zero preview includes null and absent cells but never entered zero or positive dishes
+  ---
+  duration_ms: 15.790417
+  type: 'test'
+  ...
+# Subtest: partial cost scope distinguishes unknown from explicit zero and keeps source status
+ok 235 - partial cost scope distinguishes unknown from explicit zero and keeps source status
+  ---
+  duration_ms: 0.20575
+  type: 'test'
+  ...
+# Subtest: reader event browsing uses archived facts without changing active state or global ledger
+ok 236 - reader event browsing uses archived facts without changing active state or global ledger
+  ---
+  duration_ms: 0.121292
+  type: 'test'
+  ...
+# Subtest: Fehlende Speisen/Tag-Matrix bleibt unbekannt; neue Menüs sind nicht unsichtbar
+ok 237 - Fehlende Speisen/Tag-Matrix bleibt unbekannt; neue Menüs sind nicht unsichtbar
+  ---
+  duration_ms: 2.6655
+  type: 'test'
+  ...
+# Subtest: Ausdrückliche Nullportionen brauchen keine Rezeptur; null bleibt offen
+ok 238 - Ausdrückliche Nullportionen brauchen keine Rezeptur; null bleibt offen
+  ---
+  duration_ms: 1.426791
+  type: 'test'
+  ...
+# Subtest: Bewusstes Auffüllen mit 0 erfasst nur fehlende/offene Paare und bewahrt positive Mengen
+ok 239 - Bewusstes Auffüllen mit 0 erfasst nur fehlende/offene Paare und bewahrt positive Mengen
+  ---
+  duration_ms: 1.358041
+  type: 'test'
+  ...
+# Subtest: Referenzierte Artikel dürfen Einheit oder Lieferant nicht rückwirkend umdeuten
+ok 240 - Referenzierte Artikel dürfen Einheit oder Lieferant nicht rückwirkend umdeuten
+  ---
+  duration_ms: 0.616208
+  type: 'test'
+  ...
+# Subtest: Originalbelegbeträge bleiben unveränderbar, Ergänzungen bewahren Originalsnapshot
+ok 241 - Originalbelegbeträge bleiben unveränderbar, Ergänzungen bewahren Originalsnapshot
+  ---
+  duration_ms: 1.703417
+  type: 'test'
+  ...
+# Subtest: Korrektur einer Listenangabe ohne Original bewahrt Ausgangswerte und alle Zwischenstände
+ok 242 - Korrektur einer Listenangabe ohne Original bewahrt Ausgangswerte und alle Zwischenstände
+  ---
+  duration_ms: 1.709917
+  type: 'test'
+  ...
+# Subtest: Kleinster positiver Bedarf mit größtem Gebinde wird immer auf ein Gebinde aufgerundet
+ok 243 - Kleinster positiver Bedarf mit größtem Gebinde wird immer auf ein Gebinde aufgerundet
+  ---
+  duration_ms: 0.639875
+  type: 'test'
+  ...
+# Subtest: Küchenbestände werden je Ort getrennt geführt
+ok 244 - Küchenbestände werden je Ort getrennt geführt
+  ---
+  duration_ms: 0.15625
+  type: 'test'
+  ...
+# Subtest: Artikelstammpreis aktualisiert lebende Einkaufszeilen, nicht vorbereitete Bestellungen
+ok 245 - Artikelstammpreis aktualisiert lebende Einkaufszeilen, nicht vorbereitete Bestellungen
+  ---
+  duration_ms: 1.118333
+  type: 'test'
+  ...
+# Subtest: Wednesday delivery of explicitly derived weekend purchase remains coverage on re-adoption
+ok 246 - Wednesday delivery of explicitly derived weekend purchase remains coverage on re-adoption
+  ---
+  duration_ms: 3.289208
+  type: 'test'
+  ...
+# Subtest: unmarked imported Wednesday meal quantities are not inferred as weekend coverage from notes
+ok 247 - unmarked imported Wednesday meal quantities are not inferred as weekend coverage from notes
+  ---
+  duration_ms: 0.3275
+  type: 'test'
+  ...
+# Subtest: Wednesday weekend coverage survives quantity ownership, archived restore and explicit plan copy
+ok 248 - Wednesday weekend coverage survives quantity ownership, archived restore and explicit plan copy
+  ---
+  duration_ms: 5.627667
+  type: 'test'
+  ...
+# Subtest: Bedarf hält unbekannten Anfangsbestand offen und rechnet gemeinsamen Bestand nur einmal an
+ok 249 - Bedarf hält unbekannten Anfangsbestand offen und rechnet gemeinsamen Bestand nur einmal an
+  ---
+  duration_ms: 3.972083
+  type: 'test'
+  ...
+# Subtest: Manuelle/importierte Einkaufsdeckung wird erhalten und nicht doppelt gekauft
+ok 250 - Manuelle/importierte Einkaufsdeckung wird erhalten und nicht doppelt gekauft
+  ---
+  duration_ms: 1.732583
+  type: 'test'
+  ...
+# Subtest: Rezeptkosten summieren präzise Einkaufspreise vor der Rundung
+ok 251 - Rezeptkosten summieren präzise Einkaufspreise vor der Rundung
+  ---
+  duration_ms: 0.205208
+  type: 'test'
+  ...
+# Subtest: Ereigniswechsel archiviert alle Fakten/Preisrezept-Snapshots ohne Verschachtelung und bewahrt CAS
+ok 252 - Ereigniswechsel archiviert alle Fakten/Preisrezept-Snapshots ohne Verschachtelung und bewahrt CAS
+  ---
+  duration_ms: 1.948542
+  type: 'test'
+  ...
+# Subtest: Bestand unterscheidet Verbrauch/Rückgabe/Abfall und bucht Verkauf nicht automatisch
+ok 253 - Bestand unterscheidet Verbrauch/Rückgabe/Abfall und bucht Verkauf nicht automatisch
+  ---
+  duration_ms: 0.501042
+  type: 'test'
+  ...
+# Subtest: Belege lassen sich ergänzen/ändern, verweigern doppelte Nummern und ungültige Eingaben
+ok 254 - Belege lassen sich ergänzen/ändern, verweigern doppelte Nummern und ungültige Eingaben
+  ---
+  duration_ms: 0.98725
+  type: 'test'
+  ...
+# Subtest: Neue Vorgangs-IDs dürfen nicht für andere Buchungen wiederverwendet werden
+ok 255 - Neue Vorgangs-IDs dürfen nicht für andere Buchungen wiederverwendet werden
+  ---
+  duration_ms: 0.277375
+  type: 'test'
+  ...
+# Subtest: Manuell geänderte abgeleitete Mengen werden bei erneutem Übernehmen als feste Deckung respektiert
+ok 256 - Manuell geänderte abgeleitete Mengen werden bei erneutem Übernehmen als feste Deckung respektiert
+  ---
+  duration_ms: 0.344333
+  type: 'test'
+  ...
+# Subtest: Andere Orte zählen nicht als Küchendeckung; fehlende Gebinde und Entwurfsrezepte sperren Übernahme
+ok 257 - Andere Orte zählen nicht als Küchendeckung; fehlende Gebinde und Entwurfsrezepte sperren Übernahme
+  ---
+  duration_ms: 0.527291
+  type: 'test'
+  ...
+# Subtest: Leerzustand, Mengenpräzision und gemessene Bestände bleiben ausdrücklich begrenzt
+ok 258 - Leerzustand, Mengenpräzision und gemessene Bestände bleiben ausdrücklich begrenzt
+  ---
+  duration_ms: 1.154458
+  type: 'test'
+  ...
+# Subtest: Abgeleiteter Wochenendeinkauf lässt sich einem echten Liefertag zuordnen und bleibt anschließend erhalten
+ok 259 - Abgeleiteter Wochenendeinkauf lässt sich einem echten Liefertag zuordnen und bleibt anschließend erhalten
+  ---
+  duration_ms: 0.9865
+  type: 'test'
+  ...
+1..259
+# tests 259
+# suites 0
+# pass 259
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2907.495583
