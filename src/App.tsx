@@ -157,7 +157,7 @@ export default function App() {
       targetEventId: viewEvent??state.event.id,
       baseRevision: state.revision ?? 0,
       type,
-      payload,
+      payload: type==='receipt.draft.accept' ? {...payload as Record<string,unknown>,operationId:id} : payload,
     });
     if(saved){const p=payload as Record<string,unknown>;updatePreferences({...preferences,selectedEventId:type==='event.create'?id:(viewEvent??state.event.id),lastSupplierId:typeof p.supplierId==='string'?p.supplierId:preferences.lastSupplierId,lastLocation:typeof p.location==='string'?p.location:preferences.lastLocation});}
     return saved;

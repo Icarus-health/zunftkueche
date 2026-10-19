@@ -93,12 +93,14 @@ namespace Zunftkueche
             JObject q;
             try { q=Protocol.Parse((string)parent.InputParameters["RequestJson"]); }
             catch(Exception) { throw new InvalidPluginExecutionException("Document source request invalid."); }
-            Require((string?)q["view"]=="documents");
-            var action=(string?)q["action"];
-            Require(target.LogicalName==(action=="draft.save"?"zk_kitchendraft":"zk_kitchendocument")&&new[]{"upload.begin","upload.claim","upload.link","draft.save"}.Contains(action));
-            var value=StatePolicy.Obj(q["value"]);
+            bool acceptance=q["view"]==null&&(string?)q["operation"]?["type"]=="receipt.draft.accept";
+            Require(acceptance||(string?)q["view"]=="documents");
+            var action=acceptance?"receipt.draft.accept":(string?)q["action"];
+            Require(acceptance?c.MessageName=="Update"&&target.LogicalName=="zk_kitchendraft"
+                :target.LogicalName==(action=="draft.save"?"zk_kitchendraft":"zk_kitchendocument")&&new[]{"upload.begin","upload.claim","upload.link","draft.save"}.Contains(action));
+            var value=StatePolicy.Obj(acceptance?q["operation"]!["payload"]:q["value"]);
             var workspace=Protocol.WorkspaceId(q);
-            Require(Guid.TryParse((string?)value[action=="draft.save"?"id":"uploadId"],out var id)&&target.Id==id);
+            Require(Guid.TryParse((string?)value[acceptance?"draftId":action=="draft.save"?"id":"uploadId"],out var id)&&target.Id==id);
             Require(target.Attributes.Count==5&&new[]{"zk_workspace","zk_eventid","zk_payload","zk_actor","zk_recordedat"}.All(target.Contains));
             Require(target.GetAttributeValue<EntityReference>("zk_workspace")?.LogicalName=="zk_kitchenworkspace"&&target.GetAttributeValue<EntityReference>("zk_workspace")?.Id==workspace
                 &&target.GetAttributeValue<string>("zk_eventid")== (string?)value["eventId"]&&target.GetAttributeValue<string>("zk_actor")==c.InitiatingUserId.ToString("D")
@@ -106,8 +108,25 @@ namespace Zunftkueche
             var payload=Protocol.Parse(target.GetAttributeValue<string>("zk_payload"));
             Require((string?)payload["id"]==id.ToString("D")&&(string?)payload["workspaceId"]==workspace.ToString("D")&&(string?)payload["eventId"]==(string?)value["eventId"]);
             var last=StatePolicy.Arr(payload["history"]).LastOrDefault() as JObject;
-            Require(last!=null&&(string?)last["actorId"]==c.InitiatingUserId.ToString("D")&&(string?)last["requestId"]==(string?)q["requestId"]
-                &&(string?)last["requestHash"]==Protocol.Hash(Protocol.Canonical(q).ToString(Formatting.None)));
+            var requestId=(string?)q[acceptance?"operationId":"requestId"];
+            var requestHash=Protocol.Hash(acceptance?(string)parent.InputParameters["RequestJson"]:Protocol.Canonical(q).ToString(Formatting.None));
+            Require(last!=null&&(string?)last["actorId"]==c.InitiatingUserId.ToString("D")&&(string?)last["requestId"]==requestId
+                &&(string?)last["requestHash"]==requestHash&&(string?)last["action"]==action);
+            var snapshot=(JObject)payload.DeepClone();snapshot.Remove("history");Require(JToken.DeepEquals(last!["value"],snapshot));
+            if(acceptance) {
+                Require(!string.IsNullOrWhiteSpace(target.RowVersion)&&target.RowVersion==(string?)value["draftRowVersion"]
+                    &&(string?)value["operationId"]==requestId&&(string?)value["eventId"]==(string?)q["targetEventId"]
+                    &&JToken.DeepEquals(value["expectedWorkspaceRevision"],q["expectedRevision"])
+                    &&(string?)q["identity"]?["userId"]==c.InitiatingUserId.ToString("D")
+                    &&(string?)q["identity"]?["workspaceId"]==workspace.ToString("D"));
+                var a=StatePolicy.Obj(payload["acceptance"]);
+                Require((string?)payload["reviewStatus"]=="accepted"&&(string?)a["operationId"]==requestId&&(string?)a["receiptId"]==id.ToString("D")
+                    &&(string?)a["requestHash"]==requestHash&&(string?)a["actorId"]==c.InitiatingUserId.ToString("D")
+                    &&JToken.DeepEquals(a["recordedAt"],last["recordedAt"])&&(int?)a["appliedRevision"]==(int?)q["expectedRevision"]+1
+                    &&JToken.DeepEquals(a["reviewedFields"],value["reviewedFields"])&&JToken.DeepEquals(a["reviewDecisions"],value["reviewDecisions"])
+                    &&JToken.DeepEquals(a["documentVersion"],value["documentVersion"])&&JToken.DeepEquals(payload["pages"],value["documentVersion"])
+                    &&JToken.DeepEquals(payload["header"],value["reviewedFields"]!["header"])&&JToken.DeepEquals(payload["lines"],value["reviewedFields"]!["lines"]));
+            }
             Require(DateTime.TryParse((string?)last!["recordedAt"],System.Globalization.CultureInfo.InvariantCulture,
                 System.Globalization.DateTimeStyles.RoundtripKind,out var recordedAt)
                 && recordedAt.Kind==DateTimeKind.Utc && recordedAt==(DateTime)target["zk_recordedat"]);

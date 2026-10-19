@@ -147,7 +147,7 @@ namespace Zunftkueche
         static string InvoiceKey(JObject r) => Str(r["supplierId"], 500) + "\n" + Str(r["number"], 100).Trim().ToUpperInvariant();
         static void Receipt(JObject r, Dictionary<string, JObject> suppliers, Dictionary<string, JObject> articles, bool snapshot = false)
         {
-            Fields(r,"id supplierId number date grossCents netCents scope status documentUrl localPath source lines" + (snapshot ? "" : " sourceBaseline corrected corrections"));
+            Fields(r,"id supplierId number date grossCents netCents scope status documentUrl localPath source lines intake" + (snapshot ? "" : " sourceBaseline corrected corrections"));
             Ref(r, "supplierId", suppliers);
             Str(r["number"], 100);
             Str(r["scope"], 100);
@@ -156,6 +156,11 @@ namespace Zunftkueche
             Money(r["netCents"]);
             Date(r["date"]);
             Source(r["source"]);
+            if(r["intake"]!=null) {
+                var intake=Obj(r["intake"]);Fields(intake,"draftId operationId");
+                foreach(var key in new[]{"draftId","operationId"}) { Guid id;Require(Guid.TryParseExact(Str(intake[key],36),"D",out id)&&id!=Guid.Empty,"Invalid intake reference."); }
+                Same(intake["draftId"],r["id"],"Intake receipt identity mismatch.");
+            }
             OptionalString(r, "localPath", 2048);
             if (!Null(r["grossCents"]) && !Null(r["netCents"]))
                 Require(r["netCents"]!.Value<decimal>() <= r["grossCents"]!.Value<decimal>(), "Net exceeds gross.");
@@ -169,7 +174,8 @@ namespace Zunftkueche
             foreach (var v in lines)
             {
                 var l = Obj(v);
-                Fields(l,"articleId name quantity unit netCents");
+                Fields(l,"articleId name quantity unit netCents grossCents");
+                if(l["grossCents"]!=null)Money(l["grossCents"]);
                 Str(l["name"]);
                 Str(l["unit"], 50);
                 Quantity(l["quantity"]);
@@ -502,6 +508,7 @@ namespace Zunftkueche
                 var n = maps["invoices"][pair.Key];
                 Same(old["status"], n["status"], "Invoice status changed.");
                 Same(old["source"],n["source"],"Invoice provenance changed.");
+                Same(old["intake"],n["intake"],"Intake provenance changed.");
                 Same(old["localPath"],n["localPath"],"Invoice local origin changed.");
                 var before = Snapshot(old);
                 bool changed = !JToken.DeepEquals(before, Snapshot(n));

@@ -1,3 +1,4 @@
+import {receiptFromAcceptance} from './receipt-draft.ts';
 import {buildClosureChecklist} from './event-close.ts';
 import { movementQuantity, salePrice, receiptSnapshot } from "./corrections.ts";
 import type { ValueCorrection, AuditEntry } from "./corrections.ts";
@@ -37,6 +38,7 @@ export interface Menu {
   source?: Source;
 }
 export interface ReceiptLine {
+  grossCents?: number | null;
   articleId?: string;
   name: string;
   quantity: number | null;
@@ -44,6 +46,7 @@ export interface ReceiptLine {
   netCents: number | null;
 }
 export interface Receipt {
+  intake?: {draftId:string;operationId:string};
   id: string;
   supplierId: string;
   number: string;
@@ -782,6 +785,15 @@ export function applyOperation(
       order.status = p.status;
       break;
     }
+    case "receipt.draft.accept": {
+      const receipt=receiptFromAcceptance(next,op);
+      // Reuse strict manual receipt validation without turning gross into net.
+      const checked=applyOperation(state,{...op,type:'invoice.save',payload:receipt}).state.invoices.at(-1)!;
+      checked.lines=receipt.lines;checked.intake=receipt.intake;
+      checked.sourceBaseline=receiptSnapshot(checked);
+      next.invoices.push(checked);
+      break;
+    }
     case "invoice.correct": {
       const existing = next.invoices.find((i) => i.id === p.invoiceId);
       if (!existing) throw new Error("Beleg nicht gefunden.");
@@ -858,6 +870,7 @@ export function applyOperation(
           quantity: quantity(l.quantity, true),
           unit: text(l.unit, "Einheit", 50),
           netCents: money(l.netCents),
+          ...(l.grossCents!==undefined?{grossCents:money(l.grossCents)}:{}),
         };
       });
       const values = {

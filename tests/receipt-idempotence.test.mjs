@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createMicrosoftRepository} from '../src/data/microsoft-repository.ts';
+import {acceptance} from './receipt-review.test.mjs';
+const seed=()=>({...JSON.parse(readFileSync('import/2026.json','utf8')),schemaVersion:2,revision:0,operationIds:[],operationRequests:{}}),workspaceId='11111111-2222-4333-8444-555555555555',identity={organizationId:'22222222-2222-4333-8444-555555555555',userId:'33333333-2222-4333-8444-555555555555',workspaceId};
+const response=value=>({success:true,data:{ResultJson:JSON.stringify({protocolVersion:2,workspaceId,identity,canWrite:true,canEdit:true,canConfigure:false,canClose:false,...value})}});
+test('lost acceptance acknowledgment reload resends identical immutable request and rejects changed content',async()=>{const data=new Map(),storage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)},sent=[];const api={load:async()=>response({state:seed()}),commit:async raw=>{sent.push(raw);const q=JSON.parse(raw);if(sent.length===1)throw Error('lost acknowledgment');return response({targetEventId:q.targetEventId,operationId:q.operationId,status:'saved',appliedRevision:1,state:q.candidateState});}};const first=createMicrosoftRepository(api,workspaceId,storage);await first.load();const op=acceptance();await assert.rejects(()=>first.commit(op));await assert.rejects(()=>first.commit({...op,payload:{...op.payload,draftRowVersion:'different'}}));const second=createMicrosoftRepository(api,workspaceId,storage);const restored=await second.load();assert.equal(sent[0],sent[1]);assert.equal(restored.invoices.at(-1).id,op.payload.draftId);assert.equal(data.size,0);});

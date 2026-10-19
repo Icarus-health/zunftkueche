@@ -22,7 +22,7 @@ namespace Zunftkueche
     }
     public static class Protocol
     {
-        public static readonly HashSet<string> Operations = new HashSet<string> { "event.economics", "plan.allocationQuantity", "delivery.accept", "plan.allocate", "drink.configure", "event.close", "event.reopen", "lesson.add", "movement.correct", "sales.correctPrice", "invoice.correct", "order.mark", "supplier.save", "article.save", "menu.save", "dish.quantity", "dish.fillMissing", "event.create", "event.settings", "event.dates", "purchase.apply", "invoice.save", "invoice.update", "plan.quantity", "plan.schedule", "plan.add", "menu.price", "article.price", "order.prepare", "stock.opening", "delivery.record", "stock.count", "stock.waste", "stock.return", "stock.consume", "sales.quantity", "sales.price", "recipe.save", "invoice.link" };
+        public static readonly HashSet<string> Operations = new HashSet<string> { "receipt.draft.accept", "event.economics", "plan.allocationQuantity", "delivery.accept", "plan.allocate", "drink.configure", "event.close", "event.reopen", "lesson.add", "movement.correct", "sales.correctPrice", "invoice.correct", "order.mark", "supplier.save", "article.save", "menu.save", "dish.quantity", "dish.fillMissing", "event.create", "event.settings", "event.dates", "purchase.apply", "invoice.save", "invoice.update", "plan.quantity", "plan.schedule", "plan.add", "menu.price", "article.price", "order.prepare", "stock.opening", "delivery.record", "stock.count", "stock.waste", "stock.return", "stock.consume", "sales.quantity", "sales.price", "recipe.save", "invoice.link" };
         public static JObject Parse(string raw)
         {
             StatePolicy.Require(raw != null && Encoding.UTF8.GetByteCount(raw) <= 655360, "Request too large.");
@@ -74,6 +74,13 @@ namespace Zunftkueche
         static JObject PrepareCandidate(JToken? proposed, Workspace row, string operationId, string signature, string targetEventId, string operationType, Guid actor, DateTime timestamp)
         {
             var candidate = (JObject)StatePolicy.Obj(proposed).DeepClone();
+            if(operationType!="receipt.draft.accept")
+                foreach(var e in StatePolicy.Events(candidate)) {
+                    var old=StatePolicy.Events(row.State);
+                    foreach(var receipt in StatePolicy.Arr(e.Value["invoices"]).OfType<JObject>())
+                        if(!old.ContainsKey(e.Key)||!StatePolicy.Arr(old[e.Key]["invoices"]).Any(v=>(string?)v["id"]==(string?)receipt["id"]))
+                            StatePolicy.Require(receipt["intake"]==null,"Draft receipt requires receipt.draft.accept.");
+                }
             StatePolicy.Validate(candidate, row.State);
             StatePolicy.ValidateScope(candidate, row, targetEventId, operationType);
             var ids = (JArray)row.State["operationIds"]!.DeepClone();
@@ -121,12 +128,14 @@ namespace Zunftkueche
                 return Response(row, targetEventId, operationId, "conflict", null);
             StatePolicy.Require(!StatePolicy.Arr(row.State["operationIds"]).Any(v => (string?)v == operationId), "Operation ID already exists without matching receipt.");
             JObject candidate;
+            ReceiptIntake.Prepared? intake=null;
             var timestamp=DateTime.UtcNow;
             try
             {
-                // No storage calls in this validation-only boundary. Receipts and caller checks above
+                // Read-only source checks may precede validation; no writes in this boundary. Receipts and caller checks above
                 // MUST remain outside it: their failure cannot prove an earlier attempt did not commit.
-                candidate = PrepareCandidate(q["candidateState"], row, operationId, signature, targetEventId, (string)operation["type"]!,actor,timestamp);
+                if((string?)operation["type"]=="receipt.draft.accept")intake=ReceiptIntake.Prepare(q,row,actor,timestamp,store,hash);
+                candidate = PrepareCandidate(intake?.Candidate ?? q["candidateState"], row, operationId, signature, targetEventId, (string)operation["type"]!,actor,timestamp);
             }
             catch (ArgumentException)
             {
@@ -137,6 +146,7 @@ namespace Zunftkueche
             }
             StatePolicy.Require(inTransaction, "Synchronous Dataverse transaction required.");
             StatePolicy.Require(!string.IsNullOrWhiteSpace(row.RowVersion), "RowVersion required.");
+            if(intake!=null)((IKitchenDocumentStore)store).SaveDocumentRow(row.Id,intake.DraftId,true,intake.Draft,intake.RowVersion);
             store.Commit(row, candidate, operationId, hash, actor, timestamp);
             var saved = new Workspace { Id = id, State = candidate, Revision = row.Revision + 1, CanWrite = row.CanWrite, CanConfigure = row.CanConfigure, CanClose = row.CanClose, OrganizationId=row.OrganizationId, UserId=row.UserId };
             return Response(saved, targetEventId, operationId, "saved", (int)candidate["revision"]!);

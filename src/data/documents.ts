@@ -24,7 +24,10 @@ export interface DraftPage { documentId: string; documentRowVersion: string; ver
 export interface ExtractDraft {
   schemaVersion: 1; id: string; eventId: string; rowVersion?: string; workspaceId?: string;
   source: 'manual'; parserVersion: null; modelVersion: null; promptVersion: null;
-  reviewStatus: 'editing' | 'reviewed'; pages: DraftPage[];
+  reviewStatus: 'editing' | 'reviewed' | 'accepted';
+  rawInput?: import('../ui/receipt-intake-draft.ts').ReceiptEdit['raw'];
+  textAssist?: import('../ocr/receipt-parser.ts').TextAssist;
+  acceptance?: {operationId:string;receiptId:string;requestHash:string;appliedRevision:number;actorId:string;recordedAt:string;reviewedFields:import('../domain/receipt-draft.ts').ReceiptAcceptance['reviewedFields'];reviewDecisions:import('../domain/receipt-draft.ts').ReviewDecisions;documentVersion:DraftPage[]}; pages: DraftPage[];
   header: { supplierId: string; number: string; date: string; scope: string; grossCents: number | null };
   lines: Array<{ id: string; description: string; articleId: string; quantity: number | null; unit: string; grossCents: number | null }>;
   history?: unknown[];

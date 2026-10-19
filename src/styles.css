@@ -2310,3 +2310,9 @@ th small {
 .receipt-intake button { margin: .35rem; min-height: 44px; }
 .document-preview img { display: block; max-width: 100%; max-height: 65vh; object-fit: contain; }
 .document-preview object { width: 100%; min-height: 60vh; }
+
+.review-columns { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:1rem; }
+.review-columns section { min-width:0; }
+.receipt-review pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:20rem; overflow:auto; }
+.review-mobile-tabs { display:none; }
+@media(max-width:700px) { .review-columns { display:block; } .review-mobile-tabs { display:flex; gap:.5rem; } .review-tab-fields .review-original,.review-tab-original .review-fields { display:none; } }

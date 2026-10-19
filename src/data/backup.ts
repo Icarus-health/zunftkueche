@@ -1,3 +1,4 @@
+import {parseReceiptEdit} from '../ui/receipt-intake-draft.ts';
 import type { KitchenState } from '../domain/state.ts';
 import type { Repository } from './repository.ts';
 
@@ -177,7 +178,7 @@ async function inspectOriginals(value: BackupInputs, missing: string[]): Promise
     const record = value as Record<string, unknown>;
     const source = record.source as { hash?: string } | undefined;
     if (record.localPath && !source?.hash) missing.push(`Original ${record.localPath}: Hash fehlt`);
-    if (record.documentUrl && !source?.hash) missing.push('Original aus Dokumentlink: Bytes und Hashzuordnung fehlen');
+    if (record.documentUrl && !source?.hash && !record.intake) missing.push('Original aus Dokumentlink: Bytes und Hashzuordnung fehlen');
     Object.values(record).forEach(inspectUnhashed);
   }
   inspectUnhashed(value.state);
@@ -215,8 +216,8 @@ function validateStoredPayload(row:Record<string,unknown>,draft:boolean):void {
     }
     return;
   }
-  recordFields(row,'schemaVersion id eventId workspaceId source parserVersion modelVersion promptVersion reviewStatus pages header lines');
-  if(row.schemaVersion!==1||row.source!=='manual'||['parserVersion','modelVersion','promptVersion'].some(k=>row[k]!==null)||!['editing','reviewed'].includes(String(row.reviewStatus)))throw new Error('Entwurfherkunft ungültig.');
+  recordFields(row,'schemaVersion id eventId workspaceId source parserVersion modelVersion promptVersion reviewStatus pages header lines rawInput textAssist acceptance');
+  if(row.schemaVersion!==1||row.source!=='manual'||['parserVersion','modelVersion','promptVersion'].some(k=>row[k]!==null)||!['editing','reviewed','accepted'].includes(String(row.reviewStatus)))throw new Error('Entwurfherkunft ungültig.');
   const header=row.header as Record<string,unknown>;
   if(!header||typeof header!=='object'||Array.isArray(header))throw new Error('Entwurfkopf fehlt.');
   recordFields(header,'supplierId number date scope grossCents');
@@ -235,9 +236,41 @@ function validateStoredPayload(row:Record<string,unknown>,draft:boolean):void {
   const pageIds=new Set();
   for(const page of row.pages as Record<string,unknown>[]) {
     recordFields(page,'documentId documentRowVersion version sha256 originalReviewed');
-    if(!guid.test(String(page.documentId))||pageIds.has(page.documentId)||typeof page.originalReviewed!=='boolean'||row.reviewStatus==='reviewed'&&!page.originalReviewed||!/^[a-f0-9]{64}$/.test(String(page.sha256)))throw new Error('Entwurfprüfung ungültig.');
+    if(!guid.test(String(page.documentId))||pageIds.has(page.documentId)||typeof page.originalReviewed!=='boolean'||['reviewed','accepted'].includes(String(row.reviewStatus))&&!page.originalReviewed||!/^[a-f0-9]{64}$/.test(String(page.sha256)))throw new Error('Entwurfprüfung ungültig.');
     pageIds.add(page.documentId);checkedText(page.documentRowVersion,200);checkedText(page.version,256);
   }
+  if(row.rawInput)validateRawReview(row.rawInput,header,row.lines);
+  if(row.textAssist)validateTextAssist(row.textAssist);
+  if(row.reviewStatus==='accepted') {
+    const a=row.acceptance as Record<string,unknown>;
+    if(!a||typeof a!=='object')throw new Error('Übernahmebeleg fehlt.');
+    recordFields(a,'operationId receiptId requestHash appliedRevision actorId recordedAt reviewedFields reviewDecisions documentVersion');
+    if(!guid.test(String(a.operationId))||a.receiptId!==row.id||!guid.test(String(a.actorId))||!Number.isSafeInteger(a.appliedRevision)||Number(a.appliedRevision)<1||!/^[a-f0-9]{64}$/.test(String(a.requestHash))||!Number.isFinite(Date.parse(String(a.recordedAt))))throw new Error('Übernahmebeleg ungültig.');
+    const fields=a.reviewedFields as Record<string,unknown>;recordFields(fields,'header lines raw');
+    if(stable(fields.header)!==stable(header)||stable(fields.lines)!==stable(row.lines)||stable(a.documentVersion)!==stable(row.pages))throw new Error('Übernahmefelder stimmen nicht mit Entwurf überein.');
+    validateRawReview(fields.raw,header,row.lines);
+    if(row.rawInput&&stable(row.rawInput)!==stable(fields.raw))throw new Error('Übernahme-Rohwerte unterscheiden sich.');
+    const decisions=a.reviewDecisions as Record<string,unknown>;recordFields(decisions,'receipt fields originals prices stock');
+    if(decisions.receipt!==true||decisions.fields!==true||decisions.originals!==true||decisions.prices!=='separate'||decisions.stock!=='separate')throw new Error('Übernahmeentscheidungen unvollständig.');
+  } else if(row.acceptance!==undefined)throw new Error('Übernahme darf nicht verborgen werden.');
+
+}
+function stable(value:unknown):string {
+  const sorted=(v:unknown):unknown=>Array.isArray(v)?v.map(sorted):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b)).map(([k,x])=>[k,sorted(x)])):v;
+  return JSON.stringify(sorted(value));
+}
+function validateRawReview(raw:unknown,header:unknown,lines:unknown):void {
+  recordFields(raw as Record<string,unknown>,'total lines');
+  const r=raw as import('../ui/receipt-intake-draft.ts').ReceiptEdit['raw'];
+  if(typeof r.total!=='string'||r.total.length>100||!r.lines||typeof r.lines!=='object'||Array.isArray(r.lines)||Object.keys(r.lines).length!==(lines as unknown[]).length)throw new Error('Übernahme-Rohzahlen ungültig.');
+  for(const line of Object.values(r.lines)){recordFields(line,'quantity grossCents');if(typeof line.quantity!=='string'||line.quantity.length>100||typeof line.grossCents!=='string'||line.grossCents.length>100)throw new Error('Übernahme-Rohzeile ungültig.');}
+  const parsed=parseReceiptEdit({draft:{header,lines} as import('./documents.ts').ExtractDraft,raw:r});
+  if(stable(parsed.header)!==stable(header)||stable(parsed.lines)!==stable(lines))throw new Error('Übernahme-Rohzahlen widersprechen geprüften Feldern.');
+}
+function validateTextAssist(value:unknown):void {
+  const a=value as import('../ocr/receipt-parser.ts').TextAssist;recordFields(a as unknown as Record<string,unknown>,'origin completeness parserVersion text proposals');
+  if(a.origin!=='user-supplied'||a.completeness!=='unknown'||a.parserVersion!=='receipt-hints-v1'||typeof a.text!=='string'||a.text.length>16000||!Array.isArray(a.proposals)||a.proposals.length>4)throw new Error('Texthelfer-Herkunft ungültig.');
+  const seen=new Set();for(const p of a.proposals){recordFields(p,'field value status evidence');if(!['supplierId','number','date','grossCents'].includes(p.field)||seen.has(p.field)||p.value!==null&&(typeof p.value!=='string'||p.value.length>500)||!['proposed','missing','ambiguous','incomplete'].includes(p.status)||!Array.isArray(p.evidence)||p.evidence.length>200)throw new Error('Textvorschlag ungültig.');seen.add(p.field);for(const e of p.evidence){recordFields(e as unknown as Record<string,unknown>,'page start end quote');if(e.page!==null||!Number.isInteger(e.start)||!Number.isInteger(e.end)||e.start<0||e.end<e.start||e.end>a.text.length||a.text.slice(e.start,e.end)!==e.quote)throw new Error('Textfundstelle ungültig.');}}
 }
 async function validateStoredHistory(row:Record<string,unknown>,draft:boolean):Promise<void> {
   const {rowVersion,rawRow,history,...payload}=row;
@@ -246,11 +279,16 @@ async function validateStoredHistory(row:Record<string,unknown>,draft:boolean):P
   const seen=new Set();
   for(const entry of history as Record<string,unknown>[]) {
     recordFields(entry,'requestId requestHash actorId recordedAt action value');
-    if(!/^[a-f0-9-]{36}$/.test(String(entry.requestId))||seen.has(entry.requestId)||!/^[a-f0-9-]{36}$/.test(String(entry.actorId))||!/^[a-f0-9]{64}$/.test(String(entry.requestHash))||!Number.isFinite(Date.parse(String(entry.recordedAt)))||!(draft?['draft.save']:['upload.begin','upload.claim','upload.link']).includes(String(entry.action)))throw new Error('Dokument/Entwurf-Verlauf ungültig.');
+    if(!/^[a-f0-9-]{36}$/.test(String(entry.requestId))||seen.has(entry.requestId)||!/^[a-f0-9-]{36}$/.test(String(entry.actorId))||!/^[a-f0-9]{64}$/.test(String(entry.requestHash))||!Number.isFinite(Date.parse(String(entry.recordedAt)))||!(draft?['draft.save','receipt.draft.accept']:['upload.begin','upload.claim','upload.link']).includes(String(entry.action)))throw new Error('Dokument/Entwurf-Verlauf ungültig.');
     seen.add(entry.requestId);
     const prior=entry.value as Record<string,unknown>;
     if(!prior||prior.id!==row.id||prior.eventId!==row.eventId||prior.workspaceId!==row.workspaceId)throw new Error('Verlaufbeziehung ungültig.');
     validateStoredPayload(prior,draft);
+    if(draft&&(prior.reviewStatus==='accepted')!==(entry.action==='receipt.draft.accept'))throw new Error('Übernahmeverlauf falsch bezeichnet.');
+    if(draft&&entry.action==='receipt.draft.accept') {
+      const a=prior.acceptance as Record<string,unknown>;
+      if(a.operationId!==entry.requestId||a.requestHash!==entry.requestHash||a.actorId!==entry.actorId||a.recordedAt!==entry.recordedAt||entry!==history[history.length-1])throw new Error('Übernahmeverlauf ist nicht unveränderlich.');
+    }
   }
   if(await backupHash(history[history.length-1].value)!==await backupHash(payload))throw new Error('Letzter Dokument-/Entwurfstand stimmt nicht.');
 }
@@ -326,6 +364,26 @@ async function inspectDocumentStores(value:BackupInputs, missing:string[]):Promi
     await validateDocumentRaw(row,true);
     drafts.add(row.id);
     const event=events.find(event=>event.event.id===row.eventId)!;
+    if(row.acceptance) {
+      const a=row.acceptance as Record<string,unknown>,operationId=String(a.operationId);
+      const receipt=event.invoices.find(i=>i.id===a.receiptId);
+      const acknowledgment=value.operationReceipts?.find(r=>r.operationId===operationId);
+      if(!receipt?.intake||receipt.intake.draftId!==row.id||receipt.intake.operationId!==operationId||!receipt.sourceBaseline
+        ||stable(receipt.sourceBaseline.intake)!==stable(receipt.intake))throw new Error('Übernahme ohne unveränderlichen Belegbezug.');
+      if(!acknowledgment||acknowledgment.requestHash!==a.requestHash||acknowledgment.actorId!==a.actorId||acknowledgment.appliedRevision!==a.appliedRevision||Date.parse(acknowledgment.recordedAt)!==Date.parse(String(a.recordedAt)))throw new Error('Übernahme ohne passenden Wiederholungsbeleg.');
+      const signature=JSON.parse(value.state.operationRequests?.[operationId]??'null');
+      const p=signature?.payload;
+      if(signature?.type!=='receipt.draft.accept'||signature.targetEventId!==row.eventId||!p||p.eventId!==row.eventId||p.operationId!==operationId||p.draftId!==row.id||p.expectedWorkspaceRevision!==Number(a.appliedRevision)-1||!p.draftRowVersion
+        ||stable(p.documentVersion)!==stable(a.documentVersion)||stable(p.reviewedFields)!==stable(a.reviewedFields)||stable(p.reviewDecisions)!==stable(a.reviewDecisions))throw new Error('Übernahme und unveränderlicher Vorgang widersprechen sich.');
+      const h=(a.reviewedFields as {header:Record<string,unknown>}).header;
+      for(const key of ['supplierId','number','scope','grossCents'])if((receipt.sourceBaseline as unknown as Record<string,unknown>)[key]!==h[key])throw new Error('Übernahme-Ausgangsstand widerspricht geprüften Feldern.');
+      if((receipt.sourceBaseline.date??null)!==(h.date||null)||receipt.sourceBaseline.netCents!==null)throw new Error('Übernahme-Datum oder Netto falsch.');
+      const firstPage=(a.documentVersion as import('./documents.ts').DraftPage[])[0];
+      const firstDoc=documents.get(firstPage.documentId);
+      if(receipt.sourceBaseline.documentUrl!==(firstDoc?.ref as import('./documents.ts').DocumentRef|undefined)?.webUrl)throw new Error('Beleg-Ausgangslink widerspricht dem Original.');
+      const lines=(a.reviewedFields as {lines:import('./documents.ts').ExtractDraft['lines']}).lines.map(l=>({...(l.articleId?{articleId:l.articleId}:{}),name:l.description,quantity:l.quantity,unit:l.unit,netCents:null,grossCents:l.grossCents}));
+      if(stable(lines)!==stable(receipt.sourceBaseline.lines))throw new Error('Übernommene Zeilen widersprechen dem Ausgangsstand.');
+    }
     const history=snapshots(row);
     for(const [index,snapshot] of history.entries()) {
       const historical=index<history.length-1;
@@ -355,6 +413,8 @@ async function inspectDocumentStores(value:BackupInputs, missing:string[]):Promi
       }
     }
   }
+  for(const event of events)for(const invoice of event.invoices)if(invoice.intake&&!drafts.has(invoice.intake.draftId))throw new Error('Übernahme-Entwurf fehlt im vollständigen Inventar.');
+
 }
 async function inspect(value: BackupInputs): Promise<string[]> {
   if (!value.environment || !value.workspaceId) throw new Error('Sicherungsumgebung / Workspace fehlt.');
@@ -363,6 +423,7 @@ async function inspect(value: BackupInputs): Promise<string[]> {
   const missing: string[] = [];
   await inspectWorkspace(value, missing);
   const contract = value.sourceContract;
+  if([value.state,...(value.state.archivedEvents??[])].some(e=>e.invoices.some(i=>i.intake))&&contract?.id!=='kitchen-documents-v1')throw new Error('Übernahmeherkunft benötigt vollständige Dokument- und Entwurfsicherung.');
   if(contract && !["kitchen-core-v1","kitchen-documents-v1"].includes(contract.id))throw new Error("Unbekannter Sicherungsumfang.");
   if (contract?.id === 'kitchen-core-v1' && (contract.id !== 'kitchen-core-v1' || contract.documents !== 'not_in_contract' || contract.drafts !== 'not_in_contract'
     || Object.keys(contract).length !== 3 || value.documents !== null || value.drafts !== null)) {

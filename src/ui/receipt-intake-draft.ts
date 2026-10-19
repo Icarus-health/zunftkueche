@@ -11,10 +11,10 @@ export function createReceiptEdit(draft:ExtractDraft):ReceiptEdit {
   return {
     draft,
     raw: {
-      total:decimal(draft.header.grossCents===null?null:draft.header.grossCents/100),
-      lines:Object.fromEntries(draft.lines.map(line=>[line.id,{
+      total:draft.rawInput?.total ?? decimal(draft.header.grossCents===null?null:draft.header.grossCents/100),
+      lines:Object.fromEntries(draft.lines.map(line=>[line.id,structuredClone(draft.rawInput?.lines[line.id] ?? {
         quantity:decimal(line.quantity),grossCents:decimal(line.grossCents===null?null:line.grossCents/100),
-      }])),
+      })])),
     },
   };
 }
@@ -31,6 +31,7 @@ export function replaceReceiptDraft(edit:ReceiptEdit,draft:ExtractDraft):Receipt
 export function parseReceiptEdit(edit:ReceiptEdit):ExtractDraft {
   return {
     ...edit.draft,
+    rawInput:structuredClone(edit.raw),
     header:{...edit.draft.header,grossCents:parseMoney(edit.raw.total)},
     lines:edit.draft.lines.map(line=>({
       ...line,quantity:parseQuantity(edit.raw.lines[line.id].quantity),grossCents:parseMoney(edit.raw.lines[line.id].grossCents),

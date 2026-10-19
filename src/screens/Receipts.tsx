@@ -248,6 +248,7 @@ function ReceiptFacts({
       <h3>{title}</h3>
       <div className="receipt-overview">
         <div><small>Lieferant</small><strong>{state.suppliers.find(s=>s.id===item.supplierId)?.name??item.supplierId}</strong></div>
+        {item.intake&&<div><small>Prüfherkunft</small><strong>Gespeicherter Original- und Feldprüfstand</strong><small>Entwurf {item.intake.draftId}</small></div>}
         <div><small>Belegnummer</small><strong>{item.number||"Offen"}</strong></div>
         <div><small>Datum</small><strong>{item.date||"Offen"}</strong></div>
         <div><small>Dokument</small><strong>{item.documentUrl?<a href={item.documentUrl} target="_blank" rel="noreferrer">{item.documentUrl}</a>:"Kein Link"}</strong></div>
@@ -272,6 +273,7 @@ function ReceiptFacts({
                 <th>Position</th>
                 <th>Menge</th>
                 <th>Netto nach Rabatt</th>
+                <th>Positionsbrutto</th>
               </tr>
             </thead>
             <tbody>
@@ -283,6 +285,7 @@ function ReceiptFacts({
                     {l.unit}
                   </td>
                   <td>{euros(l.netCents)}</td>
+                  <td>{euros(l.grossCents??null)}</td>
                 </tr>
               ))}
             </tbody>
@@ -323,6 +326,8 @@ function ReceiptEditor({
       quantity: amount(l.quantity),
       unit: l.unit,
       net: amount(l.netCents === null ? null : l.netCents / 100),
+      gross:amount(l.grossCents==null?null:l.grossCents/100),
+      hasGross:l.grossCents!==undefined,
     })),
   );
   const scopes = item ? historicalLocations(state) : activeLocations(state),
@@ -346,6 +351,7 @@ function ReceiptEditor({
           quantity: parseQuantity(l.quantity),
           unit: l.unit,
           netCents: parseMoney(l.net),
+          ...(l.hasGross||l.gross.trim()?{grossCents:parseMoney(l.gross)}:{}),
         })),
       };
       if (
@@ -624,6 +630,7 @@ function ReceiptEditor({
                       }
                     />
                   </label>
+                  <label>Brutto Position · €<input inputMode="decimal" value={l.gross} placeholder="Offen" onChange={e=>setLines(lines.map((v,n)=>n===i?{...v,gross:e.target.value,hasGross:true}:v))}/></label>
                   <button
                     type="button"
                     className="text-button"
@@ -647,6 +654,8 @@ function ReceiptEditor({
                       quantity: "",
                       unit: "",
                       net: "",
+                      gross:"",
+                      hasGross:false,
                     },
                   ])
                 }

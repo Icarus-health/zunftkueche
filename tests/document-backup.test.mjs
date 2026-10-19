@@ -81,3 +81,33 @@ test('historical document reference needs its own exact manifest even when curre
  assert.equal((await validateKitchenBackup(packet,async()=>{})).complete,false);
  const forged=structuredClone(packet);forged.complete=true;forged.missing=[];await rejectedBeforeRestore(await rehash(forged));
 });
+async function acceptedSource(){
+ const {source,value}=await documentSource(),d=value.drafts[0],actor=d.history[0].actorId,operationId='66666666-1111-4111-8111-111111111111',hash='b'.repeat(64),time='2026-10-19T13:00:00.000Z';
+ d.header={supplierId:value.state.suppliers[0].id,number:'SYNTHETIC-ACCEPTED',date:'2026-10-19',scope:'Küche',grossCents:1234};d.pages[0].originalReviewed=true;d.reviewStatus='accepted';
+ const fields={header:structuredClone(d.header),lines:[],raw:{total:'12,34',lines:{}}},decisions={receipt:true,fields:true,originals:true,prices:'separate',stock:'separate'};
+ d.acceptance={operationId,receiptId:d.id,requestHash:hash,appliedRevision:1,actorId:actor,recordedAt:time,reviewedFields:fields,reviewDecisions:decisions,documentVersion:structuredClone(d.pages)};
+ const {rowVersion,rawRow,history,...snapshot}=d;d.history.push({requestId:operationId,requestHash:hash,actorId:actor,recordedAt:time,action:'receipt.draft.accept',value:structuredClone(snapshot)});rawRow.zk_payload=JSON.stringify({...snapshot,history:d.history});rawRow.zk_actor=actor;rawRow.zk_recordedat=time;
+ const invoice={id:d.id,...d.header,status:'Erfasst',netCents:null,documentUrl:value.documents[0].ref.webUrl,lines:[],intake:{draftId:d.id,operationId}};invoice.sourceBaseline=structuredClone(invoice);value.state.invoices.push(invoice);
+ const payload={eventId:d.eventId,expectedWorkspaceRevision:0,draftId:d.id,draftRowVersion:'1',documentVersion:d.pages,reviewedFields:fields,reviewDecisions:decisions,operationId};
+ value.state.revision=1;value.state.operationIds=[operationId];value.state.operationRequests={[operationId]:JSON.stringify({type:'receipt.draft.accept',payload,targetEventId:d.eventId})};
+ const r={id:crypto.randomUUID(),workspaceId:value.workspaceId,operationId,requestHash:hash,actorId:actor,appliedRevision:1,recordedAt:time,rowVersion:'1'};r.rawRow={zk_kitchenoperationid:r.id,_zk_workspace_value:r.workspaceId,zk_operationid:operationId,zk_requesthash:hash,zk_actor:actor,zk_appliedrevision:1,zk_recordedat:time};value.operationReceipts=[r];
+ value.workspaceEvidence.rawState=JSON.stringify(value.state);value.workspaceEvidence.rawStateSha256=await bytesHash(new TextEncoder().encode(value.workspaceEvidence.rawState));value.workspaceEvidence.rawRow.zk_state=value.workspaceEvidence.rawState;value.workspaceEvidence.rawRow.zk_revision=1;
+ return {source,value};
+}
+test('accepted draft original/review/raw/history/operation and baseline survive full isolated restore',async()=>{
+ const {source}=await acceptedSource();const packet=await buildKitchenBackup(source);assert.equal(packet.complete,true);
+ const {restoreLocalTest}=await import('../tools/backup-restore/restore.ts'),{mkdtemp,readFile}=await import('node:fs/promises'),{tmpdir}=await import('node:os'),{join}=await import('node:path');const directory=join(await mkdtemp(join(tmpdir(),'kitchen-accept-restore-')),'target');await restoreLocalTest(packet,{kind:'isolated-local-test',directory,authorized:true});const restored=JSON.parse(await readFile(join(directory,'backup.json'),'utf8'));assert.equal(restored.drafts[0].acceptance.reviewedFields.raw.total,'12,34');assert.equal(restored.state.invoices.at(-1).sourceBaseline.intake.draftId,restored.drafts[0].id);assert.equal(restored.drafts[0].history.length,2);
+});
+for(const mutation of ['receipt-missing','hash','actor','review','raw','source','downgrade'])test(`accepted backup rejects rehashed ${mutation} contradiction`,async()=>{
+ const {source,value}=await acceptedSource();
+ if(mutation==='receipt-missing')value.state.invoices.pop();
+ if(mutation==='hash')value.operationReceipts[0].requestHash='c'.repeat(64);
+ if(mutation==='actor')value.drafts[0].acceptance.actorId=crypto.randomUUID();
+ if(mutation==='review')value.drafts[0].acceptance.reviewDecisions.stock='book';
+ if(mutation==='raw')value.drafts[0].acceptance.reviewedFields.raw.total='99,00';
+ if(mutation==='source')value.drafts[0].acceptance.documentVersion[0].sha256='c'.repeat(64);
+ if(mutation==='downgrade'){value.sourceContract={id:'kitchen-core-v1',documents:'not_in_contract',drafts:'not_in_contract'};value.documents=null;value.drafts=null;}
+ if(value.drafts){const d=value.drafts[0],{rowVersion,rawRow,history,...snapshot}=d;d.history.at(-1).value=structuredClone(snapshot);rawRow.zk_payload=JSON.stringify({...snapshot,history});}
+ value.workspaceEvidence.rawState=JSON.stringify(value.state);value.workspaceEvidence.rawStateSha256=await bytesHash(new TextEncoder().encode(value.workspaceEvidence.rawState));value.workspaceEvidence.rawRow.zk_state=value.workspaceEvidence.rawState;
+ await assert.rejects(()=>buildKitchenBackup(source));
+});

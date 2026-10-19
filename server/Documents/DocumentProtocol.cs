@@ -111,7 +111,10 @@ namespace Zunftkueche
                 next=value; next["id"]=id.ToString("D"); next["status"]="selected";
             }
             else {
-                if(draft) ValidateDraft(value,events[eventId],row.Id,source);
+                if(draft) {
+                    StatePolicy.Require(prior?["acceptance"]==null&&(string?)prior?["reviewStatus"]!="accepted"&&value["acceptance"]==null,"Accepted draft is immutable; correct the receipt explicitly.");
+                    ValidateDraft(value,events[eventId],row.Id,source);
+                }
                 else {
                     Fields(value,"id uploadId eventId principal sha256 mimeType size originalName status rowVersion ref workspaceId history");
                     StatePolicy.Require(prior!=null,"Upload reservation missing.");
@@ -165,7 +168,7 @@ namespace Zunftkueche
             StatePolicy.Require(!money||decimal.Truncate(n)==n,"Draft money must use integer cents.");
         }
         public static void ValidateDraft(JObject value,JObject state,Guid workspace,IKitchenDocumentStore source) {
-            Fields(value,"schemaVersion id eventId rowVersion workspaceId source parserVersion modelVersion promptVersion reviewStatus pages header lines history");
+            Fields(value,"schemaVersion id eventId rowVersion workspaceId source parserVersion modelVersion promptVersion reviewStatus pages header lines history rawInput textAssist");
             StatePolicy.Require((int?)value["schemaVersion"]==1&&(string?)value["source"]=="manual"&&new[]{"parserVersion","modelVersion","promptVersion"}.All(k=>value[k]?.Type==JTokenType.Null),"Manual provenance required.");
             StatePolicy.Require(new[]{"editing","reviewed"}.Contains((string?)value["reviewStatus"]),"Draft review status invalid.");
             var pages=StatePolicy.Arr(value["pages"]);StatePolicy.Require(pages.Count>=1&&pages.Count<=10,"One to ten ordered originals required.");
@@ -185,7 +188,9 @@ namespace Zunftkueche
             var supplier=(string?)header["supplierId"];StatePolicy.Require(supplier==""||StatePolicy.Arr(state["suppliers"]).Any(s=>(string?)s["id"]==supplier),"Draft supplier invalid.");
             var date=(string?)header["date"];DateTime parsed;StatePolicy.Require(date==""||DateTime.TryParseExact(date,"yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.None,out parsed),"Draft date invalid.");
             NumberOrNull(header["grossCents"],true);
+            if(value["textAssist"]!=null)ReceiptIntake.ValidateTextAssist(StatePolicy.Obj(value["textAssist"]));
             var lines=StatePolicy.Arr(value["lines"]);StatePolicy.Require(lines.Count<=100,"Draft line limit exceeded.");
+            if(value["rawInput"]!=null)ReceiptIntake.ValidateRaw(StatePolicy.Obj(value["rawInput"]),header,lines);
             var lineIds=new System.Collections.Generic.HashSet<string>();
             foreach(var line in lines.Select(StatePolicy.Obj)) {
                 Fields(line,"id description articleId quantity unit grossCents");StatePolicy.Require(lineIds.Add(Id(line["id"]).ToString()),"Duplicate draft line.");

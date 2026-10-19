@@ -35,3 +35,5 @@ test('raw valid focused values parse only at save, unknown blanks stay null, que
  edit.raw.total='';assert.equal(parseReceiptEdit(edit).header.grossCents,null);
  assert.equal(receiptEditDirty(createReceiptEdit(blank()),baseline,1),true);
 });
+import {replaceReceiptDraft} from '../src/ui/receipt-intake-draft.ts';
+test('adding a line after saved raw inputs initializes its fields and preserves prior raw values',()=>{const draft=blank();draft.rawInput={total:'0012,34',lines:{}};const edit=createReceiptEdit(draft);const next=replaceReceiptDraft(edit,{...draft,lines:[{id:'new',description:'',articleId:'',quantity:null,unit:'',grossCents:null}]});assert.deepEqual(next.raw.lines.new,{quantity:'',grossCents:''});assert.equal(next.raw.total,'0012,34');assert.equal(parseReceiptEdit(next).header.grossCents,1234);});

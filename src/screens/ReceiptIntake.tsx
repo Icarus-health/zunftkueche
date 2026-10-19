@@ -1,3 +1,5 @@
+import ReceiptReview from './ReceiptReview.tsx';
+import {suppliedText} from '../ocr/receipt-parser.ts';
 import {useEffect,useRef,useState} from 'react';
 import type {ScreenProps} from '../App.tsx';
 import {DOCUMENT_LIMITS,validateOriginal} from '../data/documents.ts';
@@ -7,9 +9,9 @@ import {requestDraftNavigation,useDraftGuard} from '../hooks/useDraftGuard.ts';
 import {DiscardChangesDialog} from '../components/DiscardChangesDialog.tsx';
 import {createReceiptEdit,parseReceiptEdit,receiptEditDirty,replaceReceiptDraft} from '../ui/receipt-intake-draft.ts';
 
-export default function ReceiptIntake({state,documents:repo,readOnly,onClose}:ScreenProps&{documents:DocumentRepository;onClose:()=>void}) {
+export default function ReceiptIntake({state,documents:repo,readOnly,onClose,commit,busy}:ScreenProps&{documents:DocumentRepository;onClose:()=>void}) {
   const closed=state.event.status==='Abgeschlossen';
-  const blocked=readOnly||closed;
+
   const fresh=():ExtractDraft=>({
     schemaVersion:1,id:crypto.randomUUID(),eventId:state.event.id,
     source:'manual',parserVersion:null,modelVersion:null,promptVersion:null,
@@ -18,6 +20,8 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose}:Sc
   });
   const [edit,setEdit]=useState(()=>createReceiptEdit(fresh()));
   const {draft,raw}=edit;
+  const blocked=readOnly||closed||!!draft.acceptance;
+  const [helperText,setHelperText]=useState('');
   const [saved,setSaved]=useState(()=>JSON.stringify(edit));
   function setDraft(next:ExtractDraft|((current:ExtractDraft)=>ExtractDraft)) {
     setEdit(current=>replaceReceiptDraft(current,typeof next==='function'?next(current.draft):next));
@@ -27,6 +31,7 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose}:Sc
     setEdit(next);
     setSaved(JSON.stringify(next));
     setViewed([]);
+    setHelperText(value.textAssist?.text??'');
   }
   function changeRaw(value:string,lineId?:string,field:'quantity'|'grossCents'='grossCents') {
     setEdit(current=>({
@@ -243,6 +248,7 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose}:Sc
 
     <section className="panel">
       <h3>Manueller Prüfplatz</h3>
+      <button disabled={working||busy} onClick={()=>requestDraftNavigation(()=>resetDraft(fresh()))}>Neuen Prüfentwurf beginnen</button>
       <label>Gespeicherten Entwurf öffnen
         <select disabled={working} value="" onChange={event=>{
           const value=drafts.find(draft=>draft.id===event.target.value);
@@ -250,11 +256,17 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose}:Sc
         }}>
           <option value="">Entwurf auswählen</option>
           {drafts.map(draft=><option key={draft.id} value={draft.id}>
-            {draft.header.number||'Ohne Nummer'} · {draft.reviewStatus==='reviewed'?'geprüft':'in Bearbeitung'}
+            {draft.header.number||'Ohne Nummer'} · {draft.reviewStatus==='accepted'?'übernommen':draft.reviewStatus==='reviewed'?'geprüft':'in Bearbeitung'}
           </option>)}
         </select>
       </label>
-      <fieldset disabled={working||blocked}>
+      <fieldset disabled={working||blocked||busy}>
+        <details><summary>Text freiwillig als Vorschlagshilfe einfügen</summary>
+          <p>Hier eingefügter Text wird lokal ausgewertet. Das ist keine automatische PDF-/Fotoerkennung. Herkunft, Seitenzuordnung und Vollständigkeit des Textes sind nicht verifiziert. Jeder Vorschlag muss am Original geprüft werden.</p>
+          <label>Belegtext<textarea maxLength={16000} value={helperText} onChange={e=>{setHelperText(e.target.value);setDraft({...draft,reviewStatus:'editing',textAssist:{origin:'user-supplied',completeness:'unknown',parserVersion:'receipt-hints-v1',text:e.target.value,proposals:[]}});}}/></label>
+          <button onClick={()=>{try{setDraft({...draft,reviewStatus:'editing',textAssist:suppliedText(helperText,state.suppliers)});}catch(e){setMessage((e as Error).message);}}}>Text lokal auswerten</button>
+          {draft.textAssist?.proposals.map(p=><div key={p.field}><p>{({supplierId:'Lieferant',number:'Belegnummer',date:'Datum',grossCents:'Brutto gesamt'})[p.field]}: {p.value??'Offen / mehrdeutig'} · {p.evidence.map(e=>e.quote).join(' / ')}</p><button disabled={p.value===null} onClick={()=>{if(p.value===null)return;if(p.field==='grossCents'){const cents=Number(p.value);if(cents<0){setMessage('Gutschrift / negativer Betrag: separate wirtschaftliche Prüfung erforderlich; keine automatische Übernahme.');return;}changeRaw((cents/100).toFixed(2).replace('.',','));}else changeHeader(p.field,p.value);}}>Diesen Vorschlag ins Feld übernehmen</button></div>)}
+        </details>
         {draft.pages.map((page,index)=>{
           const row=rows.find(row=>row.id===page.documentId);
           return <div className="panel" key={page.documentId}>
@@ -330,9 +342,12 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose}:Sc
           Angaben mit allen Originalen abgeglichen
         </label>
         <button className="button primary" disabled={!draft.pages.length} onClick={save}>Prüfentwurf speichern</button>
-        <p>Die endgültige Übernahme in eine Rechnung ist noch nicht freigeschaltet.</p>
+
       </fieldset>
     </section>
+    <ReceiptReview key={`${draft.id}:${draft.rowVersion??'new'}`} state={state} documents={repo} rows={rows} edit={edit}
+      busy={working||busy} commit={commit} canAccept={!blocked&&!receiptEditDirty(edit,saved,queue.length)&&draft.reviewStatus==='reviewed'&&!!draft.rowVersion}
+      onAccepted={async()=>{const inventory=await refresh();const accepted=inventory.drafts.find(d=>d.id===draft.id);if(accepted)resetDraft(accepted);setMessage('Belegübernahme bestätigt. Preise und Bestände werden separat bearbeitet.');}}/>
     {guard.confirming && <DiscardChangesDialog onDiscard={guard.confirmDiscard} onKeepEditing={guard.keepEditing}/>}
   </section>;
 }
