@@ -59,3 +59,11 @@ test('modal closure can exclude its own registry entry and invoke its own form g
  assert.equal(fieldRequests,1); assert.equal(modalRequests,0); assert.equal(closed,0);
  guard.confirmDiscard(); assert.equal(closed,1);
 });
+test('pending operation refuses clean navigation and cancels a previously queued discard',()=>{
+ const guard=new DraftGuard();let discarded=0;
+ guard.requestClose(true,()=>discarded++);assert.equal(guard.confirming,true);
+ guard.confirmDiscard(true);assert.equal(discarded,0);assert.equal(guard.confirming,false);
+ guard.requestClose(false,()=>discarded++,true);assert.equal(discarded,0);assert.equal(guard.confirming,false);
+ guard.confirmDiscard();assert.equal(discarded,0);
+ guard.requestClose(false,()=>discarded++);assert.equal(discarded,1);
+});

@@ -4,19 +4,17 @@ import {useRef,useState} from 'react';
 import type {ScreenProps} from '../App.tsx';
 import type {DocumentRepository,DocumentRow} from '../data/documents.ts';
 import type {ReceiptEdit} from '../ui/receipt-intake-draft.ts';
-import {prepareReceiptAcceptance} from '../domain/receipt-draft.ts';
+import type {ReviewDecisions} from '../domain/receipt-draft.ts';
 import {DocumentPreview} from '../components/DocumentPreview.tsx';
-export default function ReceiptReview({state,documents,rows,edit,canAccept,commit,onAccepted,busy}:Pick<ScreenProps,'state'|'commit'|'busy'>&{documents:DocumentRepository;rows:DocumentRow[];edit:ReceiptEdit;canAccept:boolean;onAccepted:()=>Promise<void>}) {
+export default function ReceiptReview({state,documents,rows,edit,canAccept,onAccept,busy,pending}:Pick<ScreenProps,'state'|'busy'>&{documents:DocumentRepository;rows:DocumentRow[];edit:ReceiptEdit;canAccept:boolean;onAccept:(decisions:ReviewDecisions)=>Promise<boolean>;pending:()=>boolean}) {
   const [checked,setChecked]=useState(false),[working,setWorking]=useState(false),[error,setError]=useState('');
   const [preview,setPreview]=useState<{blob:Blob;name:string}|null>(null),[tab,setTab]=useState<'original'|'fields'>('fields');
   const d=edit.draft,accepted=!!d.acceptance;
   const root=useRef<HTMLElement|null>(null);
-  const guard=useDraftGuard({dirty:checked&&!accepted,element:root,onDiscard:()=>setChecked(false)});
+  const guard=useDraftGuard({dirty:checked&&!accepted,element:root,onDiscard:()=>setChecked(false),pending});
   async function open(row:DocumentRow){setWorking(true);setError('');try{setPreview({blob:await documents.getOriginal(row.ref!),name:row.originalName});setTab('original');}catch(e){setError((e as Error).message);}finally{setWorking(false);}}
   async function accept(){setWorking(true);setError('');try {
-    const payload=await prepareReceiptAcceptance(edit,state,documents,{receipt:checked,fields:checked,originals:checked,prices:'separate',stock:'separate'});
-    if(await commit('receipt.draft.accept',payload))await onAccepted();
-    else setError('Übernahme nicht bestätigt. Angaben bleiben erhalten; aktuellen Stand prüfen.');
+    if(!await onAccept({receipt:checked,fields:checked,originals:checked,prices:'separate',stock:'separate'}))setError('Übernahme nicht bestätigt. Angaben bleiben erhalten; aktuellen Stand prüfen.');
   }catch(e){setError((e as Error).message);}finally{setWorking(false);}}
   return <section className="panel receipt-review" ref={root}><h3>{accepted?'Übernommener Prüfentwurf':'Beleg bewusst übernehmen'}</h3>
     <div className="review-mobile-tabs" role="group" aria-label="Prüfansicht"><button onClick={()=>setTab('original')} aria-pressed={tab==='original'}>Originale</button><button onClick={()=>setTab('fields')} aria-pressed={tab==='fields'}>Geprüfte Angaben</button></div>

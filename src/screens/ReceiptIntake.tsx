@@ -8,6 +8,7 @@ import {DocumentPreview} from '../components/DocumentPreview.tsx';
 import {requestDraftNavigation,useDraftGuard} from '../hooks/useDraftGuard.ts';
 import {DiscardChangesDialog} from '../components/DiscardChangesDialog.tsx';
 import {createReceiptEdit,parseReceiptEdit,receiptEditDirty,replaceReceiptDraft} from '../ui/receipt-intake-draft.ts';
+import {ReceiptAcceptanceSession} from '../ui/receipt-acceptance.ts';
 
 export default function ReceiptIntake({state,documents:repo,readOnly,onClose,commit,busy}:ScreenProps&{documents:DocumentRepository;onClose:()=>void}) {
   const closed=state.event.status==='Abgeschlossen';
@@ -19,32 +20,35 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
     header:{supplierId:'',number:'',date:'',scope:'',grossCents:null},
   });
   const [edit,setEdit]=useState(()=>createReceiptEdit(fresh()));
+  const currentEdit=useRef(edit);currentEdit.current=edit;
+  const [acceptance]=useState(()=>new ReceiptAcceptanceSession());
+  const [acceptancePending,setAcceptancePending]=useState(false);
   const {draft,raw}=edit;
   const blocked=readOnly||closed||!!draft.acceptance;
-  const [helperText,setHelperText]=useState('');
+  const helperText=draft.textAssist?.text??'';
   const [saved,setSaved]=useState(()=>JSON.stringify(edit));
   function setDraft(next:ExtractDraft|((current:ExtractDraft)=>ExtractDraft)) {
-    setEdit(current=>replaceReceiptDraft(current,typeof next==='function'?next(current.draft):next));
+    acceptance.edit(()=>setEdit(current=>replaceReceiptDraft(current,typeof next==='function'?next(current.draft):next)));
   }
-  function resetDraft(value:ExtractDraft) {
+  function replaceEditor(value:ExtractDraft) {
     const next=createReceiptEdit(value);
     setEdit(next);
     setSaved(JSON.stringify(next));
     setViewed([]);
-    setHelperText(value.textAssist?.text??'');
   }
+  function resetDraft(value:ExtractDraft) {acceptance.edit(()=>replaceEditor(value));}
   function changeRaw(value:string,lineId?:string,field:'quantity'|'grossCents'='grossCents') {
-    setEdit(current=>({
+    acceptance.edit(()=>setEdit(current=>({
       draft:{...current.draft,reviewStatus:'editing'},
       raw:lineId
         ? {...current.raw,lines:{...current.raw.lines,[lineId]:{...current.raw.lines[lineId],[field]:value}}}
         : {...current.raw,total:value},
-    }));
+    })));
   }
   const [rows,setRows]=useState<DocumentRow[]>([]),[drafts,setDrafts]=useState<ExtractDraft[]>([]);
   const [queue,setQueue]=useState<Array<{uploadId:string;file:File}>>([]),[preview,setPreview]=useState<{blob:Blob;name:string;documentId?:string}|null>(null);
   const [operation,setOperation]=useState<'upload'|'save'|'open'|'status'|null>(null);
-  const working=operation!==null;
+  const working=operation!==null||acceptancePending||busy;
   const [message,setMessage]=useState(''),[step,setStep]=useState(0);
   const [viewed,setViewed]=useState<string[]>([]);
   const [uploadStatuses,setUploadStatuses]=useState<Record<string,string>>({});
@@ -52,8 +56,9 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
   const abort=useRef<AbortController|null>(null);
   const guard=useDraftGuard({
     dirty:receiptEditDirty(edit,saved,queue.length),
+    pending:()=>acceptance.pending,
     element:root,
-    onDiscard:()=>{abort.current?.abort();setQueue([]);resetDraft(fresh());},
+    onDiscard:()=>{acceptance.edit(()=>{abort.current?.abort();setQueue([]);replaceEditor(fresh());});},
   });
   async function refresh() {
     const inventory=await repo.list();
@@ -66,6 +71,7 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
     return ()=>abort.current?.abort();
   },[repo,state.event.id]);
   async function select(files:File[],resume?:DocumentRow) {
+    if(acceptance.pending)return;
     setMessage('');
     try {
       if(resume&&files.length!==1)throw new Error('Für die Wiederaufnahme genau dasselbe Original auswählen.');
@@ -73,11 +79,14 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
       const total=linkedBytes+queue.reduce((sum,q)=>sum+q.file.size,0)+files.reduce((sum,f)=>sum+f.size,0);
       if(draft.pages.length+queue.length+files.length>DOCUMENT_LIMITS.maxOriginals||total>DOCUMENT_LIMITS.maxTotalBytes)throw new Error('Höchstens 10 Originale mit zusammen 20 MiB auswählen.');
       for(const file of files)await validateOriginal(file);
-      setQueue([...queue,...files.map(file=>({uploadId:resume?.uploadId??crypto.randomUUID(),file}))]);
-      if(files[0])setPreview({blob:files[0],name:files[0].name});
+      acceptance.edit(()=>{
+        setQueue([...queue,...files.map(file=>({uploadId:resume?.uploadId??crypto.randomUUID(),file}))]);
+        if(files[0])setPreview({blob:files[0],name:files[0].name});
+      });
     }catch(error){setMessage((error as Error).message);}
   }
   async function upload() {
+    if(acceptance.pending)return;
     setOperation('upload');
     setMessage('');
     setStep(0);
@@ -106,6 +115,7 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
     }
   }
   async function open(row:DocumentRow) {
+    if(acceptance.pending)return;
     if(!row.ref)return;
     setOperation('open');
     setMessage('');
@@ -131,6 +141,7 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
     setDraft({...draft,pages,reviewStatus:'editing'});
   }
   async function save() {
+    if(acceptance.pending)return;
     setOperation('save');
     setMessage('');
     try {
@@ -153,6 +164,7 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
   }
   const changeHeader=(key:keyof ExtractDraft['header'],value:string|number|null)=>setDraft({...draft,reviewStatus:'editing',header:{...draft.header,[key]:value}});
   async function checkStatus(row:DocumentRow) {
+    if(acceptance.pending)return;
     setOperation('status');
     try {
       const status=await repo.loadUpload(row.uploadId);
@@ -263,7 +275,7 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
       <fieldset disabled={working||blocked||busy}>
         <details><summary>Text freiwillig als Vorschlagshilfe einfügen</summary>
           <p>Hier eingefügter Text wird lokal ausgewertet. Das ist keine automatische PDF-/Fotoerkennung. Herkunft, Seitenzuordnung und Vollständigkeit des Textes sind nicht verifiziert. Jeder Vorschlag muss am Original geprüft werden.</p>
-          <label>Belegtext<textarea maxLength={16000} value={helperText} onChange={e=>{setHelperText(e.target.value);setDraft({...draft,reviewStatus:'editing',textAssist:{origin:'user-supplied',completeness:'unknown',parserVersion:'receipt-hints-v1',text:e.target.value,proposals:[]}});}}/></label>
+          <label>Belegtext<textarea maxLength={16000} value={helperText} onChange={e=>{setDraft({...draft,reviewStatus:'editing',textAssist:{origin:'user-supplied',completeness:'unknown',parserVersion:'receipt-hints-v1',text:e.target.value,proposals:[]}});}}/></label>
           <button onClick={()=>{try{setDraft({...draft,reviewStatus:'editing',textAssist:suppliedText(helperText,state.suppliers)});}catch(e){setMessage((e as Error).message);}}}>Text lokal auswerten</button>
           {draft.textAssist?.proposals.map(p=><div key={p.field}><p>{({supplierId:'Lieferant',number:'Belegnummer',date:'Datum',grossCents:'Brutto gesamt'})[p.field]}: {p.value??'Offen / mehrdeutig'} · {p.evidence.map(e=>e.quote).join(' / ')}</p><button disabled={p.value===null} onClick={()=>{if(p.value===null)return;if(p.field==='grossCents'){const cents=Number(p.value);if(cents<0){setMessage('Gutschrift / negativer Betrag: separate wirtschaftliche Prüfung erforderlich; keine automatische Übernahme.');return;}changeRaw((cents/100).toFixed(2).replace('.',','));}else changeHeader(p.field,p.value);}}>Diesen Vorschlag ins Feld übernehmen</button></div>)}
         </details>
@@ -346,8 +358,9 @@ export default function ReceiptIntake({state,documents:repo,readOnly,onClose,com
       </fieldset>
     </section>
     <ReceiptReview key={`${draft.id}:${draft.rowVersion??'new'}`} state={state} documents={repo} rows={rows} edit={edit}
-      busy={working||busy} commit={commit} canAccept={!blocked&&!receiptEditDirty(edit,saved,queue.length)&&draft.reviewStatus==='reviewed'&&!!draft.rowVersion}
-      onAccepted={async()=>{const inventory=await refresh();const accepted=inventory.drafts.find(d=>d.id===draft.id);if(accepted)resetDraft(accepted);setMessage('Belegübernahme bestätigt. Preise und Bestände werden separat bearbeitet.');}}/>
+      busy={working} pending={()=>acceptance.pending} canAccept={!blocked&&!receiptEditDirty(edit,saved,queue.length)&&draft.reviewStatus==='reviewed'&&!!draft.rowVersion}
+      onAccept={decisions=>acceptance.accept({edit,state,documents:repo,decisions,commit:payload=>commit('receipt.draft.accept',payload),refresh,currentEdit:()=>currentEdit.current,onPending:setAcceptancePending,
+        onAccepted:accepted=>{replaceEditor(accepted);setMessage('Belegübernahme bestätigt. Preise und Bestände werden separat bearbeitet.');}})}/>
     {guard.confirming && <DiscardChangesDialog onDiscard={guard.confirmDiscard} onKeepEditing={guard.keepEditing}/>}
   </section>;
 }

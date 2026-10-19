@@ -355,6 +355,7 @@ async function inspectDocumentStores(value:BackupInputs, missing:string[]):Promi
     }
   }
   const drafts=new Set<string>();
+  const acceptedDrafts=new Map<string,{eventId:string;receiptId:string;operationId:string}>();
   for(const row of value.drafts??[]) {
     if(typeof row.id!=='string' || drafts.has(row.id) || row.workspaceId!==value.workspaceId
       || !eventIds.has(String(row.eventId)) || typeof row.rowVersion!=='string' || !row.rowVersion) {
@@ -383,6 +384,7 @@ async function inspectDocumentStores(value:BackupInputs, missing:string[]):Promi
       if(receipt.sourceBaseline.documentUrl!==(firstDoc?.ref as import('./documents.ts').DocumentRef|undefined)?.webUrl)throw new Error('Beleg-Ausgangslink widerspricht dem Original.');
       const lines=(a.reviewedFields as {lines:import('./documents.ts').ExtractDraft['lines']}).lines.map(l=>({...(l.articleId?{articleId:l.articleId}:{}),name:l.description,quantity:l.quantity,unit:l.unit,netCents:null,grossCents:l.grossCents}));
       if(stable(lines)!==stable(receipt.sourceBaseline.lines))throw new Error('Übernommene Zeilen widersprechen dem Ausgangsstand.');
+      acceptedDrafts.set(row.id,{eventId:String(row.eventId),receiptId:receipt.id,operationId});
     }
     const history=snapshots(row);
     for(const [index,snapshot] of history.entries()) {
@@ -413,7 +415,10 @@ async function inspectDocumentStores(value:BackupInputs, missing:string[]):Promi
       }
     }
   }
-  for(const event of events)for(const invoice of event.invoices)if(invoice.intake&&!drafts.has(invoice.intake.draftId))throw new Error('Übernahme-Entwurf fehlt im vollständigen Inventar.');
+  for(const event of events)for(const invoice of event.invoices)if(invoice.intake) {
+    const accepted=acceptedDrafts.get(invoice.intake.draftId);
+    if(!accepted||accepted.eventId!==event.event.id||accepted.receiptId!==invoice.id||accepted.operationId!==invoice.intake.operationId)throw new Error('Übernahme-Beleg ohne passenden endgültigen Entwurf und Vorgang.');
+  }
 
 }
 async function inspect(value: BackupInputs): Promise<string[]> {

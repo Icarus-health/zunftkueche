@@ -24,9 +24,9 @@ export function parseReceipt(extraction:ExtractionResult,suppliers:Array<{id:str
   }
   return {parserVersion:PARSER_VERSION,extraction:structuredClone(extraction),header:{
     supplierId:proposal(e=>{const found=suppliers.filter(s=>e.quote.trim().toLocaleLowerCase()===s.name.trim().toLocaleLowerCase());return found.length===1?found[0].id:null;}),
-    number:proposal(e=>e.quote.match(/^(?:Rechnungsnummer|Rechnung\s*Nr\.?|Belegnummer)\s*:\s*([\wÄÖÜäöüß./-]{1,100})\s*$/i)?.[1]??null),
-    date:proposal(e=>{const m=e.quote.match(/^(?:Datum|Rechnungsdatum)\s*:\s*(\d{2})\.(\d{2})\.(\d{4})\s*$/i);if(!m)return null;const date=`${m[3]}-${m[2]}-${m[1]}`;const parsed=new Date(date);return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===date?date:null;}),
-    grossCents:proposal(e=>{const m=e.quote.match(/^(?:Brutto|Gesamtbetrag brutto|Bruttobetrag)\s*:\s*(-?[\d.,]+)\s*(?:EUR|€)?\s*$/i);return m?parseGermanCents(m[1]):null;}),
+    number:proposal(e=>e.quote.trim().match(/^(?:Rechnungsnummer|Rechnung[ \t\u00a0]*Nr\.?|Belegnummer)(?:[ \t\u00a0]*:[ \t\u00a0]*|[ \t\u00a0]+)([\wÄÖÜäöüß./-]{1,100})$/i)?.[1]??null),
+    date:proposal(e=>{const m=e.quote.trim().match(/^(?:Datum|Rechnungsdatum)(?:[ \t\u00a0]*:[ \t\u00a0]*|[ \t\u00a0]+)(\d{2})\.(\d{2})\.(\d{4})$/i);if(!m)return null;const date=`${m[3]}-${m[2]}-${m[1]}`;const parsed=new Date(date);return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===date?date:null;}),
+    grossCents:proposal(e=>{const m=e.quote.trim().match(/^(?:Brutto|Gesamt(?:betrag)?[ \t\u00a0]+brutto|Bruttobetrag)(?:[ \t\u00a0]*:[ \t\u00a0]*|[ \t\u00a0]+)(-?[\d.,]+)[ \t\u00a0]*(?:EUR|€)?$/i);return m?parseGermanCents(m[1]):null;}),
   },lines:[],warnings:['Zeilen, Steuergruppen, Gebinde, Pfand, Rabatte und Gutschriften manuell prüfen. Netto wird nicht aus Brutto abgeleitet.',...(extraction.complete!==true?['Seitenzuordnung und Vollständigkeit sind nicht bestätigt.']:[])]};
 }
 export interface TextAssist {

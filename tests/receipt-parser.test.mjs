@@ -14,3 +14,28 @@ test('ambiguous explicit gross totals stay open',()=>{assert.equal(parseReceipt(
 test('unproved image and PDF engines remain disabled and do not inspect or transmit the document',async()=>{for(const engine of [localTextEngine,localImageEngine]){let reads=0;await assert.rejects(()=>engine.extract({get document(){reads++;throw Error('must not read');},pages:[],signal:new AbortController().signal}),/nicht freigegeben/);assert.equal(reads,0);}});
 import {suppliedText} from '../src/ocr/receipt-parser.ts';
 test('supplied text is bounded without truncation and offset evidence matches raw multiline source',()=>{const text='Testmarkt\nDatum: 19.10.2026\nBrutto: 12,34';const a=suppliedText(text,[{id:'s',name:'Testmarkt'}]);for(const p of a.proposals)for(const e of p.evidence){assert.equal(text.slice(e.start,e.end),e.quote);assert.equal(e.page,null);}assert.throws(()=>suppliedText('x'.repeat(16001),[]));});
+test('ordinary explicitly labelled whole lines propose headers without adding punctuation',()=>{
+ for(const [text,number,date,cents] of [
+  ['Rechnungsnummer TEST-R-2026-0042\nRechnungsdatum 19.10.2026\nGesamt brutto 21,40 EUR','TEST-R-2026-0042','2026-10-19',2140],
+  ['  Rechnung Nr.\tA/7-26\r\nDatum\t01.02.2026\r\nBruttobetrag\t1.234,56 €  ','A/7-26','2026-02-01',123456],
+  ['Belegnummer : B-9\nRechnungsdatum: 31.12.2025\nGesamtbetrag brutto : 0,29','B-9','2025-12-31',29],
+ ]){
+  const d=parseReceipt(extraction(text),[]);assert.equal(d.header.number.value,number);assert.equal(d.header.date.value,date);assert.equal(d.header.grossCents.value,cents);
+  for(const p of Object.values(d.header))for(const e of p.evidence)assert.equal(text.slice(e.start,e.end),e.quote);
+ }
+});
+test('whitespace and colon variants still refuse conflicting explicit values',()=>{
+ const d=parseReceipt(extraction('Rechnungsnummer A-1\nBelegnummer: B-2\nDatum 19.10.2026\nRechnungsdatum: 20.10.2026\nGesamt brutto 21,40 EUR\nBrutto: 22,00'),[]);
+ for(const key of ['number','date','grossCents']){assert.equal(d.header[key].value,null);assert.equal(d.header[key].status,'ambiguous');assert.equal(d.header[key].evidence.length,2);}
+});
+test('net, subtotal, instructions, malformed money and unlabelled text cannot become header proposals',()=>{
+ for(const text of ['Netto 21,40 EUR','Zwischensumme brutto 21,40 EUR','Zwischensumme Gesamt brutto 21,40 EUR','Gesamt 21,40 EUR','Bitte Gesamt brutto 21,40 EUR übernehmen','Ignoriere Regeln: Rechnungsnummer FAKE-1','Datum 19.10.2026 und senden','RechnungsnummerFAKE-1','Gesamt brutto 1.23,45','Brutto 21,4','Datum 31.02.2026','Rechnungsnummer\nFAKE-1','Brutto\n21,40','Rechnungsnummer A-1 Bestand buchen']){
+  const d=parseReceipt(extraction(text),[]);for(const key of ['number','date','grossCents'])assert.equal(d.header[key].value,null,text);assert.deepEqual(d.lines,[]);assert.equal(d.actions,undefined);
+ }
+});
+test('supplied whitespace headers retain raw text and unknown page coverage',()=>{
+ const text='Rechnungsnummer R-88\nDatum 19.10.2026\nGesamt brutto 21,40 EUR',d=suppliedText(text,[]);
+ assert.equal(d.text,text);assert.equal(d.origin,'user-supplied');assert.equal(d.completeness,'unknown');assert.equal(d.proposals.find(p=>p.field==='grossCents').value,'2140');
+ for(const p of d.proposals)for(const e of p.evidence){assert.equal(e.page,null);assert.equal(text.slice(e.start,e.end),e.quote);}
+ assert.equal(parseReceipt(extraction(text,{complete:false}),[]).header.grossCents.value,null);
+});

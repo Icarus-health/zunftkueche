@@ -2,13 +2,15 @@
 export class DraftGuard {
   confirming = false;
   private action: (() => void) | null = null;
-  requestClose(dirty: boolean, action: () => void) {
+  requestClose(dirty: boolean, action: () => void, pending=false) {
+    if(pending){this.keepEditing();return;}
     if (!dirty) { action(); return; }
     this.action = action;
     this.confirming = true;
   }
   keepEditing() { this.action = null; this.confirming = false; }
-  confirmDiscard() {
+  confirmDiscard(pending=false) {
+    if(pending){this.keepEditing();return;}
     const action = this.action;
     this.keepEditing();
     action?.();

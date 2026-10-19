@@ -111,3 +111,47 @@ for(const mutation of ['receipt-missing','hash','actor','review','raw','source',
  value.workspaceEvidence.rawState=JSON.stringify(value.state);value.workspaceEvidence.rawStateSha256=await bytesHash(new TextEncoder().encode(value.workspaceEvidence.rawState));value.workspaceEvidence.rawRow.zk_state=value.workspaceEvidence.rawState;
  await assert.rejects(()=>buildKitchenBackup(source));
 });
+
+async function refreshWorkspaceEvidence(value) {
+ value.workspaceEvidence.rawState=JSON.stringify(value.state);
+ value.workspaceEvidence.rawStateSha256=await bytesHash(new TextEncoder().encode(value.workspaceEvidence.rawState));
+ value.workspaceEvidence.rawRow.zk_state=value.workspaceEvidence.rawState;
+ value.workspaceEvidence.rawRow.zk_revision=value.state.revision;
+}
+function earlierEditingDraft(value) {
+ const current=value.drafts[0],first=structuredClone(current.history[0]);
+ const payload={...first.value,history:[first]};
+ value.drafts[0]={...payload,rowVersion:current.rowVersion,rawRow:{...current.rawRow,zk_payload:JSON.stringify(payload),zk_actor:first.actorId,zk_recordedat:first.recordedAt}};
+}
+for(const mutation of ['earlier-editing-snapshot','other-event','different-operation']) {
+ for(const boundary of ['build','import','restore'])test(`intake reverse ${mutation} rejects at ${boundary} with consistent rehashed evidence`,async()=>{
+  const {source,value}=await acceptedSource();
+  const good=await buildKitchenBackup(source);
+  if(mutation==='earlier-editing-snapshot')earlierEditingDraft(value);
+  if(mutation==='other-event') {
+   // Keep the accepted draft's forward evidence wholly valid in its original event.
+   // A second event is not allowed to borrow its receipt/draft merely by matching ID.
+   const {revision,operationIds,operationRequests,archivedEvents,...copy}=structuredClone(value.state);
+   copy.event.id='other-event';copy.event.name='Different event';
+   value.state.archivedEvents=[copy];
+  }
+  if(mutation==='different-operation') {
+   // Both stored invoice and immutable baseline consistently claim a different operation.
+   // The genuine final draft acceptance and genuine operation receipt are retained.
+   const invoice=value.state.invoices.at(-1);
+   invoice.intake.operationId='77777777-1111-4111-8111-111111111111';
+   invoice.sourceBaseline.intake.operationId=invoice.intake.operationId;
+  }
+  await refreshWorkspaceEvidence(value);
+  const packet=await rehash({...good,...structuredClone(value)});
+  if(boundary==='build')await assert.rejects(()=>buildKitchenBackup(source),/Übernahme/);
+  if(boundary==='import')await assert.rejects(()=>validateKitchenBackup(packet,async()=>{}),/Übernahme/);
+  if(boundary==='restore') {
+   const {restoreLocalTest}=await import('../tools/backup-restore/restore.ts');
+   const {mkdtemp,access}=await import('node:fs/promises'),{tmpdir}=await import('node:os'),{join}=await import('node:path');
+   const directory=join(await mkdtemp(join(tmpdir(),'kitchen-reverse-relation-')),'must-not-exist');
+   await assert.rejects(()=>restoreLocalTest(packet,{kind:'isolated-local-test',directory,authorized:true}),/Übernahme/);
+   await assert.rejects(()=>access(directory),{code:'ENOENT'});
+  }
+ });
+}

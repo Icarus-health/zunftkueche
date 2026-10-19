@@ -37,3 +37,9 @@ test('raw valid focused values parse only at save, unknown blanks stay null, que
 });
 import {replaceReceiptDraft} from '../src/ui/receipt-intake-draft.ts';
 test('adding a line after saved raw inputs initializes its fields and preserves prior raw values',()=>{const draft=blank();draft.rawInput={total:'0012,34',lines:{}};const edit=createReceiptEdit(draft);const next=replaceReceiptDraft(edit,{...draft,lines:[{id:'new',description:'',articleId:'',quantity:null,unit:'',grossCents:null}]});assert.deepEqual(next.raw.lines.new,{quantity:'',grossCents:''});assert.equal(next.raw.total,'0012,34');assert.equal(parseReceiptEdit(next).header.grossCents,1234);});
+test('unparsed supplied text alone is dirty without originals and survives a failed review parse',()=>{
+ const edit=createReceiptEdit(blank()),baseline=JSON.stringify(edit),text='Rechnungsnummer R-1\nGesamt brutto 12,34 EUR';
+ const next=replaceReceiptDraft(edit,{...edit.draft,textAssist:{origin:'user-supplied',completeness:'unknown',parserVersion:'receipt-hints-v1',text,proposals:[]}});
+ assert.equal(next.draft.pages.length,0);guarded(next,baseline);next.raw.total='12,xx';
+ assert.throws(()=>parseReceiptEdit(next));assert.equal(next.draft.textAssist.text,text);assert.equal(next.raw.total,'12,xx');
+});
