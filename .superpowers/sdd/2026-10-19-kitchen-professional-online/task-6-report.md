@@ -76,3 +76,80 @@ Fixture controls: refuse draft save, refuse acceptance, lose first acknowledgmen
 Reviewed actual caller/event/workspace/source binding; ambient write boundary and escaping faults; exact request replay; no new intake-provenance bypass through generic operations; accepted-draft sealing; immutable baselines and all-field correction history; gross/net separation; raw/new-line/text dirty state; disabled engines; native/full-history backup and operation/original relationships; source-only fixture isolation. Protected original corpus, import/local-state files, generated bindings, auth/config, package/lockfiles and historical Deploy/Access/Acceptance/PackageUpdate sources/pins have no diff from the base.
 
 No additional source blocker was found in that self-review. Independent source review, parent fixed-copy UI acceptance and actual Microsoft registration/transaction/rights/readback gates remain required. Existing limits remain explicit: external-original changes after the fresh read, unproved host/device PDF/OCR execution, historical version retrieval, complete cross-editor inventories and negative-amount/unsupported parser layouts. Manual workflow is available in source independently of those disabled recognition paths.
+
+## Fix round 1 of 5 — I1, I2, I3
+
+**Status:** Implemented and locally verified; ready for scoped independent rereview and parent delayed-original CUA. This appendix supersedes the earlier self-review's “no additional source blocker” claim for I1–I3. No source/release approval or live Microsoft proof is claimed. Fix base: `4b90b0ccb6c13578cb6a1d2c2ca2852692af1200`; immutable production/test freeze: **`37acf47ff7450c696cc3f3c4156986fc5c73a180`** (`fix(receipts): bind backup acceptance and lock pending review`). Report/evidence are recorded separately after that freeze. No Task 7 work, provider/auth/deployment/CUA calls, subagents, dependencies or server-source changes.
+
+### I1 — Reverse acceptance relation
+
+The backup reverse lookup now contains only drafts whose final stored payload, immutable history, native row and acceptance/operation/baseline chain passed the existing forward validators. Every invoice with `intake` must match that validated draft's event, receipt ID and operation ID. A valid earlier editing snapshot with the same ID cannot satisfy the relation. Historical document/native-row/original requirements remain unchanged.
+
+`tests/document-backup.test.mjs` adds nine cases named `intake reverse {earlier-editing-snapshot|other-event|different-operation} rejects at {build|import|restore} with consistent rehashed evidence`. The earlier snapshot has a consistent native payload/actor/time; all packets have freshly recomputed workspace evidence and payload hashes. The cross-event case retains a genuine valid forward acceptance in its original event and forbids another event borrowing it. The different-operation case changes the invoice and its immutable baseline consistently while retaining the genuine final draft operation. Each restore test asserts `ENOENT` for the intended target after rejection. RED: 34 pass / 6 fail (the different-operation cases already failed closed); GREEN: 40 pass / 0 fail.
+
+The reviewer's original files remain untouched:
+
+- `/private/tmp/task6-review-missing-acceptance.mjs`: SHA-256 `1ea97c997ecc344fcc3f2d296347134e1efa36091268cade9662c464da1ec4bf`.
+- `/private/tmp/task6-review-missing-acceptance.log`: SHA-256 `f570f783065e2a4f9b04baa49f271c622014c4c6c3c1da802f04754aa54e8195`.
+
+Rerunning the unchanged probe with output redirected to a **new** log returns exit 1 at `buildKitchenBackup`: first `{"stage":"accepted baseline","complete":true,"missing":[]}`, then `Error: Übernahme-Beleg ohne passenden endgültigen Entwurf und Vorgang.` This is the expected rejection, not a passing restore. The nine regression tests separately cover import and pre-target restore rejection. It proves local internal consistency enforcement, not authenticated provider inventory or Microsoft restoration.
+
+### I2 — Owning editor pending state
+
+`ReceiptAcceptanceSession` is owned by ReceiptIntake and locks synchronously before the first list/original await. It snapshots the edit/state/decisions, runs the existing prepare and normal commit path, and stays locked through acknowledgement and fresh accepted-draft inventory. Owner field/number/quantity/text mutations and draft replacements use its gate; all editor controls are disabled while pending. Both draft-navigation guards consult the synchronous pending getter, refuse navigation/discard while pending and clear any queued discard. No cancellation control was added. A defensive current-edit fingerprint check prevents a stale acknowledgement from resetting a newer edit even if state is independently replaced outside the normal gate.
+
+An unknown transport outcome still leaves the existing SaveController promise/request unresolved; its exact retry must resolve before the gate unlocks. Original-read failure, definitive rejection and refresh failure retain the existing edit/raw values. Pasted input now derives directly from the guarded draft rather than an additional component string state. The acknowledged reset is restricted to a fresh accepted draft for the captured event/receipt. Production commit/protocol, raw-request replay persistence, caller/RowVersion checks and synchronous Dataverse transaction are unchanged.
+
+`tests/receipt-acceptance-pending.test.mjs` covers these exact names:
+
+- `owning editor locks before list through delayed original, commit and acknowledged refresh`
+- `source failure, definitive rejection and refresh failure retain raw values and release only after outcome`
+- `lost acknowledgement retains the exact SaveController request and editor lock until retry and refresh`
+- `an independently changed edit is never reset by a stale acknowledgement callback`
+
+These use deterministic promises and the actual preparation/gate/SaveController helpers. The first test holds list, original, commit and refresh separately, attempts raw total/quantity/header/text edits and a draft switch, rejects a concurrent second acceptance and checks no reset before refresh. The lost-ack test checks the exact repeated operation. RED used an extracted equivalent of the earlier uncoordinated callback and failed all four assertions; GREEN 4/4 plus existing guards 6/6. A further guard regression cancels a queued discard while pending. Final self-review strengthened text preservation and added `unparsed supplied text alone is dirty without originals and survives a failed review parse` in `receipt-intake-draft.test.mjs`.
+
+**Parent delayed-original fixture:** use frozen `37acf47` at `/tests/fixtures/receipt-review-harness.html` with the same isolated fixed-copy Vite setup (`configFile:false`). Only labelled in-memory fakes; no SDK/network/private persistence. Open **TESTENTWURF ÖFFNEN**, view the genuine bounded synthetic PNG, mark the original reviewed, enter total `12,34`, quantity `1,25`, line gross `12,34`, mark fields reviewed and save. Then enable **Nächstes Original-Lesen anhalten**, check final acceptance and press **Geprüften Beleg übernehmen**. The independent fixture controls remain enabled outside the locked editor:
+
+- **Original-Lesen freigeben** resumes the held source read and disables holding the next read.
+- **Original-Lesen ablehnen** rejects the held read; raw values should remain and editing becomes available again.
+- **Navigation zum Belegeingang versuchen** exercises the navigation guard while held.
+- The `data-testid="original-read-status"` text is **Original-Lesen wartet auf Testfreigabe** while held.
+
+While held, attempt total/number/text edits, **Neuen Prüfentwurf beginnen**, the saved-draft selector (**ZWEITER TESTENTWURF** is available), back/navigation, and acceptance again. Editor/draft controls must remain disabled and the fixture release/reject controls usable. On release the captured request must retain the saved values; acknowledgement refresh must show the accepted draft. To exercise lost ack, set **Erste Übernahmeantwort verlieren** before acceptance and use **Exakte offene Anfrage wiederholen** after release; the fixture now retains the original unresolved acknowledgement until that exact replay, and replay of an already applied operation cannot be changed to rejection by the fixture's refusal checkbox. `captured-request` / `captured-result` show request and result. `saveDraft` returns a clone so its fake backend cannot mutate the screen's saved object by reference (the earlier stale-heading/toast artifact). Parent's earlier instant `67f970c` UI result remains valid for its bounded scope, but is not evidence for this new delay interleaving. No CUA was run by this implementer.
+
+### I3 — Bounded useful header grammar
+
+The existing `receipt-hints-v1` stored contract now accepts colon or horizontal whitespace separators on a bounded set of whole-line labels. This includes `Gesamt brutto`, ordinary spaces/tabs/nonbreaking spaces, and retains `Brutto`, `Bruttobetrag`, `Gesamtbetrag brutto`, explicit invoice numbers and dates. It does not join lines or parse instructions containing those substrings. Raw quotations and offsets remain exact; no stored history is rewritten. Strict cent conversion, impossible-date rejection, conflicting-value refusal, unknown supplied-text provenance/page coverage, disabled PDF/image/cloud engines and manual-only unsupported fields remain intact. This is a grammar correction within the same persisted proposal format, not OCR or an extraction-coverage claim.
+
+Four added parser tests are `ordinary explicitly labelled whole lines propose headers without adding punctuation`, `whitespace and colon variants still refuse conflicting explicit values`, `net, subtotal, instructions, malformed money and unlabelled text cannot become header proposals`, and `supplied whitespace headers retain raw text and unknown page coverage`. RED: 17 pass / 3 fail; GREEN: 20 pass / 0 fail. The exact review example yields `TEST-R-2026-0042`, `2026-10-19`, `2140`. Other independently specified positive examples cover tabs/CRLF/grouped cents and spaced colons; negatives cover net, subtotal, instructions, missing separators, impossible dates, malformed cents and split-line labels. No parent corpus was rerun and no real-receipt benchmark was performed.
+
+### Exact verification evidence for this round
+
+All commands ran from `/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app`. Logs below are under `.superpowers/sdd/2026-10-19-kitchen-professional-online/task-6-evidence/`. For test/build rows, stdout/stderr were redirected with `> LOG 2>&1`; a subsequent `tail -n 12 LOG` displayed the summary. Counts below are literal TAP results, not the wrapper's exit status. The strict type checks and reviewer-probe calls returned their own exit codes.
+
+| Exact command | Literal outcome | Log |
+|---|---|---|
+| `node --experimental-strip-types --test tests/document-backup.test.mjs` before fix | `# tests 40`, `# pass 34`, `# fail 6` | `fix1-backup-red.log` |
+| same command after I1 fix | `# tests 40`, `# pass 40`, `# fail 0` | `fix1-backup-green.log` |
+| `node --experimental-strip-types --test tests/receipt-acceptance-pending.test.mjs` against uncoordinated implementation | `# tests 4`, `# pass 0`, `# fail 4` | `fix1-pending-red.log` |
+| `node --experimental-strip-types --test tests/receipt-acceptance-pending.test.mjs tests/draft-guard.test.mjs` | `# tests 10`, `# pass 10`, `# fail 0` | `fix1-pending-green.log` |
+| `node --experimental-strip-types --test tests/receipt-parser.test.mjs` before I3 fix | `# tests 20`, `# pass 17`, `# fail 3` | `fix1-parser-red.log` |
+| same command after I3 fix | `# tests 20`, `# pass 20`, `# fail 0` | `fix1-parser-green.log` |
+| `node --experimental-strip-types --test tests/document-backup.test.mjs tests/backup-restore.test.mjs tests/backup-source.test.mjs tests/draft-guard.test.mjs tests/draft-save.test.mjs tests/discard-dialog.test.mjs tests/receipt-intake-draft.test.mjs tests/receipt-parser.test.mjs tests/receipt-review.test.mjs tests/receipt-idempotence.test.mjs tests/receipt-acceptance-pending.test.mjs` | `# tests 101`, `# pass 101`, `# fail 0` | `fix1-focused-final.log` |
+| `npm run build` | `tsc --noEmit && vite build`; `✓ 4662 modules transformed.`; `✓ built in 394ms` | `fix1-build-final.log` |
+| `./node_modules/.bin/tsc --ignoreConfig --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler --allowImportingTsExtensions --resolveJsonModule --isolatedModules --jsx react-jsx --strict --skipLibCheck tests/fixtures/receipt-review-harness.tsx src/vite-env.d.ts` | Exit 0; no diagnostics | `fix1-harness-types-final.log` |
+| `node --experimental-strip-types --test tests/receipt-acceptance-pending.test.mjs tests/receipt-intake-draft.test.mjs` after self-review test/fixture-only amendments | `# tests 10`, `# pass 10`, `# fail 0` | `fix1-selfreview-focused.log` |
+| same exact strict harness type command after fixture clone/replay amendment | Exit 0; no diagnostics | `fix1-harness-types-final2.log` |
+| `node --experimental-strip-types /private/tmp/task6-review-missing-acceptance.mjs` | Exit 1; expected rejection quoted above; original probe/log preserved | `fix1-reviewer-probe.log` |
+| `git diff --cached --check` before source commit | No diagnostics | interactive result |
+
+The 101-run scoped set includes the previously disclosed five imported review-test repetitions; the supplemental 10-run set overlaps earlier tests and is not an additional 10 unique designs. Only test strengthening and fake fixture isolation changed after the app build/scoped run; their affected test files and strict harness type check were rerun. No automatic unrelated full suite or server build was repeated. Parent will own the later full final-production verification. There is no new C# package: the earlier package hash `35e5adf5f64a6beb684ef335c86af0dfda4e10e19f15f634ed68cdff2b2f2c96`, 152 earlier policy passes, net462 target and `liveDataverseVerified:false` remain prior evidence, not fresh claims from this round.
+
+### Fix-round self-review and retained limits
+
+Checked each required I1–I3 case against the amended callers/validators, including full final history before adding reverse lookup entries; owner/child pending guard order, synchronous mutation refusal, no acknowledgement-loss unlock, raw/text preservation and stale-reset fingerprint; exact parser offsets, ambiguity and horizontal-only whole-line labels; and fixture independence from the editor lock. Self-review found the fake backend's shared saved-object return would trip the new defensive fingerprint; returning a clone corrects only the fake and was separately type-checked. The genuine 68-byte synthetic PNG remains unchanged. The full historical source/transaction/guard/backup handoff above still applies.
+
+M1 readable proposal names/currency remains reserved for final UX. M2's two earlier CSSM restore messages remain unexplained. Native 26-route/target-shape coverage, actual caller ACL/revocation/inventory, injected native atomic rollback, real Microsoft restore/history, host/device/PDF safety, roughly 30 authorized real receipt results and any cloud availability/hard-cost decision remain separate unmet gates. Fresh external original bytes are precommit observations only; no SharePoint/Dataverse cross-provider transaction is claimed. Quantities/units/tax/deposits/discounts/credits remain manual, all unproved OCR/cloud engines remain off.
+
+Evidence packaging check: unrestricted `git diff --cached --check` flags only space-only blank lines emitted inside the original TAP failure diagnostics in `fix1-parser-red.log` (108, 111, 135, 137, 167, 169) and `fix1-pending-red.log` (11, 13, 36, 38, 58, 60). These generated logs are retained literally. `git diff --cached --check -- src tests .superpowers/sdd/2026-10-19-kitchen-professional-online/task-6-report.md` has no diagnostics; this is not a claim that the unrestricted evidence diff is whitespace-pristine.

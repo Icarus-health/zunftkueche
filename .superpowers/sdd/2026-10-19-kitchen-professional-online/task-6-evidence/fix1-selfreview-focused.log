@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: owning editor locks before list through delayed original, commit and acknowledged refresh
+ok 1 - owning editor locks before list through delayed original, commit and acknowledged refresh
+  ---
+  duration_ms: 4.591542
+  type: 'test'
+  ...
+# Subtest: source failure, definitive rejection and refresh failure retain raw values and release only after outcome
+ok 2 - source failure, definitive rejection and refresh failure retain raw values and release only after outcome
+  ---
+  duration_ms: 1.197458
+  type: 'test'
+  ...
+# Subtest: lost acknowledgement retains the exact SaveController request and editor lock until retry and refresh
+ok 3 - lost acknowledgement retains the exact SaveController request and editor lock until retry and refresh
+  ---
+  duration_ms: 0.76175
+  type: 'test'
+  ...
+# Subtest: an independently changed edit is never reset by a stale acknowledgement callback
+ok 4 - an independently changed edit is never reset by a stale acknowledgement callback
+  ---
+  duration_ms: 0.530417
+  type: 'test'
+  ...
+# Subtest: header-first and line-first manual edits without pages use the existing navigation guard
+ok 5 - header-first and line-first manual edits without pages use the existing navigation guard
+  ---
+  duration_ms: 0.867333
+  type: 'test'
+  ...
+# Subtest: removing the last original stays dirty against the saved draft baseline
+ok 6 - removing the last original stays dirty against the saved draft baseline
+  ---
+  duration_ms: 0.072333
+  type: 'test'
+  ...
+# Subtest: focused invalid raw money and quantity stay intact on keep-editing and failed save
+ok 7 - focused invalid raw money and quantity stay intact on keep-editing and failed save
+  ---
+  duration_ms: 0.471583
+  type: 'test'
+  ...
+# Subtest: raw valid focused values parse only at save, unknown blanks stay null, queue is dirty
+ok 8 - raw valid focused values parse only at save, unknown blanks stay null, queue is dirty
+  ---
+  duration_ms: 0.177917
+  type: 'test'
+  ...
+# Subtest: adding a line after saved raw inputs initializes its fields and preserves prior raw values
+ok 9 - adding a line after saved raw inputs initializes its fields and preserves prior raw values
+  ---
+  duration_ms: 0.897375
+  type: 'test'
+  ...
+# Subtest: unparsed supplied text alone is dirty without originals and survives a failed review parse
+ok 10 - unparsed supplied text alone is dirty without originals and survives a failed review parse
+  ---
+  duration_ms: 0.119292
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 148.540208

@@ -1,0 +1,192 @@
+TAP version 13
+# Subtest: German printed amounts produce exact integer cents without loosening manual entry
+ok 1 - German printed amounts produce exact integer cents without loosening manual entry
+  ---
+  duration_ms: 1.13425
+  type: 'test'
+  ...
+# Subtest: supplier/date/number/gross proposals retain exact page quotations and provider versions
+ok 2 - supplier/date/number/gross proposals retain exact page quotations and provider versions
+  ---
+  duration_ms: 1.606917
+  type: 'test'
+  ...
+# Subtest: synthetic case Gewichtsware: source content never creates actions or invents unknown fields
+ok 3 - synthetic case Gewichtsware: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.68475
+  type: 'test'
+  ...
+# Subtest: synthetic case Gebinde: source content never creates actions or invents unknown fields
+ok 4 - synthetic case Gebinde: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.135875
+  type: 'test'
+  ...
+# Subtest: synthetic case Pfand: source content never creates actions or invents unknown fields
+ok 5 - synthetic case Pfand: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.159459
+  type: 'test'
+  ...
+# Subtest: synthetic case Rabatt: source content never creates actions or invents unknown fields
+ok 6 - synthetic case Rabatt: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.06825
+  type: 'test'
+  ...
+# Subtest: synthetic case Gutschrift: source content never creates actions or invents unknown fields
+ok 7 - synthetic case Gutschrift: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.106959
+  type: 'test'
+  ...
+# Subtest: synthetic case Steuergruppen: source content never creates actions or invents unknown fields
+ok 8 - synthetic case Steuergruppen: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.0615
+  type: 'test'
+  ...
+# Subtest: synthetic case mehrseitig: source content never creates actions or invents unknown fields
+ok 9 - synthetic case mehrseitig: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.29075
+  type: 'test'
+  ...
+# Subtest: synthetic case blass verdreht: source content never creates actions or invents unknown fields
+ok 10 - synthetic case blass verdreht: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.36025
+  type: 'test'
+  ...
+# Subtest: synthetic case nur erste Seite: source content never creates actions or invents unknown fields
+ok 11 - synthetic case nur erste Seite: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.116667
+  type: 'test'
+  ...
+# Subtest: synthetic case unbekanntes Layout: source content never creates actions or invents unknown fields
+ok 12 - synthetic case unbekanntes Layout: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.050292
+  type: 'test'
+  ...
+# Subtest: synthetic case Handlungsanweisung: source content never creates actions or invents unknown fields
+ok 13 - synthetic case Handlungsanweisung: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.042166
+  type: 'test'
+  ...
+# Subtest: ambiguous explicit gross totals stay open
+ok 14 - ambiguous explicit gross totals stay open
+  ---
+  duration_ms: 0.049959
+  type: 'test'
+  ...
+# Subtest: unproved image and PDF engines remain disabled and do not inspect or transmit the document
+ok 15 - unproved image and PDF engines remain disabled and do not inspect or transmit the document
+  ---
+  duration_ms: 0.326541
+  type: 'test'
+  ...
+# Subtest: supplied text is bounded without truncation and offset evidence matches raw multiline source
+ok 16 - supplied text is bounded without truncation and offset evidence matches raw multiline source
+  ---
+  duration_ms: 0.144
+  type: 'test'
+  ...
+# Subtest: ordinary explicitly labelled whole lines propose headers without adding punctuation
+not ok 17 - ordinary explicitly labelled whole lines propose headers without adding punctuation
+  ---
+  duration_ms: 0.769542
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/receipt-parser.test.mjs:17:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + null
+    - 'TEST-R-2026-0042'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'TEST-R-2026-0042'
+  actual: ~
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/receipt-parser.test.mjs:23:52)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: whitespace and colon variants still refuse conflicting explicit values
+not ok 18 - whitespace and colon variants still refuse conflicting explicit values
+  ---
+  duration_ms: 0.194792
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/receipt-parser.test.mjs:27:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    'B-2' !== null
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: ~
+  actual: 'B-2'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/receipt-parser.test.mjs:29:58)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: net, subtotal, instructions, malformed money and unlabelled text cannot become header proposals
+ok 19 - net, subtotal, instructions, malformed money and unlabelled text cannot become header proposals
+  ---
+  duration_ms: 0.640458
+  type: 'test'
+  ...
+# Subtest: supplied whitespace headers retain raw text and unknown page coverage
+not ok 20 - supplied whitespace headers retain raw text and unknown page coverage
+  ---
+  duration_ms: 0.142583
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/receipt-parser.test.mjs:36:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    null !== '2140'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: '2140'
+  actual: ~
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/receipt-parser.test.mjs:38:113)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..20
+# tests 20
+# suites 0
+# pass 17
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 131.264542

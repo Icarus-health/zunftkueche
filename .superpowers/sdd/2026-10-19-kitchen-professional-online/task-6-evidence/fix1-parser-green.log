@@ -1,0 +1,130 @@
+TAP version 13
+# Subtest: German printed amounts produce exact integer cents without loosening manual entry
+ok 1 - German printed amounts produce exact integer cents without loosening manual entry
+  ---
+  duration_ms: 1.040916
+  type: 'test'
+  ...
+# Subtest: supplier/date/number/gross proposals retain exact page quotations and provider versions
+ok 2 - supplier/date/number/gross proposals retain exact page quotations and provider versions
+  ---
+  duration_ms: 1.84725
+  type: 'test'
+  ...
+# Subtest: synthetic case Gewichtsware: source content never creates actions or invents unknown fields
+ok 3 - synthetic case Gewichtsware: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.730125
+  type: 'test'
+  ...
+# Subtest: synthetic case Gebinde: source content never creates actions or invents unknown fields
+ok 4 - synthetic case Gebinde: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.142458
+  type: 'test'
+  ...
+# Subtest: synthetic case Pfand: source content never creates actions or invents unknown fields
+ok 5 - synthetic case Pfand: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.110958
+  type: 'test'
+  ...
+# Subtest: synthetic case Rabatt: source content never creates actions or invents unknown fields
+ok 6 - synthetic case Rabatt: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.060792
+  type: 'test'
+  ...
+# Subtest: synthetic case Gutschrift: source content never creates actions or invents unknown fields
+ok 7 - synthetic case Gutschrift: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.10775
+  type: 'test'
+  ...
+# Subtest: synthetic case Steuergruppen: source content never creates actions or invents unknown fields
+ok 8 - synthetic case Steuergruppen: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.06275
+  type: 'test'
+  ...
+# Subtest: synthetic case mehrseitig: source content never creates actions or invents unknown fields
+ok 9 - synthetic case mehrseitig: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.280625
+  type: 'test'
+  ...
+# Subtest: synthetic case blass verdreht: source content never creates actions or invents unknown fields
+ok 10 - synthetic case blass verdreht: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.330875
+  type: 'test'
+  ...
+# Subtest: synthetic case nur erste Seite: source content never creates actions or invents unknown fields
+ok 11 - synthetic case nur erste Seite: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.112791
+  type: 'test'
+  ...
+# Subtest: synthetic case unbekanntes Layout: source content never creates actions or invents unknown fields
+ok 12 - synthetic case unbekanntes Layout: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.044042
+  type: 'test'
+  ...
+# Subtest: synthetic case Handlungsanweisung: source content never creates actions or invents unknown fields
+ok 13 - synthetic case Handlungsanweisung: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.038042
+  type: 'test'
+  ...
+# Subtest: ambiguous explicit gross totals stay open
+ok 14 - ambiguous explicit gross totals stay open
+  ---
+  duration_ms: 0.051958
+  type: 'test'
+  ...
+# Subtest: unproved image and PDF engines remain disabled and do not inspect or transmit the document
+ok 15 - unproved image and PDF engines remain disabled and do not inspect or transmit the document
+  ---
+  duration_ms: 0.295084
+  type: 'test'
+  ...
+# Subtest: supplied text is bounded without truncation and offset evidence matches raw multiline source
+ok 16 - supplied text is bounded without truncation and offset evidence matches raw multiline source
+  ---
+  duration_ms: 0.139375
+  type: 'test'
+  ...
+# Subtest: ordinary explicitly labelled whole lines propose headers without adding punctuation
+ok 17 - ordinary explicitly labelled whole lines propose headers without adding punctuation
+  ---
+  duration_ms: 0.320291
+  type: 'test'
+  ...
+# Subtest: whitespace and colon variants still refuse conflicting explicit values
+ok 18 - whitespace and colon variants still refuse conflicting explicit values
+  ---
+  duration_ms: 0.052834
+  type: 'test'
+  ...
+# Subtest: net, subtotal, instructions, malformed money and unlabelled text cannot become header proposals
+ok 19 - net, subtotal, instructions, malformed money and unlabelled text cannot become header proposals
+  ---
+  duration_ms: 0.676666
+  type: 'test'
+  ...
+# Subtest: supplied whitespace headers retain raw text and unknown page coverage
+ok 20 - supplied whitespace headers retain raw text and unknown page coverage
+  ---
+  duration_ms: 0.115208
+  type: 'test'
+  ...
+1..20
+# tests 20
+# suites 0
+# pass 20
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 136.25575

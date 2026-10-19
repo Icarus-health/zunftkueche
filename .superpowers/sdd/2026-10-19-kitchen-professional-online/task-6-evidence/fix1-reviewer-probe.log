@@ -1,0 +1,12 @@
+{"stage":"accepted baseline","complete":true,"missing":[]}
+file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/backup.ts:420
+    if(!accepted||accepted.eventId!==event.event.id||accepted.receiptId!==invoice.id||accepted.operationId!==invoice.intake.operationId)throw new Error('Übernahme-Beleg ohne passenden endgültigen Entwurf und Vorgang.');
+                                                                                                                                              ^
+
+Error: Übernahme-Beleg ohne passenden endgültigen Entwurf und Vorgang.
+    at inspectDocumentStores (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/backup.ts:420:143)
+    at async inspect (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/backup.ts:444:5)
+    at async buildKitchenBackup (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/backup.ts:453:19)
+    at async file:///private/tmp/task6-review-missing-acceptance.mjs:40:14
+
+Node.js v22.22.3

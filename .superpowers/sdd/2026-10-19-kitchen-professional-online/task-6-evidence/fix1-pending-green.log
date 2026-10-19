@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: receipt text survives Escape and close until discard is confirmed
+ok 1 - receipt text survives Escape and close until discard is confirmed
+  ---
+  duration_ms: 0.729791
+  type: 'test'
+  ...
+# Subtest: unchanged dialogs close immediately; cancellation also cancels pending navigation
+ok 2 - unchanged dialogs close immediately; cancellation also cancels pending navigation
+  ---
+  duration_ms: 0.066792
+  type: 'test'
+  ...
+# Subtest: form comparison detects text, dates, recipe removal and reversions without treating defaults as edits
+ok 3 - form comparison detects text, dates, recipe removal and reversions without treating defaults as edits
+  ---
+  duration_ms: 0.168333
+  type: 'test'
+  ...
+# Subtest: closing a modal consults its dirty standalone descendants without discarding other screen fields
+ok 4 - closing a modal consults its dirty standalone descendants without discarding other screen fields
+  ---
+  duration_ms: 0.199416
+  type: 'test'
+  ...
+# Subtest: local tab and filter requests wait for dirty fields and cancellation leaves their destination unchanged
+ok 5 - local tab and filter requests wait for dirty fields and cancellation leaves their destination unchanged
+  ---
+  duration_ms: 0.114667
+  type: 'test'
+  ...
+# Subtest: modal closure can exclude its own registry entry and invoke its own form guard exactly once
+ok 6 - modal closure can exclude its own registry entry and invoke its own form guard exactly once
+  ---
+  duration_ms: 0.157833
+  type: 'test'
+  ...
+# Subtest: owning editor locks before list through delayed original, commit and acknowledged refresh
+ok 7 - owning editor locks before list through delayed original, commit and acknowledged refresh
+  ---
+  duration_ms: 4.328333
+  type: 'test'
+  ...
+# Subtest: source failure, definitive rejection and refresh failure retain raw values and release only after outcome
+ok 8 - source failure, definitive rejection and refresh failure retain raw values and release only after outcome
+  ---
+  duration_ms: 1.107917
+  type: 'test'
+  ...
+# Subtest: lost acknowledgement retains the exact SaveController request and editor lock until retry and refresh
+ok 9 - lost acknowledgement retains the exact SaveController request and editor lock until retry and refresh
+  ---
+  duration_ms: 0.712834
+  type: 'test'
+  ...
+# Subtest: an independently changed edit is never reset by a stale acknowledgement callback
+ok 10 - an independently changed edit is never reset by a stale acknowledgement callback
+  ---
+  duration_ms: 0.514583
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 145.012709
