@@ -1,23 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
-import { DraftGuard } from '../ui/draft-guard.ts';
+import { useLayoutEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
+import { DraftGuard, DraftNavigation } from '../ui/draft-guard.ts';
 
-const navigationGuards = new Set<(action: () => void) => void>();
-/** Run navigation only after each dirty editor has explicitly released it. */
-export function requestDraftNavigation(action: () => void) {
-  const guards = [...navigationGuards];
-  const next = () => {
-    const guard = guards.shift();
-    if (guard) guard(next); else action();
-  };
-  next();
+const navigation = new DraftNavigation<HTMLElement>();
+/** Run a local/global transition only after its dirty editors release it. */
+export function requestDraftNavigation(action: () => void, within?: HTMLElement | null, excluding?: HTMLElement | null) {
+  navigation.request(action, within ?? undefined, excluding);
 }
-export function useDraftGuard({dirty, onDiscard}: {dirty: boolean; onDiscard: () => void}) {
+export function useDraftGuard({dirty, onDiscard, element}: {dirty: boolean; onDiscard: () => void; element?: RefObject<HTMLElement | null>}) {
   const [guard] = useState(() => new DraftGuard());
   const [, update] = useState(0);
   const latest = useRef({dirty, onDiscard});
   latest.current = {dirty, onDiscard};
   const redraw = () => update(n => n + 1);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!dirty) return;
     const beforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault(); event.returnValue = '';
@@ -29,12 +25,12 @@ export function useDraftGuard({dirty, onDiscard}: {dirty: boolean; onDiscard: ()
       redraw();
     };
     window.addEventListener('beforeunload', beforeUnload);
-    navigationGuards.add(navigate);
+    const unregister = navigation.add({element: () => element?.current ?? null, request: navigate});
     return () => {
       window.removeEventListener('beforeunload', beforeUnload);
-      navigationGuards.delete(navigate);
+      unregister();
     };
-  }, [dirty, guard]);
+  }, [dirty, guard, element]);
   return {
     confirming: guard.confirming,
     requestClose() { guard.requestClose(latest.current.dirty, latest.current.onDiscard); redraw(); },

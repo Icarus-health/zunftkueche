@@ -10,6 +10,7 @@ import {
 import type { ScreenProps } from "../App.tsx";
 import {
   Heading,
+  useDraftNavigation,
   Notice,
   euros,
   Modal,
@@ -26,6 +27,7 @@ import {
   defaultLocations,
 } from "../ui/facts.ts";
 export default function Receipts(props: ScreenProps) {
+  const {navigate} = useDraftNavigation();
   const { state, busy, mode } = props,
     [selected, setSelected] = useState<string | null>(null),
     [adding, setAdding] = useState(false),
@@ -68,7 +70,10 @@ export default function Receipts(props: ScreenProps) {
       <div className="toolbar receipt-filters">
         <label>
           Zuordnung
-          <select value={scope} onChange={(e) => setScope(e.target.value)}>
+          <select value={scope} onChange={(e) => {
+                const value = e.target.value;
+                navigate(() => setScope(value));
+              }}>
             <option value="Alle">Alle Zuordnungen</option>
             {scopes.map((s) => (
               <option key={s}>{s}</option>
@@ -77,7 +82,10 @@ export default function Receipts(props: ScreenProps) {
         </label>
         <label>
           Originalstatus
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
+          <select value={status} onChange={(e) => {
+                const value = e.target.value;
+                navigate(() => setStatus(value));
+              }}>
             <option value="Alle">Alle Belege</option>
             {[
               ...new Set([
@@ -97,7 +105,10 @@ export default function Receipts(props: ScreenProps) {
             type="search"
             placeholder="Nummer oder Lieferant"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+                const value = e.target.value;
+                navigate(() => setSearch(value));
+              }}
           />
         </label>
       </div>

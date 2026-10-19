@@ -13,6 +13,7 @@ import type { Menu } from "../domain/state.ts";
 import type { PlanLine } from "../domain/kitchen.ts";
 import {
   Heading,
+  useDraftNavigation,
   Notice,
   Quantity,
   Money,
@@ -33,6 +34,7 @@ import {
   eventDate,
 } from "../ui/facts.ts";
 export default function Planning(props: ScreenProps) {
+  const {navigate} = useDraftNavigation();
   const { state, busy, commit, go, saveError } = props,
     [tab, setTab] = useState("Speisen planen"),
     [search, setSearch] = useState(""),
@@ -94,7 +96,10 @@ export default function Planning(props: ScreenProps) {
               <input
                 type="search"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                const value = e.target.value;
+                navigate(() => setSearch(value));
+              }}
                 placeholder="Name oder Kategorie"
               />
             </label>
@@ -194,7 +199,7 @@ export default function Planning(props: ScreenProps) {
             </button>
             <button
               className="button primary"
-              onClick={() => setTab("Einkaufsbedarf")}
+              onClick={() => navigate(() => setTab("Einkaufsbedarf"))}
             >
               Einkaufsbedarf prüfen
               <ArrowRight size={18} />
@@ -242,13 +247,13 @@ export default function Planning(props: ScreenProps) {
               </ul>
               <button
                 className="text-button"
-                onClick={() => setTab("Speisen planen")}
+                onClick={() => navigate(() => setTab("Speisen planen"))}
               >
                 Speisenmengen ergänzen
               </button>
               <button
                 className="text-button"
-                onClick={() => setTab("Rezepturen")}
+                onClick={() => navigate(() => setTab("Rezepturen"))}
               >
                 Rezepturen prüfen
               </button>
@@ -362,7 +367,7 @@ export default function Planning(props: ScreenProps) {
               Lieferant
               <select
                 value={supplier}
-                onChange={(e) => setSupplier(e.target.value)}
+                onChange={(e) => { const value = e.target.value; navigate(() => setSupplier(value)); }}
               >
                 <option value="">Alle Lieferanten</option>
                 {state.suppliers.map((s) => (
@@ -377,7 +382,10 @@ export default function Planning(props: ScreenProps) {
               <input
                 type="search"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                const value = e.target.value;
+                navigate(() => setSearch(value));
+              }}
               />
             </label>
           </div>
@@ -483,7 +491,10 @@ export default function Planning(props: ScreenProps) {
               <input
                 type="search"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                const value = e.target.value;
+                navigate(() => setSearch(value));
+              }}
               />
             </label>
             <button

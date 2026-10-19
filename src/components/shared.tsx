@@ -1,4 +1,4 @@
-import { useDraftGuard } from "../hooks/useDraftGuard.ts";
+import { requestDraftNavigation, useDraftGuard } from "../hooks/useDraftGuard.ts";
 import { draftFingerprint } from "../ui/draft-guard.ts";
 import { DiscardChangesDialog } from "./DiscardChangesDialog.tsx";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -49,10 +49,11 @@ export function Quantity({
 }) {
   const [raw, setRaw] = useState(amount(value)),
     [error, setError] = useState("");
+  const draftRoot = useRef<HTMLDivElement>(null);
   const previous = useRef(value);
   const currentRaw = useRef(raw);
   currentRaw.current = raw;
-  const guard = useDraftGuard({dirty: raw !== amount(value), onDiscard: () => {
+  const guard = useDraftGuard({element: draftRoot, dirty: raw !== amount(value), onDiscard: () => {
     setRaw(amount(value)); setError("");
   }});
   useEffect(() => {
@@ -79,7 +80,7 @@ export function Quantity({
     }
   }
   return (
-    <div className="quantity-wrap">
+    <div className="quantity-wrap" ref={draftRoot}>
       {guard.confirming && <DiscardChangesDialog onDiscard={guard.confirmDiscard} onKeepEditing={guard.keepEditing} />}
       <div className="quantity-field">
         <input
@@ -145,11 +146,12 @@ export function Money({
 }) {
   const [raw, setRaw] = useState(value === null ? "" : amount(value / 100)),
     [error, setError] = useState("");
+  const draftRoot = useRef<HTMLDivElement>(null);
   const previous = useRef(value);
   const currentRaw = useRef(raw);
   currentRaw.current = raw;
   const display = (cents: number | null) => cents === null ? "" : amount(cents / 100);
-  const guard = useDraftGuard({dirty: raw !== display(value), onDiscard: () => {
+  const guard = useDraftGuard({element: draftRoot, dirty: raw !== display(value), onDiscard: () => {
     setRaw(display(value)); setError("");
   }});
   useEffect(() => {
@@ -172,7 +174,7 @@ export function Money({
     }
   }
   return (
-    <div className="quantity-wrap">
+    <div className="quantity-wrap" ref={draftRoot}>
       {guard.confirming && <DiscardChangesDialog onDiscard={guard.confirmDiscard} onKeepEditing={guard.keepEditing} />}
       <div className={`quantity-field ${precise ? "precise-money" : ""}`}>
         <input
@@ -262,6 +264,7 @@ export function Tabs({
   onChange: (value: string) => void;
   label: string;
 }) {
+  const {navigate, pending} = useDraftNavigation();
   return (
     <div className="tabs" aria-label={label}>
       {items.map((item) => (
@@ -269,7 +272,8 @@ export function Tabs({
           key={item}
           aria-pressed={value === item}
           className={value === item ? "selected" : ""}
-          onClick={() => onChange(item)}
+          disabled={pending}
+          onClick={() => { if (item !== value) navigate(() => onChange(item)); }}
         >
           {item}
         </button>
@@ -278,6 +282,13 @@ export function Tabs({
   );
 }
 export const SavePendingContext = createContext(false);
+export function useDraftNavigation() {
+  const pending = useContext(SavePendingContext);
+  return {
+    pending,
+    navigate: (action: () => void) => { if (!pending) requestDraftNavigation(action); },
+  };
+}
 export function Modal({
   title,
   children,
@@ -291,7 +302,13 @@ export function Modal({
   const ref = useRef<HTMLDivElement>(null);
   const baseline = useRef<string | null>(null);
   const [dirty, setDirty] = useState(false);
-  const guard = useDraftGuard({dirty, onDiscard: onClose});
+  const guard = useDraftGuard({dirty, onDiscard: onClose, element: ref});
+  const requestClose = () => {
+    if (!pendingSave) {
+      // Descendant controls get the first say; the modal then handles its form once.
+      requestDraftNavigation(guard.requestClose, ref.current, ref.current);
+    }
+  };
   function inspectDraft() {
     const controls = Array.from(ref.current?.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
       "form input, form select, form textarea",
@@ -317,7 +334,7 @@ export function Modal({
   function keyDown(e: React.KeyboardEvent) {
     if (e.key === "Escape") {
       e.stopPropagation();
-      if (!pendingSave) guard.requestClose();
+      requestClose();
     }
     if (e.key === "Tab") {
       const items = Array.from(
@@ -367,7 +384,7 @@ export function Modal({
           <h2>{title}</h2>
           <button
             className="icon-button"
-            onClick={guard.requestClose}
+            onClick={requestClose}
             disabled={pendingSave}
             aria-label="Schließen"
           >

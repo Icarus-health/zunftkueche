@@ -57,3 +57,16 @@ test('pending writes disable modal dismissal, while an ordinary or read-only pre
  assert.match(pending,/<button[^>]*disabled=""[^>]*aria-label="Schließen"/);
  assert.doesNotMatch(idle,/<button[^>]*disabled=""/);
 });
+test('pending writes disable local Orders supplier, day and version controls', async () => {
+ const {default: Orders} = await import('../src/screens/Orders.tsx');
+ const {SavePendingContext} = await import('../src/components/shared.tsx');
+ const html = renderToStaticMarkup(h(SavePendingContext,{value:true},h(Orders,{...props,busy:true,initialSupplier:seed.suppliers[0].id})));
+ assert.match(html,/<select[^>]*disabled=""/);
+ assert.match(html,/<button[^>]*disabled=""[^>]*>Samstag<\/button>/);
+ assert.match(html,/<button[^>]*disabled=""[^>]*>Vorbereitete Versionen/);
+});
+test('pending writes disable shared local planning and analysis tabs', async () => {
+ const {Tabs,SavePendingContext} = await import('../src/components/shared.tsx');
+ const html = renderToStaticMarkup(h(SavePendingContext,{value:true},h(Tabs,{items:['Planung','Bedarf'],value:'Planung',onChange:()=>{},label:'Bereich'})));
+ assert.equal((html.match(/disabled=""/g)||[]).length,2);
+});

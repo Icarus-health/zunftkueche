@@ -24,3 +24,38 @@ test('form comparison detects text, dates, recipe removal and reversions without
   assert.notEqual(draftFingerprint(original.slice(0,1)), baseline);
   assert.equal(draftFingerprint(original), baseline);
 });
+test('closing a modal consults its dirty standalone descendants without discarding other screen fields', async () => {
+  const { DraftNavigation } = await import('../src/ui/draft-guard.ts');
+  const navigation = new DraftNavigation();
+  const modal = {}, price = {}, outside = {};
+  const inModal = {contains: node => node === modal || node === price};
+  let priceDiscarded = 0, outsideDiscarded = 0, closed = 0;
+  const priceGuard = new DraftGuard();
+  navigation.add({element:()=>outside,request:()=>outsideDiscarded++});
+  navigation.add({element:()=>price,request:action => priceGuard.requestClose(true,()=>{priceDiscarded++;action();})});
+  navigation.request(()=>closed++,inModal);
+  assert.equal(closed,0); assert.equal(priceGuard.confirming,true);
+  priceGuard.keepEditing(); assert.equal(priceDiscarded,0);
+  navigation.request(()=>closed++,inModal); priceGuard.confirmDiscard();
+  assert.equal(priceDiscarded,1); assert.equal(closed,1); assert.equal(outsideDiscarded,0);
+});
+test('local tab and filter requests wait for dirty fields and cancellation leaves their destination unchanged', async () => {
+  const { DraftNavigation } = await import('../src/ui/draft-guard.ts');
+  const navigation = new DraftNavigation(), field = new DraftGuard();
+  let tab = 'planning', text = 'invalid';
+  const remove = navigation.add({element:()=>null,request:action=>field.requestClose(true,()=>{text='';action();})});
+  navigation.request(()=>tab='needs'); assert.equal(tab,'planning'); assert.equal(text,'invalid');
+  field.keepEditing(); assert.equal(tab,'planning'); assert.equal(text,'invalid');
+  navigation.request(()=>tab='needs'); field.confirmDiscard(); assert.equal(tab,'needs');
+  remove(); navigation.request(()=>tab='orders'); assert.equal(tab,'orders');
+});
+test('modal closure can exclude its own registry entry and invoke its own form guard exactly once', async () => {
+ const {DraftNavigation} = await import('../src/ui/draft-guard.ts');
+ const navigation = new DraftNavigation(); const modal = {}, field = {}, guard = new DraftGuard();
+ let modalRequests=0, fieldRequests=0, closed=0;
+ navigation.add({element:()=>modal,request:()=>modalRequests++});
+ navigation.add({element:()=>field,request:action=>{fieldRequests++;guard.requestClose(true,action);}});
+ navigation.request(()=>closed++,{contains:node=>node===modal||node===field},modal);
+ assert.equal(fieldRequests,1); assert.equal(modalRequests,0); assert.equal(closed,0);
+ guard.confirmDiscard(); assert.equal(closed,1);
+});

@@ -18,3 +18,28 @@ export function draftFingerprint(controls: readonly {type: string; value: string
   return JSON.stringify(controls.map(({type, value, checked}) =>
     type === 'checkbox' || type === 'radio' ? [type, Boolean(checked)] : [type, value]));
 }
+
+/** Navigation is scoped to the editor being removed; unrelated drafts stay intact. */
+export class DraftNavigation<Element = unknown> {
+  private guards = new Set<{
+    element: () => Element | null;
+    request: (action: () => void) => void;
+  }>();
+  add(guard: {element: () => Element | null; request: (action: () => void) => void}) {
+    this.guards.add(guard);
+    return () => { this.guards.delete(guard); };
+  }
+  request(action: () => void, within?: {contains: (element: Element | null) => boolean}, excluding?: Element | null) {
+    const guards = [...this.guards].filter(guard => {
+      const element = guard.element();
+      return (!excluding || element !== excluding) && (!within || within.contains(element));
+    });
+    const next = () => {
+      const guard = guards.shift();
+      if (guard && this.guards.has(guard)) guard.request(next);
+      else if (guard) next();
+      else action();
+    };
+    next();
+  }
+}

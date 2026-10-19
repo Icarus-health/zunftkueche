@@ -6,6 +6,7 @@ import { summarizeSales } from "../domain/kitchen.ts";
 import { stockSummary } from "../domain/workflow.ts";
 import {
   Heading,
+  useDraftNavigation,
   Notice,
   Quantity,
   Money,
@@ -22,6 +23,7 @@ import {
   defaultLocations,
 } from "../ui/facts.ts";
 export default function Analysis({ state, busy, commit, go }: ScreenProps) {
+  const {navigate} = useDraftNavigation();
   const [tab, setTab] = useState("Verkäufe erfassen"),
     [scope, setScope] = useState("Küche"),
     [search, setSearch] = useState("");
@@ -79,7 +81,10 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
               <input
                 type="search"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                const value = e.target.value;
+                navigate(() => setSearch(value));
+              }}
               />
             </label>
             <span className="muted">
@@ -181,7 +186,10 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
           <div className="toolbar">
             <label>
               Belege nach Zuordnung
-              <select value={scope} onChange={(e) => setScope(e.target.value)}>
+              <select value={scope} onChange={(e) => {
+                const value = e.target.value;
+                navigate(() => setScope(value));
+              }}>
                 <option value="Alle">Alle Zuordnungen</option>
                 {scopes.map((s) => (
                   <option key={s}>{s}</option>

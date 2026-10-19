@@ -5,6 +5,7 @@ import type { ScreenProps } from "../App.tsx";
 import type { Article, Menu, Supplier } from "../domain/state.ts";
 import {
   Heading,
+  useDraftNavigation,
   Modal,
   Empty,
   Notice,
@@ -19,6 +20,7 @@ import { articleReferenced, parseMoney } from "../ui/facts.ts";
 type Kind = "Lieferanten" | "Artikel" | "Speisen & Getränke";
 type Editor = { kind: Kind; item?: Supplier | Article | Menu };
 export default function Masters(props: ScreenProps) {
+  const {navigate} = useDraftNavigation();
   const { state, busy } = props,
     [tab, setTab] = useState<Kind>("Lieferanten"),
     [search, setSearch] = useState(""),
@@ -76,7 +78,10 @@ export default function Masters(props: ScreenProps) {
           <input
             type="search"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+                const value = e.target.value;
+                navigate(() => setSearch(value));
+              }}
             placeholder={
               tab === "Artikel"
                 ? "Artikel, Lieferant oder Kategorie"

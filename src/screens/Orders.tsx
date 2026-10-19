@@ -10,6 +10,7 @@ import {
 import type { ScreenProps } from "../App.tsx";
 import {
   Heading,
+  useDraftNavigation,
   Quantity,
   Modal,
   Notice,
@@ -36,6 +37,7 @@ export default function Orders({
   saveError,
   initialSupplier,
 }: ScreenProps & { initialSupplier: string }) {
+  const {navigate, pending} = useDraftNavigation();
   const [supplier, setSupplier] = useState(
       state.suppliers.some((s) => s.id === initialSupplier)
         ? initialSupplier
@@ -72,9 +74,13 @@ export default function Orders({
           Lieferant
           <select
             value={supplier}
+            disabled={pending}
             onChange={(e) => {
-              setSupplier(e.target.value);
-              setTab("Planung");
+              const value = e.target.value;
+              navigate(() => {
+                setSupplier(value);
+                setTab("Planung");
+              });
             }}
           >
             {state.suppliers.map((s) => (
@@ -88,11 +94,15 @@ export default function Orders({
           {deliveryDays.map((d) => (
             <button
               key={d}
+              disabled={pending}
               aria-pressed={day === d}
               className={day === d ? "selected" : ""}
               onClick={() => {
-                setDay(d);
-                setTab("Planung");
+                if (d === day && tab === "Planung") return;
+                navigate(() => {
+                  setDay(d);
+                  setTab("Planung");
+                });
               }}
             >
               {d}
@@ -104,13 +114,15 @@ export default function Orders({
         <div className="tabs">
           <button
             className={tab === "Planung" ? "selected" : ""}
-            onClick={() => setTab("Planung")}
+            disabled={pending}
+            onClick={() => { if (tab !== "Planung") navigate(() => setTab("Planung")); }}
           >
             Bestellmengen
           </button>
           <button
             className={tab === "Vorbereitet" ? "selected" : ""}
-            onClick={() => setTab("Vorbereitet")}
+            disabled={pending}
+            onClick={() => { if (tab !== "Vorbereitet") navigate(() => setTab("Vorbereitet")); }}
           >
             Vorbereitete Versionen ({prepared.length})
           </button>

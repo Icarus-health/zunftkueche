@@ -1,9 +1,12 @@
+import { useDraftGuard } from "../hooks/useDraftGuard.ts";
+import { DiscardChangesDialog } from "../components/DiscardChangesDialog.tsx";
 import { ResponsiveTable } from "../components/MobileItemCard.tsx";
 import { useState } from "react";
 import { Check, Truck } from "@phosphor-icons/react";
 import type { ScreenProps } from "../App.tsx";
 import {
   Heading,
+  useDraftNavigation,
   Notice,
   Empty,
   amount,
@@ -28,6 +31,7 @@ export default function Deliveries({
   go,
   saveError,
 }: ScreenProps) {
+  const {navigate, pending} = useDraftNavigation();
   const [tab, setTab] = useState("Erfassen"),
     [type, setType] = useState<string>("delivery.record"),
     [supplier, setSupplier] = useState(""),
@@ -38,6 +42,9 @@ export default function Deliveries({
     [note, setNote] = useState(""),
     [error, setError] = useState(""),
     [search, setSearch] = useState("");
+  const draft = useDraftGuard({dirty: raw !== "" || note !== "", onDiscard: () => {
+    setRaw(""); setNote(""); setError("");
+  }});
   const articles = state.articles.filter(
       (a) => !supplier || a.supplierId === supplier,
     ),
@@ -81,6 +88,7 @@ export default function Deliveries({
   );
   return (
     <>
+      {draft.confirming && <DiscardChangesDialog onDiscard={draft.confirmDiscard} onKeepEditing={draft.keepEditing} />}
       <Heading eyebrow="Tatsächliche Mengen" title="Lieferungen und Lager">
         Anfang, Zu- und Abgänge ausdrücklich erfassen; gezählte Reste bleiben
         separat.
@@ -96,14 +104,14 @@ export default function Deliveries({
           Lieferant
           <select
             value={supplier}
+            disabled={pending}
             onChange={(e) => {
-              setSupplier(e.target.value);
-              setArticle(
-                state.articles.find(
-                  (a) => !e.target.value || a.supplierId === e.target.value,
-                )?.id ?? "",
-              );
-              setError("");
+              const value = e.target.value;
+              navigate(() => {
+                setSupplier(value);
+                setArticle(state.articles.find(a => !value || a.supplierId === value)?.id ?? "");
+                setError("");
+              });
             }}
           >
             <option value="">Alle Lieferanten</option>
@@ -118,7 +126,11 @@ export default function Deliveries({
           Ort
           <select
             value={location}
-            onChange={(e) => setLocation(e.target.value)}
+            disabled={pending}
+            onChange={(e) => {
+                const value = e.target.value;
+                navigate(() => setLocation(value));
+              }}
           >
             {locations.map((l) => (
               <option key={l}>{l}</option>
@@ -131,7 +143,10 @@ export default function Deliveries({
             <input
               type="search"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                navigate(() => setSearch(value));
+              }}
             />
           </label>
         )}
@@ -152,8 +167,8 @@ export default function Deliveries({
                       <select
                         value={type}
                         onChange={(e) => {
-                          setType(e.target.value);
-                          setError("");
+                          const value = e.target.value;
+                          navigate(() => { setType(value); setError(""); });
                         }}
                       >
                         {kinds.map(([value, label]) => (
@@ -168,8 +183,8 @@ export default function Deliveries({
                       <select
                         value={article}
                         onChange={(e) => {
-                          setArticle(e.target.value);
-                          setError("");
+                          const value = e.target.value;
+                          navigate(() => { setArticle(value); setError(""); });
                         }}
                       >
                         {articles.map((a) => (
@@ -184,7 +199,7 @@ export default function Deliveries({
                         Tag
                         <select
                           value={day}
-                          onChange={(e) => setDay(e.target.value)}
+                          onChange={(e) => { const value = e.target.value; navigate(() => setDay(value)); }}
                         >
                           {deliveryDays.map((d) => (
                             <option key={d}>{d}</option>
@@ -341,8 +356,7 @@ export default function Deliveries({
                         <button
                           className="text-button"
                           onClick={() => {
-                            setArticle(a.id);
-                            setTab("Erfassen");
+                            navigate(() => {setArticle(a.id);setTab("Erfassen");});
                           }}
                         >
                           Erfassen
