@@ -51,6 +51,7 @@ export interface PurchasingRow {
 // Four-decimal quantities are whole 1/10000 article units. BigInt preserves exact
 // aggregation/ceiling even for tiny demand versus very large allowed packs.
 const units = (quantity: number) => BigInt(Math.round(quantity * 10000));
+const plannedQuantity=(line:KitchenState["planLines"][number])=>line.allocations?.length?line.allocations.reduce((n,a)=>n+a.quantity,0):line.quantity;
 /** Individual days deliberately have zero stock credit. Gesamt credits the explicit
  * opening once for Friday + Saturday; only this view can be applied to purchases. */
 export function purchasingNeeds(
@@ -100,6 +101,8 @@ export function purchasingNeeds(
         `${menu?.name ?? dish.menuId} (${dish.day}): Menge oder bestätigte Rezeptur fehlt.`,
       );
     }
+    const drinkOpen = menu?.supplyMode === "manual" || (menu?.category.toLowerCase().includes("getränk") && !menu.supplyMode);
+    if (drinkOpen) { missing.push(`${menu?.name}: Getränkezuordnung ausdrücklich direkt, Varianten oder manuell prüfen.`); continue; }
     for (const line of menu?.recipe ?? []) {
       const row = demand.get(line.articleId) ?? { required: 0n, missing: [] };
       if (
@@ -135,7 +138,7 @@ export function purchasingNeeds(
           l.purchaseForWeekend === true) &&
         sameLocation(state, l.location, location),
     );
-    if (coverage.some((l) => l.quantity === null))
+    if (coverage.some((l) => plannedQuantity(l) === null))
       issues.push("Manuelle Einkaufsmenge ist offen.");
     if (
       coverage.some(
@@ -145,9 +148,9 @@ export function purchasingNeeds(
       issues.push(
         "Manuelle Einkaufsposition passt nicht zu Einheit/Lieferant.",
       );
-    const plannedUnits = coverage.some((l) => l.quantity === null)
+    const plannedUnits = coverage.some((l) => plannedQuantity(l) === null)
       ? null
-      : coverage.reduce((n, l) => n + units(l.quantity!), 0n);
+      : coverage.reduce((n, l) => n + units(plannedQuantity(l)!), 0n);
     const planned = plannedUnits === null ? null : Number(plannedUnits) / 10000;
     const required = d.missing.length ? null : Number(d.required) / 10000;
     let suggested: number | null = null;

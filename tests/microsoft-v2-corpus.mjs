@@ -28,4 +28,16 @@ apply(original,'invoice.correct',{invoiceId:'v2-10',changes:{grossCents:200},rea
 apply(original,'invoice.correct',{invoiceId:state.archivedEvents.find(e=>e.event.id===original).invoices[0].id,changes:{grossCents:9999999},reason:'Synthetic imported receipt economic correction'});
 apply(original,'order.mark',{orderId:'v2-2',status:'bestellt',note:'Synthetic manual order'});
 apply(original,'order.mark',{orderId:'v2-2',status:'bestaetigt',note:'Synthetic confirmation'});
+
+apply(original,'event.settings',{name:corpus.initial.event.name,year:2026,dates:{Mittwoch:'2026-02-11'},deliveryAddress:'Synthetic address',contact:'Synthetic contact',locations:[{name:'Halle Küche',historicalNames:['Küche']}],purchasingLocation:'Halle Küche'});
+const selected=state.archivedEvents.find(e=>e.event.id===original);
+const receivingOperation=`v2-${corpus.requests.length}`;
+apply(original,'delivery.accept',{orderId:'v2-2',day:'Freitag',location:'Halle Küche',lines:[{lineId:selected.orders[0].lines[0].id,articleId:selected.orders[0].lines[0].articleId,quantity:110}],note:'Synthetic partial delivery'});
+apply(original,'movement.correct',{movementId:receivingOperation+':0',replacementQuantity:100,reason:'Synthetic receiving recount'});
+apply(original,'plan.allocate',{id:selected.planLines[0].id,allocations:[{day:'Freitag',time:'18:00',quantity:10},{day:'Samstag',time:'19:00',quantity:20}]});
+apply(original,'drink.configure',{menuId:'m-1',mode:'direct',lines:[{articleId:'a-1',quantity:1}]});
+apply(original,'drink.configure',{menuId:'m-1',mode:'variants',lines:[{articleId:'a-1',quantity:.7},{articleId:selected.articles[1].id,quantity:.3}]});
+apply(original,'event.close',{eventId:original,revision:state.revision,confirmedScope:'Halle Küche',note:'Synthetic checked with open values'});
+apply(original,'event.reopen',{eventId:original,reason:'Synthetic later correction'});
+apply(original,'lesson.add',{eventId:original,text:'Synthetic receiving lesson'});
 mkdirSync('server/Tests/obj' ,{recursive:true});writeFileSync('server/Tests/obj/protocol-v2-corpus.json',JSON.stringify(corpus));

@@ -87,12 +87,13 @@ namespace Zunftkueche
                 if (!priorEvents.TryGetValue(e.Key, out var prior))
                     continue;
                 Action<JObject> stamp = entry => { entry["operationId"] = operationId; entry["revision"] = revision; entry["actorId"] = actor.ToString("D"); entry["confirmedAt"] = timestamp.ToString("o", CultureInfo.InvariantCulture); };
-                foreach (var field in new[] { "movementCorrections", "salePriceCorrections" })
+                foreach (var field in new[] { "movementCorrections", "salePriceCorrections", "closureHistory" })
                 {
                     var old = History(prior, field);
                     foreach (var entry in History(e.Value, field).Skip(old.Count).OfType<JObject>())
                         stamp(entry);
                 }
+                foreach(var lesson in Arr(e.Value["lessons"]).OfType<JObject>().Skip(Arr(prior["lessons"]).Count))stamp(lesson);
                 foreach (var pair in new[] { new[] { "invoices", "corrections" }, new[] { "orders", "statusHistory" } })
                 {
                     var old = Index(prior[pair[0]]);

@@ -1,3 +1,4 @@
+import {orderCsv,downloadReport} from '../data/exports.ts';
 import { AuditStamp } from "../components/CorrectionDialog.tsx";
 import { orderPlanningChanged } from "../domain/order-status.ts";
 import { ResponsiveTable } from "../components/MobileItemCard.tsx";
@@ -422,6 +423,7 @@ export default function Orders({
                 {previewHeader.supplierName} · {preview.day} · {preview.status}
               </p>
             </div>
+            <p>Bestellfassung: {"id" in preview ? String(preview.id) : "noch nicht gespeichert"} · Erstellt: {"createdAt" in preview ? new Date(String(preview.createdAt)).toLocaleString("de-DE") : "offen"}<br/>Ausgabe-Datenrevision {state.revision} · Ausgabe {new Date().toLocaleString("de-DE")} · Bestellrevision historisch nicht erfasst.</p>
             {previewHeader.notice && <p>{previewHeader.notice}</p>}
             <ResponsiveTable>
               <thead>
@@ -457,7 +459,7 @@ export default function Orders({
                 </span>
               )}
               {formatDeliveryDate(previewHeader.deliveryDate)} · Versandstatus:
-              offen.
+              {preview.status === "bestellt" ? "manuell als bestellt vermerkt" : preview.status === "bestaetigt" ? "manuell als bestätigt vermerkt" : "offen"}.
             </p>
           </div>
           <div className="modal-actions">
@@ -465,6 +467,7 @@ export default function Orders({
               <Printer size={21} />
               Drucken / als PDF sichern
             </button>
+            <button className="button secondary" onClick={()=>downloadReport(orderCsv(preview,state.revision),`Bestellfassung-R${state.revision}.csv`,"text/csv;charset=utf-8")}>Fassung als CSV</button>
           </div>
         </Modal>
       )}

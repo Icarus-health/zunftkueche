@@ -1,3 +1,5 @@
+import {EventClosure} from '../components/EventClosure.tsx';
+import {buildEventExport,toCsv,toPrintHtml,downloadReport} from '../data/exports.ts';
 import {
   CorrectionDialog,
   AuditStamp,
@@ -27,7 +29,8 @@ import {
   SourceDetails,
 } from "../components/shared.tsx";
 import { kitchenDays, receiptTotals, eventDate } from "../ui/facts.ts";
-export default function Analysis({ state, busy, commit, go }: ScreenProps) {
+export default function Analysis(props:ScreenProps) {
+ const {state,busy,commit,go}=props;
   const [correcting, setCorrecting] = useState<string | null>(null);
   const correction = effectiveSales(state).find((s) => s.id === correcting);
   const { navigate } = useDraftNavigation();
@@ -91,6 +94,9 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
         Verkäufe mit der Speisenplanung vergleichen und erfasste Ausgaben nach
         Zuordnung ansehen.
       </Heading>
+      <EventClosure {...props} scope={scope}/>
+      <div className="flow-actions"><button className="button secondary" onClick={()=>downloadReport(toCsv(buildEventExport(state,scope)),`Auswertung-${state.event.year}-R${state.revision}.csv`,"text/csv;charset=utf-8")}>CSV · {scope}</button><button className="button secondary" onClick={()=>downloadReport(toPrintHtml(buildEventExport(state,scope)),`Auswertung-${state.event.year}-R${state.revision}.html`,"text/html;charset=utf-8")}>Prüfbare Druckdatei / PDF</button></div>
+      <p>Auswertungen enthalten Umfang, Revision und Quellen. Druckdatei öffnen und als PDF drucken. Dies ist keine Vollsicherung.</p>
       <Tabs
         items={["Verkäufe erfassen", "Auswertung", "Erfahrungen"]}
         value={tab}
@@ -271,8 +277,8 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
               </span>
             </div>
             <div>
-              <small>Vollständiges Ergebnis</small>
-              <strong>Offen</strong>
+              <small>Abschlussstand</small>
+              <strong>{state.event.status}</strong>
               <span>
                 Kein Gewinn aus unvollständigen Mengen und Belegen ableitbar
               </span>

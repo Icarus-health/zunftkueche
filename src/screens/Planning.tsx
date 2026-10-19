@@ -1,3 +1,5 @@
+import {AllocationEditor} from '../components/AllocationEditor.tsx';
+import {allocationSummary} from '../domain/receiving.ts';
 import { ResponsiveTable } from "../components/MobileItemCard.tsx";
 import { useState } from "react";
 import {
@@ -42,6 +44,7 @@ export default function Planning(props: ScreenProps) {
     [recipe, setRecipe] = useState<string | null>(null),
     [details, setDetails] = useState<string | null>(null),
     [schedule, setSchedule] = useState<PlanLine | null>(null),
+    [allocation,setAllocation]=useState<PlanLine|null>(null),
     [preview, setPreview] = useState<"zero" | "purchase" | null>(null);
   const menus = state.menu.filter((m) =>
       `${m.name} ${m.category}`.toLowerCase().includes(search.toLowerCase()),
@@ -428,6 +431,9 @@ export default function Planning(props: ScreenProps) {
                       <td>
                         {l.day}
                         <small>{l.time ? `${l.time} Uhr` : "Zeit offen"}</small>
+                        {l.allocations?.map((a,i)=><small key={i}>{a.day} {a.time??"Zeit offen"}: {shownAmount(a.quantity)}</small>)}
+                        {l.allocations?.length ? <small>Verteilt {shownAmount(allocationSummary(l).allocated)} · Überdeckung {shownAmount(allocationSummary(l).over)}</small> : null}
+                        <button className="text-button" disabled={busy} onClick={()=>setAllocation(l)}>Menge verteilen</button>
                       </td>
                       <td>
                         <Quantity
@@ -519,6 +525,7 @@ export default function Planning(props: ScreenProps) {
                         ?.unitPriceCents ?? null,
                   })),
                 );
+                const unresolvedDrink=m.supplyMode==="manual"||(m.category.toLowerCase().includes("getränk")&&!m.supplyMode);
                 return (
                   <button
                     className="recipe-card"
@@ -533,8 +540,8 @@ export default function Planning(props: ScreenProps) {
                     <h3>{m.name}</h3>
                     <p>Verkauf {euros(m.priceCents)}</p>
                     <small>
-                      {m.recipe.length} Zutaten · Rezeptkosten{" "}
-                      {euros(cost.totalCents)} / Portion
+                      {m.supplyMode==="variants"?"Bestätigte Variantenanteile":m.supplyMode==="direct"?"Direkter Artikel":unresolvedDrink?"Aufteilung offen / manuell":`${m.recipe.length} Zutaten`} · Kosten{" "}
+                      {euros(unresolvedDrink?null:cost.totalCents)} / Stück
                     </small>
                     <span className="detail-link">
                       Rezeptur öffnen
@@ -605,6 +612,7 @@ export default function Planning(props: ScreenProps) {
           onClose={() => setRecipe(null)}
         />
       )}
+      {allocation&&<AllocationEditor line={allocation} {...props} onClose={()=>setAllocation(null)}/>}
       {schedule && (
         <ScheduleEditor
           key={schedule.id}
@@ -757,16 +765,19 @@ function RecipeEditor({
         raw: amount(l.quantity),
       })),
     ),
+    [supplyMode,setSupplyMode]=useState(item.supplyMode??(item.category.toLowerCase().includes("getränk")?"":"recipe")),
     [confirmed, setConfirmed] = useState(item.recipeStatus === "Bestätigt"),
     [error, setError] = useState("");
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     try {
+      if(supplyMode!=="recipe"&&supplyMode!=="manual"&&!confirmed)throw new Error("Getränkezuordnung ausdrücklich bestätigen.");
       if (
-        await commit("recipe.save", {
+        await commit(supplyMode==="recipe"?"recipe.save":"drink.configure", {
+          mode:supplyMode,
           menuId: item.id,
           confirmed,
-          lines: lines.map((l) => ({
+          lines: supplyMode==="manual"?[]:lines.map((l) => ({
             articleId: l.articleId,
             quantity: parseQuantity(l.raw),
           })),
@@ -779,7 +790,7 @@ function RecipeEditor({
     }
   }
   return (
-    <Modal title={`Rezeptur · ${item.name}`} onClose={onClose}>
+    <Modal title={`Rezeptur / Getränkezuordnung · ${item.name}`} onClose={onClose}>
       <p>
         Menge je Portion in der Artikel-Einheit. Zutaten können im Entwurf
         hinzugefügt und entfernt werden.
@@ -787,6 +798,8 @@ function RecipeEditor({
       <SourceDetails source={item.source} />
       <form onSubmit={save}>
         <fieldset disabled={busy}>
+          <label>Art der Zuordnung<select required value={supplyMode} onChange={e=>setSupplyMode(e.target.value)}><option value="">Bitte ausdrücklich auswählen</option>{!item.category.toLowerCase().includes("getränk")&&<option value="recipe">Rezeptur aus Zutaten</option>}<option value="direct">Direkter Artikel (1 je Verkauf)</option><option value="variants">Getränkevarianten (Anteile zusammen 1)</option><option value="manual">Weiter manuell einkaufen</option></select></label>
+          {supplyMode!=="recipe"&&<p>Varianten sind Alternativen: z. B. 0,7 Bier und 0,3 Radler. Ohne bestätigte Aufteilung bleibt der Bedarf offen. Manuell erzeugt keine Rezeptableitung.</p>}
           {lines.map((l, i) => (
             <div className="recipe-line" key={l.key}>
               <label>
@@ -874,7 +887,7 @@ function RecipeEditor({
               checked={confirmed}
               onChange={(e) => setConfirmed(e.target.checked)}
             />
-            Portionsgrößen geprüft und bestätigt
+            {supplyMode==="recipe"?"Portionsgrößen geprüft und bestätigt":"Getränkezuordnung und Anteile geprüft und bestätigt"}
           </label>
           {(saveError || error) && (
             <p className="field-error" role="alert">

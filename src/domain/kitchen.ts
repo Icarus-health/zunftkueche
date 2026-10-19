@@ -34,6 +34,7 @@ export interface PlanLine {
   source?: Source;
   purchaseGenerated?: boolean;
   purchaseForWeekend?: boolean;
+  allocations?: Array<{day:string;time:string|null;quantity:number}>;
 }
 export interface OrderContext {
   supplierName: string;
@@ -92,6 +93,7 @@ export function prepareOrder(
   day: Day,
 ): OrderSnapshot {
   const selected = lines
+    .flatMap(l => l.allocations?.length ? l.allocations.map((a,index)=>({...l,...a,id:`${l.id}:allocation:${index}`})) : [l])
     .filter((l) => l.supplierId === supplierId && l.day === day)
     .map((l) => Object.freeze(structuredClone(l)));
   const times = [...new Set(selected.map((l) => l.time))].sort((a, b) =>

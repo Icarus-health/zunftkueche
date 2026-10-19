@@ -5,7 +5,7 @@ import { parseMoney } from "../ui/facts.ts";
 import type { AuditEntry } from "../domain/corrections.ts";
 export function AuditStamp({ entry }: { entry: AuditEntry }) {
   return (
-    <small style={{ overflowWrap: "anywhere", whiteSpace: "normal" }}>
+    <small style={{ display: "block", overflowWrap: "anywhere", whiteSpace: "normal" }}>
       {entry.actorId && entry.confirmedAt
         ? `Person: ${entry.actorId} · ${new Date(entry.confirmedAt).toLocaleString("de-DE")}`
         : "Person/Zeitpunkt nicht serverbestätigt"}{" "}

@@ -1,5 +1,10 @@
 using Newtonsoft.Json.Linq;
 using Zunftkueche;
+// Offline local restore validation reuses the complete production closed-schema policy.
+if(args.Length==2&&args[0]=="--validate-backup-state") {
+ using var input=new Newtonsoft.Json.JsonTextReader(new StringReader(File.ReadAllText(args[1]))){DateParseHandling=Newtonsoft.Json.DateParseHandling.None};
+ var backupState=JObject.Load(input);StatePolicy.Validate(backupState,backupState);Console.WriteLine("Offline backup state schema/relations validated.");return 0;
+}
 var seed = JObject.Parse(File.ReadAllText(args[0]));
 seed["schemaVersion"] = 2;
 seed["revision"] = 0;
@@ -174,6 +179,14 @@ if(args.Length>2)Check("actual TS protocol v2 candidate target signature and arc
  foreach(var request in (JArray)corpus["requests"]!){
   var q=(JObject)request.DeepClone();var known=Audits(store.Row.State).ToDictionary(v=>(string)v["operationId"]!);
   foreach(var entry in Audits(q["candidateState"]!))if(known.TryGetValue((string)entry["operationId"]!,out var confirmed)){entry["actorId"]=confirmed["actorId"]?.DeepClone();entry["confirmedAt"]=confirmed["confirmedAt"]?.DeepClone();}
+  store.Receipt=null;
+  if((string?)q["operation"]!["type"]=="event.close") {
+   Check("closure denies editor and forged snapshot under a renamed operation",()=>{var allowed=store.Row.CanClose;store.Row.CanClose=false;var denied=(JObject)q.DeepClone();denied["operation"]!["type"]="article.price";var writes=store.Writes;var response=Protocol.Commit(denied.ToString(),actor,true,store);store.Row.CanClose=allowed;if((string?)response["status"]!="rejected"||store.Writes!=writes)throw new Exception("editor closure accepted");var fake=(JObject)q.DeepClone();var target=StatePolicy.Events((JObject)fake["candidateState"]!)[(string)q["targetEventId"]!];target["closureHistory"]![0]!["snapshot"]!["resultCents"]=123;if((string?)Protocol.Commit(fake.ToString(),actor,true,store)["status"]!="rejected"||store.Writes!=writes)throw new Exception("forged closure snapshot accepted");});
+  }
+  if((string?)q["operation"]!["type"]=="event.reopen") {
+   Check("reopen cannot piggyback economic edits even for owner",()=>{var fake=(JObject)q.DeepClone();var target=StatePolicy.Events((JObject)fake["candidateState"]!)[(string)q["targetEventId"]!];target["articles"]![0]!["unitPriceCents"]=456;var writes=store.Writes;if((string?)Protocol.Commit(fake.ToString(),actor,true,store)["status"]!="rejected"||store.Writes!=writes)throw new Exception("combined reopen accepted");});
+  }
+  StatePolicy.Validate((JObject)q["candidateState"]!,store.Row.State);StatePolicy.ValidateScope((JObject)q["candidateState"]!,store.Row,(string)q["targetEventId"]!,(string)q["operation"]!["type"]!);
   store.Receipt=null;var response=Protocol.Commit(q.ToString(),actor,true,store);
   if((string?)response["status"]!="saved"||!JToken.DeepEquals(Protocol.Canonical(WithoutConfirmations((JObject)response["state"]!)),Protocol.Canonical(WithoutConfirmations((JObject)q["candidateState"]!)))||(string?)response["targetEventId"]!=(string?)q["targetEventId"])throw new Exception("v2 parity failed: "+q["operationId"]);
   foreach(var entry in Audits(response["state"]!).Where(v=>(string?)v["operationId"]==(string?)q["operationId"]))if((string?)entry["actorId"]!=actor.ToString("D")||entry["confirmedAt"]==null)throw new Exception("Missing server confirmation");
@@ -186,6 +199,7 @@ if(args.Length>3) {
  Check("actual local legacy schema stays rejected by Microsoft policy",()=>{try{StatePolicy.Validate(stored,stored);}catch(ArgumentException ex){if(ex.Message=="Unsupported schema.")return;throw;}throw new Exception("Legacy schema unexpectedly accepted");});
  Check("actual local corpus closed fields validate after explicit in-memory schema-only projection",()=>{var projected=(JObject)stored.DeepClone();foreach(var e in StatePolicy.Events(projected))e.Value["schemaVersion"]=2;StatePolicy.Validate(projected,projected);});
 }
+ReceivingCloseTests.Run(Check,seed);
 CorrectionTests.Run(Check,seed);
 OrderStatusTests.Run(Check,seed);
 EventContextTests.Run(Check,seed);

@@ -1,3 +1,5 @@
+import {buildRepositoryBackup} from './data/backup.ts';
+import {downloadReport} from './data/exports.ts';
 import {newEntryLocation} from "./domain/locations.ts";
 import Settings from "./screens/Settings.tsx";
 import {projectEvent} from "./domain/event-context.ts";
@@ -47,6 +49,7 @@ export interface ScreenProps {
   state: KitchenState;
   busy: boolean;
   readOnly: boolean;
+  canClose?: boolean;
   mode: "local" | "microsoft";
   saveError: string;
   lastLocation?: string;
@@ -207,6 +210,7 @@ export default function App() {
   const viewState = projectEvent(state,selectedId);
   const props: ScreenProps = {
     state: viewState,
+    canClose:repository.repo?.canClose===true,
     busy: saving || Boolean(pending) || readOnly,
     readOnly,
     mode,
@@ -345,7 +349,7 @@ export default function App() {
                 : message}
             </div>
           )}
-          {screen === "Einstellungen" && <Settings key={viewState.event.id} {...props} preferences={preferences} onPreferences={updatePreferences} canConfigure={repository.repo?.canConfigure===true} canClose={repository.repo?.canClose===true} storageBytes={new TextEncoder().encode(JSON.stringify(state)).length}/>}
+          {screen === "Einstellungen" && <Settings key={viewState.event.id} {...props} preferences={preferences} onPreferences={updatePreferences} onBackup={async()=>{if(!repository.repo)throw new Error("Datenverbindung fehlt.");const backup=await buildRepositoryBackup(repository.repo,{personalPreferences:preferences});downloadReport(JSON.stringify(backup,null,2),`Unvollstaendige-Datensicherung-R${backup.workspaceRevision}.json`,"application/json");return backup.missing;}} canConfigure={repository.repo?.canConfigure===true} canClose={repository.repo?.canClose===true} storageBytes={new TextEncoder().encode(JSON.stringify(state)).length}/>}
           {screen === "Übersicht" && (
             <Home key={viewState.event.id} {...props} />
           )}

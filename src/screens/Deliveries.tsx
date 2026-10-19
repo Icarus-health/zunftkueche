@@ -1,3 +1,4 @@
+import {ReceivingList} from '../components/ReceivingList.tsx';
 import {
   CorrectionDialog,
   AuditStamp,
@@ -35,14 +36,15 @@ const kinds = [
   ["stock.count", "Zählung", "Zählung"],
   ["stock.waste", "Abfall", "Abfall"],
 ] as const;
-export default function Deliveries({
+export default function Deliveries(props: ScreenProps) {
+ const {
   state,
   busy,
   commit,
   go,
   saveError,
   lastLocation,
-}: ScreenProps) {
+}=props;
   const [correcting, setCorrecting] = useState<string | null>(null);
   const correction = state.movements.find((m) => m.id === correcting);
   const { navigate, pending } = useDraftNavigation();
@@ -129,6 +131,7 @@ export default function Deliveries({
         Anfang, Zu- und Abgänge ausdrücklich erfassen; gezählte Reste bleiben
         separat.
       </Heading>
+      <ReceivingList {...props}/>
       <Tabs
         items={["Erfassen", "Bestandsübersicht"]}
         value={tab}
