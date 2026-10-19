@@ -1,0 +1,51 @@
+TAP version 13
+# Subtest: original validation accepts JPEG PNG PDF and rejects HEIC and disguised contents
+ok 1 - original validation accepts JPEG PNG PDF and rejects HEIC and disguised contents
+  ---
+  duration_ms: 6.992209
+  type: 'test'
+  ...
+# Subtest: one original is uploaded and reused with exact identity and bytes
+ok 2 - one original is uploaded and reused with exact identity and bytes
+  ---
+  duration_ms: 3.17725
+  type: 'test'
+  ...
+# Subtest: same upload ID cannot change file or event
+ok 3 - same upload ID cannot change file or event
+  ---
+  duration_ms: 0.864708
+  type: 'test'
+  ...
+# Subtest: account switch invalidates in-flight original read
+ok 4 - account switch invalidates in-flight original read
+  ---
+  duration_ms: 0.705708
+  type: 'test'
+  ...
+# Subtest: compressed image dimensions are bounded before browser decoding
+not ok 5 - compressed image dimensions are bounded before browser decoding
+  ---
+  duration_ms: 0.673792
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-intake.test.mjs:18:1'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-intake.test.mjs:20:2)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 4
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 149.476666

@@ -1,0 +1,22 @@
+src/generated/services/SharePointService.ts:554: trailing whitespace.
++   * Use this action to get the form metadata, which includes the form ID, title, link, form type, and the output format. It also gets the form questions used to collect information.
+src/generated/services/SharePointService.ts:572: trailing whitespace.
++   * Use this action to create documents from a document generation template. Map the template fields to the corresponding content in the data source.
+src/generated/services/SharePointService.ts:590: trailing whitespace.
++   * Gets the properties saved in the columns in the library for all folders and files stored in the library.
+src/generated/services/SharePointService.ts:591: trailing whitespace.
++   *             You can also filter down to the items that match a condition. An "Apply to each" section is usually used to work with the output from this action.
+src/generated/services/SharePointService.ts:796: trailing whitespace.
++   * Gets the properties saved in the columns in the library for the item specified by the item id.
+src/generated/services/SharePointService.ts:797: trailing whitespace.
++   *             You can add a "Get file content" step and use the "File identifier" property returned by this action to get to the contents of the file.
+src/generated/services/SharePointService.ts:832: trailing whitespace.
++   * Updates the properties stored in columns in a library for the item specified by the item id. Use "Update file" action to update file contents.
+src/generated/services/SharePointService.ts:1020: trailing whitespace.
++   * Triggers when an item is created in a library. Returns only the properties stored in the library columns.
+src/generated/services/SharePointService.ts:1021: trailing whitespace.
++   *             You can add a "Get file content" step and use the "File identifier" property returned by this action to get to the contents of the file.
+src/generated/services/SharePointService.ts:1107: trailing whitespace.
++   * Triggers when an item is created, or modified in a library. Returns only the properties stored in the library columns.
+src/generated/services/SharePointService.ts:1108: trailing whitespace.
++   *             You can add a "Get file content" step and use the "File identifier" property returned by this action to get to the contents of the file.

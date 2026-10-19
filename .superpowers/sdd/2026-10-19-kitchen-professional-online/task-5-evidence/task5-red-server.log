@@ -1,0 +1,2 @@
+FAIL document view fails closed on unavailable dedicated store, without falling back to aggregate: Unknown load view.
+0 passed, 1 failed

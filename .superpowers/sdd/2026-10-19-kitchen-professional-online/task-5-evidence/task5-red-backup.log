@@ -1,0 +1,26 @@
+TAP version 13
+# Subtest: document contract requires inventories even when they are actually empty
+not ok 1 - document contract requires inventories even when they are actually empty
+  ---
+  duration_ms: 18.282
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:6:1'
+  failureType: 'testCodeFailure'
+  error: 'Unbekannter oder widersprüchlicher Sicherungsumfang; Dokumentquellen dürfen nicht herabgestuft werden.'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    inspect (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/backup.ts:194:11)
+    async buildKitchenBackup (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/backup.ts:209:19)
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-backup.test.mjs:6:335)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 242.840958

@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: original validation accepts JPEG PNG PDF and rejects HEIC and disguised contents
+ok 1 - original validation accepts JPEG PNG PDF and rejects HEIC and disguised contents
+  ---
+  duration_ms: 7.685042
+  type: 'test'
+  ...
+# Subtest: one original is uploaded and reused with exact identity and bytes
+ok 2 - one original is uploaded and reused with exact identity and bytes
+  ---
+  duration_ms: 3.193833
+  type: 'test'
+  ...
+# Subtest: same upload ID cannot change file or event
+ok 3 - same upload ID cannot change file or event
+  ---
+  duration_ms: 1.013125
+  type: 'test'
+  ...
+# Subtest: account switch invalidates in-flight original read
+ok 4 - account switch invalidates in-flight original read
+  ---
+  duration_ms: 0.724666
+  type: 'test'
+  ...
+# Subtest: timeout after provider success resumes by reading original, never creating twice
+ok 5 - timeout after provider success resumes by reading original, never creating twice
+  ---
+  duration_ms: 7.541
+  type: 'test'
+  ...
+# Subtest: link failure exposes uploaded-unlinked and recovers same original
+ok 6 - link failure exposes uploaded-unlinked and recovers same original
+  ---
+  duration_ms: 1.884375
+  type: 'test'
+  ...
+# Subtest: ambiguous absent file does not permit another create
+ok 7 - ambiguous absent file does not permit another create
+  ---
+  duration_ms: 0.797791
+  type: 'test'
+  ...
+# Subtest: revoked document right refuses original read
+ok 8 - revoked document right refuses original read
+  ---
+  duration_ms: 1.109959
+  type: 'test'
+  ...
+# Subtest: all meaningful principal values must match and unknown claims cannot be hidden by Email
+ok 9 - all meaningful principal values must match and unknown claims cannot be hidden by Email
+  ---
+  duration_ms: 0.839708
+  type: 'test'
+  ...
+# Subtest: binary download accepts actual Uint8Array and does not turn unknown values into empty images
+ok 10 - binary download accepts actual Uint8Array and does not turn unknown values into empty images
+  ---
+  duration_ms: 0.848541
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 162.824083

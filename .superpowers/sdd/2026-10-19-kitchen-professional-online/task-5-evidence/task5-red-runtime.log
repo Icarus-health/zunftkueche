@@ -1,0 +1,44 @@
+TAP version 13
+# Subtest: unknown claim outcome is replayed with same request before resuming upload; no new create
+not ok 1 - unknown claim outcome is replayed with same request before resuming upload; no new create
+  ---
+  duration_ms: 8.750208
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-runtime.test.mjs:6:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /Unklar/. Input:
+    
+    'Error: Ein Dokumentvorgang ist noch unbestätigt. Zuerst denselben Vorgang wiederholen; Entwurf bleibt erhalten.'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Ein Dokumentvorgang ist noch unbestätigt. Zuerst denselben Vorgang wiederholen; Entwurf bleibt erhalten.'
+  stack: |-
+    request (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/document-runtime.ts:24:150)
+    Object.begin (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/document-runtime.ts:43:31)
+    file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/documents.ts:133:40
+    boundary (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/documents.ts:117:43)
+    async Object.upload (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/data/documents.ts:133:15)
+    async waitForActual (node:assert:644:5)
+    async Function.rejects (node:assert:767:25)
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-runtime.test.mjs:13:2)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/document-runtime.test.mjs:13:2)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 167.563209

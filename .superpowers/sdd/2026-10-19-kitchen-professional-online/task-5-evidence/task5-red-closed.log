@@ -1,0 +1,7 @@
+PASS reservation is idempotent and claim cannot authorize a second upload
+PASS manual draft source binding, explicit review, versions and immutable history
+PASS document caller, workspace/event and transaction boundaries fail closed
+FAIL closed selected event rejects document and draft writes preserving existing rows: document action should reject
+PASS document direct, bulk and SYSTEM-origin writes denied
+PASS document view fails closed on unavailable dedicated store, without falling back to aggregate
+5 passed, 1 failed
