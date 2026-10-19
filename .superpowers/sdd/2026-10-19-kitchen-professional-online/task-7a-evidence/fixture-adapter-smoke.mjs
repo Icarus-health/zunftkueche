@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+const {getRepository}=await import(`${process.cwd()}/tests/fixtures/professional-repository.ts`);
+const {createReceiptEdit}=await import(`${process.cwd()}/src/ui/receipt-intake-draft.ts`);
+const {prepareReceiptAcceptance}=await import(`${process.cwd()}/src/domain/receipt-draft.ts`);
+const repo=getRepository();let state=await repo.load();
+await repo.commit({id:'fixture-reopen-smoke',baseRevision:state.revision,type:'event.reopen',targetEventId:'fixture-closed',payload:{eventId:'fixture-closed',reason:'Synthetischer Adaptertest'}});
+state=await repo.load();let inventory=await repo.documents.list();let draft=inventory.drafts.find(d=>d.eventId==='fixture-open');
+draft.reviewStatus='reviewed';draft.pages.forEach(page=>page.originalReviewed=true);draft=await repo.documents.saveDraft(draft);
+const payload=await prepareReceiptAcceptance(createReceiptEdit(draft),state,repo.documents,{receipt:true,fields:true,originals:true,prices:'separate',stock:'separate'});
+const op={id:'fixture-accept-smoke',targetEventId:'fixture-open',baseRevision:state.revision,type:'receipt.draft.accept',payload:{...payload,operationId:'fixture-accept-smoke'}};
+await repo.commit(op);await repo.commit(op);state=await repo.load();inventory=await repo.documents.list();
+assert.notEqual(state.archivedEvents[0].event.status,'Abgeschlossen');assert.equal(state.orders.length,8);assert.equal(state.invoices.length,1);assert.equal(inventory.drafts.find(d=>d.id===draft.id).reviewStatus,'accepted');assert.equal(repo.identity,null);
+console.log(JSON.stringify({closedEventReopened:true,orders:8,invoiceCountAfterReplay:1,acceptedDraft:'accepted',identity:null,scope:'in-memory adapter and pure domain only'}));

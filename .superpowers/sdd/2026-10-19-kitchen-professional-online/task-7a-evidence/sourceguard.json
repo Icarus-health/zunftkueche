@@ -1,0 +1,8 @@
+{
+  "task6Base": "0d2e79a77d14e37fbf7a5998e256439b0545b02d",
+  "sourceCommit": "0c8ac5a1086f5a28f67d54b57a2b58c2e9525e1f",
+  "protectedTrackedFilesCompared": 133,
+  "mismatches": [],
+  "rootStateSha256": "09ac7edb02e899618bb6a802c33056d0460c5c428258e96739e4d4a26734d300",
+  "rootMatchesTask6Proof": true
+}

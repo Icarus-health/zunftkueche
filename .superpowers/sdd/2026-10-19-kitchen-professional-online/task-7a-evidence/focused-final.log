@@ -1,0 +1,562 @@
+TAP version 13
+# Subtest: confirmation placed in a price label portals its buttons into the body instead of the label
+ok 1 - confirmation placed in a price label portals its buttons into the body instead of the label
+  ---
+  duration_ms: 9.047708
+  type: 'test'
+  ...
+# Subtest: background isolation keeps the confirmation interactive and restores existing inert states
+ok 2 - background isolation keeps the confirmation interactive and restores existing inert states
+  ---
+  duration_ms: 0.640208
+  type: 'test'
+  ...
+# Subtest: receipt text survives Escape and close until discard is confirmed
+ok 3 - receipt text survives Escape and close until discard is confirmed
+  ---
+  duration_ms: 0.776458
+  type: 'test'
+  ...
+# Subtest: unchanged dialogs close immediately; cancellation also cancels pending navigation
+ok 4 - unchanged dialogs close immediately; cancellation also cancels pending navigation
+  ---
+  duration_ms: 0.067916
+  type: 'test'
+  ...
+# Subtest: form comparison detects text, dates, recipe removal and reversions without treating defaults as edits
+ok 5 - form comparison detects text, dates, recipe removal and reversions without treating defaults as edits
+  ---
+  duration_ms: 0.177875
+  type: 'test'
+  ...
+# Subtest: closing a modal consults its dirty standalone descendants without discarding other screen fields
+ok 6 - closing a modal consults its dirty standalone descendants without discarding other screen fields
+  ---
+  duration_ms: 0.20575
+  type: 'test'
+  ...
+# Subtest: local tab and filter requests wait for dirty fields and cancellation leaves their destination unchanged
+ok 7 - local tab and filter requests wait for dirty fields and cancellation leaves their destination unchanged
+  ---
+  duration_ms: 0.114458
+  type: 'test'
+  ...
+# Subtest: modal closure can exclude its own registry entry and invoke its own form guard exactly once
+ok 8 - modal closure can exclude its own registry entry and invoke its own form guard exactly once
+  ---
+  duration_ms: 0.158041
+  type: 'test'
+  ...
+# Subtest: pending operation refuses clean navigation and cancels a previously queued discard
+ok 9 - pending operation refuses clean navigation and cancels a previously queued discard
+  ---
+  duration_ms: 0.058208
+  type: 'test'
+  ...
+# Subtest: rapid field switches never report a second unsent edit as saved or auto-rebase it
+ok 10 - rapid field switches never report a second unsent edit as saved or auto-rebase it
+  ---
+  duration_ms: 3.339375
+  type: 'test'
+  ...
+# Subtest: transport failure keeps the exact pending operation and acknowledgement resolves it once
+ok 11 - transport failure keeps the exact pending operation and acknowledgement resolves it once
+  ---
+  duration_ms: 62.011042
+  type: 'test'
+  ...
+# Subtest: a conflict publishes failure and current data without retrying or overwriting
+ok 12 - a conflict publishes failure and current data without retrying or overwriting
+  ---
+  duration_ms: 2.585209
+  type: 'test'
+  ...
+# Subtest: closure snapshot and reasoned reopen preserve history and block closed edits
+ok 13 - closure snapshot and reasoned reopen preserve history and block closed edits
+  ---
+  duration_ms: 4.079584
+  type: 'test'
+  ...
+# Subtest: checklist never treats gross receipts as net result or absent sales as zero
+ok 14 - checklist never treats gross receipts as net result or absent sales as zero
+  ---
+  duration_ms: 0.3015
+  type: 'test'
+  ...
+# Subtest: two selections remain personal and preserve canonical aggregate
+ok 15 - two selections remain personal and preserve canonical aggregate
+  ---
+  duration_ms: 9.00025
+  type: 'test'
+  ...
+# Subtest: archived target edits only its slice and global revision
+ok 16 - archived target edits only its slice and global revision
+  ---
+  duration_ms: 16.650167
+  type: 'test'
+  ...
+# Subtest: unknown targets and shared switching fail closed; CAS stays global
+ok 17 - unknown targets and shared switching fail closed; CAS stays global
+  ---
+  duration_ms: 3.717625
+  type: 'test'
+  ...
+# Subtest: creation from archive preserves root and archive original exactly
+ok 18 - creation from archive preserves root and archive original exactly
+  ---
+  duration_ms: 7.261625
+  type: 'test'
+  ...
+# Subtest: operation IDs cannot be reused for a different target event
+ok 19 - operation IDs cannot be reused for a different target event
+  ---
+  duration_ms: 12.530709
+  type: 'test'
+  ...
+# Subtest: responsive table keeps the dish name, both days and quantity units together in each row
+ok 20 - responsive table keeps the dish name, both days and quantity units together in each row
+  ---
+  duration_ms: 6.789541
+  type: 'test'
+  ...
+# Subtest: mobile cards retain their title, context and accessible action
+ok 21 - mobile cards retain their title, context and accessible action
+  ---
+  duration_ms: 0.488708
+  type: 'test'
+  ...
+# Subtest: price columns retain matching labels when optional columns are absent
+ok 22 - price columns retain matching labels when optional columns are absent
+  ---
+  duration_ms: 7.43525
+  type: 'test'
+  ...
+# Subtest: actual planning renders each dish once with the complete Friday/Saturday comparison
+ok 23 - actual planning renders each dish once with the complete Friday/Saturday comparison
+  ---
+  duration_ms: 1666.705958
+  type: 'test'
+  ...
+# Subtest: actual orders keep supplier, day, item and editable quantity in a single control tree
+ok 24 - actual orders keep supplier, day, item and editable quantity in a single control tree
+  ---
+  duration_ms: 33.633708
+  type: 'test'
+  ...
+# Subtest: overview presents actionable next steps before the supplier list
+ok 25 - overview presents actionable next steps before the supplier list
+  ---
+  duration_ms: 34.830416
+  type: 'test'
+  ...
+# Subtest: pending writes disable modal dismissal, while an ordinary or read-only preview remains closable
+ok 26 - pending writes disable modal dismissal, while an ordinary or read-only preview remains closable
+  ---
+  duration_ms: 0.962792
+  type: 'test'
+  ...
+# Subtest: pending writes disable local Orders supplier, day and version controls
+ok 27 - pending writes disable local Orders supplier, day and version controls
+  ---
+  duration_ms: 5.74375
+  type: 'test'
+  ...
+# Subtest: pending writes disable shared local planning and analysis tabs
+ok 28 - pending writes disable shared local planning and analysis tabs
+  ---
+  duration_ms: 0.611959
+  type: 'test'
+  ...
+# Subtest: prepared headers retain supplier, event and date through later edits and archive roundtrip
+ok 29 - prepared headers retain supplier, event and date through later edits and archive roundtrip
+  ---
+  duration_ms: 40.287333
+  type: 'test'
+  ...
+# Subtest: unknown date stays unknown after a date is supplied later
+ok 30 - unknown date stays unknown after a date is supplied later
+  ---
+  duration_ms: 4.622375
+  type: 'test'
+  ...
+# Subtest: legacy prepared headers disclose current context; live drafts use current context without historical claim
+ok 31 - legacy prepared headers disclose current context; live drafts use current context without historical claim
+  ---
+  duration_ms: 0.527209
+  type: 'test'
+  ...
+# Subtest: manual order status follows prepared ordered confirmed and preserves snapshot
+ok 32 - manual order status follows prepared ordered confirmed and preserves snapshot
+  ---
+  duration_ms: 9.118541
+  type: 'test'
+  ...
+# Subtest: changed live planning is detected without changing ordered snapshot
+ok 33 - changed live planning is detected without changing ordered snapshot
+  ---
+  duration_ms: 0.912167
+  type: 'test'
+  ...
+# Subtest: preferences isolated by confirmed organization user and workspace
+ok 34 - preferences isolated by confirmed organization user and workspace
+  ---
+  duration_ms: 1.547125
+  type: 'test'
+  ...
+# Subtest: invalid selection and corrupt storage use safe defaults
+ok 35 - invalid selection and corrupt storage use safe defaults
+  ---
+  duration_ms: 0.132291
+  type: 'test'
+  ...
+# Subtest: supplier/day context always owns its version; stale and disappeared IDs cannot select a foreign order
+ok 36 - supplier/day context always owns its version; stale and disappeared IDs cannot select a foreign order
+  ---
+  duration_ms: 2.077584
+  type: 'test'
+  ...
+# Subtest: all historical Friday/Saturday versions and 120/110/10 receiving evidence survive context switching
+ok 37 - all historical Friday/Saturday versions and 120/110/10 receiving evidence survive context switching
+  ---
+  duration_ms: 0.778041
+  type: 'test'
+  ...
+# Subtest: saved supplier names never silently become current names or raw IDs, even when current supplier is absent
+ok 38 - saved supplier names never silently become current names or raw IDs, even when current supplier is absent
+  ---
+  duration_ms: 0.296083
+  type: 'test'
+  ...
+# Subtest: closed culinary controls are disabled without globally locking reopen, export or preferences
+ok 39 - closed culinary controls are disabled without globally locking reopen, export or preferences
+  ---
+  duration_ms: 1725.218459
+  type: 'test'
+  ...
+# Subtest: permissions and active saves still lock culinary fields in an open event
+ok 40 - permissions and active saves still lock culinary fields in an open event
+  ---
+  duration_ms: 0.078542
+  type: 'test'
+  ...
+# Subtest: review step requires an acknowledged unchanged reviewed draft; dirty raw inputs and queued originals stay in editing
+ok 41 - review step requires an acknowledged unchanged reviewed draft; dirty raw inputs and queued originals stay in editing
+  ---
+  duration_ms: 0.121292
+  type: 'test'
+  ...
+# Subtest: proposal display localizes meaning without changing integer values or raw quotations
+ok 42 - proposal display localizes meaning without changing integer values or raw quotations
+  ---
+  duration_ms: 0.886042
+  type: 'test'
+  ...
+# Subtest: fresh intake has no empty final acceptance section; closed intake still permits reading saved drafts
+ok 43 - fresh intake has no empty final acceptance section; closed intake still permits reading saved drafts
+  ---
+  duration_ms: 2.103084
+  type: 'test'
+  ...
+# Subtest: owning editor locks before list through delayed original, commit and acknowledged refresh
+ok 44 - owning editor locks before list through delayed original, commit and acknowledged refresh
+  ---
+  duration_ms: 7.063334
+  type: 'test'
+  ...
+# Subtest: source failure, definitive rejection and refresh failure retain raw values and release only after outcome
+ok 45 - source failure, definitive rejection and refresh failure retain raw values and release only after outcome
+  ---
+  duration_ms: 2.420792
+  type: 'test'
+  ...
+# Subtest: lost acknowledgement retains the exact SaveController request and editor lock until retry and refresh
+ok 46 - lost acknowledgement retains the exact SaveController request and editor lock until retry and refresh
+  ---
+  duration_ms: 2.080083
+  type: 'test'
+  ...
+# Subtest: an independently changed edit is never reset by a stale acknowledgement callback
+ok 47 - an independently changed edit is never reset by a stale acknowledgement callback
+  ---
+  duration_ms: 1.538333
+  type: 'test'
+  ...
+# Subtest: acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+ok 48 - acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+  ---
+  duration_ms: 4.709625
+  type: 'test'
+  ...
+# Subtest: accepted baseline survives explicit later correction
+ok 49 - accepted baseline survives explicit later correction
+  ---
+  duration_ms: 17.133834
+  type: 'test'
+  ...
+# Subtest: acceptance requires conscious separate decisions and matching operation event/revision
+ok 50 - acceptance requires conscious separate decisions and matching operation event/revision
+  ---
+  duration_ms: 1.383584
+  type: 'test'
+  ...
+# Subtest: supplied text proposals preserve unknown provenance and do not overwrite manual fields
+ok 51 - supplied text proposals preserve unknown provenance and do not overwrite manual fields
+  ---
+  duration_ms: 0.823042
+  type: 'test'
+  ...
+# Subtest: fresh original reads precede acceptance; stale versions or read failure leave edit untouched
+ok 52 - fresh original reads precede acceptance; stale versions or read failure leave edit untouched
+  ---
+  duration_ms: 0.736833
+  type: 'test'
+  ...
+# Subtest: lost acceptance acknowledgment reload resends identical immutable request and rejects changed content
+ok 53 - lost acceptance acknowledgment reload resends identical immutable request and rejects changed content
+  ---
+  duration_ms: 8.244583
+  type: 'test'
+  ...
+# Subtest: header-first and line-first manual edits without pages use the existing navigation guard
+ok 54 - header-first and line-first manual edits without pages use the existing navigation guard
+  ---
+  duration_ms: 0.918042
+  type: 'test'
+  ...
+# Subtest: removing the last original stays dirty against the saved draft baseline
+ok 55 - removing the last original stays dirty against the saved draft baseline
+  ---
+  duration_ms: 0.081541
+  type: 'test'
+  ...
+# Subtest: focused invalid raw money and quantity stay intact on keep-editing and failed save
+ok 56 - focused invalid raw money and quantity stay intact on keep-editing and failed save
+  ---
+  duration_ms: 0.398416
+  type: 'test'
+  ...
+# Subtest: raw valid focused values parse only at save, unknown blanks stay null, queue is dirty
+ok 57 - raw valid focused values parse only at save, unknown blanks stay null, queue is dirty
+  ---
+  duration_ms: 2.533375
+  type: 'test'
+  ...
+# Subtest: adding a line after saved raw inputs initializes its fields and preserves prior raw values
+ok 58 - adding a line after saved raw inputs initializes its fields and preserves prior raw values
+  ---
+  duration_ms: 4.794625
+  type: 'test'
+  ...
+# Subtest: unparsed supplied text alone is dirty without originals and survives a failed review parse
+ok 59 - unparsed supplied text alone is dirty without originals and survives a failed review parse
+  ---
+  duration_ms: 2.031959
+  type: 'test'
+  ...
+# Subtest: German printed amounts produce exact integer cents without loosening manual entry
+ok 60 - German printed amounts produce exact integer cents without loosening manual entry
+  ---
+  duration_ms: 1.040792
+  type: 'test'
+  ...
+# Subtest: supplier/date/number/gross proposals retain exact page quotations and provider versions
+ok 61 - supplier/date/number/gross proposals retain exact page quotations and provider versions
+  ---
+  duration_ms: 1.817958
+  type: 'test'
+  ...
+# Subtest: synthetic case Gewichtsware: source content never creates actions or invents unknown fields
+ok 62 - synthetic case Gewichtsware: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.750458
+  type: 'test'
+  ...
+# Subtest: synthetic case Gebinde: source content never creates actions or invents unknown fields
+ok 63 - synthetic case Gebinde: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.153584
+  type: 'test'
+  ...
+# Subtest: synthetic case Pfand: source content never creates actions or invents unknown fields
+ok 64 - synthetic case Pfand: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.114041
+  type: 'test'
+  ...
+# Subtest: synthetic case Rabatt: source content never creates actions or invents unknown fields
+ok 65 - synthetic case Rabatt: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.06375
+  type: 'test'
+  ...
+# Subtest: synthetic case Gutschrift: source content never creates actions or invents unknown fields
+ok 66 - synthetic case Gutschrift: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.105167
+  type: 'test'
+  ...
+# Subtest: synthetic case Steuergruppen: source content never creates actions or invents unknown fields
+ok 67 - synthetic case Steuergruppen: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.05975
+  type: 'test'
+  ...
+# Subtest: synthetic case mehrseitig: source content never creates actions or invents unknown fields
+ok 68 - synthetic case mehrseitig: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.26825
+  type: 'test'
+  ...
+# Subtest: synthetic case blass verdreht: source content never creates actions or invents unknown fields
+ok 69 - synthetic case blass verdreht: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.318833
+  type: 'test'
+  ...
+# Subtest: synthetic case nur erste Seite: source content never creates actions or invents unknown fields
+ok 70 - synthetic case nur erste Seite: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.114041
+  type: 'test'
+  ...
+# Subtest: synthetic case unbekanntes Layout: source content never creates actions or invents unknown fields
+ok 71 - synthetic case unbekanntes Layout: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.046709
+  type: 'test'
+  ...
+# Subtest: synthetic case Handlungsanweisung: source content never creates actions or invents unknown fields
+ok 72 - synthetic case Handlungsanweisung: source content never creates actions or invents unknown fields
+  ---
+  duration_ms: 0.04175
+  type: 'test'
+  ...
+# Subtest: ambiguous explicit gross totals stay open
+ok 73 - ambiguous explicit gross totals stay open
+  ---
+  duration_ms: 0.052208
+  type: 'test'
+  ...
+# Subtest: unproved image and PDF engines remain disabled and do not inspect or transmit the document
+ok 74 - unproved image and PDF engines remain disabled and do not inspect or transmit the document
+  ---
+  duration_ms: 0.287625
+  type: 'test'
+  ...
+# Subtest: supplied text is bounded without truncation and offset evidence matches raw multiline source
+ok 75 - supplied text is bounded without truncation and offset evidence matches raw multiline source
+  ---
+  duration_ms: 0.133917
+  type: 'test'
+  ...
+# Subtest: ordinary explicitly labelled whole lines propose headers without adding punctuation
+ok 76 - ordinary explicitly labelled whole lines propose headers without adding punctuation
+  ---
+  duration_ms: 0.320708
+  type: 'test'
+  ...
+# Subtest: whitespace and colon variants still refuse conflicting explicit values
+ok 77 - whitespace and colon variants still refuse conflicting explicit values
+  ---
+  duration_ms: 0.05675
+  type: 'test'
+  ...
+# Subtest: net, subtotal, instructions, malformed money and unlabelled text cannot become header proposals
+ok 78 - net, subtotal, instructions, malformed money and unlabelled text cannot become header proposals
+  ---
+  duration_ms: 1.308917
+  type: 'test'
+  ...
+# Subtest: supplied whitespace headers retain raw text and unknown page coverage
+ok 79 - supplied whitespace headers retain raw text and unknown page coverage
+  ---
+  duration_ms: 0.343834
+  type: 'test'
+  ...
+# Subtest: acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+ok 80 - acceptance adds one immutable receipt without changing inventory or prices; gross line stays gross
+  ---
+  duration_ms: 16.195708
+  type: 'test'
+  ...
+# Subtest: accepted baseline survives explicit later correction
+ok 81 - accepted baseline survives explicit later correction
+  ---
+  duration_ms: 1.158166
+  type: 'test'
+  ...
+# Subtest: acceptance requires conscious separate decisions and matching operation event/revision
+ok 82 - acceptance requires conscious separate decisions and matching operation event/revision
+  ---
+  duration_ms: 1.368042
+  type: 'test'
+  ...
+# Subtest: supplied text proposals preserve unknown provenance and do not overwrite manual fields
+ok 83 - supplied text proposals preserve unknown provenance and do not overwrite manual fields
+  ---
+  duration_ms: 1.879
+  type: 'test'
+  ...
+# Subtest: fresh original reads precede acceptance; stale versions or read failure leave edit untouched
+ok 84 - fresh original reads precede acceptance; stale versions or read failure leave edit untouched
+  ---
+  duration_ms: 0.791791
+  type: 'test'
+  ...
+# Subtest: acceptance is explicit, partial and replay safe; substitute preserves ordered article
+ok 85 - acceptance is explicit, partial and replay safe; substitute preserves ordered article
+  ---
+  duration_ms: 9.164041
+  type: 'test'
+  ...
+# Subtest: allocation retains source line and preserves total; variant drinks require explicit fractions
+ok 86 - allocation retains source line and preserves total; variant drinks require explicit fractions
+  ---
+  duration_ms: 1.274042
+  type: 'test'
+  ...
+# Subtest: allocation snapshots use their day/window quantities and retain original total; unchecked substitute is rejected
+ok 87 - allocation snapshots use their day/window quantities and retain original total; unchecked substitute is rejected
+  ---
+  duration_ms: 10.962875
+  type: 'test'
+  ...
+# Subtest: unconfirmed drink collection never creates additive demand for all choices
+ok 88 - unconfirmed drink collection never creates additive demand for all choices
+  ---
+  duration_ms: 0.622959
+  type: 'test'
+  ...
+# Subtest: settings preserve historic facts and future orders snapshot address contact
+ok 89 - settings preserve historic facts and future orders snapshot address contact
+  ---
+  duration_ms: 7.302084
+  type: 'test'
+  ...
+# Subtest: Wednesday delivery of explicitly derived weekend purchase remains coverage on re-adoption
+ok 90 - Wednesday delivery of explicitly derived weekend purchase remains coverage on re-adoption
+  ---
+  duration_ms: 3.377583
+  type: 'test'
+  ...
+# Subtest: unmarked imported Wednesday meal quantities are not inferred as weekend coverage from notes
+ok 91 - unmarked imported Wednesday meal quantities are not inferred as weekend coverage from notes
+  ---
+  duration_ms: 0.330833
+  type: 'test'
+  ...
+# Subtest: Wednesday weekend coverage survives quantity ownership, archived restore and explicit plan copy
+ok 92 - Wednesday weekend coverage survives quantity ownership, archived restore and explicit plan copy
+  ---
+  duration_ms: 1.612042
+  type: 'test'
+  ...
+1..92
+# tests 92
+# suites 0
+# pass 92
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2247.684708
