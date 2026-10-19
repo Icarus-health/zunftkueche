@@ -70,9 +70,15 @@ namespace Zunftkueche
             var first = source.ReadBackupWorkspace(id);
             ValidateWorkspace(first);
             var operations = source.ReadAllOperationRows(id);
+            var documentSource=store as IKitchenDocumentStore;
+            var documents=documentSource?.ReadDocumentRows(id,false);
+            var drafts=documentSource?.ReadDocumentRows(id,true);
             var middle = source.ReadBackupWorkspace(id);
             ValidateWorkspace(middle);
             var repeatedOperations = source.ReadAllOperationRows(id);
+            var repeatedDocuments=documentSource?.ReadDocumentRows(id,false);
+            var repeatedDrafts=documentSource?.ReadDocumentRows(id,true);
+            StatePolicy.Require(JToken.DeepEquals(documents,repeatedDocuments)&&JToken.DeepEquals(drafts,repeatedDrafts),"Document/draft rows changed during backup.");
             var last = source.ReadBackupWorkspace(id);
             ValidateWorkspace(last);
             StatePolicy.Require(Fingerprint(first) == Fingerprint(middle) && Fingerprint(first) == Fingerprint(last)
@@ -97,6 +103,10 @@ namespace Zunftkueche
                 { "documents", JValue.CreateNull() }, { "drafts", JValue.CreateNull() },
                 { "documentManifest", new JArray() }
             };
+            if(documentSource!=null) {
+                snapshot["sourceContract"]=new JObject{{"id",DocumentProtocol.Contract},{"documents","required"},{"drafts","required"},{"manifestVersion",1}};
+                snapshot["documents"]=documents; snapshot["drafts"]=drafts;
+            }
             StatePolicy.Require(Encoding.UTF8.GetByteCount(snapshot.ToString(Formatting.None)) <= MaxSnapshotBytes,
                 "Backup exceeds bounded response size; no rows were truncated.");
             return new JObject {

@@ -52,9 +52,10 @@ test("actual generated classes configure before mount and preserve RequestJson/R
     assert.equal(getMicrosoftRepository(), undefined);
     finishContext({ app: { environmentId: MICROSOFT_ENVIRONMENT_ID } });
     await connecting;
-    assert.deepEqual(calls, ["context", "generated client", "generated client"]);
+    assert.deepEqual(calls, ["context", "generated client", "generated client", "generated client"]);
     const repository = getMicrosoftRepository();
     assert.equal(repository.mode, "microsoft");
+    assert.ok(repository.documents, "document repository is wired after generated SharePoint client creation");
     assert.equal((await repository.load()).event.id, "synthetic");
     assert.deepEqual(requests[0].dataverseRequest, {
       action: "customapi", parameters: { operationName: "zk_KitchenLoad", tableName: "zk_kitchenload", body: { RequestJson: JSON.stringify({ protocolVersion: 2, workspaceId: MICROSOFT_WORKSPACE_ID }) } },

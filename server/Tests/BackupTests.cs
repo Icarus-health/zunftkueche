@@ -26,7 +26,7 @@ static class BackupTests
             Assert((string?)snapshot["workspaceEvidence"]!["rawRow"]!["zk_extra"] == "preserved workspace attribute");
             Assert((string?)snapshot["operationReceipts"]![1]!["rawRow"]!["zk_extra"] == "preserved receipt attribute");
             Assert((string?)snapshot["operationReceipts"]![1]!["rowVersion"] == "receipt-2");
-            Assert((string?)snapshot["sourceContract"]!["id"] == "kitchen-core-v1" && snapshot["documents"]!.Type == JTokenType.Null);
+            Assert((string?)snapshot["sourceContract"]!["id"] == "kitchen-documents-v1" && snapshot["documents"] is JArray docs && docs.Count == 0);
         });
         check("backup denies nonowner and foreign identity before complete reads", () => {
             foreach (var owner in new[] { false, true }) {
@@ -78,6 +78,7 @@ static class BackupTests
         }
         public EntityCollection RetrieveMultiple(QueryBase input) {
             var query = (QueryExpression)input;
+            if(query.EntityName=="zk_kitchendocument"||query.EntityName=="zk_kitchendraft")return new EntityCollection();
             Assert(query.EntityName == "zk_kitchenoperation" && query.ColumnSet.AllColumns
                 && query.Criteria.Conditions.Single().AttributeName == "zk_workspace"
                 && (Guid)query.Criteria.Conditions.Single().Values.Single() == Id

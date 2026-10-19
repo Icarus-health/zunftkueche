@@ -56,6 +56,7 @@ namespace Zunftkueche
         public static JObject Load(string raw, IKitchenStore store)
         {
             var q = Parse(raw);
+            if ((string?)q["view"] == "documents") return DocumentProtocol.Load(q,store);
             if (q["view"] != null)
             {
                 StatePolicy.Require((string?)q["view"] == "backup"
@@ -91,6 +92,7 @@ namespace Zunftkueche
         {
             StatePolicy.Require(actor != Guid.Empty, "Authenticated caller required.");
             var q = Parse(raw);
+            if ((string?)q["view"] == "documents") return DocumentProtocol.Commit(q,actor,inTransaction,store);
             StatePolicy.Require(q.Properties().All(p => new[] { "protocolVersion", "workspaceId", "operationId", "expectedRevision", "operation", "candidateState", "targetEventId", "identity" }.Contains(p.Name)), "Unknown commit field.");
             var id = WorkspaceId(q);
             var operationId = StatePolicy.Str(q["operationId"], 100);

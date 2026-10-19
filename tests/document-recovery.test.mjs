@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {fixture} from './document-fixture.mjs';
+import {jpegFile} from './document-files.mjs';
+const request=()=>({uploadId:'11111111-1111-4111-8111-111111111111',eventId:'event-1',file:jpegFile()});
+test('timeout after provider success resumes by reading original, never creating twice',async()=>{const f=fixture({timeout:true}),r=f.repo();await assert.rejects(()=>r.upload(request()),/timeout/);const recovered=await f.repo().upload(request());assert.equal(recovered.itemId,'1');assert.equal(f.creates,1);});
+test('link failure exposes uploaded-unlinked and recovers same original',async()=>{const f=fixture({linkFailure:true}),r=f.repo();await assert.rejects(()=>r.upload(request()),/link failed/);assert.equal(await r.loadUpload(request().uploadId),'uploaded-unlinked');await f.repo().upload(request());assert.equal(f.creates,1);});
+test('ambiguous absent file does not permit another create',async()=>{const f=fixture({timeout:true}),r=f.repo();await assert.rejects(()=>r.upload(request()));f.api.find=async()=>null;await assert.rejects(()=>r.upload(request()),/Unklar/);assert.equal(f.creates,1);});
+test('revoked document right refuses original read',async()=>{const f=fixture(),r=f.repo();const ref=await r.upload(request());f.revoke();await assert.rejects(()=>r.getOriginal(ref),/denied/);});
+test('two authorized simulated accounts can read the same original, while a changed account cannot resume its upload',async()=>{const f=fixture(),r=f.repo();const ref=await r.upload(request());f.setPrincipal('user-b');assert.equal((await f.repo().getOriginal(ref)).size,jpegFile().size);await assert.rejects(()=>r.upload(request()),/Konto/);});
+test('two concurrent app attempts permit only one create',async()=>{const f=fixture();await Promise.allSettled([f.repo().upload(request()),f.repo().upload(request())]);assert.equal(f.creates,1);});
+test('existing original with different content is preserved and never replaced',async()=>{const f=fixture();f.api.find=async()=>({bytes:Uint8Array.of(1),version:'etag-other',itemId:'2',connectorIdentifier:'other'});await assert.rejects(()=>f.repo().upload(request()),/Originalinhalt/);assert.equal(f.creates,0);});
+test('cancel before upload does not create or reserve an original',async()=>{const f=fixture(),controller=new AbortController();controller.abort();await assert.rejects(()=>f.repo().upload({...request(),signal:controller.signal}),/Abgebrochen/);assert.equal(f.creates,0);assert.equal(f.row,null);});

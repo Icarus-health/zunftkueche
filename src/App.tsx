@@ -46,6 +46,7 @@ export type Screen =
   | "Auswertung"
   | "Einstellungen";
 export interface ScreenProps {
+  documents?: import("./data/documents.ts").DocumentRepository;
   state: KitchenState;
   busy: boolean;
   readOnly: boolean;
@@ -209,6 +210,7 @@ export default function App() {
   const selectedId=[state.event.id,...(state.archivedEvents??[]).map(e=>e.event.id)].includes(viewEvent??"")?viewEvent!:state.event.id;
   const viewState = projectEvent(state,selectedId);
   const props: ScreenProps = {
+    documents: repository.repo?.documents,
     state: viewState,
     canClose:repository.repo?.canClose===true,
     busy: saving || Boolean(pending) || readOnly,
@@ -354,7 +356,7 @@ export default function App() {
             onBackup={async originals => {
               if (!repository.repo) throw new Error("Datenverbindung fehlt.");
               const backup = await buildRepositoryBackup(repository.repo, { personalPreferences: preferences }, originals);
-              const name = `${backup.complete ? "Vollstaendige" : "Unvollstaendige"}-Kuechen-Kernbestand-R${backup.workspaceRevision}.json`;
+              const name = `${backup.complete ? "Vollstaendige" : "Unvollstaendige"}-${backup.sourceContract?.id === "kitchen-documents-v1" ? "Kueche-mit-Dokumenten" : "Kuechen-Kernbestand"}-R${backup.workspaceRevision}.json`;
               downloadReport(JSON.stringify(backup, null, 2), name, "application/json");
               return backup.missing;
             }}

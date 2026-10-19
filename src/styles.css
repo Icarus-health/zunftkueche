@@ -2303,3 +2303,10 @@ th small {
   .density-compact td, .density-compact th { padding-top: .45rem; padding-bottom: .45rem; }
   .density-compact .panel { padding: 1rem; }
 }
+
+.receipt-intake { max-width: 1100px; margin: 0 auto; }
+.receipt-intake input, .receipt-intake select { max-width: 100%; }
+.receipt-intake .panel { overflow-wrap: anywhere; }
+.receipt-intake button { margin: .35rem; min-height: 44px; }
+.document-preview img { display: block; max-width: 100%; max-height: 65vh; object-fit: contain; }
+.document-preview object { width: 100%; min-height: 60vh; }

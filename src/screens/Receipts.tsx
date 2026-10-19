@@ -1,3 +1,4 @@
+import ReceiptIntake from "./ReceiptIntake.tsx";
 import { AuditStamp } from "../components/CorrectionDialog.tsx";
 import {
   activeLocations,
@@ -40,6 +41,7 @@ export default function Receipts(props: ScreenProps) {
     [status, setStatus] = useState("Alle"),
     [scope, setScope] = useState("Alle"),
     [search, setSearch] = useState("");
+  const [intake,setIntake]=useState(false);
   const scopes = historicalLocations(state);
   const invoices = state.invoices.filter(
     (i) =>
@@ -52,6 +54,7 @@ export default function Receipts(props: ScreenProps) {
   const totals = receiptTotals(invoices),
     originals = invoices.filter((i) => i.status === "Original vorhanden"),
     missing = invoices.filter((i) => i.status === "Original fehlt");
+  if(intake && props.documents)return <ReceiptIntake {...props} documents={props.documents} onClose={()=>navigate(()=>setIntake(false))}/>;
   return (
     <>
       <Heading
@@ -71,6 +74,7 @@ export default function Receipts(props: ScreenProps) {
         Rechnungen ergänzen, Unterlagen verknüpfen und den Erfassungsbereich
         klar halten.
       </Heading>
+      {props.documents && <button className="button secondary" disabled={busy||props.readOnly} onClick={()=>navigate(()=>setIntake(true))}>Foto / PDF aufnehmen</button>}
       <div className="toolbar receipt-filters">
         <label>
           Zuordnung
@@ -233,7 +237,9 @@ export default function Receipts(props: ScreenProps) {
 function ReceiptFacts({
   item,
   title,
+  state,
 }: {
+  state: ScreenProps["state"];
   item: ReceiptSnapshot;
   title: string;
 }) {
@@ -241,6 +247,10 @@ function ReceiptFacts({
     <div className="receipt-facts">
       <h3>{title}</h3>
       <div className="receipt-overview">
+        <div><small>Lieferant</small><strong>{state.suppliers.find(s=>s.id===item.supplierId)?.name??item.supplierId}</strong></div>
+        <div><small>Belegnummer</small><strong>{item.number||"Offen"}</strong></div>
+        <div><small>Datum</small><strong>{item.date||"Offen"}</strong></div>
+        <div><small>Dokument</small><strong>{item.documentUrl?<a href={item.documentUrl} target="_blank" rel="noreferrer">{item.documentUrl}</a>:"Kein Link"}</strong></div>
         <div>
           <small>Brutto</small>
           <strong>{euros(item.grossCents)}</strong>
@@ -267,7 +277,7 @@ function ReceiptFacts({
             <tbody>
               {item.lines.map((l, i) => (
                 <tr key={i}>
-                  <td>{l.name}</td>
+                  <td>{l.name}<small>Artikel: {state.articles.find(a=>a.id===l.articleId)?.name??l.articleId??"Noch nicht zugeordnet"}</small></td>
                   <td>
                     {l.quantity === null ? "Offen" : amount(l.quantity)}{" "}
                     {l.unit}
@@ -369,7 +379,7 @@ function ReceiptEditor({
               <span className="badge amber">Ergänzt / korrigiert</span>
             )}
           </div>
-          <ReceiptFacts item={item} title="Aktueller erfasster Stand" />
+          <ReceiptFacts state={state} item={item} title="Aktueller erfasster Stand" />
           {item.documentUrl && (
             <a
               className="button secondary"
@@ -403,7 +413,7 @@ function ReceiptEditor({
                 {item.sourceBaseline.number} ·{" "}
                 {item.sourceBaseline.date ?? "Datum offen"}
               </p>
-              <ReceiptFacts
+              <ReceiptFacts state={state}
                 item={item.sourceBaseline}
                 title="Unveränderter Ausgangsstand"
               />
@@ -414,9 +424,9 @@ function ReceiptEditor({
                     {c.reason ?? "Historischer Eintrag ohne erfassten Grund"}
                   </p>
                   <AuditStamp entry={c} />
-                  <ReceiptFacts item={c.before} title="Vorheriger Stand" />
+                  <ReceiptFacts state={state} item={c.before} title="Vorheriger Stand" />
                   {c.after && (
-                    <ReceiptFacts
+                    <ReceiptFacts state={state}
                       item={c.after}
                       title="Bestätigter neuer Stand"
                     />

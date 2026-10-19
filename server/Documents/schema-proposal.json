@@ -1,0 +1,25 @@
+{
+  "status": "source-only-proposal-not-provisioned",
+  "sourceContract": "kitchen-documents-v1",
+  "tables": [
+    {"logicalName":"zk_kitchendocument","schemaName":"zk_KitchenDocument","ownership":"UserOwned","primaryKey":"zk_kitchendocumentid","primaryName":"zk_eventid","optimisticConcurrency":true},
+    {"logicalName":"zk_kitchendraft","schemaName":"zk_KitchenDraft","ownership":"UserOwned","primaryKey":"zk_kitchendraftid","primaryName":"zk_eventid","optimisticConcurrency":true}
+  ],
+  "columns": {
+    "zk_workspace":{"type":"Lookup","target":"zk_kitchenworkspace","required":true},
+    "zk_eventid":{"type":"String","maxLength":500,"required":true},
+    "zk_payload":{"type":"Memo","maxLength":131072,"required":true,"policyUtf8ByteLimit":131072},
+    "zk_actor":{"type":"String","maxLength":36,"required":true},
+    "zk_recordedat":{"type":"DateTime","behavior":"UserLocal","required":true}
+  },
+  "uniqueness": "Globally unique native primary GUID: document ID equals UUID-v4 uploadId; draft ID equals persistent draft UUID. No secondary uniqueness inferred from paths or names.",
+  "relationships": [
+    {"schemaName":"zk_workspace_documents","referencedEntity":"zk_kitchenworkspace","referencingEntity":"zk_kitchendocument","referencingAttribute":"zk_workspace","relationshipType":"OneToMany","cascade":{"Assign":"NoCascade","Delete":"Restrict","Merge":"NoCascade","Reparent":"Cascade","Share":"Cascade","Unshare":"Cascade","RollupView":"NoCascade"}},
+    {"schemaName":"zk_workspace_drafts","referencedEntity":"zk_kitchenworkspace","referencingEntity":"zk_kitchendraft","referencingAttribute":"zk_workspace","relationshipType":"OneToMany","cascade":{"Assign":"NoCascade","Delete":"Restrict","Merge":"NoCascade","Reparent":"Cascade","Share":"Cascade","Unshare":"Cascade","RollupView":"NoCascade"}}
+  ],
+  "proposedEditorPrivilegesPerNewTable":{"Create":"Basic","Read":"Basic","Write":"Basic","Append":"Basic","Delete":"None","AppendTo":"None","Assign":"None","Share":"None"},
+  "existingWorkspacePrivilegePrerequisite":"AppendTo at the already authorized workspace; inspect existing table privilege and effective record rights. Any missing privilege is a separate minimal reviewed proposal.",
+  "readerPrivileges":"None on both new tables. Existing report-only workspace access must not implicitly grant table privileges, raw documents or drafts.",
+  "guard":{"pluginType":"Zunftkueche.KitchenDocumentWriteGuardPlugin","stage":20,"mode":0,"runAs":"CallingUser","tables":["zk_kitchendocument","zk_kitchendraft"],"messages":["Create","Update","Delete","Upsert","CreateMultiple","UpdateMultiple","UpsertMultiple","DeleteMultiple","Assign","GrantAccess","ModifyAccess","RevokeAccess","SetState"],"registrationRequirement":"Inspect SDK message-filter availability per new standard table; every supported mutation must be guarded or demonstrably unavailable. No skipped unsupported-registration error may count as success."},
+  "liveGates":["Validate entity and relationship metadata constraints before creation; ownership is not a later mutable setting.","Prove Board-created and Schreiber-created child row access under the shared parent with actual Basic privileges and both callers.","Verify direct table reads are bounded by actual row ownership/sharing, including foreign workspace rows and report-only user denial.","Prove inherited rights after Reparent/Share/Unshare; cleanup may be asynchronous. Do not repair ACLs automatically.","Prove synchronous custom API ambient transaction and CAS behavior. Guard permits only exact source shapes; unexpected platform decoration fails closed.","Confirm backup owner inventory includes rows from both editors; caller-visible security trimming is not proof of complete inventory."]
+}

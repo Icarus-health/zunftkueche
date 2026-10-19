@@ -35,7 +35,7 @@ export interface BackupInputs {
   workspaceId: string;
   workspaceEvidence?: WorkspaceBackupEvidence | null;
   /** Informational only. Imported packets cannot authorize their own validation. */
-  sourceContract?: { id: 'kitchen-core-v1'; documents: 'not_in_contract'; drafts: 'not_in_contract' };
+  sourceContract?: { id: 'kitchen-core-v1'; documents: 'not_in_contract'; drafts: 'not_in_contract' } | { id: 'kitchen-documents-v1'; documents: 'required'; drafts: 'required'; manifestVersion: 1 };
   schemaValidation?: { policy: string; rawStateSha256: string };
   state: KitchenState;
   settings: Record<string, unknown>;
@@ -182,6 +182,117 @@ async function inspectOriginals(value: BackupInputs, missing: string[]): Promise
   }
   inspectUnhashed(value.state);
 }
+function encodeBytes(bytes: Uint8Array): string {
+  let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);return btoa(binary);
+}
+function recordFields(value:Record<string,unknown>,names:string):void {
+  if(Object.keys(value).some(key=>!names.split(' ').includes(key)))throw new Error('Dokument/Entwurf: unbekanntes Feld.');
+}
+function checkedText(value:unknown,max:number,empty=false):void {
+  if(typeof value!=='string'||value.length>max||(!empty&&!value.length)||/[\u0000-\u001f]/.test(value))throw new Error('Dokument/Entwurf: Text ungültig.');
+}
+function checkedNumber(value:unknown,money=false):void {
+  if(value!==null&&(typeof value!=='number'||!Number.isFinite(value)||value<0||value>1e9||(money&&!Number.isSafeInteger(value))||(!money&&typeof value==='number'&&Number(value.toFixed(4))!==value)))throw new Error('Entwurf: Geld oder Menge ungültig.');
+}
+function validateStoredPayload(row:Record<string,unknown>,draft:boolean):void {
+  const guid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+  if(!guid.test(String(row.id)))throw new Error('Dokument/Entwurf-ID ungültig.');
+  checkedText(row.eventId,500);checkedText(row.workspaceId,100);
+  if(!draft) {
+    recordFields(row,'id uploadId eventId workspaceId principal status sha256 mimeType size originalName ref');
+    if(row.uploadId!==row.id||!guid.test(String(row.uploadId))||!['selected','uploading','uploaded-unlinked','linked','failed'].includes(String(row.status)))throw new Error('Dokumentstatus ungültig.');
+    checkedText(row.principal,512);checkedText(row.originalName,200);
+    if(!/^[a-f0-9]{64}$/.test(String(row.sha256))||!['image/jpeg','image/png','application/pdf'].includes(String(row.mimeType))||!Number.isSafeInteger(row.size)||Number(row.size)<1||Number(row.size)>5242880)throw new Error('Dokumenttyp, Hash oder Größe ungültig.');
+    const ref=row.ref as Record<string,unknown>|undefined;
+    if(row.status==='linked'&&!ref)throw new Error('Verknüpfte Dokumentreferenz fehlt.');
+    if(ref) {
+      recordFields(ref,'provider siteCollectionId webId libraryId itemId version connectorIdentifier webUrl sha256 mimeType size originalName');
+      if(ref.provider!=='sharepoint'||ref.siteCollectionId!=='f8177aa4-4ba3-4ba1-8c26-5ed32d5b2923'||ref.webId!=='c24ab669-3ca6-4530-aabf-6f42f8343ae7'||ref.libraryId!=='9e71defe-f678-4c0c-b69c-45e4370a735a'||!new RegExp('^[1-9][0-9]*$').test(String(ref.itemId)))throw new Error('Dokumentziel ungültig.');
+      for(const key of ['sha256','mimeType','size','originalName'])if(ref[key]!==row[key])throw new Error('Originalreferenz abweichend.');
+      checkedText(ref.version,256);checkedText(ref.connectorIdentifier,4096);checkedText(ref.webUrl,4096);
+      const suffix=row.mimeType==='image/jpeg'?'jpg':row.mimeType==='image/png'?'png':'pdf';
+      if(decodeURI(String(ref.webUrl))!==`https://schelmenzunft.sharepoint.com/sites/SchelmenzunftStaufenTraditionszunftderStaufenerStubengesells/Shared Documents/General/Zunftküche/Rechnungen/receipt-${row.id}.${suffix}`)throw new Error('Dokumentpfad ungültig.');
+    }
+    return;
+  }
+  recordFields(row,'schemaVersion id eventId workspaceId source parserVersion modelVersion promptVersion reviewStatus pages header lines');
+  if(row.schemaVersion!==1||row.source!=='manual'||['parserVersion','modelVersion','promptVersion'].some(k=>row[k]!==null)||!['editing','reviewed'].includes(String(row.reviewStatus)))throw new Error('Entwurfherkunft ungültig.');
+  const header=row.header as Record<string,unknown>;
+  if(!header||typeof header!=='object'||Array.isArray(header))throw new Error('Entwurfkopf fehlt.');
+  recordFields(header,'supplierId number date scope grossCents');
+  for(const key of ['supplierId','number','date','scope'])checkedText(header[key],200,true);
+  if(header.date&&(!/^\d{4}-\d{2}-\d{2}$/.test(String(header.date))||new Date(String(header.date)).toISOString().slice(0,10)!==header.date))throw new Error('Entwurfdatum ungültig.');
+  checkedNumber(header.grossCents,true);
+  if(!Array.isArray(row.lines)||row.lines.length>100)throw new Error('Entwurfpositionen ungültig.');
+  const ids=new Set();
+  for(const line of row.lines as Record<string,unknown>[]) {
+    recordFields(line,'id description articleId quantity unit grossCents');
+    if(!guid.test(String(line.id))||ids.has(line.id))throw new Error('Entwurfposition-ID ungültig.');ids.add(line.id);
+    for(const key of ['description','articleId','unit'])checkedText(line[key],500,true);
+    checkedNumber(line.quantity);checkedNumber(line.grossCents,true);
+  }
+  if(!Array.isArray(row.pages)||!row.pages.length||row.pages.length>10)throw new Error('Entwurfseiten ungültig.');
+  const pageIds=new Set();
+  for(const page of row.pages as Record<string,unknown>[]) {
+    recordFields(page,'documentId documentRowVersion version sha256 originalReviewed');
+    if(!guid.test(String(page.documentId))||pageIds.has(page.documentId)||typeof page.originalReviewed!=='boolean'||row.reviewStatus==='reviewed'&&!page.originalReviewed||!/^[a-f0-9]{64}$/.test(String(page.sha256)))throw new Error('Entwurfprüfung ungültig.');
+    pageIds.add(page.documentId);checkedText(page.documentRowVersion,200);checkedText(page.version,256);
+  }
+}
+async function validateStoredHistory(row:Record<string,unknown>,draft:boolean):Promise<void> {
+  const {rowVersion,rawRow,history,...payload}=row;
+  validateStoredPayload(payload,draft);
+  if(!Array.isArray(history)||!history.length||new TextEncoder().encode(JSON.stringify({...payload,history})).length>131072)throw new Error('Dokument/Entwurf-Verlauf fehlt oder ist zu groß.');
+  const seen=new Set();
+  for(const entry of history as Record<string,unknown>[]) {
+    recordFields(entry,'requestId requestHash actorId recordedAt action value');
+    if(!/^[a-f0-9-]{36}$/.test(String(entry.requestId))||seen.has(entry.requestId)||!/^[a-f0-9-]{36}$/.test(String(entry.actorId))||!/^[a-f0-9]{64}$/.test(String(entry.requestHash))||!Number.isFinite(Date.parse(String(entry.recordedAt)))||!(draft?['draft.save']:['upload.begin','upload.claim','upload.link']).includes(String(entry.action)))throw new Error('Dokument/Entwurf-Verlauf ungültig.');
+    seen.add(entry.requestId);
+    const prior=entry.value as Record<string,unknown>;
+    if(!prior||prior.id!==row.id||prior.eventId!==row.eventId||prior.workspaceId!==row.workspaceId)throw new Error('Verlaufbeziehung ungültig.');
+    validateStoredPayload(prior,draft);
+  }
+  if(await backupHash(history[history.length-1].value)!==await backupHash(payload))throw new Error('Letzter Dokument-/Entwurfstand stimmt nicht.');
+}
+async function inspectDocumentStores(value:BackupInputs, missing:string[]):Promise<void> {
+  const documents=new Map<string,Record<string,unknown>>();
+  const events=new Set([value.state.event.id,...(value.state.archivedEvents??[]).map(event=>event.event.id)]);
+  for(const row of value.documents??[]) {
+    if(typeof row.id!=='string'||documents.has(row.id)||row.workspaceId!==value.workspaceId||!events.has(String(row.eventId))||!row.rowVersion||!Array.isArray(row.history)||!row.history.length)throw new Error('Dokumentinventar: Identität, Beziehung oder Verlauf ungültig.');
+    await validateStoredHistory(row,false);
+    documents.set(row.id,row);
+    const raw=row.rawRow as Record<string,unknown>|undefined;
+    if(!raw||raw['@rowVersion']!==row.rowVersion||typeof raw.zk_payload!=='string')throw new Error('Dokument-/Entwurf-Rohzeile fehlt.');
+    const {rowVersion,rawRow,...payload}=row;
+    if(await backupHash(JSON.parse(raw.zk_payload))!==await backupHash(payload))throw new Error('Dokument-Rohzeile stimmt nicht.');
+    const ref=row.ref as import('./documents.ts').DocumentRef|undefined;
+    if(!ref || row.status!=='linked') {missing.push(`Dokument ${row.id}: Upload oder Verknüpfung unbestätigt`);continue;}
+    if(ref.sha256!==row.sha256||ref.size!==row.size||ref.originalName!==row.originalName||ref.mimeType!==row.mimeType)throw new Error('Dokumentreferenz stimmt nicht.');
+    const original=value.documentManifest.find(original=>original.id===row.id);
+    if(original&&original.bytesBase64===undefined)missing.push(`Dokument ${row.id}: Originalbytes nicht unabhängig gelesen`);
+    if(!original||original.sha256!==ref.sha256||original.version!==ref.version||original.itemId!==ref.itemId)missing.push(`Dokument ${row.id}: versioniertes Original fehlt`);
+  }
+  const drafts=new Set<string>();
+  for(const row of value.drafts??[]) {
+    if(typeof row.id!=='string'||drafts.has(row.id)||row.workspaceId!==value.workspaceId||!events.has(String(row.eventId))||!row.rowVersion||!Array.isArray(row.history)||!row.history.length||row.schemaVersion!==1||row.source!=='manual')throw new Error('Entwurfinventar ungültig.');
+    await validateStoredHistory(row,true);
+    const event=[value.state,...(value.state.archivedEvents??[])].find(event=>event.event.id===row.eventId)!;
+    const header=row.header as {supplierId:string};
+    if(header.supplierId&&!event.suppliers.some(s=>s.id===header.supplierId))throw new Error('Entwurf-Lieferantenbeziehung ungültig.');
+    if((row.lines as {articleId:string}[]).some(line=>line.articleId&&!event.articles.some(article=>article.id===line.articleId)))throw new Error('Entwurf-Artikelbeziehung ungültig.');
+    if((row.pages as {documentId:string}[]).reduce((sum,page)=>sum+Number(documents.get(page.documentId)?.size??0),0)>20971520)throw new Error('Entwurf-Originalumfang überschritten.');
+    drafts.add(row.id);
+    const raw=row.rawRow as Record<string,unknown>|undefined;
+    if(!raw||raw['@rowVersion']!==row.rowVersion||typeof raw.zk_payload!=='string')throw new Error('Entwurf-Rohzeile fehlt.');
+    const {rowVersion,rawRow,...payload}=row;
+    if(await backupHash(JSON.parse(raw.zk_payload))!==await backupHash(payload))throw new Error('Entwurf-Rohzeile stimmt nicht.');
+    if(!Array.isArray(row.pages)||row.pages.length===0||row.pages.length>10)throw new Error('Entwurf-Seiten ungültig.');
+    for(const page of row.pages as import('./documents.ts').DraftPage[]) {
+      const document=documents.get(page.documentId),ref=document?.ref as import('./documents.ts').DocumentRef|undefined;
+      if(!document||document.eventId!==row.eventId||document.rowVersion!==page.documentRowVersion||!ref||ref.version!==page.version||ref.sha256!==page.sha256)throw new Error('Entwurf-Originalbeziehung ungültig.');
+    }
+  }
+}
 async function inspect(value: BackupInputs): Promise<string[]> {
   if (!value.environment || !value.workspaceId) throw new Error('Sicherungsumgebung / Workspace fehlt.');
   requireStateEnvelope(value.state);
@@ -189,16 +300,20 @@ async function inspect(value: BackupInputs): Promise<string[]> {
   const missing: string[] = [];
   await inspectWorkspace(value, missing);
   const contract = value.sourceContract;
-  if (contract && (contract.id !== 'kitchen-core-v1' || contract.documents !== 'not_in_contract' || contract.drafts !== 'not_in_contract'
+  if(contract && !["kitchen-core-v1","kitchen-documents-v1"].includes(contract.id))throw new Error("Unbekannter Sicherungsumfang.");
+  if (contract?.id === 'kitchen-core-v1' && (contract.id !== 'kitchen-core-v1' || contract.documents !== 'not_in_contract' || contract.drafts !== 'not_in_contract'
     || Object.keys(contract).length !== 3 || value.documents !== null || value.drafts !== null)) {
     throw new Error('Unbekannter oder widersprüchlicher Sicherungsumfang; Dokumentquellen dürfen nicht herabgestuft werden.');
   }
   for (const field of ['documents', 'drafts', 'operationReceipts'] as const) {
-    if (contract && field !== 'operationReceipts') continue;
+    if (contract?.id === 'kitchen-core-v1' && field !== 'operationReceipts') continue;
     if (value[field] === null) missing.push(`${field}: Quelle nicht gelesen`);
     else if (!Array.isArray(value[field])) throw new Error('Sicherungstabelle ungültig.');
   }
-  if (value.documents?.length || value.drafts?.length) missing.push('Dokument-/Entwurftabellen: versionierte Schemaerweiterung noch zu prüfen');
+  if (contract?.id === 'kitchen-documents-v1') {
+    if (contract.documents !== 'required' || contract.drafts !== 'required' || contract.manifestVersion !== 1 || Object.keys(contract).length !== 4) throw new Error('Dokument-Sicherungsvertrag ungültig.');
+    await inspectDocumentStores(value, missing);
+  } else if (value.documents?.length || value.drafts?.length) missing.push('Dokument-/Entwurftabellen: versionierte Schemaerweiterung noch zu prüfen');
   inspectReceipts(value, missing);
   await inspectOriginals(value, missing);
   return [...new Set(missing)];
@@ -243,14 +358,28 @@ export async function buildRepositoryBackup(repo: Repository, settings: Record<s
       if (!repo.backupSnapshot) throw new Error('Vollständige schreibgeschützte Sicherungsquelle ist in dieser Verbindung nicht verfügbar.');
       const snapshot = await repo.backupSnapshot();
       if (!authorized()) throw new Error('Identität oder Sicherungsberechtigung hat sich geändert.');
+      if (repo.documents && snapshot.sourceContract?.id !== 'kitchen-documents-v1') throw new Error('Dokumentquellen dürfen nicht auf Kernbestand herabgestuft werden.');
       captured = snapshot;
-      return { ...snapshot, settings: structuredClone(settings), documentManifest: structuredClone(originals) };
+      const manifest=structuredClone(originals);
+      if (snapshot.sourceContract?.id === 'kitchen-documents-v1' && snapshot.documents) {
+        for(const row of snapshot.documents) {
+          const ref=row.ref as import('./documents.ts').DocumentRef|undefined;
+          if(!ref)continue;
+          const entry:OriginalBackup={id:String(row.id),itemId:ref.itemId,version:ref.version,sha256:ref.sha256};
+          if(repo.documents) {
+            try {const blob=await repo.documents.getOriginal(ref);entry.bytesBase64=encodeBytes(new Uint8Array(await blob.arrayBuffer()));}
+            catch { /* Exact missing bytes remain an incomplete backup; never infer availability. */ }
+          }
+          manifest.push(entry);
+        }
+      }
+      return { ...snapshot, settings: structuredClone(settings), documentManifest: manifest };
     },
     validateState: async state => {
       // Only this live authenticated response can attest the server's full nested policy run.
       const proof = captured?.schemaValidation;
       const evidence = captured?.workspaceEvidence;
-      if (captured?.sourceContract?.id !== 'kitchen-core-v1') throw new Error('Serverseitiger Sicherungsumfang fehlt.');
+      if (!['kitchen-core-v1', 'kitchen-documents-v1'].includes(captured?.sourceContract?.id ?? '')) throw new Error('Serverseitiger Sicherungsumfang fehlt.');
       if (!proof || proof.policy !== BACKUP_POLICY || !evidence || proof.rawStateSha256 !== evidence.rawStateSha256
         || await bytesHash(new TextEncoder().encode(evidence.rawState)) !== proof.rawStateSha256
         || await backupHash(JSON.parse(evidence.rawState)) !== await backupHash(state)) {

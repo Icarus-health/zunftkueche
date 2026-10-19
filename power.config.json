@@ -10,7 +10,16 @@
   "buildEntryPoint": "index.html",
   "localAppUrl": "http://localhost:4182",
   "logoPath": "Default",
-  "connectionReferences": {},
+  "connectionReferences": {
+    "c2cc5a0d-4bf6-4cb0-bd38-9b549904881d": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+      "displayName": "SharePoint",
+      "dataSources": [
+        "sharepointonline"
+      ],
+      "dataSets": {}
+    }
+  },
   "databaseReferences": {
     "default.cds": {
       "dataSources": {
