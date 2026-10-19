@@ -184,7 +184,20 @@ namespace Zunftkueche
         static void Plan(JObject p, Dictionary<string, JObject> suppliers, Dictionary<string, JObject> articles)
         {
             Fields(p,"id articleId supplierId name quantity unit day time unitPriceCents note lesson category location source purchaseGenerated purchaseForWeekend allocations");
-            if(p["allocations"]!=null){Require(Arr(p["allocations"]).Count<=20,"Too many allocations.");foreach(var v in Arr(p["allocations"])){var a=Obj(v);Fields(a,"day time quantity");Day(a["day"]);Quantity(a["quantity"],false);if(!Null(a["time"]))Require(Regex.IsMatch(Str(a["time"],5),"^([01][0-9]|2[0-3]):[0-5][0-9]$"),"Invalid allocation time.");}}
+            if (p["allocations"] != null)
+            {
+                var allocations = Arr(p["allocations"]);
+                Require(allocations.Count <= 20, "Too many allocations.");
+                foreach (var value in allocations)
+                {
+                    var allocation = Obj(value);
+                    Fields(allocation, "day time quantity");
+                    Day(allocation["day"]);
+                    Quantity(allocation["quantity"], false);
+                    if (!Null(allocation["time"]))
+                        Require(Regex.IsMatch(Str(allocation["time"], 5), "^([01][0-9]|2[0-3]):[0-5][0-9]$"), "Invalid allocation time.");
+                }
+            }
             var article = articles[Ref(p, "articleId", articles)];
             Ref(p, "supplierId", suppliers);
             Same(article["supplierId"], p["supplierId"], "Plan supplier mismatch.");
@@ -206,7 +219,7 @@ namespace Zunftkueche
         static void Event(JObject e, JObject? previous)
         {
             Require(Number(e["schemaVersion"], 2) == 2, "Unsupported schema.");
-            Fields(e,"schemaVersion event suppliers articles planLines menu invoices sales movements orders dishPlan lessons sourceNotice revision operationIds operationRequests archivedEvents movementCorrections salePriceCorrections closureHistory");
+            Fields(e,"schemaVersion event suppliers articles planLines menu invoices sales movements orders dishPlan lessons sourceNotice revision operationIds operationRequests archivedEvents movementCorrections salePriceCorrections closureHistory economicEvidence");
             var ev = Obj(e["event"]);
             Fields(ev,"id name year status dates deliveryAddress contact locations purchasingLocation");
             OptionalString(ev,"deliveryAddress",1000);OptionalString(ev,"contact",200);OptionalString(ev,"purchasingLocation",100);
@@ -276,7 +289,17 @@ namespace Zunftkueche
                     Require(refs.Add(Ref(l, "articleId", articles)), "Duplicate recipe article.");
                     Quantity(l["quantity"]);
                 }
-                if(m["supplyMode"]!=null){var mode=Str(m["supplyMode"],20);Require(new[]{"direct","variants","manual"}.Contains(mode),"Invalid drink mode.");Require(mode=="manual"?recipe.Count==0:((string?)m["recipeStatus"]=="Bestätigt"&&recipe.All(l=>!Null(l["quantity"])&&l["quantity"]!.Value<decimal>()>0)&&recipe.Sum(l=>l["quantity"]!.Value<decimal>())==1&&(mode!="direct"||recipe.Count==1)),"Invalid drink assignment.");}
+                if (m["supplyMode"] != null)
+                {
+                    var mode = Str(m["supplyMode"], 20);
+                    Require(new[] { "direct", "variants", "manual" }.Contains(mode), "Invalid drink mode.");
+                    var confirmed = (string?)m["recipeStatus"] == "Bestätigt";
+                    var positive = recipe.All(line => !Null(line["quantity"]) && line["quantity"]!.Value<decimal>() > 0);
+                    var valid = mode == "manual" ? recipe.Count == 0
+                        : confirmed && positive && recipe.Sum(line => line["quantity"]!.Value<decimal>()) == 1
+                          && (mode != "direct" || recipe.Count == 1);
+                    Require(valid, "Invalid drink assignment.");
+                }
                 if ((string?)m["recipeStatus"] == "Bestätigt")
                     Require(recipe.Count > 0 && recipe.All(l => !Null(l["quantity"]) && l["quantity"]!.Value<decimal>() > 0), "Confirmed recipe incomplete.");
             }
@@ -535,7 +558,7 @@ namespace Zunftkueche
                 Require(!old.ContainsKey((string)candidate["event"]!["id"]!), "New event must be canonical root.");
                 foreach(var field in new[]{"movements","sales","invoices","orders","lessons"})
                     Require(Arr(candidate[field]).Count==0,"New event cannot invent posted history.");
-                Require(History(candidate,"movementCorrections").Count==0 && History(candidate,"salePriceCorrections").Count==0 && History(candidate,"closureHistory").Count==0,"New event cannot invent corrections.");
+                Require(History(candidate,"movementCorrections").Count==0 && History(candidate,"salePriceCorrections").Count==0 && History(candidate,"closureHistory").Count==0 && History(candidate,"economicEvidence").Count==0,"New event cannot invent corrections.");
                 foreach(var e in old)Same(Slice(e.Value),Slice(next[e.Key]),"Creation changed existing event.");
             } else {
                 Same(row.State["event"]!["id"],candidate["event"]!["id"],"Canonical root cannot switch.");

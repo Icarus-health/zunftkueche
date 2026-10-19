@@ -349,7 +349,18 @@ export default function App() {
                 : message}
             </div>
           )}
-          {screen === "Einstellungen" && <Settings key={viewState.event.id} {...props} preferences={preferences} onPreferences={updatePreferences} onBackup={async()=>{if(!repository.repo)throw new Error("Datenverbindung fehlt.");const backup=await buildRepositoryBackup(repository.repo,{personalPreferences:preferences});downloadReport(JSON.stringify(backup,null,2),`Unvollstaendige-Datensicherung-R${backup.workspaceRevision}.json`,"application/json");return backup.missing;}} canConfigure={repository.repo?.canConfigure===true} canClose={repository.repo?.canClose===true} storageBytes={new TextEncoder().encode(JSON.stringify(state)).length}/>}
+          {screen === "Einstellungen" && <Settings
+            key={viewState.event.id} {...props} preferences={preferences} onPreferences={updatePreferences}
+            onBackup={async originals => {
+              if (!repository.repo) throw new Error("Datenverbindung fehlt.");
+              const backup = await buildRepositoryBackup(repository.repo, { personalPreferences: preferences }, originals);
+              const name = `${backup.complete ? "Vollstaendige" : "Unvollstaendige"}-Kuechen-Kernbestand-R${backup.workspaceRevision}.json`;
+              downloadReport(JSON.stringify(backup, null, 2), name, "application/json");
+              return backup.missing;
+            }}
+            canConfigure={repository.repo?.canConfigure === true} canClose={repository.repo?.canClose === true}
+            storageBytes={new TextEncoder().encode(JSON.stringify(state)).length}
+          />}
           {screen === "Übersicht" && (
             <Home key={viewState.event.id} {...props} />
           )}

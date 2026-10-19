@@ -1,57 +1,281 @@
-import type {KitchenState} from '../domain/state.ts';
-/** Contract v1. Null means source not read/unavailable; [] means a confirmed empty source.
- * Providers must read the canonical aggregate, actual immutable receipts and original bytes.
- * Task 5/6 may add versioned document/draft record schemas; generic tables are never presumed empty. */
-export interface OriginalBackup {id:string;sha256:string;version:string;itemId:string;bytesBase64?:string;retainedBackup?:{reference:string;sha256:string;version:string;verifiedAt:string};}
-export interface OperationBackupReceipt {id:string;workspaceId:string;operationId:string;requestHash:string;actorId:string;appliedRevision:number;recordedAt:string;rowVersion?:string;rawRow?:Record<string,unknown>;}
-export interface WorkspaceBackupEvidence {rawState:string;rawStateSha256:string;rawRow:Record<string,unknown>;rowVersion:string;ownerId:string;ownerType:"systemuser"|"team";protocolVersion:2;}
-export interface BackupInputs {environment:string;workspaceId:string;workspaceEvidence?:WorkspaceBackupEvidence|null;state:KitchenState;settings:Record<string,unknown>;documents:Record<string,unknown>[]|null;drafts:Record<string,unknown>[]|null;operationReceipts:OperationBackupReceipt[]|null;documentManifest:OriginalBackup[];}
-export interface KitchenBackup extends BackupInputs {formatVersion:1;workspaceRevision:number;createdAt:string;complete:boolean;missing:string[];payloadHash:string;}
-export interface BackupSource {/** Must verify actual owner rights before reading any backup data. */authorize():Promise<boolean>;/** Two stable complete reads, including document versions and receipt rows. */read():Promise<BackupInputs>;}
-const canonical=(v:any):any=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
-export async function backupHash(v:unknown){const bytes=new TextEncoder().encode(JSON.stringify(canonical(v)));const h=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join('');}
-const bytes=(s:string)=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
-async function bytesHash(b:Uint8Array){const h=await crypto.subtle.digest('SHA-256',new Uint8Array(b));return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join('');}
-function relations(s:KitchenState){
- if(s.schemaVersion!==2||!Number.isSafeInteger(s.revision)||s.revision<0)throw new Error('Sicherung braucht bestätigtes Schema 2 und gültige Revision.');
- if(new TextEncoder().encode(JSON.stringify(s)).length>524288)throw new Error('Zustand überschreitet 512 KiB.');
- const fields=(value:any,names:string)=>{if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!names.split(' ').includes(k)))throw new Error('Unbekanntes Sicherungsschemafeld.');};
- const eventFields='schemaVersion event suppliers articles planLines menu invoices sales movements orders dishPlan lessons sourceNotice movementCorrections salePriceCorrections closureHistory';
- fields(s,eventFields+' revision operationIds operationRequests archivedEvents');
- const planFields='id articleId supplierId name quantity unit day time unitPriceCents note lesson category location source purchaseGenerated purchaseForWeekend allocations';
- const receiptFields='id supplierId number date grossCents netCents scope status documentUrl localPath source lines';
- const events=[s,...s.archivedEvents??[]];
- for(const e of events){if(e!==s)fields(e,eventFields);fields(e.event,'id name year status dates deliveryAddress contact locations purchasingLocation');
- e.suppliers.forEach(v=>fields(v,'id name email'));e.articles.forEach(v=>fields(v,'id name supplierId unit category unitPriceCents packSize previousUnitPriceCents priceReferenceYear'));
- e.planLines.forEach(v=>fields(v,planFields));e.menu.forEach(v=>fields(v,'id name priceCents category recipe recipeStatus source supplyMode'));
- e.movements.forEach(v=>fields(v,'id articleId day type quantity location note orderId orderLineId substitutionConfirmed'));e.sales.forEach(v=>fields(v,'id menuId day quantity priceCents'));e.dishPlan.forEach(v=>fields(v,'id menuId day quantity'));e.lessons.forEach(v=>fields(v,'id note operationId revision actorId confirmedAt'));
- e.invoices.forEach(v=>{fields(v,receiptFields+' sourceBaseline corrected corrections');if(v.sourceBaseline)fields(v.sourceBaseline,receiptFields);v.corrections?.forEach(c=>{fields(c,'operationId revision before after reason actorId confirmedAt');fields(c.before,receiptFields);if(c.after)fields(c.after,receiptFields);});});
- e.orders.forEach(v=>{fields(v,'id supplierId day status createdAt lines groups totalCents context statusHistory');v.lines.forEach((l:any)=>fields(l,planFields));});
- }
-if(new Set(events.map(e=>e.event.id)).size!==events.length)throw new Error('Doppelte Veranstaltungs-ID.');
- for(const e of events){const ids=(key:string)=>{const rows=(e as any)[key];if(!Array.isArray(rows)||rows.some(r=>!r||typeof r.id!=='string')||new Set(rows.map(r=>r.id)).size!==rows.length)throw new Error('IDs / Tabelle ungültig: '+key);return new Set(rows.map(r=>r.id));};const suppliers=ids('suppliers'),articles=ids('articles'),menu=ids('menu');for(const k of ['planLines','invoices','sales','movements','orders','dishPlan','lessons'])ids(k);
- const ref=(set:Set<unknown>,id:string)=>{if(!set.has(id))throw new Error('Beziehung fehlt: '+id);};e.articles.forEach(a=>ref(suppliers,a.supplierId));e.planLines.forEach(l=>{ref(articles,l.articleId);ref(suppliers,l.supplierId);});e.menu.forEach(m=>m.recipe.forEach(l=>ref(articles,l.articleId)));e.invoices.forEach(i=>{ref(suppliers,i.supplierId);i.lines.filter(l=>l.articleId).forEach(l=>ref(articles,l.articleId!));});[...e.sales,...e.dishPlan].forEach(l=>ref(menu,l.menuId));e.movements.forEach(m=>{ref(articles,m.articleId);if(m.orderId&&!e.orders.some(o=>o.id===m.orderId&&o.lines.some((l:any)=>l.id===m.orderLineId)))throw new Error('Wareneingangsbezug fehlt.');});e.orders.forEach(o=>{ref(suppliers,o.supplierId);o.lines.forEach((l:any)=>ref(articles,l.articleId));});for(const [history,collection] of [[e.movementCorrections,e.movements],[e.salePriceCorrections,e.sales]] as const)(history??[]).forEach(c=>ref(new Set(collection.map(r=>r.id)),c.targetId));
- }
- if(!Array.isArray(s.operationIds)||new Set(s.operationIds).size!==s.operationIds.length)throw new Error('Wiederholungs-IDs ungültig.');
-}
-async function inspect(v:BackupInputs){if(!v.environment||!v.workspaceId)throw new Error("Sicherungsumgebung / Workspace fehlt.");relations(v.state);const missing:string[]=[];
- if(new TextEncoder().encode(JSON.stringify(v)).length>64*1024*1024)throw new Error("Sicherung überschreitet 64 MiB.");
- const evidence=v.workspaceEvidence;if(!evidence)missing.push("Workspace-Originalzustand / RowVersion / Eigentümernachweis nicht gelesen");else{if(evidence.protocolVersion!==2||!evidence.rowVersion||!evidence.ownerId||!["systemuser","team"].includes(evidence.ownerType)||!evidence.rawRow||evidence.rawRow.zk_state!==evidence.rawState||evidence.rawRow.zk_revision!==v.state.revision||evidence.rawRow.zk_kitchenworkspaceid!==v.workspaceId||await bytesHash(new TextEncoder().encode(evidence.rawState))!==evidence.rawStateSha256||await backupHash(JSON.parse(evidence.rawState))!==await backupHash(v.state))throw new Error("Workspace-Original / Hash / Revision ungültig.");}
- for(const field of ['documents','drafts','operationReceipts'] as const)if(v[field]===null)missing.push(`${field}: Quelle nicht gelesen`);else if(!Array.isArray(v[field]))throw new Error('Sicherungstabelle ungültig.');
- // New generic document/draft tables need a reviewed schema extension before complete status.
- if(v.documents?.length||v.drafts?.length)missing.push('Dokument-/Entwurftabellen: versionierte Schemaerweiterung noch zu prüfen');
- const receipts=v.operationReceipts;if(receipts!==null){const found=new Set<string>(), rowIds=new Set<string>(), revisions=new Set<number>();for(const r of receipts){if(typeof r.operationId!=='string'||found.has(r.operationId)||!r.id||rowIds.has(r.id)||r.workspaceId!==v.workspaceId||!Number.isInteger(r.appliedRevision)||r.appliedRevision<1||r.appliedRevision>v.state.revision||revisions.has(r.appliedRevision)||!/^[a-f0-9]{64}$/.test(r.requestHash)||!/^[a-f0-9-]{36}$/i.test(r.actorId)||!Number.isFinite(Date.parse(r.recordedAt)))throw new Error('Wiederholungsbeleg ist unvollständig.');if(r.rawRow&&Object.entries({zk_kitchenoperationid:r.id,_zk_workspace_value:r.workspaceId,zk_operationid:r.operationId,zk_requesthash:r.requestHash,zk_actor:r.actorId,zk_appliedrevision:r.appliedRevision,zk_recordedat:r.recordedAt}).some(([key,value])=>r.rawRow![key]!==value))throw new Error("Wiederholungsbeleg-Rohdaten passen nicht zur Zuordnung.");if(!r.rowVersion||!r.rawRow)missing.push("Wiederholungsbeleg: vollständige Rohzeile / RowVersion fehlt");found.add(r.operationId);rowIds.add(r.id);revisions.add(r.appliedRevision);if(!v.state.operationIds.includes(r.operationId))throw new Error('Wiederholungsbeleg ohne Vorgang.');}if(v.state.operationIds.some(id=>!found.has(id)))missing.push('Wiederholungsbelege fehlen');}
+import type { KitchenState } from '../domain/state.ts';
+import type { Repository } from './repository.ts';
 
- const manifests=new Set<string>();for(const m of v.documentManifest){if(manifests.has(m.id)||!m.id||!m.version||!m.itemId||!/^[a-f0-9]{64}$/.test(m.sha256))throw new Error('Originalmanifest ungültig.');manifests.add(m.id);if(m.bytesBase64!==undefined){if(bytes(m.bytesBase64).length>20*1024*1024||await bytesHash(bytes(m.bytesBase64))!==m.sha256)throw new Error('Original-Hash stimmt nicht.');}else if(!m.retainedBackup||m.retainedBackup.sha256!==m.sha256||m.retainedBackup.version!==m.version||!m.retainedBackup.reference||!Number.isFinite(Date.parse(m.retainedBackup.verifiedAt)))missing.push(`Original ${m.id}: Bytes oder geprüfte getrennte Sicherung fehlen`);}
- const walk=(value:any)=>{if(!value||typeof value!=='object')return;if(value.source?.hash&&!v.documentManifest.some(m=>m.sha256===value.source.hash&&(m.bytesBase64!==undefined||m.retainedBackup)))missing.push(`Original ${value.source.file}: fehlt`);if(value.localPath&&!value.source?.hash)missing.push(`Original ${value.localPath}: Hash fehlt`);if(value.documentUrl&&!value.source?.hash)missing.push('Original aus Dokumentlink: Bytes und Hashzuordnung fehlen');for(const child of Object.values(value))walk(child);};walk(v.state);return [...new Set(missing)];}
-export async function buildKitchenBackup(source:BackupSource):Promise<KitchenBackup>{if(!await source.authorize())throw new Error('Vollsicherung erfordert bestätigte Eigentümerberechtigung.');const before=await source.read();const missing=await inspect(before);if(!await source.authorize())throw new Error("Eigentümerberechtigung nicht mehr bestätigt.");const after=await source.read();if(await backupHash(before)!==await backupHash(after))throw new Error('Datenrevision, Dateiversion oder Wiederholungsbelege während Sicherung geändert.');const payload={formatVersion:1 as const,...structuredClone(before),workspaceRevision:before.state.revision,createdAt:new Date().toISOString(),complete:missing.length===0,missing};return {...payload,payloadHash:await backupHash(payload)};}
-export async function validateKitchenBackup(b:KitchenBackup){const{payloadHash,...payload}=b;if(b.formatVersion!==1||b.workspaceRevision!==b.state.revision)throw new Error('Sicherungsformat oder Revision ungültig.');if(await backupHash(payload)!==payloadHash)throw new Error('Sicherungs-Hash stimmt nicht.');const missing=await inspect(b);if(b.complete!==(missing.length===0)||JSON.stringify(missing)!==JSON.stringify(b.missing))throw new Error('Sicherungsvollständigkeit stimmt nicht.');return {complete:b.complete,missing};}
-/** Current Load API exposes the canonical aggregate only. Do not invent empty table reads. */
-export async function buildRepositoryBackup(repo:import('./repository.ts').Repository,settings:Record<string,unknown>) {
- const identity=JSON.stringify(repo.identity??null);
- const authorized=()=>repo.canConfigure===true&&repo.canClose===true&&(repo.mode==='local'||!!repo.identity)&&JSON.stringify(repo.identity??null)===identity;
- return buildKitchenBackup({authorize:async()=>authorized(),read:async()=>{
-  const state=await repo.load();if(!authorized())throw new Error('Identität oder Sicherungsberechtigung hat sich geändert.');
-  return {environment:repo.identity?.organizationId??'local-development',workspaceId:repo.identity?.workspaceId??'local-development',workspaceEvidence:null,state,settings:structuredClone(settings),documents:null,drafts:null,operationReceipts:null,documentManifest:[]};
- }});
+/** Null is an unread source; [] is a successfully read, empty source. */
+export interface OriginalBackup {
+  id: string;
+  sha256: string;
+  version: string;
+  itemId: string;
+  bytesBase64?: string;
+  retainedBackup?: { reference: string; sha256: string; version: string; verifiedAt: string };
+}
+export interface OperationBackupReceipt {
+  id: string;
+  workspaceId: string;
+  operationId: string;
+  requestHash: string;
+  actorId: string;
+  appliedRevision: number;
+  recordedAt: string;
+  rowVersion?: string;
+  rawRow?: Record<string, unknown>;
+}
+export interface WorkspaceBackupEvidence {
+  rawState: string;
+  rawStateSha256: string;
+  rawRow: Record<string, unknown>;
+  rowVersion: string;
+  ownerId: string;
+  ownerType: 'systemuser' | 'team';
+  protocolVersion: 2;
+}
+export interface BackupInputs {
+  environment: string;
+  workspaceId: string;
+  workspaceEvidence?: WorkspaceBackupEvidence | null;
+  /** Informational only. Imported packets cannot authorize their own validation. */
+  sourceContract?: { id: 'kitchen-core-v1'; documents: 'not_in_contract'; drafts: 'not_in_contract' };
+  schemaValidation?: { policy: string; rawStateSha256: string };
+  state: KitchenState;
+  settings: Record<string, unknown>;
+  documents: Record<string, unknown>[] | null;
+  drafts: Record<string, unknown>[] | null;
+  operationReceipts: OperationBackupReceipt[] | null;
+  documentManifest: OriginalBackup[];
+}
+export interface KitchenBackup extends BackupInputs {
+  formatVersion: 1;
+  workspaceRevision: number;
+  createdAt: string;
+  complete: boolean;
+  missing: string[];
+  payloadHash: string;
+}
+export type StateValidator = (state: KitchenState) => Promise<void>;
+export interface BackupSource {
+  /** Verify actual owner rights before reading any backup data. */
+  authorize(): Promise<boolean>;
+  read(): Promise<BackupInputs>;
+  /** Trusted runtime validator; never reconstructed from imported packet metadata. */
+  validateState?: StateValidator;
+}
+const SCHEMA_MISSING = 'Vollständige Schema-/Werteprüfung nicht durchgeführt.';
+export const BACKUP_POLICY = 'kitchen-schema2-net-evidence-v1';
+
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key, child]) => [key, canonical(child)]));
+  }
+  return value;
+}
+export async function bytesHash(value: Uint8Array): Promise<string> {
+  const hash = await crypto.subtle.digest('SHA-256', new Uint8Array(value));
+  return [...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+export function backupHash(value: unknown): Promise<string> {
+  return bytesHash(new TextEncoder().encode(JSON.stringify(canonical(value))));
+}
+function decodeBytes(value: string): Uint8Array {
+  return Uint8Array.from(atob(value), character => character.charCodeAt(0));
+}
+function requireStateEnvelope(state: KitchenState): void {
+  if (state.schemaVersion !== 2 || !Number.isSafeInteger(state.revision) || state.revision < 0) {
+    throw new Error('Sicherung braucht bestätigtes Schema 2 und gültige Revision.');
+  }
+  if (new TextEncoder().encode(JSON.stringify(state)).length > 524288) throw new Error('Zustand überschreitet 512 KiB.');
+  if (!Array.isArray(state.operationIds) || new Set(state.operationIds).size !== state.operationIds.length) {
+    throw new Error('Wiederholungs-IDs ungültig.');
+  }
+}
+async function inspectWorkspace(value: BackupInputs, missing: string[]): Promise<void> {
+  const evidence = value.workspaceEvidence;
+  if (!evidence) {
+    missing.push('Workspace-Originalzustand / RowVersion / Eigentümernachweis nicht gelesen');
+    return;
+  }
+  const valid = evidence.protocolVersion === 2 && evidence.rowVersion && evidence.ownerId
+    && ['systemuser', 'team'].includes(evidence.ownerType) && evidence.rawRow
+    && evidence.rawRow.zk_state === evidence.rawState
+    && evidence.rawRow.zk_revision === value.state.revision
+    && evidence.rawRow.zk_kitchenworkspaceid === value.workspaceId
+    && await bytesHash(new TextEncoder().encode(evidence.rawState)) === evidence.rawStateSha256
+    && await backupHash(JSON.parse(evidence.rawState)) === await backupHash(value.state);
+  if (!valid) throw new Error('Workspace-Original / Hash / Revision ungültig.');
+}
+function inspectReceipts(value: BackupInputs, missing: string[]): void {
+  if (value.operationReceipts === null) return;
+  const operations = new Set<string>();
+  const rows = new Set<string>();
+  const revisions = new Set<number>();
+  for (const receipt of value.operationReceipts) {
+    const valid = typeof receipt.operationId === 'string' && !operations.has(receipt.operationId)
+      && receipt.id && !rows.has(receipt.id) && receipt.workspaceId === value.workspaceId
+      && Number.isInteger(receipt.appliedRevision) && receipt.appliedRevision >= 1
+      && receipt.appliedRevision <= value.state.revision && !revisions.has(receipt.appliedRevision)
+      && /^[a-f0-9]{64}$/.test(receipt.requestHash) && /^[a-f0-9-]{36}$/i.test(receipt.actorId)
+      && Number.isFinite(Date.parse(receipt.recordedAt));
+    if (!valid) throw new Error('Wiederholungsbeleg ist unvollständig.');
+    const normalized = {
+      zk_kitchenoperationid: receipt.id,
+      _zk_workspace_value: receipt.workspaceId,
+      zk_operationid: receipt.operationId,
+      zk_requesthash: receipt.requestHash,
+      zk_actor: receipt.actorId,
+      zk_appliedrevision: receipt.appliedRevision,
+      zk_recordedat: receipt.recordedAt,
+    };
+    if (receipt.rawRow && Object.entries(normalized).some(([key, expected]) => receipt.rawRow![key] !== expected)) {
+      throw new Error('Wiederholungsbeleg-Rohdaten passen nicht zur Zuordnung.');
+    }
+    if (!receipt.rowVersion || !receipt.rawRow) missing.push('Wiederholungsbeleg: vollständige Rohzeile / RowVersion fehlt');
+    operations.add(receipt.operationId);
+    rows.add(receipt.id);
+    revisions.add(receipt.appliedRevision);
+    if (!value.state.operationIds.includes(receipt.operationId)) throw new Error('Wiederholungsbeleg ohne Vorgang.');
+  }
+  if (value.state.operationIds.some(id => !operations.has(id))) missing.push('Wiederholungsbelege fehlen');
+}
+export function requiredOriginals(state: KitchenState): Array<{ hash: string; file: string }> {
+  const originals = new Map<string, string>();
+  function walk(value: unknown): void {
+    if (!value || typeof value !== 'object') return;
+    const record = value as Record<string, unknown>;
+    const source = record.source as { hash?: string; file?: string } | undefined;
+    if (source?.hash) originals.set(source.hash.toLowerCase(), source.file ?? source.hash);
+    Object.values(record).forEach(walk);
+  }
+  walk(state);
+  return [...originals].map(([hash, file]) => ({ hash, file }));
+}
+async function inspectOriginals(value: BackupInputs, missing: string[]): Promise<void> {
+  const ids = new Set<string>();
+  for (const original of value.documentManifest) {
+    if (ids.has(original.id) || !original.id || !original.version || !original.itemId || !/^[a-f0-9]{64}$/.test(original.sha256)) {
+      throw new Error('Originalmanifest ungültig.');
+    }
+    ids.add(original.id);
+    if (original.bytesBase64 !== undefined) {
+      const bytes = decodeBytes(original.bytesBase64);
+      if (bytes.length > 20 * 1024 * 1024 || await bytesHash(bytes) !== original.sha256) throw new Error('Original-Hash stimmt nicht.');
+    } else {
+      const retained = original.retainedBackup;
+      if (!retained || retained.sha256 !== original.sha256 || retained.version !== original.version
+        || !retained.reference || !Number.isFinite(Date.parse(retained.verifiedAt))) {
+        missing.push(`Original ${original.id}: Bytes oder geprüfte getrennte Sicherung fehlen`);
+      }
+    }
+  }
+  for (const original of requiredOriginals(value.state)) {
+    if (!value.documentManifest.some(item => item.sha256 === original.hash && (item.bytesBase64 !== undefined || item.retainedBackup))) {
+      missing.push(`Original ${original.file}: fehlt`);
+    }
+  }
+  function inspectUnhashed(value: unknown): void {
+    if (!value || typeof value !== 'object') return;
+    const record = value as Record<string, unknown>;
+    const source = record.source as { hash?: string } | undefined;
+    if (record.localPath && !source?.hash) missing.push(`Original ${record.localPath}: Hash fehlt`);
+    if (record.documentUrl && !source?.hash) missing.push('Original aus Dokumentlink: Bytes und Hashzuordnung fehlen');
+    Object.values(record).forEach(inspectUnhashed);
+  }
+  inspectUnhashed(value.state);
+}
+async function inspect(value: BackupInputs): Promise<string[]> {
+  if (!value.environment || !value.workspaceId) throw new Error('Sicherungsumgebung / Workspace fehlt.');
+  requireStateEnvelope(value.state);
+  if (new TextEncoder().encode(JSON.stringify(value)).length > 64 * 1024 * 1024) throw new Error('Sicherung überschreitet 64 MiB.');
+  const missing: string[] = [];
+  await inspectWorkspace(value, missing);
+  const contract = value.sourceContract;
+  if (contract && (contract.id !== 'kitchen-core-v1' || contract.documents !== 'not_in_contract' || contract.drafts !== 'not_in_contract'
+    || Object.keys(contract).length !== 3 || value.documents !== null || value.drafts !== null)) {
+    throw new Error('Unbekannter oder widersprüchlicher Sicherungsumfang; Dokumentquellen dürfen nicht herabgestuft werden.');
+  }
+  for (const field of ['documents', 'drafts', 'operationReceipts'] as const) {
+    if (contract && field !== 'operationReceipts') continue;
+    if (value[field] === null) missing.push(`${field}: Quelle nicht gelesen`);
+    else if (!Array.isArray(value[field])) throw new Error('Sicherungstabelle ungültig.');
+  }
+  if (value.documents?.length || value.drafts?.length) missing.push('Dokument-/Entwurftabellen: versionierte Schemaerweiterung noch zu prüfen');
+  inspectReceipts(value, missing);
+  await inspectOriginals(value, missing);
+  return [...new Set(missing)];
+}
+export async function buildKitchenBackup(source: BackupSource): Promise<KitchenBackup> {
+  if (!await source.authorize()) throw new Error('Vollsicherung erfordert bestätigte Eigentümerberechtigung.');
+  const before = await source.read();
+  const missing = await inspect(before);
+  if (source.validateState) await source.validateState(before.state);
+  else missing.push(SCHEMA_MISSING);
+  if (!await source.authorize()) throw new Error('Eigentümerberechtigung nicht mehr bestätigt.');
+  const after = await source.read();
+  if (await backupHash(before) !== await backupHash(after)) throw new Error('Datenrevision, Dateiversion oder Wiederholungsbelege während Sicherung geändert.');
+  const payload = {
+    formatVersion: 1 as const, ...structuredClone(before), workspaceRevision: before.state.revision,
+    createdAt: new Date().toISOString(), complete: missing.length === 0, missing,
+  };
+  return { ...payload, payloadHash: await backupHash(payload) };
+}
+export async function validateKitchenBackup(backup: KitchenBackup, validateState?: StateValidator) {
+  const { payloadHash, ...payload } = backup;
+  if (backup.formatVersion !== 1 || backup.workspaceRevision !== backup.state.revision) throw new Error('Sicherungsformat oder Revision ungültig.');
+  if (await backupHash(payload) !== payloadHash) throw new Error('Sicherungs-Hash stimmt nicht.');
+  const missing = await inspect(backup);
+  const claimed = backup.missing.filter(reason => reason !== SCHEMA_MISSING);
+  if (JSON.stringify(claimed) !== JSON.stringify(missing) || backup.complete !== (backup.missing.length === 0)) {
+    throw new Error('Sicherungsvollständigkeit stimmt nicht.');
+  }
+  // A packet's own complete flag, policy name or checksum is never a schema proof.
+  if (validateState) await validateState(backup.state);
+  else missing.push(SCHEMA_MISSING);
+  return { complete: missing.length === 0, missing };
+}
+export async function buildRepositoryBackup(repo: Repository, settings: Record<string, unknown>, originals: OriginalBackup[] = []) {
+  const identity = JSON.stringify(repo.identity ?? null);
+  const authorized = () => repo.canConfigure === true && repo.canClose === true
+    && (repo.mode === 'local' || !!repo.identity) && JSON.stringify(repo.identity ?? null) === identity;
+  let captured: BackupInputs | undefined;
+  return buildKitchenBackup({
+    authorize: async () => authorized(),
+    read: async () => {
+      if (!repo.backupSnapshot) throw new Error('Vollständige schreibgeschützte Sicherungsquelle ist in dieser Verbindung nicht verfügbar.');
+      const snapshot = await repo.backupSnapshot();
+      if (!authorized()) throw new Error('Identität oder Sicherungsberechtigung hat sich geändert.');
+      captured = snapshot;
+      return { ...snapshot, settings: structuredClone(settings), documentManifest: structuredClone(originals) };
+    },
+    validateState: async state => {
+      // Only this live authenticated response can attest the server's full nested policy run.
+      const proof = captured?.schemaValidation;
+      const evidence = captured?.workspaceEvidence;
+      if (captured?.sourceContract?.id !== 'kitchen-core-v1') throw new Error('Serverseitiger Sicherungsumfang fehlt.');
+      if (!proof || proof.policy !== BACKUP_POLICY || !evidence || proof.rawStateSha256 !== evidence.rawStateSha256
+        || await bytesHash(new TextEncoder().encode(evidence.rawState)) !== proof.rawStateSha256
+        || await backupHash(JSON.parse(evidence.rawState)) !== await backupHash(state)) {
+        throw new Error('Vollständige serverseitige Schemaprüfung ist nicht bestätigt.');
+      }
+    },
+  });
+}
+
+/** User-selected bytes stay local; exact source hashes identify originals, not names. */
+export async function selectOriginalFiles(state: KitchenState, files: Iterable<File>): Promise<OriginalBackup[]> {
+  const required = new Set(requiredOriginals(state).map(original => original.hash));
+  const selected = [...files];
+  if (selected.length > 100 || selected.reduce((sum, file) => sum + file.size, 0) > 40 * 1024 * 1024) {
+    throw new Error('Höchstens 100 Originale mit zusammen 40 MiB auswählen.');
+  }
+  const originals = new Map<string, OriginalBackup>();
+  for (const file of selected) {
+    if (file.size > 20 * 1024 * 1024) throw new Error(`Original ${file.name} überschreitet 20 MiB.`);
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const hash = await bytesHash(bytes);
+    if (!required.has(hash)) throw new Error(`Datei ${file.name} passt zu keinem gespeicherten Original-Hash.`);
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    originals.set(hash, { id: hash, sha256: hash, version: `sha256:${hash}`, itemId: `local:${hash}`, bytesBase64: btoa(binary) });
+  }
+  return [...originals.values()];
 }

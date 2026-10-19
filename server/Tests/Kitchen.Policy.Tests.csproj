@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Plugins.cs" Link="Plugins.cs"/>
+    <Compile Include="../DataverseBackup.cs" Link="DataverseBackup.cs"/>
     <PackageReference Include="Microsoft.CrmSdk.CoreAssemblies" Version="9.0.2.60" NoWarn="NU1701"/>
     <Compile Include="../Policy/**/*.cs" Link="Policy/%(Filename)%(Extension)"/>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>

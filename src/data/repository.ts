@@ -9,6 +9,7 @@ export interface Repository {
   identity?: import("./preferences.ts").ConfirmedIdentity | null;
   blockedReason?: string;
   load: () => Promise<KitchenState>;
+  backupSnapshot?: () => Promise<import("./backup.ts").BackupInputs>;
   commit: (op: Operation) => Promise<CommitResult>;
 }
 export class RejectedError extends Error {}

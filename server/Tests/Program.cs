@@ -171,8 +171,8 @@ Check("non-owner closure and unknown configuration fail closed", () => {
  foreach(var key in new[]{"status","documentDestination"}) {var store=new FakeStore(seed);var q=Request(seed);q["candidateState"]!["event"]![key]="closed";
  if((string?)Protocol.Commit(q.ToString(),actor,true,store)["status"]!="rejected"||store.Writes!=0)throw new Exception("privileged field bypass accepted");}
 });
-if(args.Length>2)Check("actual TS protocol v2 candidate target signature and archive parity",()=>{
- using var reader=new Newtonsoft.Json.JsonTextReader(new StringReader(File.ReadAllText(args[2]))){DateParseHandling=Newtonsoft.Json.DateParseHandling.None};var corpus=JObject.Load(reader);
+if(args.Length>2)foreach(var corpusFile in new[]{args[2],Path.Combine(Path.GetDirectoryName(args[2])!,"economics-corpus.json"),Path.Combine(Path.GetDirectoryName(args[2])!,"stock-corpus.json")})Check("actual TS protocol v2 candidate target signature and archive parity",()=>{
+ using var reader=new Newtonsoft.Json.JsonTextReader(new StringReader(File.ReadAllText(corpusFile))){DateParseHandling=Newtonsoft.Json.DateParseHandling.None};var corpus=JObject.Load(reader);
  var store=new FakeStore((JObject)corpus["initial"]!);store.Row.CanConfigure=true;store.Row.CanClose=true;
  IEnumerable<JObject> Audits(JToken value)=>value is JContainer container ? container.Descendants().OfType<JObject>().Where(o=>o["operationId"]!=null&&o["revision"]!=null) : Enumerable.Empty<JObject>();
  JObject WithoutConfirmations(JObject value){var result=(JObject)value.DeepClone();foreach(var item in Audits(result)){item.Remove("actorId");item.Remove("confirmedAt");}return result;}
@@ -180,6 +180,19 @@ if(args.Length>2)Check("actual TS protocol v2 candidate target signature and arc
   var q=(JObject)request.DeepClone();var known=Audits(store.Row.State).ToDictionary(v=>(string)v["operationId"]!);
   foreach(var entry in Audits(q["candidateState"]!))if(known.TryGetValue((string)entry["operationId"]!,out var confirmed)){entry["actorId"]=confirmed["actorId"]?.DeepClone();entry["confirmedAt"]=confirmed["confirmedAt"]?.DeepClone();}
   store.Receipt=null;
+  if((string?)q["operation"]!["type"]=="event.economics") {
+   Check("net evidence requires owner and isolated exact-revision confirmation",()=>{
+    var allowed=store.Row.CanClose;store.Row.CanClose=false;var writes=store.Writes;
+    var renamed=(JObject)q.DeepClone();renamed["operation"]!["type"]="article.price";
+    if((string?)Protocol.Commit(renamed.ToString(),actor,true,store)["status"]!="rejected"||store.Writes!=writes)throw new Exception("nonowner economics accepted");
+    store.Row.CanClose=allowed;
+    foreach(var fault in new[]{"sourceRevision","piggyback"}) {
+     var fake=(JObject)q.DeepClone();var target=StatePolicy.Events((JObject)fake["candidateState"]!)[(string)q["targetEventId"]!];
+     if(fault=="sourceRevision")target["economicEvidence"]!.Last!["sourceRevision"]=999;else target["articles"]![0]!["unitPriceCents"]=999;
+     if((string?)Protocol.Commit(fake.ToString(),actor,true,store)["status"]!="rejected"||store.Writes!=writes)throw new Exception("invalid economics accepted");
+    }
+   });
+  }
   if((string?)q["operation"]!["type"]=="event.close") {
    Check("closure denies editor and forged snapshot under a renamed operation",()=>{var allowed=store.Row.CanClose;store.Row.CanClose=false;var denied=(JObject)q.DeepClone();denied["operation"]!["type"]="article.price";var writes=store.Writes;var response=Protocol.Commit(denied.ToString(),actor,true,store);store.Row.CanClose=allowed;if((string?)response["status"]!="rejected"||store.Writes!=writes)throw new Exception("editor closure accepted");var fake=(JObject)q.DeepClone();var target=StatePolicy.Events((JObject)fake["candidateState"]!)[(string)q["targetEventId"]!];target["closureHistory"]![0]!["snapshot"]!["resultCents"]=123;if((string?)Protocol.Commit(fake.ToString(),actor,true,store)["status"]!="rejected"||store.Writes!=writes)throw new Exception("forged closure snapshot accepted");});
   }
@@ -199,6 +212,7 @@ if(args.Length>3) {
  Check("actual local legacy schema stays rejected by Microsoft policy",()=>{try{StatePolicy.Validate(stored,stored);}catch(ArgumentException ex){if(ex.Message=="Unsupported schema.")return;throw;}throw new Exception("Legacy schema unexpectedly accepted");});
  Check("actual local corpus closed fields validate after explicit in-memory schema-only projection",()=>{var projected=(JObject)stored.DeepClone();foreach(var e in StatePolicy.Events(projected))e.Value["schemaVersion"]=2;StatePolicy.Validate(projected,projected);});
 }
+BackupTests.Run(Check,seed);
 ReceivingCloseTests.Run(Check,seed);
 CorrectionTests.Run(Check,seed);
 OrderStatusTests.Run(Check,seed);

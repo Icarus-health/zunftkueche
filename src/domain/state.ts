@@ -77,6 +77,17 @@ export interface DishPlan {
   day: string;
   quantity: number | null;
 }
+export interface EconomicEvidence extends AuditEntry {
+  operationId: string;
+  revision: number;
+  eventId: string;
+  scope: string;
+  sourceRevision: number;
+  netRevenueCents: number;
+  netConsumptionCents: number;
+  sourceReason: string;
+  valuationReason: string;
+}
 export interface KitchenState {
   schemaVersion: number;
   event: {
@@ -119,6 +130,7 @@ export interface KitchenState {
   salePriceCorrections?: ValueCorrection[];
   dishPlan: DishPlan[];
   lessons: any[];
+  economicEvidence?: EconomicEvidence[];
   closureHistory?: Array<AuditEntry & {operationId:string;revision:number;action:"close"|"reopen";reason:string;snapshot?:ReturnType<typeof buildClosureChecklist>}>;
   sourceNotice: string;
   revision: number;
@@ -461,6 +473,7 @@ export function applyOperation(
       next.orders = [];
       next.lessons = [];
       next.closureHistory = [];
+      next.economicEvidence = [];
       next.sourceNotice = `Stammdaten und Rezepturen aus ${prior.event.year} übernommen; Einkaufspreise für diese Veranstaltung bitte bestätigen.`;
       next.planLines = p.copyPlan
         ? next.planLines.map((l) => ({
@@ -566,56 +579,120 @@ export function applyOperation(
       break;
     }
     case "delivery.accept": {
-      const order = next.orders.find(o=>o.id===p.orderId);
-      if(!order)throw new Error("Bestellfassung nicht gefunden.");
-      const day=validDay(p.day), location=requireActiveLocation(next,text(p.location,"Ort",100));
-      const note=text(p.note,"Abweichungsnotiz",1000,true);
-      if(!Array.isArray(p.lines)||!p.lines.length||p.lines.length>200||new Set(p.lines.map((l:any)=>l.lineId)).size!==p.lines.length)throw new Error("Annahmepositionen sind ungültig.");
-      for(const [index,l] of p.lines.entries()) {
-        const line=order.lines.find((r:any)=>r.id===l.lineId), article=next.articles.find(a=>a.id===l.articleId);
-        if(!line||!article||line.unit!==article.unit)throw new Error("Bestellposition oder passende Artikeleinheit fehlt.");
-        const q=quantity(l.quantity)!;
-        const substitute=line.articleId!==article.id;
-        if(substitute&&(l.substitutionConfirmed!==true||!note))throw new Error("Ersatzartikel ausdrücklich mit Notiz bestätigen.");
-        next.movements.push({id:`${op.id}:${index}`,articleId:article.id,day,type:"Lieferung",quantity:q,location,note,orderId:order.id,orderLineId:line.id,substitutionConfirmed:substitute});
+      const order = next.orders.find(order => order.id === p.orderId);
+      if (!order) throw new Error("Bestellfassung nicht gefunden.");
+      const day = validDay(p.day);
+      const location = requireActiveLocation(next, text(p.location, "Ort", 100));
+      const note = text(p.note, "Abweichungsnotiz", 1000, true);
+      if (!Array.isArray(p.lines) || !p.lines.length || p.lines.length > 200
+        || new Set(p.lines.map((line: { lineId: string }) => line.lineId)).size !== p.lines.length)
+        throw new Error("Annahmepositionen sind ungültig.");
+      for (const [index, accepted] of p.lines.entries()) {
+        const line = order.lines.find((line: PlanLine) => line.id === accepted.lineId);
+        const article = next.articles.find(article => article.id === accepted.articleId);
+        if (!line || !article || line.unit !== article.unit)
+          throw new Error("Bestellposition oder passende Artikeleinheit fehlt.");
+        const received = quantity(accepted.quantity)!;
+        const substitute = line.articleId !== article.id;
+        if (substitute && (accepted.substitutionConfirmed !== true || !note))
+          throw new Error("Ersatzartikel ausdrücklich mit Notiz bestätigen.");
+        next.movements.push({
+          id: `${op.id}:${index}`, articleId: article.id, day, type: "Lieferung", quantity: received,
+          location, note, orderId: order.id, orderLineId: line.id, substitutionConfirmed: substitute,
+        });
       }
       break;
     }
+    case "plan.allocationQuantity": {
+      const parent = next.planLines.find(line => line.allocations?.some(
+        (_, index) => `${line.id}:allocation:${index}` === p.id));
+      const index = parent?.allocations?.findIndex(
+        (_, index) => `${parent.id}:allocation:${index}` === p.id) ?? -1;
+      if (!parent || index < 0) throw new Error("Lieferverteilung nicht gefunden.");
+      parent.allocations![index].quantity = quantity(p.quantity)!;
+      parent.purchaseGenerated = false;
+      parent.purchaseForWeekend = true;
+      break;
+    }
     case "plan.allocate": {
-      const line=next.planLines.find(l=>l.id===p.id);
-      if(!line||!Array.isArray(p.allocations)||p.allocations.length>20)throw new Error("Lieferverteilung ist ungültig.");
-      line.allocations=p.allocations.map((a:any)=>{
-        const day=validDay(a.day),time=text(a.time,"Lieferzeit",5,true)||null;
-        if(time&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))throw new Error("Lieferzeit ist ungültig.");
-        return {day,time,quantity:quantity(a.quantity)!};
+      const line = next.planLines.find(line => line.id === p.id);
+      if (!line || !Array.isArray(p.allocations) || p.allocations.length > 20)
+        throw new Error("Lieferverteilung ist ungültig.");
+      line.allocations = p.allocations.map((allocation: { day: unknown; time: unknown; quantity: unknown }) => {
+        const day = validDay(allocation.day);
+        const time = text(allocation.time, "Lieferzeit", 5, true) || null;
+        if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error("Lieferzeit ist ungültig.");
+        return { day, time, quantity: quantity(allocation.quantity)! };
       });
-      if(line.purchaseGenerated)line.purchaseGenerated=false;
-      line.purchaseForWeekend=true;
+      line.purchaseGenerated = false;
+      line.purchaseForWeekend = true;
       break;
     }
     case "drink.configure": {
-      const item=next.menu.find(m=>m.id===p.menuId);
-      if(!item||!["direct","variants","manual"].includes(p.mode)||!Array.isArray(p.lines)||p.lines.length>30)throw new Error("Getränkezuordnung ist ungültig.");
-      const lines=p.lines.map((l:any)=>{if(!next.articles.some(a=>a.id===l.articleId))throw new Error("Artikel fehlt.");return {articleId:l.articleId,quantity:quantity(l.quantity)!};});
-      if(new Set(lines.map((l:any)=>l.articleId)).size!==lines.length||lines.some((l:any)=>l.quantity<=0))throw new Error("Getränkezuordnung ist ungültig.");
-      if(p.mode==='manual'&&lines.length||p.mode==='direct'&&(lines.length!==1||lines[0].quantity!==1)||p.mode==='variants'&&(!lines.length||Math.abs(lines.reduce((n:number,l:any)=>n+l.quantity,0)-1)>0.00001))throw new Error("Direkt: ein Artikel je Stück. Varianten: bestätigte Anteile ergeben genau 1. Manuell: keine Ableitung.");
-      item.supplyMode=p.mode;item.recipe=lines;item.recipeStatus=p.mode==='manual'?'Manuell':'Bestätigt';break;
+      const item = next.menu.find(menu => menu.id === p.menuId);
+      if (!item || !["direct", "variants", "manual"].includes(p.mode) || !Array.isArray(p.lines) || p.lines.length > 30)
+        throw new Error("Getränkezuordnung ist ungültig.");
+      const lines: Array<{ articleId: string; quantity: number }> = p.lines.map((line: { articleId: string; quantity: unknown }) => {
+        if (!next.articles.some(article => article.id === line.articleId)) throw new Error("Artikel fehlt.");
+        return { articleId: line.articleId, quantity: quantity(line.quantity)! };
+      });
+      if (new Set(lines.map(line => line.articleId)).size !== lines.length || lines.some(line => line.quantity <= 0))
+        throw new Error("Getränkezuordnung ist ungültig.");
+      const invalidManual = p.mode === 'manual' && lines.length > 0;
+      const invalidDirect = p.mode === 'direct' && (lines.length !== 1 || lines[0].quantity !== 1);
+      const invalidVariants = p.mode === 'variants'
+        && (!lines.length || Math.abs(lines.reduce((sum, line) => sum + line.quantity, 0) - 1) > 0.00001);
+      if (invalidManual || invalidDirect || invalidVariants)
+        throw new Error("Direkt: ein Artikel je Stück. Varianten: bestätigte Anteile ergeben genau 1. Manuell: keine Ableitung.");
+      item.supplyMode = p.mode;
+      item.recipe = lines;
+      item.recipeStatus = p.mode === 'manual' ? 'Manuell' : 'Bestätigt';
+      break;
+    }
+    case "event.economics": {
+      if (p.eventId !== state.event.id || p.revision !== state.revision)
+        throw new Error("Bewertungsstand hat sich geändert.");
+      const scope = text(p.scope, "Bewertungsumfang", 100);
+      buildClosureChecklist(state, scope);
+      const netRevenueCents = money(p.netRevenueCents);
+      const netConsumptionCents = money(p.netConsumptionCents);
+      if (netRevenueCents === null || netConsumptionCents === null)
+        throw new Error("Bestätigte Nettowerte müssen bekannt sein.");
+      (next.economicEvidence ??= []).push({
+        operationId: op.id,
+        revision: op.baseRevision + 1,
+        eventId: state.event.id,
+        scope,
+        sourceRevision: state.revision,
+        netRevenueCents,
+        netConsumptionCents,
+        sourceReason: text(p.sourceReason, "Quelle der Nettoerlöse", 1000),
+        valuationReason: text(p.valuationReason, "Quelle und Verbrauchsbewertung", 1000),
+      });
+      break;
     }
     case "event.close": {
-      if(p.eventId!==next.event.id||p.revision!==state.revision||state.event.status==='Abgeschlossen')throw new Error("Abschlussstand hat sich geändert.");
-      const reason=text(p.note,"Prüfnotiz",1000);
-      const snapshot=buildClosureChecklist(state,text(p.confirmedScope,"Umfang",100));
-      (next.closureHistory??=[]).push({operationId:op.id,revision:op.baseRevision+1,action:'close',reason,snapshot});
-      next.event.status='Abgeschlossen';break;
+      if (p.eventId !== next.event.id || p.revision !== state.revision || state.event.status === 'Abgeschlossen')
+        throw new Error("Abschlussstand hat sich geändert.");
+      const reason = text(p.note, "Prüfnotiz", 1000);
+      const snapshot = buildClosureChecklist(state, text(p.confirmedScope, "Umfang", 100));
+      (next.closureHistory ??= []).push({ operationId: op.id, revision: op.baseRevision + 1, action: 'close', reason, snapshot });
+      next.event.status = 'Abgeschlossen';
+      break;
     }
     case "event.reopen": {
-      if(p.eventId!==next.event.id||state.event.status!=='Abgeschlossen')throw new Error("Veranstaltung ist nicht abgeschlossen.");
-      (next.closureHistory??=[]).push({operationId:op.id,revision:op.baseRevision+1,action:'reopen',reason:text(p.reason,"Öffnungsgrund",1000)});
-      next.event.status='Offen';break;
+      if (p.eventId !== next.event.id || state.event.status !== 'Abgeschlossen')
+        throw new Error("Veranstaltung ist nicht abgeschlossen.");
+      (next.closureHistory ??= []).push({
+        operationId: op.id, revision: op.baseRevision + 1, action: 'reopen', reason: text(p.reason, "Öffnungsgrund", 1000),
+      });
+      next.event.status = 'Offen';
+      break;
     }
     case "lesson.add": {
-      if(p.eventId!==next.event.id)throw new Error("Falsche Veranstaltung.");
-      next.lessons.push({id:op.id,note:text(p.text,"Erfahrung",4000),operationId:op.id,revision:op.baseRevision+1});break;
+      if (p.eventId !== next.event.id) throw new Error("Falsche Veranstaltung.");
+      next.lessons.push({ id: op.id, note: text(p.text, "Erfahrung", 4000), operationId: op.id, revision: op.baseRevision + 1 });
+      break;
     }
     case "purchase.apply": {
       if (p.day !== "Gesamt")

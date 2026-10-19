@@ -19,6 +19,7 @@
     <None Include="README.md" Pack="true" PackagePath="/"/>
     <Compile Include="Policy/**/*.cs"/>
     <Compile Include="Plugins.cs"/>
+    <Compile Include="DataverseBackup.cs"/>
     <PackageReference Include="Microsoft.CrmSdk.CoreAssemblies" Version="9.0.2.60" PrivateAssets="all"/>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all"/>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" PrivateAssets="all" GeneratePathProperty="true"/>

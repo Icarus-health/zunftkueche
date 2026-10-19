@@ -70,6 +70,11 @@ export default function Orders({
       state.suppliers.find((s) => s.id === supplier)?.name ?? "Lieferant offen";
   const prepared = state.orders.filter((o) => o.supplierId === supplier);
   const previewHeader = preview ? orderPreviewHeader(state, preview) : null;
+  function savePlannedQuantity(id: string, quantity: number | null) {
+    const allocated = state.planLines.some(parent => parent.allocations?.some(
+      (_, index) => `${parent.id}:allocation:${index}` === id));
+    return commit(allocated ? "plan.allocationQuantity" : "plan.quantity", { id, quantity });
+  }
   return (
     <section className="orders-screen">
       <Heading title="Bestellung erstellen">
@@ -182,7 +187,7 @@ export default function Orders({
                             label={`${l.name} ${day}`}
                             disabled={busy}
                             onSave={(quantity) =>
-                              commit("plan.quantity", { id: l.id, quantity })
+                              savePlannedQuantity(l.id, quantity)
                             }
                           />
                         </td>

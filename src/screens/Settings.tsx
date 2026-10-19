@@ -1,3 +1,5 @@
+import {BackupPanel} from '../components/BackupPanel.tsx';
+import type {OriginalBackup} from '../data/backup.ts';
 import {activeLocations,purchasingLocation} from "../domain/locations.ts";
 import {useState} from 'react';
 import type {ScreenProps} from '../App.tsx';
@@ -6,10 +8,9 @@ import {startScreens} from '../data/preferences.ts';
 import {deliveryDays} from '../ui/facts.ts';
 import {useDraftGuard} from '../hooks/useDraftGuard.ts';
 import {DiscardChangesDialog} from '../components/DiscardChangesDialog.tsx';
-export default function Settings({state,busy,commit,saveError,mode,preferences,onPreferences,canConfigure,canClose,storageBytes,onBackup}:ScreenProps & {preferences:UserPreferences;onPreferences:(value:UserPreferences)=>void;canConfigure:boolean;canClose:boolean;storageBytes:number;onBackup:()=>Promise<string[]>}) {
+export default function Settings({state,busy,commit,saveError,mode,preferences,onPreferences,canConfigure,canClose,storageBytes,onBackup}:ScreenProps & {preferences:UserPreferences;onPreferences:(value:UserPreferences)=>void;canConfigure:boolean;canClose:boolean;storageBytes:number;onBackup:(originals:OriginalBackup[])=>Promise<string[]>}) {
  const initial={name:state.event.name,year:state.event.year,dates:{...state.event.dates},deliveryAddress:state.event.deliveryAddress??'',contact:state.event.contact??'',locations:state.event.locations??activeLocations(state).map(name=>({name,historicalNames:[]})),purchasingLocation:purchasingLocation(state)};
  const [draft,setDraft]=useState(initial),[error,setError]=useState('');
- const [backingUp,setBackingUp]=useState(false),[backupMessage,setBackupMessage]=useState('');
  const guard=useDraftGuard({dirty:JSON.stringify(draft)!==JSON.stringify(initial),onDiscard:()=>setDraft(initial)});
  const historical=[...new Set([...state.planLines.map(l=>l.location),...state.movements.map(l=>l.location),...state.invoices.map(l=>l.scope)].filter((v):v is string=>!!v))].sort();
  return <section><h1>Einstellungen</h1>
@@ -31,6 +32,7 @@ export default function Settings({state,busy,commit,saveError,mode,preferences,o
  <p>Historisch vorhanden: {historical.join(' · ')||'keine Angaben'}</p>
  <button className="button primary" type="submit">Veranstaltung speichern</button></fieldset>{(error||saveError)&&<p role="alert">{error||saveError}</p>}</form></section>
  <section className="panel"><h2>Verwaltung</h2><p>Arbeitsdaten: {(storageBytes/1024).toLocaleString('de-DE',{maximumFractionDigits:1})} von 512 KiB belegt.</p><progress max={524288} value={storageBytes} aria-label="Speicherbelegung"/><p>Veranstaltungsabschluss: {canClose?'Berechtigung bestätigt':'keine bestätigte Berechtigung'}.</p><p>Dokumentenablage: In dieser App noch nicht eingerichtet.</p><p>Automatische Belegerkennung: Noch nicht eingerichtet.</p></section>
- <section className="panel"><h2>Datensicherung</h2><p>CSV und Druckdateien sind Auswertungen. Diese Datensicherung enthält den gespeicherten Arbeitsbereich mit Archiven und Historien, ist aber ausdrücklich unvollständig: Originaldateien, Dokument-/Entwurftabellen, vollständige Microsoft-Rohdaten und Wiederholungsbelege können über die aktuelle App-Verbindung noch nicht vollständig gelesen werden. Sie reicht nicht für eine vollständige Wiederherstellung.</p>{canConfigure&&canClose&&<button className="button secondary" disabled={busy||backingUp} onClick={async()=>{setBackingUp(true);setBackupMessage('');try{const missing=await onBackup();setBackupMessage(`Unvollständige Sicherung heruntergeladen. ${missing.length} fehlende Nachweise sind in der Datei vermerkt.`);}catch(e){setBackupMessage((e as Error).message);}finally{setBackingUp(false);}}}>Unvollständige Datensicherung herunterladen</button>}{(!canConfigure||!canClose)&&<p>Datensicherung benötigt bestätigte Eigentümerrechte.</p>}{backupMessage&&<p role="status">{backupMessage}</p>}</section>
+ <BackupPanel state={state} busy={busy} canConfigure={canConfigure} canClose={canClose} onBackup={onBackup}/>
+
  {guard.confirming&&<DiscardChangesDialog onDiscard={guard.confirmDiscard} onKeepEditing={guard.keepEditing}/>}</section>;
 }

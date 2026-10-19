@@ -243,6 +243,24 @@ export function createMicrosoftRepository(
       }
       return structuredClone(current);
     },
+    async backupSnapshot() {
+      if (!identity || !canConfigure || !canClose || quarantined())
+        throw new Error("Vollsicherung benötigt bestätigte Eigentümerrechte.");
+      const expectedIdentity = JSON.stringify(identity);
+      // Deliberately bypass load(): ordinary load may resume a pending commit.
+      const response = await envelope(await api.load(JSON.stringify({
+        protocolVersion: 2, workspaceId, view: "backup", identity,
+      })));
+      const confirmed = responseIdentity(response);
+      if (JSON.stringify(confirmed) !== expectedIdentity || response.view !== "backup") throw invalid();
+      capabilities(response);
+      if (!canConfigure || !canClose || !object(response.snapshot)) throw invalid();
+      const snapshot = response.snapshot;
+      if (snapshot.environment !== identity.organizationId || snapshot.workspaceId !== workspaceId
+          || snapshot.schemaValidation?.policy !== "kitchen-schema2-net-evidence-v1") throw invalid();
+      stateValue(snapshot.state);
+      return structuredClone(snapshot) as import("./backup.ts").BackupInputs;
+    },
     async commit(op) {
       if(quarantined())throw new RejectedError(legacyMessage);
       if (!current || !canWrite || !identity)

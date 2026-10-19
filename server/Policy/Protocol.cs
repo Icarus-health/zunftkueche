@@ -22,7 +22,7 @@ namespace Zunftkueche
     }
     public static class Protocol
     {
-        public static readonly HashSet<string> Operations = new HashSet<string> { "delivery.accept", "plan.allocate", "drink.configure", "event.close", "event.reopen", "lesson.add", "movement.correct", "sales.correctPrice", "invoice.correct", "order.mark", "supplier.save", "article.save", "menu.save", "dish.quantity", "dish.fillMissing", "event.create", "event.settings", "event.dates", "purchase.apply", "invoice.save", "invoice.update", "plan.quantity", "plan.schedule", "plan.add", "menu.price", "article.price", "order.prepare", "stock.opening", "delivery.record", "stock.count", "stock.waste", "stock.return", "stock.consume", "sales.quantity", "sales.price", "recipe.save", "invoice.link" };
+        public static readonly HashSet<string> Operations = new HashSet<string> { "event.economics", "plan.allocationQuantity", "delivery.accept", "plan.allocate", "drink.configure", "event.close", "event.reopen", "lesson.add", "movement.correct", "sales.correctPrice", "invoice.correct", "order.mark", "supplier.save", "article.save", "menu.save", "dish.quantity", "dish.fillMissing", "event.create", "event.settings", "event.dates", "purchase.apply", "invoice.save", "invoice.update", "plan.quantity", "plan.schedule", "plan.add", "menu.price", "article.price", "order.prepare", "stock.opening", "delivery.record", "stock.count", "stock.waste", "stock.return", "stock.consume", "sales.quantity", "sales.price", "recipe.save", "invoice.link" };
         public static JObject Parse(string raw)
         {
             StatePolicy.Require(raw != null && Encoding.UTF8.GetByteCount(raw) <= 655360, "Request too large.");
@@ -56,6 +56,12 @@ namespace Zunftkueche
         public static JObject Load(string raw, IKitchenStore store)
         {
             var q = Parse(raw);
+            if (q["view"] != null)
+            {
+                StatePolicy.Require((string?)q["view"] == "backup"
+                    && q.Properties().All(p => new[] { "protocolVersion", "workspaceId", "view", "identity" }.Contains(p.Name)), "Unknown load view.");
+                return BackupProtocol.Load(q, store);
+            }
             StatePolicy.Require(q.Properties().All(p => new[] { "protocolVersion", "workspaceId" }.Contains(p.Name)), "Unknown load field.");
             var row = store.Read(WorkspaceId(q));
             StatePolicy.Validate(row.State, row.State);

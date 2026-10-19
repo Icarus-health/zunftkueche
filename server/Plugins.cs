@@ -39,7 +39,7 @@ namespace Zunftkueche
             // OrganizationService faults MUST escape. Never continue inside a failed transaction.
         }
     }
-    internal sealed class DataverseStore : IKitchenStore
+    internal sealed partial class DataverseStore : IKitchenStore
     {
         const string WorkspaceTable = "zk_kitchenworkspace", ReceiptTable = "zk_kitchenoperation";
         readonly IOrganizationService service; readonly IPluginExecutionContext context;
