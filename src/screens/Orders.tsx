@@ -344,6 +344,8 @@ export default function Orders({
               </tbody>
             </ResponsiveTable>
             <p className="muted">
+              {previewHeader.deliveryAddress && <span>Lieferadresse: {previewHeader.deliveryAddress}<br/></span>}
+              {previewHeader.contact && <span>Ansprechpartner: {previewHeader.contact}<br/></span>}
               {formatDeliveryDate(previewHeader.deliveryDate)} · Versandstatus:
               offen.
             </p>

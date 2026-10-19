@@ -2298,3 +2298,8 @@ th small {
   .secondary-actions > summary { padding-left: 0; }
   .secondary-actions .button { white-space: normal; width: 100%; }
 }
+
+@media (min-width: 761px) {
+  .density-compact td, .density-compact th { padding-top: .45rem; padding-bottom: .45rem; }
+  .density-compact .panel { padding: 1rem; }
+}

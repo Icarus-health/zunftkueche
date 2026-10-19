@@ -50,11 +50,14 @@ namespace Zunftkueche
         }
         public Workspace Read(Guid id)
         {
-            var row = service.Retrieve(WorkspaceTable, id, new ColumnSet("zk_state", "zk_revision", "versionnumber"));
+            var row = service.Retrieve(WorkspaceTable, id, new ColumnSet("zk_state", "zk_revision", "versionnumber", "ownerid"));
             var access = (RetrievePrincipalAccessResponse)service.Execute(new RetrievePrincipalAccessRequest { Principal = new EntityReference("systemuser", context.InitiatingUserId), Target = new EntityReference(WorkspaceTable, id) });
             StatePolicy.Require((access.AccessRights & AccessRights.ReadAccess) != 0, "Workspace read permission required.");
             var state = Protocol.Parse(row.GetAttributeValue<string>("zk_state"));
-            return new Workspace { Id = id, State = state, Revision = row.GetAttributeValue<int>("zk_revision"), RowVersion = row.RowVersion, CanWrite = (access.AccessRights & AccessRights.WriteAccess) != 0 };
+            var owner=row.GetAttributeValue<EntityReference>("ownerid");
+            bool canEdit=(access.AccessRights & AccessRights.WriteAccess) != 0;
+            bool canConfigure=canEdit && owner?.LogicalName=="systemuser" && owner.Id==context.InitiatingUserId;
+            return new Workspace { OrganizationId=context.OrganizationId, UserId=context.InitiatingUserId, CanConfigure=canConfigure, CanClose=canConfigure, Id = id, State = state, Revision = row.GetAttributeValue<int>("zk_revision"), RowVersion = row.RowVersion, CanWrite = (access.AccessRights & AccessRights.WriteAccess) != 0 };
         }
         public ReceiptRecord? FindReceipt(Guid workspaceId, string operationId)
         {

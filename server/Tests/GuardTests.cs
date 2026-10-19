@@ -38,7 +38,7 @@ static class GuardTests
     {
         var actor = Guid.NewGuid();
         var workspace = FakeStore.WorkspaceId;
-        var binding = new JObject {{"protocolVersion",1},{"workspaceId",workspace.ToString("D")},{"operationId","operation"}}.ToString();
+        var binding = new JObject {{"protocolVersion",2},{"workspaceId",workspace.ToString("D")},{"operationId","operation"}}.ToString();
         var parent = ContextProxy.Create(new() { { "InputParameters", new ParameterCollection {{"RequestJson",binding}} }, { "MessageName", "zk_KitchenCommit" }, { "Mode", 0 }, { "Stage", 30 }, { "IsInTransaction", true }, { "UserId", actor }, { "InitiatingUserId", actor }, { "SharedVariables", new ParameterCollection { { "zk.KitchenCommit.InternalWrite.v1", workspace + "|operation" } } } });
         var target = new Entity("zk_kitchenworkspace", workspace) { ["zk_state"] = "{}", ["zk_revision"] = 1 };
         Dictionary<string, object?> Context(string message, Entity entity) => new() { { "ParentContext", parent }, { "MessageName", message }, { "Stage", 20 }, { "Mode", 0 }, { "IsInTransaction", true }, { "UserId", actor }, { "InitiatingUserId", actor }, { "InputParameters", new ParameterCollection { { "Target", entity } } } };

@@ -20,7 +20,7 @@ import {
   kitchenDays,
   receiptTotals,
   eventDate,
-  defaultLocations,
+  configuredLocations,
 } from "../ui/facts.ts";
 export default function Analysis({ state, busy, commit, go }: ScreenProps) {
   const {navigate} = useDraftNavigation();
@@ -48,7 +48,7 @@ export default function Analysis({ state, busy, commit, go }: ScreenProps) {
     ),
   );
   const scopes = [
-    ...new Set([...defaultLocations, ...state.invoices.map((i) => i.scope)]),
+    ...new Set([...configuredLocations(state), ...state.invoices.map((i) => i.scope)]),
   ];
   return (
     <>

@@ -1,4 +1,5 @@
-import { applyOperation } from "../domain/state.ts";
+import { applyEventOperation } from "../domain/event-context.ts";
+import type { ConfirmedIdentity } from "./preferences.ts";
 import type { KitchenState, Operation } from "../domain/state.ts";
 import type { Repository } from "./repository.ts";
 import { RejectedError } from "./repository.ts";
@@ -161,26 +162,24 @@ export function createMicrosoftRepository(
     throw new Error("Microsoft-Arbeitsbereich-ID fehlt oder ist ungültig.");
   }
   workspaceId = workspaceId.toLowerCase();
-  const key = `zunftkueche.pending.v1.${workspaceId}`;
+  const legacyKey = `zunftkueche.pending.v1.${workspaceId}`;
+  let key = "";
   let current: KitchenState | null = null;
-  let canWrite = false;
+  let canWrite = false, canConfigure = false, canClose = false;
+  let identity: ConfirmedIdentity | null = null;
   let pending: PendingRequest | null = null;
-  const prior = store?.getItem(key);
-  if (prior) {
-    const parsed = JSON.parse(prior);
-    if (
-      !object(parsed) ||
-      typeof parsed.request !== "string" ||
-      !object(parsed.operation)
-    )
-      throw invalid();
-    const request = JSON.parse(parsed.request);
-    if (
-      request.workspaceId !== workspaceId ||
-      request.operationId !== parsed.operation.id
-    )
-      throw invalid();
-    pending = parsed as PendingRequest;
+  const legacyMessage = "Eine offene Änderung aus der vorherigen Version wurde unverändert gesichert. Bitte zuerst mit der Verwaltung klären; bis dahin ist das Speichern gesperrt.";
+  const quarantined = () => store?.getItem(legacyKey) !== null && store?.getItem(legacyKey) !== undefined;
+  function responseIdentity(value: Record<string, any>): ConfirmedIdentity {
+    const i=value.identity;
+    const uuid=(v:unknown)=>typeof v==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) && v!=='00000000-0000-0000-0000-000000000000';
+    if(!object(i)||!uuid(i.organizationId)||!uuid(i.userId)||i.workspaceId!==workspaceId)throw invalid();
+    return {organizationId:i.organizationId.toLowerCase(),userId:i.userId.toLowerCase(),workspaceId};
+  }
+  function capabilities(response:Record<string,any>) {
+    for(const key of ['canEdit','canConfigure','canClose'])if(typeof response[key]!=='boolean')throw invalid();
+    if((response.canConfigure||response.canClose)&&!response.canEdit)throw invalid();
+    canWrite=response.canEdit;canConfigure=response.canConfigure;canClose=response.canClose;
   }
 
   async function envelope(result: Awaited<ReturnType<KitchenApi["load"]>>) {
@@ -195,7 +194,7 @@ export function createMicrosoftRepository(
     const value: unknown = JSON.parse(result.data.ResultJson);
     if (
       !object(value) ||
-      value.protocolVersion !== 1 ||
+      value.protocolVersion !== 2 ||
       value.workspaceId !== workspaceId
     )
       throw invalid();
@@ -205,16 +204,30 @@ export function createMicrosoftRepository(
   const repo: Repository = {
     mode: "microsoft",
     get canWrite() {
-      return canWrite;
+      return canWrite && !quarantined();
     },
+    get canEdit() {return canWrite && !quarantined();},
+    get canConfigure() {return canConfigure && !quarantined();},
+    get canClose() {return canClose && !quarantined();},
+    get identity() {return identity ? {...identity} : null;},
+    get blockedReason() {return quarantined()?legacyMessage:"";},
     async load() {
-      canWrite = false;
+      canWrite = false;canConfigure=false;canClose=false;identity=null;current=null;pending=null;
       const response = await envelope(
-        await api.load(JSON.stringify({ protocolVersion: 1, workspaceId })),
+        await api.load(JSON.stringify({ protocolVersion: 2, workspaceId })),
       );
-      if (typeof response.canWrite !== "boolean") throw invalid();
+      const confirmed=responseIdentity(response);
       current = stateValue(response.state);
-      canWrite = response.canWrite;
+      identity=confirmed;
+      key=`zunftkueche.pending.v2.${identity.organizationId}.${identity.userId}.${workspaceId}`;
+      const prior=store?.getItem(key);
+      if(prior && !quarantined()) {
+        const parsed=JSON.parse(prior),request=JSON.parse(parsed.request);
+        if(!object(parsed.operation)||request.protocolVersion!==2||request.workspaceId!==workspaceId||request.operationId!==parsed.operation.id||request.targetEventId!==parsed.operation.targetEventId||JSON.stringify(request.identity)!==JSON.stringify(identity))throw invalid();
+        pending=parsed;
+      }
+      capabilities(response);
+      if(quarantined())return structuredClone(current);
       // A browser reload resumes the exact persisted request, including its original revision.
       if (pending) {
         if (!canWrite)
@@ -231,7 +244,8 @@ export function createMicrosoftRepository(
       return structuredClone(current);
     },
     async commit(op) {
-      if (!current || !canWrite)
+      if(quarantined())throw new RejectedError(legacyMessage);
+      if (!current || !canWrite || !identity)
         throw new RejectedError("Keine bestätigte Schreibberechtigung.");
       if (pending && JSON.stringify(pending.operation) !== JSON.stringify(op)) {
         throw new RejectedError(
@@ -241,14 +255,17 @@ export function createMicrosoftRepository(
       if (!pending) {
         let result;
         try {
-          result = applyOperation(current, op);
+          if(!op.targetEventId)throw new Error("Zielveranstaltung fehlt. Bitte neu laden.");
+          result = applyEventOperation(current, op.targetEventId, op);
         } catch (error) {
           throw new RejectedError((error as Error).message);
         }
         if (result.status === "conflict")
           return { status: "conflict", state: structuredClone(current) };
         const request = JSON.stringify({
-          protocolVersion: 1,
+          protocolVersion: 2,
+          targetEventId: op.targetEventId,
+          identity,
           workspaceId,
           operationId: op.id,
           expectedRevision: op.baseRevision,
@@ -267,7 +284,11 @@ export function createMicrosoftRepository(
         }
       }
       const response = await envelope(await api.commit(pending.request));
+      const confirmed=responseIdentity(response);
+      if(JSON.stringify(confirmed)!==JSON.stringify(identity)){canWrite=false;canConfigure=false;canClose=false;identity=null;throw new Error("Benutzerkonto geändert. Bitte neu laden; offene Änderung bleibt gesichert.");}
+      capabilities(response);
       if (
+        response.targetEventId !== op.targetEventId ||
         response.operationId !== op.id ||
         !["saved", "conflict", "rejected"].includes(response.status)
       )

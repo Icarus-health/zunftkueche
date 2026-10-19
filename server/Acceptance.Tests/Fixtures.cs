@@ -94,7 +94,7 @@ public sealed class RuntimeFake:IAcceptanceTransport,IKitchenStore {
   }
   return Task.FromResult(new Outcome(200,new JsonObject{["ResultJson"]=result.ToString(Formatting.None)}));
  }
- public Workspace Read(Guid id)=>new(){Id=id,Revision=(int)State["revision"]!,State=(JObject)State.DeepClone(),CanWrite=true,RowVersion="1"};
+ public Workspace Read(Guid id)=>new(){Id=id,Revision=(int)State["revision"]!,State=(JObject)State.DeepClone(),CanWrite=true,CanConfigure=true,CanClose=true,UserId=Actor,OrganizationId=Guid.Parse("22222222-2222-4333-8444-555555555555"),RowVersion="1"};
  public ReceiptRecord? FindReceipt(Guid workspaceId,string op){var row=Receipts.SingleOrDefault(r=>r["zk_operationid"]!.GetValue<string>()==op);return row==null?null:new(){Hash=row["zk_requesthash"]!.GetValue<string>(),Actor=Guid.Parse(row["zk_actor"]!.GetValue<string>()),AppliedRevision=row["zk_appliedrevision"]!.GetValue<int>()};}
  public void Commit(Workspace prior,JObject next,string op,string hash,Guid actor,DateTime timestamp) {
   Commits++;State=(JObject)next.DeepClone();

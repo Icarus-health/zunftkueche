@@ -135,7 +135,7 @@ if (args.Length > 1)
         ExpectReject(() => StatePolicy.Validate(candidate, (JObject)corpus[7]!));
     });
 }
-JObject Request(JObject s, string id = "new-op") { var candidate = (JObject)s.DeepClone(); candidate["revision"] = (int)s["revision"]! + 1; ((JArray)candidate["operationIds"]!).Add(id); ((JObject)candidate["operationRequests"]!)[id] = "client-untrusted"; candidate["articles"]![0]!["unitPriceCents"] = 12.34; return new JObject { { "protocolVersion", 1 }, { "workspaceId", FakeStore.WorkspaceId.ToString() }, { "operationId", id }, { "expectedRevision", (int)s["revision"]! }, { "operation", new JObject { { "type", "article.price" }, { "payload", new JObject { { "articleId", "a-1" }, { "priceCents", 12.34 } } } } }, { "candidateState", candidate } }; }
+JObject Request(JObject s, string id = "new-op") { var candidate = (JObject)s.DeepClone(); candidate["revision"] = (int)s["revision"]! + 1; ((JArray)candidate["operationIds"]!).Add(id); ((JObject)candidate["operationRequests"]!)[id] = "client-untrusted"; candidate["articles"]![0]!["unitPriceCents"] = 12.34; return new JObject { { "protocolVersion", 2 }, { "workspaceId", FakeStore.WorkspaceId.ToString() }, { "identity", new JObject{{"organizationId",Guid.Empty.ToString("D")},{"userId",Guid.Empty.ToString("D")},{"workspaceId",FakeStore.WorkspaceId.ToString("D")}} }, { "targetEventId",(string)s["event"]!["id"]! }, { "operationId", id }, { "expectedRevision", (int)s["revision"]! }, { "operation", new JObject { { "type", "article.price" }, { "payload", new JObject { { "articleId", "a-1" }, { "priceCents", 12.34 } } } } }, { "candidateState", candidate } }; }
 void ExpectReject(Action action) { try { action(); } catch (ArgumentException) { return; } throw new Exception("request accepted"); }
 var actor = Guid.Parse("77777777-8888-4999-aaaa-bbbbbbbbbbbb");
 Check("fractional protocol version rejected", () => { var q = Request(seed); q["protocolVersion"] = 1.1; ExpectReject(() => Protocol.Commit(q.ToString(), actor, true, new FakeStore(seed))); });
@@ -156,6 +156,21 @@ Check("post-write validation-shaped storage faults must escape", () => {
     try {Protocol.Commit(Request(seed).ToString(),actor,true,store);}catch(ArgumentException){if(store.Writes!=1)throw new Exception("test did not cross storage boundary");return;}
     throw new Exception("storage failure became definitive rejection");
 });
+Check("non-owner renamed metadata cannot alter event configuration", () => {
+ var store=new FakeStore(seed);var q=Request(seed);q["candidateState"]!["event"]!["name"]="Unauthorized";
+ var result=Protocol.Commit(q.ToString(),actor,true,store);
+ if((string?)result["status"]!="rejected"||store.Writes!=0)throw new Exception("configuration bypass accepted");
+});
+Check("non-owner closure and unknown configuration fail closed", () => {
+ foreach(var key in new[]{"status","documentDestination"}) {var store=new FakeStore(seed);var q=Request(seed);q["candidateState"]!["event"]![key]="closed";
+ if((string?)Protocol.Commit(q.ToString(),actor,true,store)["status"]!="rejected"||store.Writes!=0)throw new Exception("privileged field bypass accepted");}
+});
+if(args.Length>2)Check("actual TS protocol v2 candidate target signature and archive parity",()=>{
+ using var reader=new Newtonsoft.Json.JsonTextReader(new StringReader(File.ReadAllText(args[2]))){DateParseHandling=Newtonsoft.Json.DateParseHandling.None};var corpus=JObject.Load(reader);
+ var store=new FakeStore((JObject)corpus["initial"]!);store.Row.CanConfigure=true;store.Row.CanClose=true;
+ foreach(var q in (JArray)corpus["requests"]!){store.Receipt=null;var response=Protocol.Commit(q.ToString(),actor,true,store);if((string?)response["status"]!="saved"||!JToken.DeepEquals(Protocol.Canonical(response["state"]!),Protocol.Canonical(q["candidateState"]!))||(string?)response["targetEventId"]!=(string?)q["targetEventId"])throw new Exception("v2 parity failed: "+q["operationId"]);}
+});
+EventContextTests.Run(Check,seed);
 GuardTests.Run(Check);
 WrapperTests.Run(Check);
 RequestBindingTests.Run(Check,seed);

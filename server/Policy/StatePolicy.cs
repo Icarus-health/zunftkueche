@@ -81,6 +81,7 @@ namespace Zunftkueche
             if (Null(t))
                 return;
             var s = Obj(t);
+            Fields(s,"file hash sheet cells page");
             Str(s["file"], 2048);
             Require(Regex.IsMatch(Str(s["hash"], 64), "^[0-9a-fA-F]{64}$"), "Invalid source hash.");
             OptionalString(s, "sheet");
@@ -145,8 +146,9 @@ namespace Zunftkueche
         }
         static JArray Economics(JObject r) => new JArray(new[] { "supplierId", "number", "date", "grossCents", "netCents", "lines" }.Select(k => r[k]?.DeepClone() ?? JValue.CreateNull()));
         static string InvoiceKey(JObject r) => Str(r["supplierId"], 500) + "\n" + Str(r["number"], 100).Trim().ToUpperInvariant();
-        static void Receipt(JObject r, Dictionary<string, JObject> suppliers, Dictionary<string, JObject> articles)
+        static void Receipt(JObject r, Dictionary<string, JObject> suppliers, Dictionary<string, JObject> articles, bool snapshot = false)
         {
+            Fields(r,"id supplierId number date grossCents netCents scope status documentUrl localPath source lines" + (snapshot ? "" : " sourceBaseline corrected corrections"));
             Ref(r, "supplierId", suppliers);
             Str(r["number"], 100);
             Str(r["scope"], 100);
@@ -168,6 +170,7 @@ namespace Zunftkueche
             foreach (var v in lines)
             {
                 var l = Obj(v);
+                Fields(l,"articleId name quantity unit netCents");
                 Str(l["name"]);
                 Str(l["unit"], 50);
                 Quantity(l["quantity"]);
@@ -181,6 +184,7 @@ namespace Zunftkueche
         }
         static void Plan(JObject p, Dictionary<string, JObject> suppliers, Dictionary<string, JObject> articles)
         {
+            Fields(p,"id articleId supplierId name quantity unit day time unitPriceCents note lesson category location source purchaseGenerated purchaseForWeekend");
             var article = articles[Ref(p, "articleId", articles)];
             Ref(p, "supplierId", suppliers);
             Same(article["supplierId"], p["supplierId"], "Plan supplier mismatch.");
@@ -202,7 +206,16 @@ namespace Zunftkueche
         static void Event(JObject e, JObject? previous)
         {
             Require(Number(e["schemaVersion"], 2) == 2, "Unsupported schema.");
+            Fields(e,"schemaVersion event suppliers articles planLines menu invoices sales movements orders dishPlan lessons sourceNotice revision operationIds operationRequests archivedEvents");
             var ev = Obj(e["event"]);
+            Fields(ev,"id name year status dates deliveryAddress contact locations");
+            OptionalString(ev,"deliveryAddress",1000);OptionalString(ev,"contact",200);
+            if(ev["locations"]!=null) {
+                var names=new HashSet<string>();var aliases=new HashSet<string>();
+                var historical=new HashSet<string>(Arr(e["planLines"]).Concat(Arr(e["movements"])).Select(v=>(string?)v["location"]??"").Concat(Arr(e["invoices"]).Select(v=>(string?)v["scope"]??"")));
+                Require(Arr(ev["locations"]).Count<=100,"Too many locations.");
+                foreach(var item in Arr(ev["locations"])) {var location=Obj(item);Fields(location,"name historicalNames");Require(names.Add(Str(location["name"],100)),"Duplicate location.");foreach(var alias in Arr(location["historicalNames"]))Require(historical.Contains(Str(alias,100))&&aliases.Add(Str(alias,100)),"Invalid historical location mapping.");}
+            }
             Str(ev["id"], 500);
             Str(ev["name"]);
             Str(ev["status"], 100);
@@ -219,12 +232,14 @@ namespace Zunftkueche
             var menu = maps["menu"];
             foreach (var s in suppliers.Values)
             {
+                Fields(s,"id name email");
                 Str(s["name"]);
                 if (!Null(s["email"]))
                     Require(Regex.IsMatch(Str(s["email"], 254), @"^[^\s@]+@[^\s@]+\.[^\s@]+$"), "Invalid email.");
             }
             foreach (var a in articles.Values)
             {
+                Fields(a,"id name supplierId unit category unitPriceCents packSize previousUnitPriceCents priceReferenceYear");
                 Ref(a, "supplierId", suppliers);
                 Str(a["name"]);
                 Str(a["unit"], 50);
@@ -241,6 +256,7 @@ namespace Zunftkueche
                 Plan(p, suppliers, articles);
             foreach (var m in menu.Values)
             {
+                Fields(m,"id name priceCents category recipe recipeStatus source");
                 Str(m["name"]);
                 Str(m["category"], 100);
                 Str(m["recipeStatus"], 100);
@@ -251,6 +267,7 @@ namespace Zunftkueche
                 foreach (var v in recipe)
                 {
                     var l = Obj(v);
+                    Fields(l,"articleId quantity");
                     Require(refs.Add(Ref(l, "articleId", articles)), "Duplicate recipe article.");
                     Quantity(l["quantity"]);
                 }
@@ -264,16 +281,17 @@ namespace Zunftkueche
                     Require(r["corrected"]!.Type == JTokenType.Boolean, "Invalid correction flag.");
                 if (r["sourceBaseline"] != null)
                 {
-                    Receipt(Obj(r["sourceBaseline"]), suppliers, articles);
+                    Receipt(Obj(r["sourceBaseline"]), suppliers, articles, true);
                     Require(!Null(r["source"]), "Baseline without source.");
                 }
                 if (r["corrections"] != null)
                     foreach (var v in Arr(r["corrections"]))
                     {
                         var c = Obj(v);
+                        Fields(c,"operationId revision before");
                         Str(c["operationId"], 100);
                         Number(c["revision"], int.MaxValue);
-                        Receipt(Obj(c["before"]), suppliers, articles);
+                        Receipt(Obj(c["before"]), suppliers, articles, true);
                     }
             }
             foreach (var group in maps["invoices"].Values.GroupBy(InvoiceKey).Where(g => g.Count() > 1))
@@ -287,6 +305,7 @@ namespace Zunftkueche
             var saleKeys = new HashSet<string>();
             foreach (var s in maps["sales"].Values)
             {
+                Fields(s,"id menuId day quantity priceCents");
                 Ref(s, "menuId", menu);
                 Day(s["day"]);
                 Number(s["quantity"], 10000000, 0, true);
@@ -296,6 +315,7 @@ namespace Zunftkueche
             var dishKeys = new HashSet<string>();
             foreach (var d in maps["dishPlan"].Values)
             {
+                Fields(d,"id menuId day quantity");
                 Ref(d, "menuId", menu);
                 Require((string?)d["day"] == "Freitag" || (string?)d["day"] == "Samstag", "Invalid dish day.");
                 Number(d["quantity"], 10000000, 0, true);
@@ -303,6 +323,7 @@ namespace Zunftkueche
             }
             foreach (var m in maps["movements"].Values)
             {
+                Fields(m,"id articleId day type quantity location note");
                 Ref(m, "articleId", articles);
                 Day(m["day"]);
                 Quantity(m["quantity"], false);
@@ -313,13 +334,15 @@ namespace Zunftkueche
             var previousOrders = previous == null ? null : Index(previous["orders"]);
             foreach (var o in maps["orders"].Values)
             {
+                Fields(o,"id supplierId day status createdAt lines groups totalCents context");
                 Ref(o, "supplierId", suppliers);
                 Day(o["day"]);
                 // Absent context is a legacy snapshot; never reconstruct its history.
                 if (o["context"] != null)
                 {
                     var context = Obj(o["context"]);
-                    Require(context.Count == 4, "Invalid order context fields.");
+                    Fields(context,"supplierName eventName eventYear deliveryDate deliveryAddress contact");
+                    OptionalString(context,"deliveryAddress",1000);OptionalString(context,"contact",200);
                     Str(context["supplierName"]);
                     Str(context["eventName"]);
                     Require(Number(context["eventYear"], 2200) >= 1900, "Invalid order event year.");
@@ -327,6 +350,8 @@ namespace Zunftkueche
                     Date(context["deliveryDate"]);
                     if (previousOrders != null && !previousOrders.ContainsKey((string)o["id"]!))
                     {
+                        if(context["deliveryAddress"]!=null || ev["deliveryAddress"]!=null)Same(context["deliveryAddress"],ev["deliveryAddress"]??new JValue(""),"Order address mismatch.");
+                        if(context["contact"]!=null || ev["contact"]!=null)Same(context["contact"],ev["contact"]??new JValue(""),"Order contact mismatch.");
                         var supplier = suppliers[(string)o["supplierId"]!];
                         Same(context["supplierName"], supplier["name"], "New order supplier context mismatch.");
                         Same(context["eventName"], ev["name"], "New order event context mismatch.");
@@ -354,6 +379,7 @@ namespace Zunftkueche
                 foreach (var g in groups)
                 {
                     var group = Obj(g);
+                    Fields(group,"time lines");
                     foreach (var l in Arr(group["lines"]))
                     {
                         Same(l["time"], group["time"], "Snapshot grouping time mismatch.");
@@ -371,6 +397,7 @@ namespace Zunftkueche
                 else
                     Require(Null(o["totalCents"]), "Incomplete order prices require null total.");
             }
+            foreach(var lesson in maps["lessons"].Values) {Fields(lesson,"id note");Str(lesson["note"],4000,true);}
             if (previous == null)
                 return;
             foreach (var k in Collections)
@@ -458,11 +485,42 @@ namespace Zunftkueche
             var result = new Dictionary<string, JObject>();
             foreach (var e in new[] { state }.Concat((state["archivedEvents"] as JArray ?? new JArray()).Select(Obj)))
             {
+                if(!ReferenceEquals(e,state))Require(new[]{"archivedEvents","revision","operationIds","operationRequests"}.All(k=>e[k]==null),"Archive contains aggregate fields.");
                 var id = Str(Obj(e["event"])["id"], 500);
                 Require(!result.ContainsKey(id), "Duplicate event ID.");
                 result[id] = e;
             }
             return result;
+        }
+        static void Fields(JObject o, string fields) {
+            var allowed=new HashSet<string>(fields.Split(' '));
+            Require(o.Properties().All(p=>allowed.Contains(p.Name)), "Unknown state field.");
+        }
+        static JObject Slice(JObject state) {
+            var slice=(JObject)state.DeepClone();
+            foreach(var key in new[]{"archivedEvents","revision","operationIds","operationRequests"})slice.Remove(key);
+            return slice;
+        }
+        public static void ValidateScope(JObject candidate, Workspace row, string targetId, string operationType) {
+            var old=Events(row.State); var next=Events(candidate);
+            Require(old.ContainsKey(targetId), "Unknown target event; reload required.");
+            bool create=operationType=="event.create";
+            Require(create ? row.CanConfigure && next.Count==old.Count+1 : next.Count==old.Count, "Event creation requires configuration permission.");
+            if(create) {
+                Require(!old.ContainsKey((string)candidate["event"]!["id"]!), "New event must be canonical root.");
+                foreach(var e in old)Same(Slice(e.Value),Slice(next[e.Key]),"Creation changed existing event.");
+            } else {
+                Same(row.State["event"]!["id"],candidate["event"]!["id"],"Canonical root cannot switch.");
+                var beforeIds=(row.State["archivedEvents"] as JArray ?? new JArray()).Select(e=>(string?)e["event"]!["id"]);
+                var afterIds=(candidate["archivedEvents"] as JArray ?? new JArray()).Select(e=>(string?)e["event"]!["id"]);
+                Require(beforeIds.SequenceEqual(afterIds), "Archive order changed.");
+                foreach(var e in old)if(e.Key!=targetId)Same(Slice(e.Value),Slice(next[e.Key]),"Non-target event changed.");
+                var prior=old[targetId];var updated=next[targetId];
+                Same(prior["sourceNotice"],updated["sourceNotice"],"Source notice changed.");
+                Same(prior["schemaVersion"],updated["schemaVersion"],"Schema changed.");
+                if(!row.CanConfigure)foreach(var field in new[]{"id","name","year","dates","deliveryAddress","contact","locations"})Same(prior["event"]![field],updated["event"]![field],"Configuration permission required.");
+                if(!row.CanClose) { Same(prior["event"]!["status"],updated["event"]!["status"],"Closure permission required."); Same(prior["lessons"],updated["lessons"],"Closure history permission required."); }
+            }
         }
         public static void Validate(JObject candidate, JObject? previous = null)
         {

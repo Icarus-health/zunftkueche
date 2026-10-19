@@ -25,7 +25,7 @@ test("actual generated classes configure before mount and preserve RequestJson/R
       assert.equal(metadata.zk_kitchencommit.apis.zk_KitchenCommit.parameters[0].name, "RequestJson");
       return { executeAsync: async (request) => {
         requests.push(request);
-        return { success: true, data: { ResultJson: JSON.stringify({ protocolVersion: 1, workspaceId: MICROSOFT_WORKSPACE_ID, canWrite: false, state: {
+        return { success: true, data: { ResultJson: JSON.stringify({ protocolVersion: 2, workspaceId: MICROSOFT_WORKSPACE_ID, canWrite: false, canEdit:false,canConfigure:false,canClose:false,identity:{organizationId:"22222222-2222-4333-8444-555555555555",userId:"33333333-2222-4333-8444-555555555555",workspaceId:MICROSOFT_WORKSPACE_ID}, state: {
           schemaVersion: 2, revision: 0, operationIds: [], operationRequests: {},
           event: { id: "synthetic", name: "Synthetischer Test", year: 2099, dates: {} },
           sourceNotice: "Synthetischer Test", suppliers: [], articles: [], planLines: [], menu: [], invoices: [], sales: [], movements: [], orders: [], dishPlan: [], lessons: [],
@@ -57,7 +57,7 @@ test("actual generated classes configure before mount and preserve RequestJson/R
     assert.equal(repository.mode, "microsoft");
     assert.equal((await repository.load()).event.id, "synthetic");
     assert.deepEqual(requests[0].dataverseRequest, {
-      action: "customapi", parameters: { operationName: "zk_KitchenLoad", tableName: "zk_kitchenload", body: { RequestJson: JSON.stringify({ protocolVersion: 1, workspaceId: MICROSOFT_WORKSPACE_ID }) } },
+      action: "customapi", parameters: { operationName: "zk_KitchenLoad", tableName: "zk_kitchenload", body: { RequestJson: JSON.stringify({ protocolVersion: 2, workspaceId: MICROSOFT_WORKSPACE_ID }) } },
     });
     const { Zk_KitchenCommitService } = await server.ssrLoadModule("/src/generated/services/Zk_KitchenCommitService.ts");
     const result = await Zk_KitchenCommitService.zk_KitchenCommit("exact frozen request bytes");

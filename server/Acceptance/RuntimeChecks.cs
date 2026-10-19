@@ -9,14 +9,14 @@ public static class RuntimeChecks {
   if(ResourceEngine.Id(row,"_ownerid_value")!=actor.ToString("D"))throw new AcceptanceFault("workspace_owner_mismatch");
   var before=Protocol.Parse(row["zk_state"]!.GetValue<string>());int revision=row["zk_revision"]!.GetValue<int>();
   if((int?)before["revision"]!=revision)throw new AcceptanceFault("workspace_revision_mismatch");
-  var load=Checks.Result(await transport.ProbeAsync(new("actual_load",HttpMethod.Post,"zk_KitchenLoad",new JsonObject{["RequestJson"]=new JsonObject{["protocolVersion"]=1,["workspaceId"]=Seed.WorkspaceId}.ToJsonString()}.ToJsonString())));
-  if((int?)load["protocolVersion"]!=1||(string?)load["workspaceId"]!=Seed.WorkspaceId||(bool?)load["canWrite"]!=true||!JToken.DeepEquals(Protocol.Canonical(load["state"]!),Protocol.Canonical(before)))throw new AcceptanceFault("load_persisted_state_mismatch");
+  var load=Checks.Result(await transport.ProbeAsync(new("actual_load",HttpMethod.Post,"zk_KitchenLoad",new JsonObject{["RequestJson"]=new JsonObject{["protocolVersion"]=2,["workspaceId"]=Seed.WorkspaceId}.ToJsonString()}.ToJsonString())));
+  if((int?)load["protocolVersion"]!=2||(string?)load["workspaceId"]!=Seed.WorkspaceId||(bool?)load["canEdit"]!=true||(bool?)load["canConfigure"]!=true||(bool?)load["canClose"]!=true||(string?)load["identity"]?["userId"]!=actor.ToString("D")||!JToken.DeepEquals(Protocol.Canonical(load["state"]!),Protocol.Canonical(before)))throw new AcceptanceFault("load_persisted_state_mismatch");
   evidence.Pass("actual_load_owner_write_matches_persistence",revision:revision);
   var receiptsBefore=await receiptsRead();
   if(receiptsBefore.Any(r=>new[]{Scope.CommitOperation,Scope.ConflictOperation}.Contains(r["zk_operationid"]?.GetValue<string>())))throw new AcceptanceFault("acceptance_operation_already_present_manual_resolution");
-  var frozen=Checks.CommitRequest(before,Scope.CommitOperation,revision);
+  var frozen=Checks.CommitRequest(before,Scope.CommitOperation,revision,(JObject)load["identity"]!);
   string raw=JsonNode.Parse(frozen.Body!)!["RequestJson"]!.GetValue<string>();string hash=Protocol.Hash(raw);
-  var expected=Checks.ExpectedState(before,Scope.CommitOperation);
+  var expected=Checks.ExpectedStateV2(before,Scope.CommitOperation);
   var initial=await snapshot();evidence.Pass("commit_before",revision:initial.Revision,count:initial.OperationCount,hash:initial.Hash);
   async Task VerifySaved() {
    var persisted=await workspace()??throw new AcceptanceFault("app_workspace_missing");
@@ -51,7 +51,7 @@ public static class RuntimeChecks {
   // Reuse the same immutable outer body string: the RequestJson bytes cannot be regenerated.
   var repeated=await PostOnce(frozen,confirmed);await VerifySaved();Checks.CommitResult(repeated,Scope.CommitOperation,"saved",expected,revision+1);
   if(confirmed!=await snapshot())throw new AcceptanceFault("idempotent_repeat_changed_persistence");evidence.Pass("exact_bytes_idempotent_repeat",revision:revision+1);
-  var conflict=Checks.CommitRequest(before,Scope.ConflictOperation,revision);
+  var conflict=Checks.CommitRequest(before,Scope.ConflictOperation,revision,(JObject)load["identity"]!);
   var rejected=await PostOnce(conflict,confirmed);var afterConflict=await snapshot();Checks.CommitResult(rejected,Scope.ConflictOperation,"conflict",expected,null);
   if(confirmed!=afterConflict)throw new AcceptanceFault("conflict_changed_persistence");await VerifySaved();
   evidence.Pass("stale_revision_conflict_unchanged",revision:revision+1);

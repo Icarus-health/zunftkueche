@@ -71,6 +71,9 @@ export interface KitchenState {
     year: number;
     status: string;
     dates: Record<string, string | null>;
+    deliveryAddress?: string;
+    contact?: string;
+    locations?: Array<{name:string;historicalNames:string[]}>;
   };
   suppliers: Supplier[];
   articles: Article[];
@@ -107,6 +110,7 @@ export type EventArchive = Omit<
   "archivedEvents" | "revision" | "operationIds" | "operationRequests"
 >;
 export interface Operation {
+  targetEventId?: string;
   id: string;
   baseRevision: number;
   type: string;
@@ -254,7 +258,7 @@ function requestSignature(op: Operation): string {
     return value;
   };
   const result = JSON.stringify(
-    canonical({ type: op.type, payload: op.payload }),
+    canonical({ type: op.type, payload: op.payload, ...(op.targetEventId ? {targetEventId: op.targetEventId} : {}) }),
   );
   if (result.length > 50000) throw new Error("Vorgang ist zu umfangreich.");
   return result;
@@ -458,6 +462,24 @@ export function applyOperation(
       next.archivedEvents = archives;
       break;
     }
+    case "event.settings": {
+      next.event.name = text(p.name, "Veranstaltungsname");
+      if (!Number.isInteger(p.year) || p.year < 1900 || p.year > 2200) throw new Error("Jahr ist ungültig.");
+      next.event.year = p.year;
+      next.event.deliveryAddress = text(p.deliveryAddress, "Lieferadresse", 1000, true);
+      next.event.contact = text(p.contact, "Ansprechpartner", 200, true);
+      if (!Array.isArray(p.locations) || p.locations.length > 100) throw new Error("Orte sind ungültig.");
+      const names = new Set<string>(), aliases = new Set<string>();
+      const historical = new Set([...next.planLines.map(l=>l.location), ...next.movements.map(l=>l.location), ...next.invoices.map(l=>l.scope)].filter(Boolean));
+      next.event.locations = p.locations.map((l:any) => {
+        const name = text(l.name, "Ort", 100);
+        if(names.has(name)||!Array.isArray(l.historicalNames))throw new Error("Orte sind nicht eindeutig.");
+        names.add(name);
+        const historicalNames=l.historicalNames.map((raw:unknown)=>{const v=text(raw,"Historischer Ort",100);if(aliases.has(v)||!historical.has(v))throw new Error("Historische Zuordnung ist ungültig.");aliases.add(v);return v;});
+        return {name,historicalNames};
+      });
+      // Dates share the same validation as the existing date editor.
+    }
     case "event.dates": {
       if (
         !p.dates ||
@@ -643,7 +665,7 @@ export function applyOperation(
         unitPriceCents: article.unitPriceCents,
         note: text(p.note, "Notiz", 1000, true),
         category: article.category,
-        location: "Küche",
+        location: next.event.locations?.[0]?.name ?? "Küche",
       });
       break;
     }
@@ -692,6 +714,8 @@ export function applyOperation(
           eventName: next.event.name,
           eventYear: next.event.year,
           deliveryDate: next.event.dates[day] ?? null,
+          deliveryAddress: next.event.deliveryAddress ?? "",
+          contact: next.event.contact ?? "",
         },
       });
       break;

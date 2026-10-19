@@ -6,6 +6,7 @@ import { createMicrosoftRepository } from "../src/data/microsoft-repository.ts";
 import { applyOperation } from "../src/domain/state.ts";
 import { RejectedError } from "../src/data/repository.ts";
 const workspaceId = "11111111-2222-4333-8444-555555555555";
+const identity={organizationId:"22222222-2222-4333-8444-555555555555",userId:"33333333-2222-4333-8444-555555555555",workspaceId};
 const seed = () => ({
   ...JSON.parse(readFileSync(new URL("../import/2026.json", import.meta.url))),
   schemaVersion: 2,
@@ -15,12 +16,13 @@ const seed = () => ({
 });
 const wrap = (value) => ({
   success: true,
-  data: { ResultJson: JSON.stringify(value) },
+  data: { ResultJson: JSON.stringify({identity,canEdit:true,canConfigure:false,canClose:false,targetEventId:seed().event.id,...value}) },
 });
 const load = (state) =>
-  wrap({ protocolVersion: 1, workspaceId, canWrite: true, state });
+  wrap({ protocolVersion: 2, workspaceId, canWrite: true, state });
 const operation = (id = "price") => ({
   id,
+  targetEventId: seed().event.id,
   baseRevision: 0,
   type: "article.price",
   payload: { articleId: "a-1", priceCents: 12.34 },
@@ -29,7 +31,7 @@ const hash = (raw) => createHash("sha256").update(raw).digest("hex");
 const rejected = (raw, state) => {
   const q = JSON.parse(raw);
   return wrap({
-    protocolVersion: 1,
+    protocolVersion: 2,
     workspaceId,
     operationId: q.operationId,
     status: "rejected",
@@ -42,7 +44,7 @@ const rejected = (raw, state) => {
 const saved = (raw) => {
   const q = JSON.parse(raw);
   return wrap({
-    protocolVersion: 1,
+    protocolVersion: 2,
     workspaceId,
     operationId: q.operationId,
     status: "saved",
@@ -88,7 +90,8 @@ test("near-limit candidate growth is rejected before persistence and corrected s
   await assert.rejects(
     repo.commit({
       id: "valid-new-supplier",
-      baseRevision: 0,
+      targetEventId: seed().event.id,
+  baseRevision: 0,
       type: "supplier.save",
       payload: { name: "n".repeat(200), email: null },
     }),
@@ -102,7 +105,8 @@ test("near-limit candidate growth is rejected before persistence and corrected s
     (
       await reloaded.commit({
         id: "correct",
-        baseRevision: 0,
+        targetEventId: seed().event.id,
+  baseRevision: 0,
         type: "supplier.save",
         payload: { id: state.suppliers[0].id, name: "A", email: null },
       })
@@ -134,7 +138,8 @@ test("UTF-8 request cap is checked separately from candidate cap before persiste
   assert.ok(
     Buffer.byteLength(
       JSON.stringify({
-        protocolVersion: 1,
+        protocolVersion: 2,
+        targetEventId:seed().event.id, identity,
         workspaceId,
         operationId: op.id,
         expectedRevision: 0,

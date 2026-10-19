@@ -42,9 +42,9 @@ public static class Checks {
    Readiness.RequireGuard(row,handler,ResourceEngine.Id(row,"_sdkmessagefilterid_value"),ResourceEngine.Id(row,"_sdkmessageid_value"));
   }
  }
- public static Probe CommitRequest(JObject state,string operationId,int expectedRevision) {
-  var raw=new JObject{{"protocolVersion",1},{"workspaceId",Seed.WorkspaceId},{"operationId",operationId},{"expectedRevision",expectedRevision},
-   {"operation",new JObject{{"type","event.switch"},{"payload",new JObject{{"id",(string?)state["event"]?["id"]??throw new AcceptanceFault("active_event_missing")}}}}},
+ public static Probe CommitRequest(JObject state,string operationId,int expectedRevision,JObject identity) {
+  var raw=new JObject{{"protocolVersion",2},{"workspaceId",Seed.WorkspaceId},{"identity",identity.DeepClone()},{"targetEventId",(string)state["event"]!["id"]!},{"operationId",operationId},{"expectedRevision",expectedRevision},
+   {"operation",new JObject{{"type","event.dates"},{"payload",new JObject{{"dates",state["event"]!["dates"]!.DeepClone()}}}}},
    {"candidateState",state.DeepClone()}}.ToString(Formatting.None);
   return new(operationId==Scope.CommitOperation?"legitimate_commit":"conflict_commit",HttpMethod.Post,"zk_KitchenCommit",new JsonObject{["RequestJson"]=raw}.ToJsonString());
  }
@@ -59,8 +59,13 @@ public static class Checks {
   expected["operationRequests"]![operationId]=Protocol.Canonical(new JObject{{"type","event.switch"},{"payload",new JObject{{"id",(string)before["event"]!["id"]!}}}}).ToString(Formatting.None);
   return expected;
  }
+ public static JObject ExpectedStateV2(JObject before,string operationId) {
+  var expected=ExpectedState(before,operationId);
+  expected["operationRequests"]![operationId]=Protocol.Canonical(new JObject{{"targetEventId",(string)before["event"]!["id"]!},{"type","event.dates"},{"payload",new JObject{{"dates",before["event"]!["dates"]!.DeepClone()}}}}).ToString(Formatting.None);
+  return expected;
+ }
  public static void CommitResult(JObject result,string operationId,string status,JObject state,int? appliedRevision) {
-  if((int?)result["protocolVersion"]!=1||(string?)result["workspaceId"]!=Seed.WorkspaceId||(string?)result["operationId"]!=operationId||(string?)result["status"]!=status||
+  if((int?)result["protocolVersion"]!=2||(string?)result["targetEventId"]!=(string?)state["event"]!["id"]||(string?)result["workspaceId"]!=Seed.WorkspaceId||(string?)result["operationId"]!=operationId||(string?)result["status"]!=status||
    (int?)result["appliedRevision"]!=appliedRevision||!JToken.DeepEquals(Protocol.Canonical(result["state"]!),Protocol.Canonical(state)))throw new AcceptanceFault("commit_result_mismatch");
  }
  public static void Receipt(JsonObject row,string rawHash,Guid actor,int revision) {

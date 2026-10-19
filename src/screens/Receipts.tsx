@@ -24,7 +24,7 @@ import {
   parseMoney,
   receiptTotals,
   receiptOriginalLabel,
-  defaultLocations,
+  configuredLocations,
 } from "../ui/facts.ts";
 export default function Receipts(props: ScreenProps) {
   const {navigate} = useDraftNavigation();
@@ -35,7 +35,7 @@ export default function Receipts(props: ScreenProps) {
     [scope, setScope] = useState("Alle"),
     [search, setSearch] = useState("");
   const scopes = [
-    ...new Set([...defaultLocations, ...state.invoices.map((i) => i.scope)]),
+    ...new Set([...configuredLocations(state), ...state.invoices.map((i) => i.scope)]),
   ];
   const invoices = state.invoices.filter(
     (i) =>
@@ -294,7 +294,7 @@ function ReceiptEditor({
     [net, setNet] = useState(
       amount(item?.netCents == null ? null : item.netCents / 100),
     ),
-    [scope, setScope] = useState(item?.scope ?? "Küche"),
+    [scope, setScope] = useState(item?.scope ?? configuredLocations(state)[0] ?? "Küche"),
     [url, setUrl] = useState(item?.documentUrl ?? ""),
     [error, setError] = useState("");
   const [lines, setLines] = useState(
@@ -309,7 +309,7 @@ function ReceiptEditor({
   );
   const scopes = [
       ...new Set([
-        ...defaultLocations,
+        ...configuredLocations(state),
         ...state.invoices.map((i) => i.scope),
         scope,
       ]),

@@ -13,7 +13,7 @@ static class WrapperTests
         ["SharedVariables"]=new ParameterCollection(),["InputParameters"]=new ParameterCollection()
     };
     static Dictionary<string, object?> Data(IPluginExecutionContext c) => ((ContextProxy)(object)c).Values;
-    static string Binding() => new JObject {{"protocolVersion",1},{"workspaceId",WorkspaceId.ToString("D")},{"operationId","operation"}}.ToString();
+    static string Binding() => new JObject {{"protocolVersion",2},{"workspaceId",WorkspaceId.ToString("D")},{"operationId","operation"}}.ToString();
     static Entity Update() => new("zk_kitchenworkspace",WorkspaceId) { ["zk_state"]="{}",["zk_revision"]=1 };
     static Entity Receipt() => new("zk_kitchenoperation") { ["zk_workspace"]=new EntityReference("zk_kitchenworkspace",WorkspaceId),["zk_operationid"]="operation",["zk_actor"]=Actor.ToString("D") };
     static (IPluginExecutionContext Current,IPluginExecutionContext Wrapper,IPluginExecutionContext Source) Chain(string message="Update",Entity? entity=null) {

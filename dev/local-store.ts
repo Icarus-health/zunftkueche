@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { applyEventOperation } from "../src/domain/event-context.ts";
 import { applyOperation } from "../src/domain/state.ts";
 import type {
   KitchenState,
@@ -33,7 +34,7 @@ export function createLocalStore(
     commit: (op) => {
       const task = queue.then(async () => {
         const current = await read(),
-          result = applyOperation(current.state, op);
+          result = op.targetEventId ? applyEventOperation(current.state, op.targetEventId, op) : applyOperation(current.state, op);
         if (
           result.status === "saved" &&
           result.state.revision !== current.state.revision

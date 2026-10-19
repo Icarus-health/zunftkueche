@@ -40,6 +40,8 @@ export interface OrderContext {
   eventName: string;
   eventYear: number;
   deliveryDate: string | null;
+  deliveryAddress?: string;
+  contact?: string;
 }
 export interface OrderSnapshot {
   context?: Readonly<OrderContext>;

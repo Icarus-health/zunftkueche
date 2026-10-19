@@ -15,6 +15,7 @@ export const defaultLocations = [
   "Brunnen",
   "Mitwirkende / Aufbau / Probe",
 ];
+export function configuredLocations(state: KitchenState): string[] { return state.event.locations?.length ? state.event.locations.map(l=>l.name) : [...defaultLocations]; }
 export function parseMoney(raw: string, precise = false): number | null {
   const value = raw.trim();
   if (!value) return null;
@@ -119,6 +120,8 @@ export function orderPreviewHeader(
     eventName: state.event.name,
     eventYear: state.event.year,
     deliveryDate: state.event.dates[order.day] ?? null,
+    deliveryAddress: order.status === "Vorbereitet" ? undefined : state.event.deliveryAddress,
+    contact: order.status === "Vorbereitet" ? undefined : state.event.contact,
     notice:
       order.status === "Vorbereitet"
         ? "Lieferant, Veranstaltung und Datum wurden in dieser älteren Version nicht gespeichert. Die angezeigten Angaben sind aktuell; der damalige Stand ist unbekannt."

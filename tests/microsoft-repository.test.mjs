@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createMicrosoftRepository } from "../src/data/microsoft-repository.ts";
 const workspaceId = "11111111-2222-4333-8444-555555555555";
+const identity={organizationId:"22222222-2222-4333-8444-555555555555",userId:"33333333-2222-4333-8444-555555555555",workspaceId};
 const seed = () => ({
   ...JSON.parse(readFileSync(new URL("../import/2026.json", import.meta.url))),
   schemaVersion: 2,
@@ -12,20 +13,21 @@ const seed = () => ({
 });
 const op = () => ({
   id: "change-price",
+  targetEventId: seed().event.id,
   baseRevision: 0,
   type: "article.price",
   payload: { articleId: "a-1", priceCents: 12.34 },
 });
 const wrapped = (x) => ({
   success: true,
-  data: { ResultJson: JSON.stringify(x) },
+  data: { ResultJson: JSON.stringify({identity,canEdit:x.canWrite ?? true,canConfigure:false,canClose:false,targetEventId:seed().event.id,...x}) },
 });
 const loaded = (s = seed(), canWrite = true) =>
-  wrapped({ protocolVersion: 1, workspaceId, state: s, canWrite });
+  wrapped({ protocolVersion: 2, workspaceId, state: s, canWrite });
 const saved = (request) => {
   const q = JSON.parse(request);
   return wrapped({
-    protocolVersion: 1,
+    protocolVersion: 2,
     workspaceId,
     operationId: q.operationId,
     status: "saved",
@@ -79,7 +81,8 @@ test("conflict returns latest server state without rebasing", async () => {
       commit: async (q) => {
         sent = JSON.parse(q);
         return wrapped({
-          protocolVersion: 1,
+          protocolVersion: 2,
+        targetEventId:seed().event.id, identity,
           workspaceId,
           operationId: op().id,
           status: "conflict",
@@ -149,7 +152,7 @@ test("unsuccessful SDK result and missing canWrite fail closed", async () => {
   const bad = createMicrosoftRepository(
     {
       load: async () =>
-        wrapped({ protocolVersion: 1, workspaceId, state: seed() }),
+        wrapped({ protocolVersion: 2, workspaceId, state: seed(), canEdit:undefined }),
       commit: async () => ({ success: false }),
     },
     workspaceId,

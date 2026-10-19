@@ -12,7 +12,8 @@ cd "$repo_dir"
 "$compiler" restore server/Kitchen.Dataverse.csproj --locked-mode
 "$compiler" restore server/Tests/Kitchen.Policy.Tests.csproj --locked-mode
 node --experimental-strip-types tests/microsoft-corpus.mjs
-"$compiler" run --project server/Tests/Kitchen.Policy.Tests.csproj --no-restore -- import/2026.json server/Tests/obj/reducer-corpus.json
+node --experimental-strip-types tests/microsoft-v2-corpus.mjs
+"$compiler" run --project server/Tests/Kitchen.Policy.Tests.csproj --no-restore -- import/2026.json server/Tests/obj/reducer-corpus.json server/Tests/obj/protocol-v2-corpus.json
 "$compiler" build server/Kitchen.Dataverse.csproj -c Release --no-restore
 "$compiler" pack server/Kitchen.Dataverse.csproj -c Release --no-build --no-restore -o server/artifacts
 python3 server/verify-package.py

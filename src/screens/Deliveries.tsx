@@ -15,7 +15,7 @@ import {
 } from "../components/shared.tsx";
 import { parseQuantity } from "../domain/kitchen.ts";
 import { stockSummary } from "../domain/workflow.ts";
-import { deliveryDays, defaultLocations } from "../ui/facts.ts";
+import { deliveryDays, configuredLocations } from "../ui/facts.ts";
 const kinds = [
   ["stock.opening", "Anfangsbestand", "Anfangsbestand"],
   ["delivery.record", "Lieferung", "Lieferung"],
@@ -30,6 +30,7 @@ export default function Deliveries({
   commit,
   go,
   saveError,
+  lastLocation,
 }: ScreenProps) {
   const {navigate, pending} = useDraftNavigation();
   const [tab, setTab] = useState("Erfassen"),
@@ -38,7 +39,7 @@ export default function Deliveries({
     [article, setArticle] = useState(state.articles[0]?.id ?? ""),
     [day, setDay] = useState("Freitag"),
     [raw, setRaw] = useState(""),
-    [location, setLocation] = useState("Küche"),
+    [location, setLocation] = useState(lastLocation && [...configuredLocations(state),...state.movements.map(m=>m.location)].includes(lastLocation) ? lastLocation : configuredLocations(state)[0] ?? "Küche"),
     [note, setNote] = useState(""),
     [error, setError] = useState(""),
     [search, setSearch] = useState("");
@@ -52,7 +53,7 @@ export default function Deliveries({
     kind = kinds.find((k) => k[0] === type)![1],
     locations = [
       ...new Set([
-        ...defaultLocations,
+        ...configuredLocations(state),
         ...state.movements.map((m) => m.location),
       ]),
     ],

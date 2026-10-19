@@ -3,6 +3,11 @@ import type { KitchenState, Operation, CommitResult } from "../domain/state.ts";
 export interface Repository {
   mode: "local" | "microsoft";
   canWrite?: boolean;
+  canEdit?: boolean;
+  canConfigure?: boolean;
+  canClose?: boolean;
+  identity?: import("./preferences.ts").ConfirmedIdentity | null;
+  blockedReason?: string;
   load: () => Promise<KitchenState>;
   commit: (op: Operation) => Promise<CommitResult>;
 }
@@ -13,6 +18,9 @@ export function createLocalRepository(
   return {
     mode: "local",
     canWrite: true,
+    canEdit: true,
+    canConfigure: true,
+    canClose: true,
     load: async () => {
       const response = await fetcher("/api/kitchen", { cache: "no-store" }),
         result = await response.json();

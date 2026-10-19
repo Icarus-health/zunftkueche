@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {loadPreferences,savePreferences} from '../src/data/preferences.ts';
+const store=()=>{const m=new Map();return {getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v)}};
+const identity={organizationId:'org',userId:'alice',workspaceId:'kitchen'};
+test('preferences isolated by confirmed organization user and workspace',()=>{const s=store();savePreferences(s,identity,{startScreen:'Belege',selectedEventId:'old',displayDensity:'compact',lastSupplierId:'s',lastLocation:'Küche'});assert.equal(loadPreferences(s,identity,['old']).selectedEventId,'old');for(const change of [{userId:'bob'},{organizationId:'other'},{workspaceId:'other'}])assert.equal(loadPreferences(s,{...identity,...change},['new']).startScreen,'Übersicht');});
+test('invalid selection and corrupt storage use safe defaults',()=>{const s=store();savePreferences(s,identity,{selectedEventId:'removed',startScreen:'unknown',privateReceipt:'secret'});assert.equal(loadPreferences(s,identity,['current']).selectedEventId,'current');assert.equal(loadPreferences(s,identity,['current']).startScreen,'Übersicht');assert.equal(loadPreferences(s,null,['current']).selectedEventId,'current');});

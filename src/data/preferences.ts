@@ -1,0 +1,9 @@
+export interface ConfirmedIdentity {organizationId:string;userId:string;workspaceId:string}
+export interface UserPreferences {startScreen:string;selectedEventId:string;displayDensity:'comfortable'|'compact';lastSupplierId:string;lastLocation:string}
+export const startScreens=['Übersicht','Planung','Bestellungen','Lieferungen','Belege','Auswertung','Stammdaten','Einstellungen'];
+export const defaultPreferences:UserPreferences={startScreen:'Übersicht',selectedEventId:'',displayDensity:'comfortable',lastSupplierId:'',lastLocation:''};
+type Store=Pick<Storage,'getItem'|'setItem'>;
+export function preferenceKey(identity:ConfirmedIdentity):string {return `zunftkueche.preferences.v1.${encodeURIComponent(identity.organizationId)}.${encodeURIComponent(identity.userId)}.${encodeURIComponent(identity.workspaceId)}`;}
+function clean(value:Partial<UserPreferences>):UserPreferences {return {startScreen:startScreens.includes(value.startScreen??'')?value.startScreen!:'Übersicht',selectedEventId:typeof value.selectedEventId==='string'?value.selectedEventId.slice(0,500):'',displayDensity:value.displayDensity==='compact'?'compact':'comfortable',lastSupplierId:typeof value.lastSupplierId==='string'?value.lastSupplierId.slice(0,500):'',lastLocation:typeof value.lastLocation==='string'?value.lastLocation.slice(0,100):''};}
+export function loadPreferences(store:Store|undefined,identity:ConfirmedIdentity|null,events:string[]):UserPreferences {let value={...defaultPreferences};try {if(identity){const raw=JSON.parse(store?.getItem(preferenceKey(identity))??'{}');if(raw&&typeof raw==='object')value=clean(raw);}}catch{}if(!events.includes(value.selectedEventId))value.selectedEventId=events[0]??'';return value;}
+export function savePreferences(store:Store|undefined,identity:ConfirmedIdentity|null,value:Partial<UserPreferences>):void {if(identity)store?.setItem(preferenceKey(identity),JSON.stringify(clean(value)));}

@@ -37,6 +37,7 @@ test("prepared headers retain supplier, event and date through later edits and a
     eventName: "Testfest",
     eventYear: 2099,
     deliveryDate: "2099-02-06",
+    deliveryAddress: "",contact:"",
   });
   const original = structuredClone(state.orders[0]);
   state = apply(state, "event.dates", { dates: { Freitag: "2099-02-13" } });
@@ -93,6 +94,7 @@ test("legacy prepared headers disclose current context; live drafts use current 
     eventName: "Aktuelles Fest",
     eventYear: 2100,
     deliveryDate: "2100-02-12",
+    deliveryAddress:undefined,contact:undefined,
     notice: null,
   });
   assert.equal(legacy.context, undefined);
