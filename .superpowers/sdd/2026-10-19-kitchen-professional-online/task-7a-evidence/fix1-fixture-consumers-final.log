@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: supplier/day context always owns its version; stale and disappeared IDs cannot select a foreign order
+ok 1 - supplier/day context always owns its version; stale and disappeared IDs cannot select a foreign order
+  ---
+  duration_ms: 1.451625
+  type: 'test'
+  ...
+# Subtest: all historical Friday/Saturday versions and 120/110/10 receiving evidence survive context switching
+ok 2 - all historical Friday/Saturday versions and 120/110/10 receiving evidence survive context switching
+  ---
+  duration_ms: 0.724125
+  type: 'test'
+  ...
+# Subtest: saved supplier names never silently become current names or raw IDs, even when current supplier is absent
+ok 3 - saved supplier names never silently become current names or raw IDs, even when current supplier is absent
+  ---
+  duration_ms: 0.292083
+  type: 'test'
+  ...
+# Subtest: closed culinary controls are disabled without globally locking reopen, export or preferences
+ok 4 - closed culinary controls are disabled without globally locking reopen, export or preferences
+  ---
+  duration_ms: 1809.587958
+  type: 'test'
+  ...
+# Subtest: permissions and active saves still lock culinary fields in an open event
+ok 5 - permissions and active saves still lock culinary fields in an open event
+  ---
+  duration_ms: 0.092625
+  type: 'test'
+  ...
+# Subtest: review step requires an acknowledged unchanged reviewed draft; dirty raw inputs and queued originals stay in editing
+ok 6 - review step requires an acknowledged unchanged reviewed draft; dirty raw inputs and queued originals stay in editing
+  ---
+  duration_ms: 0.129667
+  type: 'test'
+  ...
+# Subtest: proposal display localizes meaning without changing integer values or raw quotations
+ok 7 - proposal display localizes meaning without changing integer values or raw quotations
+  ---
+  duration_ms: 0.863709
+  type: 'test'
+  ...
+# Subtest: fresh intake has no empty final acceptance section; closed intake still permits reading saved drafts
+ok 8 - fresh intake has no empty final acceptance section; closed intake still permits reading saved drafts
+  ---
+  duration_ms: 2.119167
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2078.687291

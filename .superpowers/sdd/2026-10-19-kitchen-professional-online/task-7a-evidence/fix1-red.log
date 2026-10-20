@@ -1,0 +1,267 @@
+TAP version 13
+# Subtest: Vorbereitet: preview/print header retains all saved context after current masters change
+ok 1 - Vorbereitet: preview/print header retains all saved context after current masters change
+  ---
+  duration_ms: 14.06375
+  type: 'test'
+  ...
+# Subtest: Vorbereitet: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+ok 2 - Vorbereitet: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+  ---
+  duration_ms: 5.838709
+  type: 'test'
+  ...
+# Subtest: bestellt: preview/print header retains all saved context after current masters change
+not ok 3 - bestellt: preview/print header retains all saved context after current masters change
+  ---
+  duration_ms: 7.329875
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:29:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      {
+    +   contact: 'Neuer Kontakt',
+    +   deliveryAddress: 'Neue Adresse',
+    +   deliveryDate: '2027-10-22',
+    +   eventName: 'Neues Fest',
+    +   eventYear: 2027,
+    -   contact: 'Testkontakt',
+    -   deliveryAddress: 'Synthetische Testküche',
+    -   deliveryDate: '2026-10-23',
+    -   eventName: 'TEST · Küchenwochenende',
+    -   eventYear: 2026,
+        notice: null,
+    +   supplierName: 'Neuer Lieferantenname'
+    -   supplierName: 'Testmarkt Nord'
+      }
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    supplierName: 'Testmarkt Nord'
+    eventName: 'TEST · Küchenwochenende'
+    eventYear: 2026
+    deliveryDate: '2026-10-23'
+    deliveryAddress: 'Synthetische Testküche'
+    contact: 'Testkontakt'
+    notice: ~
+  actual:
+    supplierName: 'Neuer Lieferantenname'
+    eventName: 'Neues Fest'
+    eventYear: 2027
+    deliveryDate: '2027-10-22'
+    deliveryAddress: 'Neue Adresse'
+    contact: 'Neuer Kontakt'
+    notice: ~
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:36:12)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: bestellt: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+not ok 4 - bestellt: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+  ---
+  duration_ms: 5.66
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:45:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /nicht gespeichert/. Input:
+    
+    ''
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: ''
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:54:12)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: bestaetigt: preview/print header retains all saved context after current masters change
+not ok 5 - bestaetigt: preview/print header retains all saved context after current masters change
+  ---
+  duration_ms: 6.518959
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:29:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      {
+    +   contact: 'Neuer Kontakt',
+    +   deliveryAddress: 'Neue Adresse',
+    +   deliveryDate: '2027-10-22',
+    +   eventName: 'Neues Fest',
+    +   eventYear: 2027,
+    -   contact: 'Testkontakt',
+    -   deliveryAddress: 'Synthetische Testküche',
+    -   deliveryDate: '2026-10-23',
+    -   eventName: 'TEST · Küchenwochenende',
+    -   eventYear: 2026,
+        notice: null,
+    +   supplierName: 'Neuer Lieferantenname'
+    -   supplierName: 'Testmarkt Nord'
+      }
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    supplierName: 'Testmarkt Nord'
+    eventName: 'TEST · Küchenwochenende'
+    eventYear: 2026
+    deliveryDate: '2026-10-23'
+    deliveryAddress: 'Synthetische Testküche'
+    contact: 'Testkontakt'
+    notice: ~
+  actual:
+    supplierName: 'Neuer Lieferantenname'
+    eventName: 'Neues Fest'
+    eventYear: 2027
+    deliveryDate: '2027-10-22'
+    deliveryAddress: 'Neue Adresse'
+    contact: 'Neuer Kontakt'
+    notice: ~
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:36:12)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: bestaetigt: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+not ok 6 - bestaetigt: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+  ---
+  duration_ms: 6.316708
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:45:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /nicht gespeichert/. Input:
+    
+    ''
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: ''
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:54:12)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: mapping-only name stays selectable when unchecked first, then assigned to another location in the same draft
+not ok 7 - mapping-only name stays selectable when unchecked first, then assigned to another location in the same draft
+  ---
+  duration_ms: 5.608958
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:68:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      [
+        'Alte Küche',
+        'Früherer Außenstand',
+    -   'Historischer Teststand',
+        'Küche'
+      ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 'Alte Küche'
+    1: 'Früherer Außenstand'
+    2: 'Historischer Teststand'
+    3: 'Küche'
+  actual:
+    0: 'Alte Küche'
+    1: 'Früherer Außenstand'
+    2: 'Küche'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:72:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: deactivating a source location keeps all historical choices available; discarding restores mappings
+not ok 8 - deactivating a source location keeps all historical choices available; discarding restores mappings
+  ---
+  duration_ms: 5.051625
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:81:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      [
+    -   'Alte Küche',
+        'Früherer Außenstand',
+    -   'Historischer Teststand',
+        'Küche'
+      ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 'Alte Küche'
+    1: 'Früherer Außenstand'
+    2: 'Historischer Teststand'
+    3: 'Küche'
+  actual:
+    0: 'Früherer Außenstand'
+    1: 'Küche'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:84:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: draft mappings augment persisted and transaction names without duplicate choices
+ok 9 - draft mappings augment persisted and transaction names without duplicate choices
+  ---
+  duration_ms: 4.927042
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 3
+# fail 6
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 199.031875

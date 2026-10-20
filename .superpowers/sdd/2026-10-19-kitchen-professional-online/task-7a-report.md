@@ -1,5 +1,7 @@
 # Task 7a — bounded product UX source freeze
 
+Latest status, 20 October 2026: correction round 1 implements I1, I2 and M1 from `task-7a-review.md`; new production/test freeze **`e6e3f45ddd0a48c458942c06c1a84253c0b854c3`**. The source is frozen for independent rereview and the parent's amended-path IAB checks. The appended correction record supersedes the initial fixture limitation and source hash below. No overall Task 7 or Task 7b completion is claimed.
+
 Status: implementation and scoped source/render validation complete; independent source review and parent first-party IAB interaction/visual acceptance remain pending. Task 7 overall is NOT complete: activation, actual host/native rights/transactions, physical iPhone/camera/keyboard and restore acceptance remain separate Task 7b gates. No provider/auth/deployment/schema/license/role operations or subagents were used.
 
 Task 6 approved source: `37acf47ff7450c696cc3f3c4156986fc5c73a180`; Task 7a base/report HEAD: `0d2e79a77d14e37fbf7a5998e256439b0545b02d`. Task 7a frozen production/test commit: **`0c8ac5a1086f5a28f67d54b57a2b58c2e9525e1f`**. Initial report/evidence commit: `f277886`. The following report-only clarification records raw-log whitespace; neither changes the source freeze.
@@ -69,3 +71,58 @@ Suggested bounded acceptance:
 For the already established held-original/rejected/lost-ack path use the unchanged `tests/fixtures/receipt-review-harness.html` with the same isolated Vite server. Its test controls remain available; collapse the test-only JSON panel to avoid its known pre overflow. After reviewed save the raw form is intentionally absent; assert that “Angaben weiter bearbeiten”, draft switching and new draft are locked during acceptance, with guarded external navigation still denied. After rejection return to edit and verify raw values. Release/retry through the actual fixture acknowledgement callback, then inspect one invoice and accepted draft. Do not infer a product bug from direct fake replay bypassing that callback.
 
 Parent still must record page identity, meaningful rendered content, no framework overlay, relevant console health, screenshots and actual target interactions. The source gate and Task 6 pending/source protections are preserved; none of these source/fake checks replaces real Microsoft per-user access, transaction rollback, original/version availability, export/backup/restore, representative-real-receipt or physical iPhone acceptance.
+
+## Correction round 1 — 20 October 2026
+
+Reviewed all of `task-7a-review.md` before editing. The resumed checkout was clean at `15de237dd86a5a6e375910cf1cc32bba4c48d360`; the earlier usage-limit interruption had left no correction edits. Source/test correction range: **`15de237dd86a5a6e375910cf1cc32bba4c48d360..e6e3f45ddd0a48c458942c06c1a84253c0b854c3`**. Combined Task 7a source range remains the Task 6 base `0d2e79a77d14e37fbf7a5998e256439b0545b02d` through this new freeze. The subsequent commit contains only this report and correction evidence.
+
+### Changes and self-review
+
+- **I1, saved header context:** `orderPreviewHeader` now distinguishes only the unsaved `Vorschau` from saved versions. `Vorbereitet`, `bestellt`, `bestaetigt` and any other saved status use their recorded context. Missing-context saved versions retain the explicit current supplier/event/date fallback notice and do not invent a historical address/contact. The existing preview's print area consumes this same header. CSV semantics, snapshots, source lines, status history and stored values are unchanged.
+- **I2, mapping option lifetime:** the former inline option calculation was first extracted unchanged into `historicalMappingNames` for a behavioral regression. The correction adds persisted mapping names independently of mutable draft mappings and transaction-derived names. Uncheck-first reassignment, source deactivation and discard retain the available names throughout the edit. Settings still owns exactly one draft, one atomic `event.settings` submission and its original navigation guard.
+- **M1, closure destination:** a banner visit increments an Analysis key only inside the existing guarded `go` callback. The closed-event Analysis view then starts on its existing `Abschluss` tab even when another Analysis tab was already open. This deliberate destination visit resets that view's local tab/filter state after guards release it; ordinary Analysis navigation is unchanged. A pending save still returns before any key change. No effect synchronizes tab state, and no acceptance or draft guard implementation changed. Parent supplied a pre-fix IAB reproduction; patched interaction remains a separate parent check.
+- **Valid fixture correction:** the initial full-App fixture's three stored historical aliases had no corresponding plan, movement or invoice source. Its ordinary settings save therefore correctly failed existing domain validation. The parent confirmed the same constraint in `server/Policy/StatePolicy.cs:234–240` and authorized a fixture-only correction. Three explicitly synthetic zero-quantity `Allgemein` plan rows now back the aliases in each event. Friday/Saturday saved orders, 120/110/10 receiving evidence and economic values remain intact. This fixes invalid synthetic input; it does not mean ordinary production mappings were unsaveable. Main tests use this valid fixture and real domain operations. The two mapping-only tests deliberately remove those source rows and are labelled defensive inconsistent/legacy-input tests; they prove draft choice retention, not acceptance of invalid data.
+
+Changed files: `src/App.tsx`, `src/screens/Settings.tsx`, `src/ui/facts.ts`, new `src/ui/settings-mappings.ts`, `tests/fixtures/professional-state.ts`, new `tests/ux-review-regressions.test.mjs`. Self-review checked the full correction diff, the unchanged `Orders` preview/print consumer, the unchanged CSV path, Settings save/discard paths and the guarded key reset. No additional UX redesign, production data/domain/server/provider/auth/schema/dependency/deployment change or subagent occurred.
+
+### Exact commands, red/green evidence and limits
+
+Commands ran from the repo root given above; output is retained in `task-7a-evidence/`.
+
+1. `node --experimental-strip-types --test tests/ux-review-regressions.test.mjs`
+   - Initial test-development run: exit 1, 1 pass / 8 fail (`fix1-test-setup-errors.log`). Six cases failed before their intended assertion because of the invalid fixture mappings or a test shortcut that attempted `Vorbereitet` directly to `bestaetigt`; two mapping option assertions reproduced I2. This is retained as setup-error evidence, not passed validation or a clean I1 red run. The shortcut was corrected to the actual ordered → confirmed sequence.
+   - After correcting test setup, before production fixes: exit 1, **3 pass / 6 expected failures** (`fix1-red.log`): four ordered/confirmed context/legacy-notice failures and two mapping-option lifetime failures. The unchanged mapping expression had only been extracted for testing at this point. During this red run current event fields were changed in memory to isolate I1 from the discovered fixture error.
+2. `node --experimental-strip-types --test --test-name-pattern='full-App fixture' tests/ux-review-regressions.test.mjs` → exit 1, **1 expected failure**, ordinary settings rejected with “Historische Zuordnung ist ungültig.” (`fix1-fixture-red.log`). The fixture source rows were then added. Final I1 tests now change supplier and event context through real `supplier.save` and `event.settings`, and use real sequential status operations.
+3. Final amended-area run:
+
+```sh
+node --experimental-strip-types --test tests/ux-review-regressions.test.mjs tests/order-context.test.mjs tests/settings.test.mjs tests/draft-guard.test.mjs
+```
+
+Exit 0, **21 pass, 0 fail, 0 skipped**, 262.876416 ms (`fix1-focused-final.log`). Ten new cases cover six saved status/context combinations, defensive mapping reassignment/deactivation/discard, draft additions without duplicate options, and a valid full-App fixture's ordinary fields plus alias reassignment saved in one real domain operation with source/history arrays unchanged. The eleven existing adjacent cases cover unknown historical dates, live current context, saved address/contact and draft navigation cancellation/discard/pending behavior. There is no new source-text or CSS mirror test for M1; its actual interaction is assigned to the parent.
+
+4. `node --experimental-strip-types --test tests/professional-ui.test.mjs` → exit 0, **8 pass, 0 fail, 0 skipped**, 2078.687291 ms (`fix1-fixture-consumers-final.log`). This bounded existing consumer set was rerun because its shared synthetic fixture changed. It confirms retained supplier/day/version context, 120/110/10, closed/reopened editability and relevant SSR rendering. It does not prove viewport/focus/click behavior. No full suite or unaffected Task 6 held/lost-ack suite was repeated.
+5. `npm run build` → exit 0, TypeScript and production build passed, 4666 modules, 434 ms Vite stage (`fix1-build-final.log`).
+6. `npm run build -- --mode microsoft` → exit 0, TypeScript and Microsoft-mode build passed, 4666 modules, 409 ms Vite stage (`fix1-build-microsoft-final.log`). Both production builds have no warnings. The ignored dist is the latter build; no publication or host execution occurred.
+7. Strict fixture typecheck:
+
+```sh
+npx tsc --ignoreConfig --noEmit --strict --target ES2022 --module ESNext --moduleResolution Bundler --jsx react-jsx --allowImportingTsExtensions --skipLibCheck src/vite-env.d.ts tests/fixtures/professional-state.ts tests/fixtures/professional-repository.ts tests/fixtures/professional-app.tsx tests/fixtures/professional-vite.config.ts tests/fixtures/receipt-review-harness.tsx
+```
+
+Exit 0, empty output (`fix1-fixture-typecheck-final.log`). No dependency, new framework or fixture configuration change was needed. The real domain `event.settings` check validates the fixture's mapping constraint; the corresponding unchanged server constraint was inspected, not executed. No server build or native validator result is claimed.
+
+8. `python3 .superpowers/sdd/2026-10-19-kitchen-professional-online/task-7a-evidence/fix1-sourceguard.py` → exit 0; `fix1-sourceguard.json` records **135 protected tracked files, zero mismatches** against Task 6 base. This includes data/domain/server/tools/hooks/generated paths, acceptance session, navigation guard, dependencies and configuration. The exact file list and reproduction script are retained. The `.local-state/state.json` SHA-256 remains **09ac7edb02e899618bb6a802c33056d0460c5c428258e96739e4d4a26734d300**. Historical tools were neither edited nor executed.
+9. `git diff --check` and `git diff --cached --check` → exit 0 for the correction source/test changes before commit. After staging evidence, the unrestricted `git diff --cached --check` reports 16 whitespace-only indented lines emitted by Node's failed-assertion formatter in the retained raw `fix1-red.log` and `fix1-test-setup-errors.log`. These raw outputs are preserved exactly; the whole evidence diff is therefore not whitespace-clean. The initial report's separate raw Vite-warning whitespace also remains as already disclosed. Source/test paths remain clean.
+
+### Amended-path handoff and remaining acceptance
+
+The parent may archive source **`e6e3f45ddd0a48c458942c06c1a84253c0b854c3`**. Full-App fixture startup remains `npx vite --config tests/fixtures/professional-vite.config.ts`; URL remains `http://127.0.0.1:4197/tests/fixtures/professional-app.html`. The fixture remains synthetic, in memory, with null identity and no SDK/provider/network adapter. Reload resets it. No browser or CUA was used by this writer.
+
+Recheck only the amended paths on this freeze:
+
+- Settings: expand mappings, uncheck `Historischer Teststand` under Küche, check it under Außenstand, change an ordinary field and save once. All four choices remain. Deactivate its source in a fresh draft, keep editing via the navigation dialog, then discard and reopen Settings to confirm restoration. Valid fixture source rows now make the save path representative of the real domain mapping constraint.
+- Saved preview/print: Nord/Friday version 1 is confirmed with saved date `2026-10-23`, address `Synthetische Testküche`, contact `Testkontakt`. Change current supplier/event settings, then open that saved preview; it must retain all old header values. Check an ordered version as well. Süd/Saturday version 1 lacks context; mark it ordered/confirmed as needed and confirm the visible current-fallback notice. CSV remains independently source-bound.
+- Closed event: select `TEST · Abgeschlossener Abend`, enter Analysis, choose `Auswertung` or `Verkäufe erfassen`, then use the banner's `Abschluss und Berichte`; `Abschluss` must become selected and reopen/reports remain available.
+
+The source fixes and local checks are ready for rereview. Parent IAB patched interactions, actual Microsoft rights/native transactions, originals/version retrieval, restore, representative real receipts, activation and physical iPhone/camera/keyboard remain separate evidence. Task 7 overall remains open.

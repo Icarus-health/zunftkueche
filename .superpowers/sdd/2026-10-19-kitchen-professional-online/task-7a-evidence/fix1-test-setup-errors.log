@@ -1,0 +1,219 @@
+TAP version 13
+# Subtest: Vorbereitet: preview/print header retains all saved context after current masters change
+not ok 1 - Vorbereitet: preview/print header retains all saved context after current masters change
+  ---
+  duration_ms: 18.574667
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:24:3'
+  failureType: 'testCodeFailure'
+  error: 'Historische Zuordnung ist ungültig.'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/state.ts:545:19
+    Array.map (<anonymous>)
+    file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/state.ts:542:51
+    Array.map (<anonymous>)
+    applyOperation (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/state.ts:537:42)
+    applyEventOperation (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/event-context.ts:18:16)
+    apply (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:10:10)
+    changeCurrentContext (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:16:10)
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:29:13)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+  ...
+# Subtest: Vorbereitet: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+not ok 2 - Vorbereitet: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+  ---
+  duration_ms: 5.996542
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:40:3'
+  failureType: 'testCodeFailure'
+  error: 'Historische Zuordnung ist ungültig.'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/state.ts:545:19
+    Array.map (<anonymous>)
+    file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/state.ts:542:51
+    Array.map (<anonymous>)
+    applyOperation (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/state.ts:537:42)
+    applyEventOperation (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/event-context.ts:18:16)
+    apply (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:10:10)
+    changeCurrentContext (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:16:10)
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:46:13)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+  ...
+# Subtest: bestellt: preview/print header retains all saved context after current masters change
+not ok 3 - bestellt: preview/print header retains all saved context after current masters change
+  ---
+  duration_ms: 6.278833
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:24:3'
+  failureType: 'testCodeFailure'
+  error: 'Historische Zuordnung ist ungültig.'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/state.ts:545:19
+    Array.map (<anonymous>)
+    file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/state.ts:542:51
+    Array.map (<anonymous>)
+    applyOperation (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/state.ts:537:42)
+    applyEventOperation (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/event-context.ts:18:16)
+    apply (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:10:10)
+    changeCurrentContext (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:16:10)
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:29:13)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+  ...
+# Subtest: bestellt: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+not ok 4 - bestellt: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+  ---
+  duration_ms: 6.075209
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:40:3'
+  failureType: 'testCodeFailure'
+  error: 'Historische Zuordnung ist ungültig.'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/state.ts:545:19
+    Array.map (<anonymous>)
+    file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/state.ts:542:51
+    Array.map (<anonymous>)
+    applyOperation (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/state.ts:537:42)
+    applyEventOperation (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/event-context.ts:18:16)
+    apply (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:10:10)
+    changeCurrentContext (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:16:10)
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:46:13)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+  ...
+# Subtest: bestaetigt: preview/print header retains all saved context after current masters change
+not ok 5 - bestaetigt: preview/print header retains all saved context after current masters change
+  ---
+  duration_ms: 4.680166
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:24:3'
+  failureType: 'testCodeFailure'
+  error: 'Bestellstatus muss auf Vorbereitet → bestellt → bestätigt folgen.'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    nextOrderStatus (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/order-status.ts:32:11)
+    applyOperation (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/state.ts:778:7)
+    applyEventOperation (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/event-context.ts:18:16)
+    apply (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:10:10)
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:27:43)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: bestaetigt: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+not ok 6 - bestaetigt: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+  ---
+  duration_ms: 4.709458
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:40:3'
+  failureType: 'testCodeFailure'
+  error: 'Bestellstatus muss auf Vorbereitet → bestellt → bestätigt folgen.'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    nextOrderStatus (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/order-status.ts:32:11)
+    applyOperation (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/state.ts:778:7)
+    applyEventOperation (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/src/domain/event-context.ts:18:16)
+    apply (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:10:10)
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:44:43)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: mapping-only name stays selectable when unchecked first, then assigned and saved atomically to another location
+not ok 7 - mapping-only name stays selectable when unchecked first, then assigned and saved atomically to another location
+  ---
+  duration_ms: 6.951458
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:63:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      [
+        'Alte Küche',
+        'Früherer Außenstand',
+    -   'Historischer Teststand',
+        'Küche'
+      ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 'Alte Küche'
+    1: 'Früherer Außenstand'
+    2: 'Historischer Teststand'
+    3: 'Küche'
+  actual:
+    0: 'Alte Küche'
+    1: 'Früherer Außenstand'
+    2: 'Küche'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:67:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: deactivating a source location keeps all historical choices available; discarding restores mappings
+not ok 8 - deactivating a source location keeps all historical choices available; discarding restores mappings
+  ---
+  duration_ms: 5.048375
+  type: 'test'
+  location: '/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:79:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      [
+    -   'Alte Küche',
+        'Früherer Außenstand',
+    -   'Historischer Teststand',
+        'Küche'
+      ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 'Alte Küche'
+    1: 'Früherer Außenstand'
+    2: 'Historischer Teststand'
+    3: 'Küche'
+  actual:
+    0: 'Früherer Außenstand'
+    1: 'Küche'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/tests/ux-review-regressions.test.mjs:82:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: draft mappings augment persisted and transaction names without duplicate choices
+ok 9 - draft mappings augment persisted and transaction names without duplicate choices
+  ---
+  duration_ms: 4.768833
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 1
+# fail 8
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 231.016334

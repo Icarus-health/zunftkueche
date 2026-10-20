@@ -1,0 +1,24 @@
+
+> build
+> tsc --noEmit && vite build
+
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 4666 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                    0.44 kB │ gzip:  0.29 kB
+dist/assets/index-BZ84TDs9.css                    38.89 kB │ gzip:  8.17 kB
+dist/assets/Zk_KitchenLoadService-Cm1lvfQl.js      0.35 kB │ gzip:  0.25 kB
+dist/assets/Zk_KitchenCommitService-C4MAcMGz.js    0.36 kB │ gzip:  0.25 kB
+dist/assets/document-runtime-BdYSRQrC.js           3.06 kB │ gzip:  1.41 kB
+dist/assets/microsoft-C9wsUEEz.js                  3.14 kB │ gzip:  1.31 kB
+dist/assets/sharepoint-documents-BnoZ2xEd.js       4.20 kB │ gzip:  1.93 kB
+dist/assets/SharePointService-BBbrlKFr.js         14.86 kB │ gzip:  1.70 kB
+dist/assets/documents-BUfxWt9a.js                 27.64 kB │ gzip:  9.28 kB
+dist/assets/repository-DPy43r9E.js                46.85 kB │ gzip: 14.18 kB
+dist/assets/data-BtcA99N4.js                      79.95 kB │ gzip: 14.32 kB
+dist/assets/App-DdAy3NRd.js                      215.92 kB │ gzip: 55.67 kB
+dist/assets/index-Cn6TrgVW.js                    223.49 kB │ gzip: 70.32 kB
+
+✓ built in 434ms

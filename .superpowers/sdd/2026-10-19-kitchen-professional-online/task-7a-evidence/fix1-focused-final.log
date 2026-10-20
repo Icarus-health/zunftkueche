@@ -1,0 +1,136 @@
+TAP version 13
+# Subtest: receipt text survives Escape and close until discard is confirmed
+ok 1 - receipt text survives Escape and close until discard is confirmed
+  ---
+  duration_ms: 0.89825
+  type: 'test'
+  ...
+# Subtest: unchanged dialogs close immediately; cancellation also cancels pending navigation
+ok 2 - unchanged dialogs close immediately; cancellation also cancels pending navigation
+  ---
+  duration_ms: 0.135917
+  type: 'test'
+  ...
+# Subtest: form comparison detects text, dates, recipe removal and reversions without treating defaults as edits
+ok 3 - form comparison detects text, dates, recipe removal and reversions without treating defaults as edits
+  ---
+  duration_ms: 0.824416
+  type: 'test'
+  ...
+# Subtest: closing a modal consults its dirty standalone descendants without discarding other screen fields
+ok 4 - closing a modal consults its dirty standalone descendants without discarding other screen fields
+  ---
+  duration_ms: 1.001834
+  type: 'test'
+  ...
+# Subtest: local tab and filter requests wait for dirty fields and cancellation leaves their destination unchanged
+ok 5 - local tab and filter requests wait for dirty fields and cancellation leaves their destination unchanged
+  ---
+  duration_ms: 0.146291
+  type: 'test'
+  ...
+# Subtest: modal closure can exclude its own registry entry and invoke its own form guard exactly once
+ok 6 - modal closure can exclude its own registry entry and invoke its own form guard exactly once
+  ---
+  duration_ms: 0.179
+  type: 'test'
+  ...
+# Subtest: pending operation refuses clean navigation and cancels a previously queued discard
+ok 7 - pending operation refuses clean navigation and cancels a previously queued discard
+  ---
+  duration_ms: 0.061
+  type: 'test'
+  ...
+# Subtest: prepared headers retain supplier, event and date through later edits and archive roundtrip
+ok 8 - prepared headers retain supplier, event and date through later edits and archive roundtrip
+  ---
+  duration_ms: 19.074584
+  type: 'test'
+  ...
+# Subtest: unknown date stays unknown after a date is supplied later
+ok 9 - unknown date stays unknown after a date is supplied later
+  ---
+  duration_ms: 1.42675
+  type: 'test'
+  ...
+# Subtest: legacy prepared headers disclose current context; live drafts use current context without historical claim
+ok 10 - legacy prepared headers disclose current context; live drafts use current context without historical claim
+  ---
+  duration_ms: 0.547459
+  type: 'test'
+  ...
+# Subtest: settings preserve historic facts and future orders snapshot address contact
+ok 11 - settings preserve historic facts and future orders snapshot address contact
+  ---
+  duration_ms: 8.570292
+  type: 'test'
+  ...
+# Subtest: Vorbereitet: preview/print header retains all saved context after current masters change
+ok 12 - Vorbereitet: preview/print header retains all saved context after current masters change
+  ---
+  duration_ms: 16.960333
+  type: 'test'
+  ...
+# Subtest: Vorbereitet: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+ok 13 - Vorbereitet: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+  ---
+  duration_ms: 7.024708
+  type: 'test'
+  ...
+# Subtest: bestellt: preview/print header retains all saved context after current masters change
+ok 14 - bestellt: preview/print header retains all saved context after current masters change
+  ---
+  duration_ms: 7.364375
+  type: 'test'
+  ...
+# Subtest: bestellt: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+ok 15 - bestellt: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+  ---
+  duration_ms: 6.861583
+  type: 'test'
+  ...
+# Subtest: bestaetigt: preview/print header retains all saved context after current masters change
+ok 16 - bestaetigt: preview/print header retains all saved context after current masters change
+  ---
+  duration_ms: 9.166959
+  type: 'test'
+  ...
+# Subtest: bestaetigt: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+ok 17 - bestaetigt: legacy saved preview discloses current fallback and leaves unsaved address/contact unknown
+  ---
+  duration_ms: 8.669667
+  type: 'test'
+  ...
+# Subtest: defensive stale mapping-only name remains available for reassignment within a draft
+ok 18 - defensive stale mapping-only name remains available for reassignment within a draft
+  ---
+  duration_ms: 6.73075
+  type: 'test'
+  ...
+# Subtest: defensive stale mappings survive draft deactivation and are restored on discard
+ok 19 - defensive stale mappings survive draft deactivation and are restored on discard
+  ---
+  duration_ms: 5.287583
+  type: 'test'
+  ...
+# Subtest: draft mappings augment persisted and transaction names without duplicate choices
+ok 20 - draft mappings augment persisted and transaction names without duplicate choices
+  ---
+  duration_ms: 5.80925
+  type: 'test'
+  ...
+# Subtest: full-App fixture settings save real historical mappings and ordinary fields in one operation
+ok 21 - full-App fixture settings save real historical mappings and ordinary fields in one operation
+  ---
+  duration_ms: 7.365042
+  type: 'test'
+  ...
+1..21
+# tests 21
+# suites 0
+# pass 21
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 262.876416
