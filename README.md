@@ -4,6 +4,13 @@ Stand 20.10.2026: Dieses Repository enthält den aktuellen Entwicklungsstand der
 
 Private Quelldaten aus `import/`, lokale Arbeitsdaten, Rechnungsdateien, Zugangsdaten und lokale Sicherungen gehören nicht ins Repository. Für eine lokale Vorschau wird die vorhandene private Ausgangsdatei `import/2026.json` separat benötigt. GitHub speichert hier den Code; durch den Upload wird keine App bereitgestellt und kein Microsoft-Datenbestand geändert.
 
+## Aktuelle Entwicklungsgrundlage
+
+- [Ist- und Sollzustand vom 20.10.2026](docs/superpowers/specs/2026-10-20-github-microsoft-design.md)
+- [Entwicklungsplan: GitHub und bestehendes Microsoft-System](docs/superpowers/plans/2026-10-20-github-microsoft.md)
+
+Die folgenden Angaben beschreiben den früheren Einrichtungsstand. Für die nächste Entwicklung gelten die oben verlinkten Lieferungen und ihre Abnahmekriterien.
+
 ## Bisheriger Microsoft-Stand vom 15.10.2026
 
 Stand 15.10.2026. Planung, Einkauf, Lieferungen, Bestand, Belege und Auswertung sind als zusammenhängende React-App umgesetzt und als private Power Apps Code App veröffentlicht. Die freigegebene Microsoft-Umgebung „Zunftküche“ enthält Dataverse, Küchentabellen, Schnittstellen, Schutzregistrierungen und die geprüfte Kopie der Daten von 2026 (EU/EFTA, zugeteilte Region Schweiz). Im Vorstand-Konto sind tatsächliches Laden, Speichern und erneutes Öffnen im Browser bestätigt. Die Nachkontrolle bestätigt Revision 2. Identische Wiederholung, Versionskonflikt und 24 unterstützte direkte Schreibschutzprüfungen wurden separat live nachgewiesen; zwei nicht verfügbare Standardtabellen-Sammellöschungen werden ausdrücklich nicht als ausgeführte Prüfungen gezählt. Die nach Neuladen kontrollierte Freigabeansicht zeigt einen Besitzer und einen Benutzer, ohne ausstehende Einladungen. Schreiber wurde auf ausdrücklichen Wunsch als App-Benutzer geteilt; die gezielte Bearbeiterrolle und Freigabe des bestehenden Küchendatensatzes sind durch tatsächliche Nachkontrolle bestätigt. Der Praxistest mit Schreibers Anmeldung steht noch aus. **Das zusätzliche persönliche Teams-Paket ist gebaut und unabhängig geprüft. Die Upload-Regel ist ausschließlich Schreiber zugewiesen und im Admin Center bestätigt; im Teams-Client ist der persönliche Upload noch nicht verfügbar. Installation und echte Teams-Bedienprüfung bleiben offen.** Microsofts automatischer „Zu Teams hinzufügen“-Weg für Code Apps schlägt mit einem unvollständigen Teams-Paket fehl und wird derzeit nicht unterstützt. Aktueller Einrichtungsstand: docs/deployment-status-2026-10-15.json.
