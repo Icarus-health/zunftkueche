@@ -106,7 +106,8 @@ export function orderPreviewHeader(
     status: string;
   },
 ) {
-  if (order.status === "Vorbereitet" && order.context)
+  const saved = order.status !== "Vorschau";
+  if (saved && order.context)
     return { ...order.context, notice: null };
   return {
     supplierName:
@@ -115,10 +116,10 @@ export function orderPreviewHeader(
     eventName: state.event.name,
     eventYear: state.event.year,
     deliveryDate: state.event.dates[order.day] ?? null,
-    deliveryAddress: order.status === "Vorbereitet" ? undefined : state.event.deliveryAddress,
-    contact: order.status === "Vorbereitet" ? undefined : state.event.contact,
+    deliveryAddress: saved ? undefined : state.event.deliveryAddress,
+    contact: saved ? undefined : state.event.contact,
     notice:
-      order.status === "Vorbereitet"
+      saved
         ? "Lieferant, Veranstaltung und Datum wurden in dieser älteren Version nicht gespeichert. Die angezeigten Angaben sind aktuell; der damalige Stand ist unbekannt."
         : null,
   };

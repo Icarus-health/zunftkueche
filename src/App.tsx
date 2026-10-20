@@ -72,6 +72,7 @@ export default function App() {
     [screen, setScreen] = useState<Screen>("Übersicht"),
     [supplier, setSupplier] = useState(""),
     [viewEvent, setViewEvent] = useState<string | null>(null);
+  const [closureVisit, setClosureVisit] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const navigation = useRef<HTMLElement>(null);
@@ -172,10 +173,12 @@ export default function App() {
     if(saved){const p=payload as Record<string,unknown>;updatePreferences({...preferences,selectedEventId:type==='event.create'?id:(viewEvent??state.event.id),lastSupplierId:typeof p.supplierId==='string'?p.supplierId:preferences.lastSupplierId,lastLocation:typeof p.location==='string'?p.location:preferences.lastLocation});}
     return saved;
   }
-  function go(target: Screen, supplierId?: string) {
+  function go(target: Screen, supplierId?: string, openClosure = false) {
     if (controller.status.pending) return;
     requestDraftNavigation(() => {
       if (supplierId) setSupplier(supplierId);
+      // A closed-event banner visit starts on Abschluss even from another Analysis tab.
+      if (openClosure) setClosureVisit(visit => visit + 1);
       setScreen(target);
       if (mobileMenuOpen) closeMobileMenu();
       controller.clearNotice();
@@ -345,7 +348,7 @@ export default function App() {
         <main>
           {viewState.event.status === "Abgeschlossen" && <div className="closure-banner" role="status">
             <span><strong>Abgeschlossen · Leseansicht</strong> · Änderungen sind nach begründeter Wiederöffnung möglich.</span>
-            <button className="text-button" onClick={() => go("Auswertung")}>Abschluss und Berichte</button>
+            <button className="text-button" onClick={() => go("Auswertung", undefined, true)}>Abschluss und Berichte</button>
           </div>}
           {error && (
             <div className="alert" role="alert">
@@ -407,7 +410,7 @@ export default function App() {
             <Receipts key={viewState.event.id} {...props} />
           )}
           {screen === "Auswertung" && (
-            <Analysis key={viewState.event.id} {...props} />
+            <Analysis key={`${viewState.event.id}:${closureVisit}`} {...props} />
           )}
         </main>
       </div>

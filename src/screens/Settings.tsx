@@ -7,13 +7,14 @@ import type {ScreenProps} from '../App.tsx';
 import type {UserPreferences} from '../data/preferences.ts';
 import {startScreens} from '../data/preferences.ts';
 import {deliveryDays} from '../ui/facts.ts';
+import {historicalMappingNames} from '../ui/settings-mappings.ts';
 import {useDraftGuard} from '../hooks/useDraftGuard.ts';
 import {DiscardChangesDialog} from '../components/DiscardChangesDialog.tsx';
 export default function Settings({state,busy,readOnly,commit,saveError,mode,preferences,onPreferences,canConfigure,canClose,storageBytes,onBackup}:ScreenProps & {preferences:UserPreferences;onPreferences:(value:UserPreferences)=>void;canConfigure:boolean;canClose:boolean;storageBytes:number;onBackup:(originals:OriginalBackup[])=>Promise<string[]>}) {
  const initial={name:state.event.name,year:state.event.year,dates:{...state.event.dates},deliveryAddress:state.event.deliveryAddress??'',contact:state.event.contact??'',locations:state.event.locations??activeLocations(state).map(name=>({name,historicalNames:[]})),purchasingLocation:purchasingLocation(state)};
  const [draft,setDraft]=useState(initial),[error,setError]=useState('');
  const guard=useDraftGuard({dirty:JSON.stringify(draft)!==JSON.stringify(initial),onDiscard:()=>setDraft(initial)});
- const historical=[...new Set([...draft.locations.flatMap(location=>location.historicalNames),...state.planLines.map(l=>l.location),...state.movements.map(l=>l.location),...state.invoices.map(l=>l.scope)].filter((v):v is string=>!!v))].sort();
+ const historical=historicalMappingNames(state,draft.locations);
  return <section className="settings-screen"><h1>Einstellungen</h1>
  <section className="panel"><h2>Persönlich</h2><p>{mode === "microsoft" ? "Diese Auswahl gilt nur für dein bestätigtes Microsoft-Konto in dieser Umgebung." : "In der lokalen Arbeitsversion gilt diese Auswahl nur für die aktuelle Sitzung; es ist kein Microsoft-Konto bestätigt."}</p>
  <label>Startansicht<select value={preferences.startScreen} onChange={e=>onPreferences({...preferences,startScreen:e.target.value})}>{startScreens.map(s=><option key={s}>{s}</option>)}</select></label>

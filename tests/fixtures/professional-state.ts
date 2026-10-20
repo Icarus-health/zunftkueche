@@ -12,6 +12,11 @@ export function professionalFixture(): KitchenState {
       menu: [{id: 'dish-a', name: 'Kartoffelsuppe', priceCents: 500, category: 'Speise', recipeStatus: 'Bestätigt', recipe: [{articleId: 'article-a', quantity: 0.2}]}, {id: 'dish-b', name: 'Belegtes Brötchen', priceCents: 350, category: 'Speise', recipeStatus: 'Bestätigt', recipe: [{articleId: 'article-b', quantity: 1}]}],
       planLines: [], orders: [], dishPlan: [{id: `${id}-plan-f`, menuId: 'dish-a', day: 'Freitag', quantity: 20}, {id: `${id}-plan-s`, menuId: 'dish-a', day: 'Samstag', quantity: 30}],
       invoices: [], sales: [], movements: [], lessons: [], sourceNotice: 'Synthetische Prüfdaten · ausschließlich im Arbeitsspeicher.'};
+    // Persisted aliases require an actual historic source in both domain and server policy.
+    // Zero quantities on Allgemein keep Friday/Saturday orders and all economic totals intact.
+    for (const [index, location] of ['Alte Küche', 'Historischer Teststand', 'Früherer Außenstand'].entries()) {
+      state.planLines.push({id: `${id}-historic-${index}`, supplierId: 'supplier-a', articleId: 'article-a', name: 'Synthetische historische Ortsangabe', quantity: 0, unit: 'kg', day: 'Allgemein', time: null, unitPriceCents: 200, location, note: 'Synthetischer historischer Beleg der Ortsbezeichnung · Nullmenge'});
+    }
     let serial = 0;
     const apply = (type: string, payload: unknown) => { state = applyOperation(state, {id: `${id}-op-${++serial}`, type, payload, baseRevision: state.revision}).state; };
     for (const supplier of state.suppliers) for (const day of ['Freitag', 'Samstag'] as const) {
