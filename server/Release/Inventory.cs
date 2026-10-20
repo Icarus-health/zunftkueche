@@ -2,9 +2,18 @@ using System.Text;
 using System.Text.Json.Nodes;
 using Newtonsoft.Json.Linq;
 namespace Kitchen.Inventory;
+public sealed record CoreCaptureFacts(string WorkspaceFingerprint,string ReceiptFingerprint,string RawStateSha256,string WorkspaceArtifactSha256,string ReceiptArtifactSha256)
+{
+    internal static CoreCaptureFacts Retained(Backup backup,JsonObject workspace,JsonObject[] receipts) {
+        var rawHash=Check.Hash(new UTF8Encoding(false,true).GetBytes(Check.Text(workspace,"zk_state")));
+        Check.Require(backup.SavedHash("zk_state.exact.utf8.json")==rawHash);
+        return new(Check.Fingerprint(workspace),Inspector.ReceiptFingerprint(receipts),rawHash,backup.SavedHash("workspace.json"),backup.SavedHash("receipts-all-fields.json"));
+    }
+    internal void Match(JsonObject workspace,JsonObject[] receipts)=>Check.Require(WorkspaceFingerprint==Check.Fingerprint(workspace)&&ReceiptFingerprint==Inspector.ReceiptFingerprint(receipts)&&RawStateSha256==Check.Hash(new UTF8Encoding(false,true).GetBytes(Check.Text(workspace,"zk_state"))));
+}
 public sealed class Inspector(Reader reader, Backup backup, string objectId, RunStatus? status = null)
 {
-    public async Task Run(bool finish = true)
+    public async Task<CoreCaptureFacts> Run(bool finish = true)
     {
         status ??= new RunStatus { Backup = backup };
         status.Backup ??= backup;
@@ -71,6 +80,7 @@ public sealed class Inspector(Reader reader, Backup backup, string objectId, Run
             backup.Json("owner-user-identity.json", await reader.Object(Queries.User(owner)));
         }
         status.Stage = FailureStage.Finalization;
+        var capture=CoreCaptureFacts.Retained(backup,before,receiptsBefore);
         if (finish) backup.Finish(new
         {
             stateSha256 = Check.Hash(raw),
@@ -87,6 +97,7 @@ public sealed class Inspector(Reader reader, Backup backup, string objectId, Run
             permissions = "workspace_effective_access_plus_privileges_with_team_depth_limitation",
             perReceipt = receiptsBefore.Select(r => new { id = Check.Id(r, "zk_kitchenoperationid"), sha256 = Check.Fingerprint(r) }).ToArray()
         });
+        return capture;
     }
     public async Task<JsonObject> ReadWorkspace()
     {

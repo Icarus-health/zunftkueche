@@ -76,5 +76,14 @@
       "destination": "server/Release/prelaunch.py",
       "sha256": "b116376dd9a40c277214bc4dbc8f11397acd140a22772b76b4c8e9c64b810c14"
     }
+  ],
+  "derivedInputs": [
+    {
+      "source": ".superpowers/sdd/2026-10-19-kitchen-professional-online/historical-system-attribute-shapes.json",
+      "sha256": "b644eb6372dbaa99cecef8f2318e1ac3f333863561d5527024a04fae2546cc71",
+      "destination": "server/Release/contracts/user-owned-system-shape.json",
+      "derivation": "UserOwned historical 31 system attributes and primary-ID shape; omit historical primary logical name and all metadata IDs, labels, and SchemaName. Fixed new primary logical name is supplied by TableKind. Historical candidate contract, not fresh new-table proof.",
+      "originalUntouched": true
+    }
   ]
 }

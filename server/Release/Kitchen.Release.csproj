@@ -23,5 +23,6 @@
 <Compile Include="../Documents/DocumentProtocol.cs"/>
 <Compile Include="../Intake/ReceiptIntake.cs"/>
 <EmbeddedResource Include="contracts/platform-intrinsics.json" LogicalName="Inventory.contracts.platform-intrinsics.json"/>
+<EmbeddedResource Include="contracts/user-owned-system-shape.json" LogicalName="Kitchen.Release.contracts.user-owned-system-shape.json"/>
 <PackageReference Include="Microsoft.Identity.Client" Version="[4.83.0]"/><PackageReference Include="Newtonsoft.Json" Version="[13.0.3]"/>
 </ItemGroup></Project>

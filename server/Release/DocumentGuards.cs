@@ -3,14 +3,16 @@ using Kitchen.Inventory;
 namespace Kitchen.Release;
 public enum RouteDisposition { RegisterDenialOrOwnCud, Traversal, Unavailable }
 public sealed record ReviewedBinding(TableKind Table,string Message,string FilterId,string MessageId,string TypeId,string PlanHash);
-public sealed record RouteEvidence(TableKind Table,string Message,RouteDisposition Disposition,string AuthoritativeEvidenceHash,string NativeWitnessHash);
+public sealed record RouteEvidence(TableKind Table,string Message,RouteDisposition Disposition,string AuthoritativeEvidenceHash,string? NativeWitnessHash);
 public sealed record RouteInventory(bool Complete,JsonObject[] Filters,JsonObject[] Steps,JsonObject[] GlobalSteps);
 public static class DocumentGuards
 {
     public static readonly string[] RequiredMessages=["Create","Update","Delete","Upsert","CreateMultiple","UpdateMultiple","UpsertMultiple","DeleteMultiple","Assign","GrantAccess","ModifyAccess","RevokeAccess","SetState"];
     public static readonly string[] DiscoveryMessages=["CreateMultipleLegacy","UpdateMultipleLegacy","Restore","SetStateDynamicEntity"];
     public static bool IndividualMessage(string m)=>m is "Create" or "Update" or "Delete" or "Assign" or "GrantAccess" or "ModifyAccess" or "RevokeAccess" or "SetState";
-    public static void Validate(RouteInventory inventory,IReadOnlyList<RouteEvidence> evidence) {
+    public static void Validate(RouteInventory inventory,IReadOnlyList<RouteEvidence> evidence)=>ValidateCore(inventory,evidence,true);
+    internal static void ValidatePreparationPlan(RouteInventory inventory,IReadOnlyList<RouteEvidence> evidence)=>ValidateCore(inventory,evidence,false);
+    static void ValidateCore(RouteInventory inventory,IReadOnlyList<RouteEvidence> evidence,bool final) {
         Check.Require(inventory.Complete);
         var required=new HashSet<(TableKind,string)>();
         foreach(var table in Enum.GetValues<TableKind>()) {
@@ -19,7 +21,7 @@ public static class DocumentGuards
             foreach(var message in RequiredMessages.Concat(DiscoveryMessages).Concat(discovered).Concat(steps).Distinct(StringComparer.Ordinal)) {
                 required.Add((table,message));
                 var rows=evidence.Where(e=>e.Table==table&&e.Message==message).ToArray();Check.Require(rows.Length==1);
-                var r=rows[0];Check.Require(Hash(r.AuthoritativeEvidenceHash)&&Hash(r.NativeWitnessHash));
+                var r=rows[0];Check.Require(Hash(r.AuthoritativeEvidenceHash)&&(!final||Hash(r.NativeWitnessHash)));
                 if(r.Disposition==RouteDisposition.RegisterDenialOrOwnCud)Check.Require(IndividualMessage(message));
                 if(message is "Create" or "Update" or "Delete")Check.Require(r.Disposition==RouteDisposition.RegisterDenialOrOwnCud);
                 if(message=="DeleteMultiple")Check.Require(r.Disposition==RouteDisposition.Unavailable);
@@ -103,8 +105,10 @@ public static class GuardPhase
         t=>boundary.CreateFixedGuardOnce(binding,t),checkpoint,journal,token);
 }
 
-public sealed record PinnedRouteEvidence(RouteEvidence Route,EvidenceFile Authoritative,EvidenceFile NativeWitness);
-public sealed record RouteReview(string Schema,string Organization,string Solution,PinnedRouteEvidence[] Evidence)
+public enum RouteReviewKind { FinalWitnessed,RefusalPreparation }
+public enum NativeWitnessState { Observed,Unproved }
+public sealed record PinnedRouteEvidence(RouteEvidence Route,EvidenceFile Authoritative,EvidenceFile? NativeWitness,NativeWitnessState WitnessState=NativeWitnessState.Observed);
+public sealed record RouteReview(string Schema,string Organization,string Solution,PinnedRouteEvidence[] Evidence,RouteReviewKind Kind=RouteReviewKind.FinalWitnessed,string? InventorySha256=null)
 {
     internal static RouteReview Load(EvidenceFile? pin,string root) {
         Check.Require(pin!=null);
@@ -114,14 +118,20 @@ public sealed record RouteReview(string Schema,string Organization,string Soluti
     }
     internal void VerifyFiles(string root) {
         Check.Require(Schema=="kitchen-document-route-review-v1"&&Organization==Target.Organization&&Solution==Target.Solution);
+        Check.Require(Enum.IsDefined(Kind));
         if(Evidence==null)throw new Stop();
         foreach(var item in Evidence) {
-            if(item==null||item.Route==null||item.Authoritative==null||item.NativeWitness==null)throw new Stop();
-            Check.Require(Check.Hash(item.Authoritative.Verify(root))==item.Route.AuthoritativeEvidenceHash&&Check.Hash(item.NativeWitness.Verify(root))==item.Route.NativeWitnessHash);
+            if(item==null||item.Route==null||item.Authoritative==null)throw new Stop();
+            Check.Require(Check.Hash(item.Authoritative.Verify(root))==item.Route.AuthoritativeEvidenceHash);
+            if(item.WitnessState==NativeWitnessState.Unproved)Check.Require(Kind==RouteReviewKind.RefusalPreparation&&item.NativeWitness==null&&item.Route.NativeWitnessHash==null);
+            else {Check.Require(item.WitnessState==NativeWitnessState.Observed&&item.NativeWitness!=null);Check.Require(Check.Hash(item.NativeWitness!.Verify(root))==item.Route.NativeWitnessHash);}
         }
     }
     internal void Validate(RouteInventory current,ReviewedBinding? binding=null) {
-        DocumentGuards.Validate(current,Evidence.Select(e=>e.Route).ToArray());
+        if(Kind==RouteReviewKind.RefusalPreparation) {
+            Check.Require(DocumentGuards.Hash(InventorySha256)&&InventorySha256==Check.Fingerprint(System.Text.Json.JsonSerializer.SerializeToNode(current)!));
+            DocumentGuards.ValidatePreparationPlan(current,Evidence.Select(e=>e.Route).ToArray());
+        } else DocumentGuards.Validate(current,Evidence.Select(e=>e.Route).ToArray());
         if(binding!=null)Check.Require(Evidence.Single(e=>e.Route.Table==binding.Table&&e.Route.Message==binding.Message).Route.Disposition==RouteDisposition.RegisterDenialOrOwnCud);
     }
 }
@@ -130,9 +140,24 @@ internal static class PhaseRoutePrerequisites
     // New tables do not have usable routes before schema installation. Schema-only creation
     // remains gated by native current-source completeness; final package/guard phases require this review.
     internal static bool Required(ReleaseMode mode)=>mode is ReleaseMode.ActivatePackage or ReleaseMode.RegisterDocumentGuards;
+    internal static RouteReview Load(ReviewedPhase phase,string root) {
+        Check.Require(Required(phase.Mode));
+        var preparation=phase.Mode==ReleaseMode.ActivatePackage
+            ? (phase.Transition??throw new Stop()).Kind switch{TransitionKind.V5ToRefusalDiagnostic=>true,TransitionKind.RefusalDiagnosticToFinal=>false,_=>throw new Stop()}
+            : phase.Preparation!=null;
+        Check.Require(preparation==(phase.Preparation!=null));
+        phase.Preparation?.Verify(root,phase);
+        var review=RouteReview.Load(phase.Routes,root);Check.Require(review.Kind==(preparation?RouteReviewKind.RefusalPreparation:RouteReviewKind.FinalWitnessed));
+        return review;
+    }
+    internal static async Task Validate(ReviewedPhase phase,string root,IDocumentGuardBoundary boundary,Func<CancellationToken,Task> verifyInstalledDiagnostic,CancellationToken cancellation) {
+        if(!Required(phase.Mode))return;
+        var review=Load(phase,root);review.Validate(await boundary.ReadCanonicalInventory(cancellation),phase.Guard);
+        if(review.Kind==RouteReviewKind.RefusalPreparation&&phase.Mode==ReleaseMode.RegisterDocumentGuards)await verifyInstalledDiagnostic(cancellation);
+    }
     internal static async Task Validate(ReleaseMode mode,EvidenceFile? pin,string root,IDocumentGuardBoundary boundary,ReviewedBinding? binding,CancellationToken cancellation) {
         if(!Required(mode))return;
-        var review=RouteReview.Load(pin,root);
+        var review=RouteReview.Load(pin,root);Check.Require(review.Kind==RouteReviewKind.FinalWitnessed);
         review.Validate(await boundary.ReadCanonicalInventory(cancellation),binding);
     }
 }

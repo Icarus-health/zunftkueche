@@ -34,7 +34,7 @@ public static class Program
             var phase=ReviewedRelease.Phases.Single(p=>p.Mode==mode);
             // Validate all externally pinned evidence BEFORE constructing authentication.
             _=phase.Plan.Verify(root);_=phase.Review.Verify(root);_=phase.Checkpoint.Verify(root);
-            if(PhaseRoutePrerequisites.Required(mode))_=RouteReview.Load(phase.Routes,root);
+            if(PhaseRoutePrerequisites.Required(mode))_=PhaseRoutePrerequisites.Load(phase,root);
             var mutationCapture=new Backup(Path.Combine(root,"backups"));
             var phaseAuth=new Authentication();await phaseAuth.SignIn();
             using var phaseReader=new Reader(phaseAuth.Token,mutationCapture.Write);

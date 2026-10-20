@@ -19,6 +19,25 @@ public static class ReleaseQueries
 }
 public enum DocumentSchemaProgress { NotInstalled,Partial,Exact }
 public sealed record CurrentStore(DocumentSchemaProgress Progress,CanonicalSchema Schema,JsonObject[] Rows,string Hash,string SchemaHash);
+internal static class NativeSystemMetadata
+{
+    static JsonObject Contract() {using var stream=typeof(NativeSystemMetadata).Assembly.GetManifestResourceStream("Kitchen.Release.contracts.user-owned-system-shape.json")??throw new Stop();using var bytes=new MemoryStream();stream.CopyTo(bytes);return Check.Parse(bytes.ToArray());}
+    internal static void Validate(TableKind table,CanonicalSchema schema) {
+        var contract=Contract();var primary=(JsonObject)contract["primary"]!.DeepClone();primary["LogicalName"]=DocumentSchema.Logical(table)+"id";
+        var expected=contract["system"]!.AsArray().Select(x=>(JsonObject)x!).Append(primary).ToDictionary(x=>Check.Text(x,"LogicalName"),StringComparer.Ordinal);
+        var fields=schema.Attributes.ToDictionary(a=>Check.Text(a,"LogicalName"),StringComparer.Ordinal);
+        foreach(var pair in expected){Check.Require(fields.TryGetValue(pair.Key,out var row));Check.Id(row,"MetadataId");Check.Match(row,pair.Value);}
+        var business=Enum.GetValues<ColumnKind>().Select(DocumentSchema.Field).ToHashSet();
+        foreach(var row in schema.Attributes) {
+            var name=Check.Text(row,"LogicalName");if(business.Contains(name)||expected.ContainsKey(name))continue;
+            // The one generated lookup display attribute is conditional on the fixed lookup.
+            Check.Require(name=="zk_workspacename"&&fields.ContainsKey("zk_workspace"));
+            Check.Match(row,new JsonObject{["AttributeOf"]="zk_workspace",["AttributeType"]="String",["AttributeTypeName"]=new JsonObject{["Value"]="StringType"},["IsCustomAttribute"]=false,["IsLogical"]=true,["IsPrimaryId"]=false,["IsPrimaryName"]=false,["IsValidForCreate"]=false,["IsValidForRead"]=true,["IsValidForUpdate"]=false,["IsSecured"]=false});
+        }
+        // Primary SchemaName casing and metadata IDs are measured, never inferred from an old table.
+        Check.Require(schema.Attributes.Count(a=>(bool?)a["IsPrimaryId"]==true)==1);
+    }
+}
 internal static class CurrentDocumentStore
 {
     internal static DocumentSchemaProgress Classify(TableKind table,CanonicalSchema schema) {
@@ -29,11 +48,10 @@ internal static class CurrentDocumentStore
         // exact, the primary name exists and no custom collision/unknown secured field is hidden.
         Check.Require(SchemaPhase.Observe(new(table,SchemaAction.Table),schema)==Presence.ExistingExact&&schema.Keys.Length==0);
         Check.Require(schema.Attributes.Select(a=>Check.Text(a,"LogicalName")).Distinct().Count()==schema.Attributes.Length);
+        NativeSystemMetadata.Validate(table,schema);
         var known=Enum.GetValues<ColumnKind>().Select(DocumentSchema.Field).ToHashSet();
         foreach(var attribute in schema.Attributes) {
             var name=Check.Text(attribute,"LogicalName");Check.Require((bool?)attribute["IsSecured"]==false);
-            Check.Require(attribute["IsCustomAttribute"] is JsonValue custom&&custom.TryGetValue<bool>(out var isCustom)&&(!isCustom||known.Contains(name)));
-            Check.Require(!name.StartsWith("zk_",StringComparison.Ordinal)||known.Contains(name));
             if(known.Contains(name)) {
                 var kind=Enum.GetValues<ColumnKind>().Single(c=>DocumentSchema.Field(c)==name);SchemaPhase.ValidateColumn(kind,attribute);
                 Check.Match(attribute,new JsonObject{["IsValidForCreate"]=true,["IsValidForRead"]=true,["IsValidForUpdate"]=true});
@@ -65,6 +83,44 @@ internal static class CurrentDocumentStore
 public enum StoreState { Unknown, NotInstalledByNativeEvidence, Installed }
 public sealed record StoreCapture(StoreState State,JsonObject[] Rows,string MetadataHash,bool CompletenessProven);
 public sealed record OriginalVersion(string Provenance,string SourceHash,string ByteHash,long Length,string? Site,string? Library,string? Item,string? Version,string? ETag,EvidenceFile Bytes);
+public enum OriginalSourceKind { LocalImport,CloudVersion,Unresolved }
+public sealed record OriginalRequirement(OriginalSourceKind Kind,string? Sha256,string Location,string? Site=null,string? Library=null,string? Item=null,string? Version=null);
+internal static class OriginalRequirements
+{
+    internal static OriginalRequirement[] Derive(byte[] rawState,IEnumerable<JObject> documents,IEnumerable<JObject> drafts) {
+        var result=new List<OriginalRequirement>();
+        string? Hash(JToken? value){var s=(string?)value;return s!=null&&s.Length==64&&s.All(Uri.IsHexDigit)?s.ToLowerInvariant():null;}
+        void Add(OriginalSourceKind kind,JToken? hash,string path,JObject? reference=null) {
+            var h=Hash(hash);result.Add(new(kind==OriginalSourceKind.LocalImport&&h==null?OriginalSourceKind.Unresolved:kind,h,path,(string?)reference?["siteCollectionId"],(string?)reference?["libraryId"],(string?)reference?["itemId"],(string?)reference?["version"]));
+        }
+        void Walk(JObject root,string origin) {
+            foreach(var value in root.DescendantsAndSelf().OfType<JObject>()) {
+                var path=origin+"."+value.Path;var source=value["source"] as JObject;
+                if(source?["hash"]!=null)Add(OriginalSourceKind.LocalImport,source["hash"],path+".source");
+                if(value["localPath"]?.Type==JTokenType.String&&source?["hash"]==null)Add(OriginalSourceKind.Unresolved,null,path+".localPath");
+                if(value["documentUrl"]?.Type==JTokenType.String)Add(OriginalSourceKind.CloudVersion,source?["hash"],path+".documentUrl");
+                if(value["provider"]!=null)Add((string?)value["provider"]=="sharepoint"?OriginalSourceKind.CloudVersion:OriginalSourceKind.Unresolved,value["sha256"],path,value);
+                if(value["sha256"]!=null&&value["provider"]==null) {
+                    if(value["ref"] is JObject reference)Add((string?)reference["provider"]=="sharepoint"?OriginalSourceKind.CloudVersion:OriginalSourceKind.Unresolved,value["sha256"],path,reference);
+                    else if((string?)value["status"]=="selected"&&value["uploadId"]?.Type==JTokenType.String)Add(OriginalSourceKind.LocalImport,value["sha256"],path);
+                    else Add(OriginalSourceKind.Unresolved,value["sha256"],path); // Draft page/version and unknown hash-bearing history require source proof.
+                }
+            }
+        }
+        Walk(Zunftkueche.Protocol.Parse(new UTF8Encoding(false,true).GetString(rawState)),"aggregate");
+        var index=0;foreach(var doc in documents)Walk(doc,"document["+(index++)+"]");index=0;foreach(var draft in drafts)Walk(draft,"draft["+(index++)+"]");
+        return result.ToArray();
+    }
+    internal static string ValidateLocal(string root,byte[] rawState,IEnumerable<JObject> documents,IEnumerable<JObject> drafts,IReadOnlyList<OriginalVersion> originals,IReadOnlyCollection<string>? assertedHashes=null) {
+        var required=Derive(rawState,documents,drafts);
+        Check.Require(required.All(r=>r.Kind==OriginalSourceKind.LocalImport)&&originals.All(o=>o.Provenance=="retained-local-import"));
+        var hashes=required.Select(r=>r.Sha256!).ToHashSet(StringComparer.Ordinal);
+        // A supplied hash list may corroborate a fresh derivation; it can never omit sources.
+        if(assertedHashes!=null)Check.Require(hashes.SetEquals(assertedHashes));
+        var bytes=CompleteInventory.ValidateOriginals(root,hashes,originals);
+        return Check.Fingerprint(new JsonObject{["schema"]="kitchen-source-original-requirements-v1",["requirements"]=System.Text.Json.JsonSerializer.SerializeToNode(required),["verifiedLocalBytes"]=bytes});
+    }
+}
 public static class CompleteInventory
 {
     public static string Collection(string kind,JsonObject[] rows,string idField) {
@@ -106,25 +162,36 @@ public static class CompleteInventory
     }
     public static void SameCheckpoint(string before,string after)=>Check.Require(before==after);
 }
+internal static class CaptureConsistency
+{
+    internal static async Task<(T Facts,JsonObject Stores)> Run<T>(CoreCaptureFacts retained,Func<Task<(JsonObject Workspace,JsonObject[] Receipts)>> readCore,Func<Task<JsonObject>> readExtended,Func<JsonObject,JsonObject[],JsonObject,Task<T>> captureFacts) {
+        var start=await readCore();retained.Match(start.Workspace,start.Receipts); // Reject the core-to-extension gap before combining facts.
+        var first=await readExtended();
+        var facts=await captureFacts(start.Workspace,start.Receipts,first);
+        var last=await readExtended();Check.Require(Check.Fingerprint(first)==Check.Fingerprint(last));
+        var end=await readCore();retained.Match(end.Workspace,end.Receipts);
+        return(facts,first);
+    }
+}
 public sealed class ReleaseInspector(Reader reader,Backup backup,string objectId,RunStatus status)
 {
-    readonly List<JObject> capturedPayloads=[];
+    readonly List<JObject> capturedDocuments=[],capturedDrafts=[];
     public async Task<bool> Inspect(bool includeOriginals=false,string? root=null) {
         // Accepted identity, exact core/API/intrinsic checks and final pure policy validation.
-        var core=new Inspector(reader,backup,objectId,status);await core.Run(false);
+        var core=new Inspector(reader,backup,objectId,status);var retained=await core.Run(false);
         reader.ReleaseQueries(ReleaseQueries.All);
-        var before=await core.ReadWorkspace();var receipts=await core.ReadReceipts();
-        var first=await ReadNewStores("release-before-");
-        var second=await ReadNewStores("release-after-");
-        Check.Require(Check.Fingerprint(first)==Check.Fingerprint(second));
-        Check.Require(Check.Fingerprint(before)==Check.Fingerprint(await core.ReadWorkspace())&&Inspector.ReceiptFingerprint(receipts)==Inspector.ReceiptFingerprint(await core.ReadReceipts()));
-        CompleteInventory.ValidateCurrentPolicy(new UTF8Encoding(false,true).GetBytes(Check.Text(before,"zk_state")),(int)before["zk_revision"]!,receipts);
-        var originals=includeOriginals ? CaptureOriginals(root!,new UTF8Encoding(false,true).GetBytes(Check.Text(before,"zk_state"))) : "not_requested";
-        var complete=includeOriginals&&DocumentGuards.Hash(originals)&&VerifyCurrentSourceReview(root!,before,receipts,first);
+        var sequence=0;
+        var connected=await CaptureConsistency.Run(retained,async()=>(await core.ReadWorkspace(),await core.ReadReceipts()),()=>ReadNewStores(sequence++==0?"release-before-":"release-after-"),(before,receipts,stores)=>{
+            var raw=new UTF8Encoding(false,true).GetBytes(Check.Text(before,"zk_state"));
+            CompleteInventory.ValidateCurrentPolicy(raw,(int)before["zk_revision"]!,receipts);
+            var originals=includeOriginals?CaptureOriginals(root!,raw):"not_requested";
+            var complete=includeOriginals&&DocumentGuards.Hash(originals)&&VerifyCurrentSourceReview(root!,before,receipts,stores);
+            return Task.FromResult((Originals:originals,Complete:complete));
+        });
         // This native artifact never manufactures a server-issued sourceContract or full-backup assertion.
-        backup.Finish(new{artifact="native-inspection-v1",currentPolicyValidated=true,completeCheckpoint=complete,originals,newStores=first,
-            missing="original-version bytes; both-principal effective direct/team rights; native route witnesses; exact final build/client review"},complete);
-        return complete;
+        backup.Finish(new{artifact="native-inspection-v1",currentPolicyValidated=true,completeCheckpoint=connected.Facts.Complete,originals=connected.Facts.Originals,coreCapture=retained,newStores=connected.Stores,
+            missing="original-version bytes; both-principal effective direct/team rights; native route witnesses; exact final build/client review"},connected.Facts.Complete);
+        return connected.Facts.Complete;
     }
     bool VerifyCurrentSourceReview(string root,JsonObject workspace,JsonObject[] receipts,JsonObject stores) {
         try {
@@ -145,23 +212,21 @@ public sealed class ReleaseInspector(Reader reader,Backup backup,string objectId
             var manifestPath=Path.Combine(root,"review","originals-manifest.json");
             Check.Require(pin!=null&&DocumentGuards.Hash(pin));
             var manifestBytes=File.ReadAllBytes(manifestPath);Check.Require(Check.Hash(manifestBytes)==pin);
-            var manifest=Check.Parse(manifestBytes);
-            var originals=System.Text.Json.JsonSerializer.Deserialize<OriginalVersion[]>(manifest["originals"]!.ToJsonString())??throw new Stop();
-            var required=new HashSet<string>();var state=Zunftkueche.Protocol.Parse(new UTF8Encoding(false,true).GetString(rawState));
-            foreach(var obj in state.DescendantsAndSelf().OfType<JObject>()) {
-                var source=obj["source"] as JObject;
-                if(source?["hash"] is JValue v){var h=(string?)v;Check.Require(DocumentGuards.Hash(h));required.Add(h!);}
-                if(obj["localPath"]?.Type==JTokenType.String||obj["documentUrl"]?.Type==JTokenType.String)
-                    Check.Require(source?["hash"]!=null||obj["intake"]!=null);
-            }
-            foreach(var payload in capturedPayloads)foreach(var value in payload.DescendantsAndSelf().OfType<JObject>())if(value["sha256"] is JValue v){var h=(string?)v;Check.Require(DocumentGuards.Hash(h));required.Add(h!);}
-            // A retained cloud-version file is insufficient for fresh remote-version verification.
-            Check.Require(originals.All(o=>o.Provenance=="retained-local-import"));
-            var fingerprint=CompleteInventory.ValidateOriginals(Path.Combine(root,"review"),required,originals);
-            backup.Write("originals-reviewed-manifest.json",manifestBytes);
-            foreach(var original in originals.DistinctBy(o=>o.ByteHash))backup.Write("original-"+original.ByteHash+".bin",original.Bytes.Verify(Path.Combine(root,"review")));
-            return fingerprint;
+            return RetainAndValidateOriginals(backup,Path.Combine(root,"review"),rawState,capturedDocuments,capturedDrafts,manifestBytes);
         }catch{return "Incomplete_originals_missing_or_unverified";}
+    }
+    internal static string RetainAndValidateOriginals(Backup backup,string root,byte[] rawState,IEnumerable<JObject> documents,IEnumerable<JObject> drafts,byte[] manifestBytes) {
+        var manifest=Check.Parse(manifestBytes);
+        var originals=System.Text.Json.JsonSerializer.Deserialize<OriginalVersion[]>(manifest["originals"]!.ToJsonString())??throw new Stop();
+        // Retain verified historical imports even if an actual cloud/unresolved requirement
+        // prevents completeness. A local byte match never supplies remote version provenance.
+        Check.Require(originals.All(o=>o.Provenance=="retained-local-import"));
+        _=CompleteInventory.ValidateOriginals(root,originals.Select(o=>o.SourceHash).ToHashSet(),originals);
+        backup.Write("originals-reviewed-manifest.json",manifestBytes);
+        foreach(var original in originals.DistinctBy(o=>o.ByteHash))backup.Write("original-"+original.ByteHash+".bin",original.Bytes.Verify(root));
+        var required=OriginalRequirements.Derive(rawState,documents,drafts);
+        backup.Json("original-source-requirements.json",System.Text.Json.JsonSerializer.SerializeToNode(required)!);
+        return OriginalRequirements.ValidateLocal(root,rawState,documents,drafts,originals);
     }
     async Task<JsonObject> ReadNewStores(string prefix) {
         var result=new JsonObject();
@@ -170,7 +235,7 @@ public sealed class ReleaseInspector(Reader reader,Backup backup,string objectId
             using var boundary=new FixedDocumentSchemaBoundary(reader,()=>throw new Stop(),new DurableAttemptJournal(Path.Combine("/private/tmp","kitchen-readonly-no-write"),"inventory"));
             var current=await CurrentDocumentStore.Read(t,await boundary.ReadCanonicalSchema(t,CancellationToken.None),reader,false,CancellationToken.None);
             var all=new JsonObject{["schema"]=System.Text.Json.JsonSerializer.SerializeToNode(current.Schema),["progress"]=current.Progress.ToString(),["rows"]=new JsonArray(current.Rows.Select(r=>r.DeepClone()).ToArray())};
-            foreach(var row in current.Rows){var payload=Zunftkueche.Protocol.Parse(Check.Text(row,"zk_payload"));capturedPayloads.Add(payload);Check.Require((string?)payload["id"]==Check.Id(row,name+"id")&&(string?)payload["workspaceId"]==Target.Workspace&&(string?)payload["eventId"]==Check.Text(row,"zk_eventid"));}
+            foreach(var row in current.Rows){var payload=Zunftkueche.Protocol.Parse(Check.Text(row,"zk_payload"));(t==TableKind.Document?capturedDocuments:capturedDrafts).Add(payload);Check.Require((string?)payload["id"]==Check.Id(row,name+"id")&&(string?)payload["workspaceId"]==Target.Workspace&&(string?)payload["eventId"]==Check.Text(row,"zk_eventid"));}
             if(current.Progress!=DocumentSchemaProgress.NotInstalled)all["filters"]=new JsonArray((await reader.Rows(ReleaseQueries.Filters(t),"sdkmessagefilterid",1000)).Select(r=>r.DeepClone()).ToArray());
             backup.Json(prefix+name+"-inventory.json",all);
             result[name]=new JsonObject{["status"]=current.Progress switch{DocumentSchemaProgress.NotInstalled=>"NotInstalledByNativeEvidence",DocumentSchemaProgress.Partial=>"PartialInstalledEmptyVisibilityNotProvenComplete",_=>"InstalledVisibilityNotProvenComplete"},["observedRows"]=current.Rows.Length,["hash"]=Check.Fingerprint(all)};

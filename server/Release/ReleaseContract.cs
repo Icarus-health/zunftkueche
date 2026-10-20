@@ -41,7 +41,19 @@ public static class ReviewedRelease
 }
 public sealed record ReviewedTransition(TransitionKind Kind, string PriorHash, int PriorLength, EvidenceFile Package,
     EvidenceFile SourceBuild, EvidenceFile IndependentReview, WriteMode Mode, EvidenceFile WriterExclusion);
-public sealed record ReviewedPhase(ReleaseMode Mode, EvidenceFile Plan, EvidenceFile Review, EvidenceFile Checkpoint, SchemaStep? Schema=null, ReviewedBinding? Guard=null, ReviewedTransition? Transition=null,EvidenceFile? Routes=null);
+public sealed record ReviewedPhase(ReleaseMode Mode, EvidenceFile Plan, EvidenceFile Review, EvidenceFile Checkpoint, SchemaStep? Schema=null, ReviewedBinding? Guard=null, ReviewedTransition? Transition=null,EvidenceFile? Routes=null,PreparationContract? Preparation=null);
+public sealed record PreparationContract(EvidenceFile DiagnosticPackage,EvidenceFile SourceBuild,EvidenceFile IndependentRefusalReview,EvidenceFile OrdinaryUseAndWriterExclusion)
+{
+    internal void Verify(string root,ReviewedPhase phase) {
+        _=DiagnosticPackage.Verify(root);_=SourceBuild.Verify(root);
+        Check.Match(Check.Parse(IndependentRefusalReview.Verify(root)),new JsonObject{["schema"]="kitchen-refusal-diagnostic-review-v1",["organization"]=Target.Organization,["packageId"]=Target.Package,["diagnosticSha256"]=DiagnosticPackage.Sha256,["diagnosticBytes"]=DiagnosticPackage.Length,["sourceBuildSha256"]=SourceBuild.Sha256,["ordinaryKitchenCommit"]="refused-before-write",["acceptingDocumentOperations"]=false,["independentlyReviewed"]=true});
+        Check.Match(Check.Parse(OrdinaryUseAndWriterExclusion.Verify(root)),new JsonObject{["schema"]="kitchen-preparation-exclusion-v1",["organization"]=Target.Organization,["workspace"]=Target.Workspace,["app"]=Target.App,["ordinaryUseDisabled"]=true,["sourceWritersExcluded"]=true,["packageWritersExcluded"]=true,["checkpointSha256"]=phase.Checkpoint.Sha256,["reviewSha256"]=phase.Review.Sha256});
+        if(phase.Mode==ReleaseMode.ActivatePackage) {
+            var transition=phase.Transition??throw new Stop();
+            Check.Require(transition.Kind==TransitionKind.V5ToRefusalDiagnostic&&transition.Package==DiagnosticPackage&&transition.SourceBuild==SourceBuild);
+        } else Check.Require(phase.Mode==ReleaseMode.RegisterDocumentGuards&&phase.Guard!=null);
+    }
+}
 
 public static class ReleaseClosure
 {

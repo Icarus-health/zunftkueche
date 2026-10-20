@@ -1,0 +1,704 @@
+{
+  "kind": "historical-user-owned-system-metadata-candidate",
+  "freshNewTableProof": false,
+  "sourceExtractSha256": "b644eb6372dbaa99cecef8f2318e1ac3f333863561d5527024a04fae2546cc71",
+  "sourceMetadataSha256": "28b5035b9a36458024c175fa0607bfb96a00c486bf0cbd5d25090f1c071d8527",
+  "primary": {
+    "AttributeType": "Uniqueidentifier",
+    "AttributeTypeName": {
+      "Value": "UniqueidentifierType"
+    },
+    "AttributeOf": null,
+    "IsCustomAttribute": false,
+    "IsLogical": false,
+    "IsPrimaryId": true,
+    "IsPrimaryName": false,
+    "IsValidForRead": true,
+    "IsValidForCreate": true,
+    "IsValidForUpdate": false,
+    "IsSecured": false,
+    "RequiredLevel": {
+      "Value": "SystemRequired",
+      "CanBeChanged": false,
+      "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+    }
+  },
+  "system": [
+    {
+      "LogicalName": "createdby",
+      "AttributeType": "Lookup",
+      "AttributeTypeName": {
+        "Value": "LookupType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      },
+      "Targets": [
+        "systemuser"
+      ]
+    },
+    {
+      "LogicalName": "createdbyname",
+      "AttributeType": "String",
+      "AttributeTypeName": {
+        "Value": "StringType"
+      },
+      "AttributeOf": "createdby",
+      "IsCustomAttribute": false,
+      "IsLogical": true,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "createdbyyominame",
+      "AttributeType": "String",
+      "AttributeTypeName": {
+        "Value": "StringType"
+      },
+      "AttributeOf": "createdby",
+      "IsCustomAttribute": false,
+      "IsLogical": true,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "SystemRequired",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "createdon",
+      "AttributeType": "DateTime",
+      "AttributeTypeName": {
+        "Value": "DateTimeType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "createdonbehalfby",
+      "AttributeType": "Lookup",
+      "AttributeTypeName": {
+        "Value": "LookupType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      },
+      "Targets": [
+        "systemuser"
+      ]
+    },
+    {
+      "LogicalName": "createdonbehalfbyname",
+      "AttributeType": "String",
+      "AttributeTypeName": {
+        "Value": "StringType"
+      },
+      "AttributeOf": "createdonbehalfby",
+      "IsCustomAttribute": false,
+      "IsLogical": true,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "createdonbehalfbyyominame",
+      "AttributeType": "String",
+      "AttributeTypeName": {
+        "Value": "StringType"
+      },
+      "AttributeOf": "createdonbehalfby",
+      "IsCustomAttribute": false,
+      "IsLogical": true,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "SystemRequired",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "importsequencenumber",
+      "AttributeType": "Integer",
+      "AttributeTypeName": {
+        "Value": "IntegerType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": true,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "modifiedby",
+      "AttributeType": "Lookup",
+      "AttributeTypeName": {
+        "Value": "LookupType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      },
+      "Targets": [
+        "systemuser"
+      ]
+    },
+    {
+      "LogicalName": "modifiedbyname",
+      "AttributeType": "String",
+      "AttributeTypeName": {
+        "Value": "StringType"
+      },
+      "AttributeOf": "modifiedby",
+      "IsCustomAttribute": false,
+      "IsLogical": true,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "modifiedbyyominame",
+      "AttributeType": "String",
+      "AttributeTypeName": {
+        "Value": "StringType"
+      },
+      "AttributeOf": "modifiedby",
+      "IsCustomAttribute": false,
+      "IsLogical": true,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "SystemRequired",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "modifiedon",
+      "AttributeType": "DateTime",
+      "AttributeTypeName": {
+        "Value": "DateTimeType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "modifiedonbehalfby",
+      "AttributeType": "Lookup",
+      "AttributeTypeName": {
+        "Value": "LookupType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      },
+      "Targets": [
+        "systemuser"
+      ]
+    },
+    {
+      "LogicalName": "modifiedonbehalfbyname",
+      "AttributeType": "String",
+      "AttributeTypeName": {
+        "Value": "StringType"
+      },
+      "AttributeOf": "modifiedonbehalfby",
+      "IsCustomAttribute": false,
+      "IsLogical": true,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "modifiedonbehalfbyyominame",
+      "AttributeType": "String",
+      "AttributeTypeName": {
+        "Value": "StringType"
+      },
+      "AttributeOf": "modifiedonbehalfby",
+      "IsCustomAttribute": false,
+      "IsLogical": true,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "SystemRequired",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "overriddencreatedon",
+      "AttributeType": "DateTime",
+      "AttributeTypeName": {
+        "Value": "DateTimeType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": true,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "ownerid",
+      "AttributeType": "Owner",
+      "AttributeTypeName": {
+        "Value": "OwnerType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": true,
+      "IsValidForUpdate": true,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "SystemRequired",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      },
+      "Targets": [
+        "systemuser",
+        "team"
+      ]
+    },
+    {
+      "LogicalName": "owneridname",
+      "AttributeType": "String",
+      "AttributeTypeName": {
+        "Value": "StringType"
+      },
+      "AttributeOf": "ownerid",
+      "IsCustomAttribute": false,
+      "IsLogical": true,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "SystemRequired",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "owneridtype",
+      "AttributeType": "EntityName",
+      "AttributeTypeName": {
+        "Value": "EntityNameType"
+      },
+      "AttributeOf": "ownerid",
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": true,
+      "IsValidForUpdate": true,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "SystemRequired",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "owneridyominame",
+      "AttributeType": "String",
+      "AttributeTypeName": {
+        "Value": "StringType"
+      },
+      "AttributeOf": "ownerid",
+      "IsCustomAttribute": false,
+      "IsLogical": true,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "SystemRequired",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "owningbusinessunit",
+      "AttributeType": "Lookup",
+      "AttributeTypeName": {
+        "Value": "LookupType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      },
+      "Targets": [
+        "businessunit"
+      ]
+    },
+    {
+      "LogicalName": "owningbusinessunitname",
+      "AttributeType": "String",
+      "AttributeTypeName": {
+        "Value": "StringType"
+      },
+      "AttributeOf": "owningbusinessunit",
+      "IsCustomAttribute": false,
+      "IsLogical": true,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "SystemRequired",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "owningteam",
+      "AttributeType": "Lookup",
+      "AttributeTypeName": {
+        "Value": "LookupType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": true,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      },
+      "Targets": [
+        "team"
+      ]
+    },
+    {
+      "LogicalName": "owninguser",
+      "AttributeType": "Lookup",
+      "AttributeTypeName": {
+        "Value": "LookupType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": true,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      },
+      "Targets": [
+        "systemuser"
+      ]
+    },
+    {
+      "LogicalName": "statecode",
+      "AttributeType": "State",
+      "AttributeTypeName": {
+        "Value": "StateType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": true,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "SystemRequired",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "statecodename",
+      "AttributeType": "Virtual",
+      "AttributeTypeName": {
+        "Value": "VirtualType"
+      },
+      "AttributeOf": "statecode",
+      "IsCustomAttribute": false,
+      "IsLogical": true,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "statuscode",
+      "AttributeType": "Status",
+      "AttributeTypeName": {
+        "Value": "StatusType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": true,
+      "IsValidForUpdate": true,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "statuscodename",
+      "AttributeType": "Virtual",
+      "AttributeTypeName": {
+        "Value": "VirtualType"
+      },
+      "AttributeOf": "statuscode",
+      "IsCustomAttribute": false,
+      "IsLogical": true,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "timezoneruleversionnumber",
+      "AttributeType": "Integer",
+      "AttributeTypeName": {
+        "Value": "IntegerType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": true,
+      "IsValidForUpdate": true,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "utcconversiontimezonecode",
+      "AttributeType": "Integer",
+      "AttributeTypeName": {
+        "Value": "IntegerType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": true,
+      "IsValidForUpdate": true,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    },
+    {
+      "LogicalName": "versionnumber",
+      "AttributeType": "BigInt",
+      "AttributeTypeName": {
+        "Value": "BigIntType"
+      },
+      "AttributeOf": null,
+      "IsCustomAttribute": false,
+      "IsLogical": false,
+      "IsPrimaryId": false,
+      "IsPrimaryName": false,
+      "IsValidForRead": true,
+      "IsValidForCreate": false,
+      "IsValidForUpdate": false,
+      "IsSecured": false,
+      "RequiredLevel": {
+        "Value": "None",
+        "CanBeChanged": true,
+        "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+      }
+    }
+  ]
+}

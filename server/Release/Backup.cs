@@ -67,6 +67,7 @@ public sealed class Backup
         Check.Require(raw.LongLength == entry.bytes && Check.Hash(raw) == entry.sha256);
     }
     public void Write(string name, byte[] bytes) => files.Add(WriteVerified(name, bytes));
+    internal string SavedHash(string name) {var entry=files.Single(e=>e.name==name);VerifyFile(entry);return entry.sha256;}
     public void Json(string name, JsonNode node) => Write(name, Encoding.UTF8.GetBytes(node.ToJsonString(new JsonSerializerOptions { WriteIndented = true })));
     public void Finish(object facts, bool completeCurrentNativeSource = false)
     {
