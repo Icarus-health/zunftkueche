@@ -1,5 +1,46 @@
 using Microsoft.Identity.Client;
+using System.Text.Json;
 namespace Kitchen.Inventory;
+public enum AuthBoundary { NotEntered, Construction, Interactive, AuthorizationHandoff, AwaitingCallbackOrToken, Claims, NativePreparation, Native }
+public sealed record AuthFailureFacts(string Stage, string ExceptionType, string MsalCode)
+{
+    public string SafeJson() => JsonSerializer.Serialize(this);
+}
+public sealed class AuthObservation
+{
+    public AuthBoundary Boundary { get; private set; } = AuthBoundary.NotEntered;
+    public void Mark(AuthBoundary boundary) => Boundary = boundary;
+    public AuthFailureFacts Describe(Exception error)
+    {
+        // Never serialize an exception, its message, inner exceptions or arbitrary provider error codes.
+        string type = error switch
+        {
+            MsalUiRequiredException => "MsalUiRequiredException",
+            MsalServiceException => "MsalServiceException",
+            MsalClientException => "MsalClientException",
+            MsalException => "MsalException",
+            OperationCanceledException => "OperationCanceledException",
+            HttpRequestException => "HttpRequestException",
+            IOException => "IOException",
+            Stop => "Stop",
+            _ => "Other"
+        };
+        string code = error is MsalException msal ? msal.ErrorCode switch
+        {
+            MsalError.AuthenticationCanceledError => "AuthenticationCanceled",
+            MsalError.LoopbackResponseUriMismatch => "LoopbackResponseUriMismatch",
+            MsalError.RedirectUriValidationFailed => "RedirectUriValidationFailed",
+            MsalError.RequestTimeout => "RequestTimeout",
+            MsalError.ServiceNotAvailable => "ServiceNotAvailable",
+            MsalError.InvalidGrantError => "InvalidGrant",
+            MsalError.InteractionRequired => "InteractionRequired",
+            MsalError.AccessDenied => "AccessDenied",
+            MsalError.CodeExpired => "CodeExpired",
+            _ => "Unrecognized"
+        } : "NotApplicable";
+        return new(Boundary.ToString(), type, code);
+    }
+}
 // Normal public-client PKCE/loopback, tenant/account/issuer/oid checks, in-memory cache only.
 // The public authorize URL is handed to the parent, who opens the approved in-app browser surface.
 // This tool never opens a browser, reads a browser/CLI cache, or grants consent.
@@ -10,12 +51,18 @@ public sealed class Authentication
     readonly string[] scopes = [Target.Url + "/user_impersonation"];
     AuthenticationResult? result;
     public string ObjectId => Check.Id(result?.ClaimsPrincipal.FindFirst("oid")?.Value ?? throw new Stop());
-    public async Task SignIn()
+    public async Task SignIn(Action<AuthBoundary> mark)
     {
+        mark(AuthBoundary.Interactive);
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(10));
         result = await app.AcquireTokenInteractive(scopes).WithLoginHint(Target.User).WithPrompt(Prompt.SelectAccount).WithUseEmbeddedWebView(false)
-            .WithSystemWebViewOptions(new SystemWebViewOptions { OpenBrowserAsync = url => PublicAuthorizationHandoff(url, Console.Out) })
+            .WithSystemWebViewOptions(new SystemWebViewOptions { OpenBrowserAsync = async url => {
+                mark(AuthBoundary.AuthorizationHandoff);
+                await PublicAuthorizationHandoff(url, Console.Out);
+                mark(AuthBoundary.AwaitingCallbackOrToken);
+            } })
             .ExecuteAsync(timeout.Token);
+        mark(AuthBoundary.Claims);
         Validate();
     }
     public static async Task PublicAuthorizationHandoff(Uri url, TextWriter output)

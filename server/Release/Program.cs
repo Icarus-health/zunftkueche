@@ -3,6 +3,7 @@ namespace Kitchen.Release;
 public static class Program
 {
     public static async Task<int> Main(string[] args) {
+        var authObservation=new AuthObservation();
         try {
             var mode=ModeParser.Parse(args); // Never construct auth/transport before this closed parser.
             if(mode==ReleaseMode.Plan) {
@@ -23,23 +24,31 @@ public static class Program
                 var backup=new Backup(Path.Combine(root,"backups"));
                 var status=new RunStatus{Backup=backup};
                 try {
-                    var auth=new Authentication();await auth.SignIn();
+                    status.Stage=FailureStage.Authentication;
+                    authObservation.Mark(AuthBoundary.Construction);
+                    var auth=new Authentication();await auth.SignIn(authObservation.Mark);
+                    authObservation.Mark(AuthBoundary.NativePreparation);
                     using var reader=new Reader(auth.Token,backup.Write);
-                    var complete=await new ReleaseInspector(reader,backup,auth.ObjectId,status).Inspect(mode==ReleaseMode.Backup,root);
+                    var inspector=new ReleaseInspector(reader,backup,auth.ObjectId,status);
+                    authObservation.Mark(AuthBoundary.Native);
+                    var complete=await inspector.Inspect(mode==ReleaseMode.Backup,root);
                     if(mode==ReleaseMode.VerifyRelease){await ReadOnlyReleaseVerification.ReadServerBackup(reader,auth.Token,ReviewedRelease.FinalVerificationPackage!,root,new Backup(Path.Combine(root,"backups")));}
                     Console.WriteLine(complete?"CURRENT_NATIVE_BACKUP_COMPLETE: reviewed installed-source coverage and exact originals; final release acceptance remains open.":"INSPECTION_RETAINED_INCOMPLETE: native inventory; current completeness/original evidence missing. Final release acceptance is separate.");return mode==ReleaseMode.Backup&&!complete?2:0;
-                } catch(Stop s){backup.RecordFailure(status.Stage,s.Reason);throw;}
-                  catch{backup.RecordFailure(status.Stage,FailureReason.OperationFailed);throw;}
+                } catch(Exception error){backup.RecordFailure(status.Stage,error is Stop s?s.Reason:FailureReason.OperationFailed,authObservation.Describe(error));throw;}
             }
             var phase=ReviewedRelease.Phases.Single(p=>p.Mode==mode);
             // Validate all externally pinned evidence BEFORE constructing authentication.
             _=phase.Plan.Verify(root);_=phase.Review.Verify(root);_=phase.Checkpoint.Verify(root);
             if(PhaseRoutePrerequisites.Required(mode))_=PhaseRoutePrerequisites.Load(phase,root);
             var mutationCapture=new Backup(Path.Combine(root,"backups"));
-            var phaseAuth=new Authentication();await phaseAuth.SignIn();
+            authObservation.Mark(AuthBoundary.Construction);
+            var phaseAuth=new Authentication();await phaseAuth.SignIn(authObservation.Mark);
+            authObservation.Mark(AuthBoundary.NativePreparation);
             using var phaseReader=new Reader(phaseAuth.Token,mutationCapture.Write);
-            await new Inspector(phaseReader,mutationCapture,phaseAuth.ObjectId).Run(false);
+            var phaseInspector=new Inspector(phaseReader,mutationCapture,phaseAuth.ObjectId);
+            authObservation.Mark(AuthBoundary.Native);
+            await phaseInspector.Run(false);
             return await PhaseDispatch.Run(mode,phase,root,phaseReader,phaseAuth.Token,mutationCapture);
-        } catch {Console.Error.WriteLine("RELEASE_STOPPED: incomplete or invalid contract/evidence; no retry or repair performed.");return 2;}
+        } catch(Exception error) {Console.Error.WriteLine("RELEASE_STOPPED: incomplete or invalid contract/evidence; no retry or repair performed.");if(authObservation.Boundary!=AuthBoundary.NotEntered)Console.Error.WriteLine("AUTH_DIAGNOSTIC "+authObservation.Describe(error).SafeJson());return 2;}
     }
 }

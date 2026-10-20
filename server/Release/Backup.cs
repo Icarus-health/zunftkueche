@@ -105,7 +105,7 @@ public sealed class Backup
         storage.Promote(Path.Combine(DirectoryPath, "manifest.staging.json"), Path.Combine(DirectoryPath, "manifest.json"));
         finished = true;
     }
-    public void RecordFailure(FailureStage stage, FailureReason reason)
+    public void RecordFailure(FailureStage stage, FailureReason reason, AuthFailureFacts? authDiagnostic = null)
     {
         // Best effort if the storage itself has failed. No raw exception/provider values are written.
         if (finished)
@@ -115,7 +115,8 @@ public sealed class Backup
             complete = false,
             stage = stage.ToString(),
             reason = reason.ToString(),
-            recordedUtc = DateTime.UtcNow
+            recordedUtc = DateTime.UtcNow,
+            authDiagnostic
         }));
     }
     public static bool IsComplete(string folder)

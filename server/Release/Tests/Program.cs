@@ -1,12 +1,41 @@
 using System.Text.Json.Nodes;
 using Kitchen.Inventory;
 using Kitchen.Release;
+using Microsoft.Identity.Client;
 using PackageActivationPreparation;
 var passed=0;var failed=0;
 void Test(string n,Action f){try{f();passed++;Console.WriteLine("PASS "+n);}catch(Exception e){failed++;Console.WriteLine("FAIL "+n+": "+e.GetType().Name);}}
 async Task Async(string n,Func<Task> f){try{await f();passed++;Console.WriteLine("PASS "+n);}catch(Exception e){failed++;Console.WriteLine("FAIL "+n+": "+e.GetType().Name);}}
 void Assert(bool x){if(!x)throw new Exception("assertion");}
 void Reject(Action f){try{f();}catch(Stop){return;}throw new Exception("expected refusal");}
+if(args.SequenceEqual(new[]{"--auth-diagnostics-only"})){
+    const string secret="https://login.microsoftonline.com/callback?code=SENSITIVE_TOKEN&state=SENSITIVE_USER";
+    var observation=new AuthObservation();
+    Test("auth boundary labels describe progress without claiming callback completion",()=>{
+        Assert(observation.Boundary==AuthBoundary.NotEntered);
+        foreach(var stage in new[]{AuthBoundary.Construction,AuthBoundary.Interactive,AuthBoundary.AuthorizationHandoff,AuthBoundary.AwaitingCallbackOrToken,AuthBoundary.Claims,AuthBoundary.NativePreparation,AuthBoundary.Native}){
+            observation.Mark(stage);Assert(observation.Describe(new Exception(secret)).Stage==stage.ToString());
+        }
+    });
+    Test("malicious message and arbitrary MSAL code stay out of console diagnostic",()=>{
+        observation.Mark(AuthBoundary.AwaitingCallbackOrToken);
+        var bad=new MsalClientException(secret,secret);
+        var line=observation.Describe(bad).SafeJson();
+        Assert(line.Contains("MsalClientException")&&line.Contains("Unrecognized")&&!line.Contains(secret)&&!line.Contains("SENSITIVE_"));
+        Assert(!observation.Describe(new Exception(secret,new Exception(secret))).SafeJson().Contains(secret));
+    });
+    Test("only pinned MSAL code label survives",()=>{
+        var line=observation.Describe(new MsalClientException(MsalError.LoopbackResponseUriMismatch,secret)).SafeJson();
+        Assert(line.Contains("LoopbackResponseUriMismatch")&&!line.Contains(secret));
+    });
+    Test("private failure status stores sanitized facts only and remains incomplete",()=>{
+        var backup=new Backup(Path.Combine("/private/tmp","kitchen-auth-diagnostic-test-"+Guid.NewGuid().ToString("N")));
+        backup.RecordFailure(FailureStage.Authentication,FailureReason.OperationFailed,observation.Describe(new MsalClientException(secret,secret)));
+        var saved=File.ReadAllText(Path.Combine(backup.DirectoryPath,"failure-status.json"));
+        Assert(saved.Contains("Unrecognized")&&saved.Contains("AwaitingCallbackOrToken")&&!saved.Contains(secret)&&!saved.Contains("SENSITIVE_")&&!Backup.IsComplete(backup.DirectoryPath));
+    });
+    Console.WriteLine($"AUTH_DIAGNOSTICS: {passed} passed, {failed} failed; synthetic only.");return failed==0?0:1;
+}
 if(args.SequenceEqual(new[]{"--guard-only"})){GuardMappingTests.Run(Test);Console.WriteLine($"GUARD: {passed} passed, {failed} failed");return failed==0?0:1;}
 if(args.SequenceEqual(new[]{"--round1-only"})){await Round1Tests.Run(Async);await ActivationIntegrationTests.RunPrerequisites(Async);Console.WriteLine($"ROUND1: {passed} passed, {failed} failed");return failed==0?0:1;}
 if(args.SequenceEqual(new[]{"--phases-only"})){await PhaseTests.Run(Async);Console.WriteLine($"PHASES: {passed} passed, {failed} failed");return failed==0?0:1;}
