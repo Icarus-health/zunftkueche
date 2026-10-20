@@ -12,7 +12,7 @@ Stand 20.10.2026 – laufende Umsetzung, **kein bereits nachgewiesener neuer Rel
 
 ## Vor Automation noch konkret zu klären
 
-- Tatsächlich unterstützter nicht interaktiver Modus der gepinnten CLI oder begründetes gezieltes Update.
+- Gepinnte CLI 1.3.0 unterstützt laut tatsächlicher Hilfe `pa app push --non-interactive`; kein CLI-Update dafür erforderlich. Die vorhandene Implementierung enthält einen Service-Principal-Modus (siehe unten). Praktische Anmeldung/Veröffentlichung damit noch offen.
 - Technische Identität, Ziel-App/Umgebung, notwendige App-/Backendrechte und Zugangsmittel/Laufzeit; erforderliche neue Freigaben am konkreten Aktionspunkt einholen.
 - Zugangsmittel als GitHub-Secret, niemals als Quelltext oder Log; Ablauf und Rotation dokumentieren.
 - Vorhandenes kostenfreies GitHub-Kontingent und Begrenzung zusätzlicher Abrechnung. Keine kostenpflichtigen Runner, Testabos oder neue Umgebung.
@@ -25,3 +25,9 @@ Vorhandene historische Deploy-/Access-/Acceptance-/PackageUpdate-Skripte sind da
 ## Freigabenachweis je Release
 
 Commit und Artefakthash, Client-/Serververtrag, Installationsumfang, Sicherungsnachweis, Zeitpunkt, tatsächlich getestetes Konto/Rolle, Ergebnis im Host, bekannte Grenzen und konkreter Wiederanlauf. Sobald die Schritte real ausgeführt sind, werden die tatsächlichen Befehle und Ergebnisse hier ergänzt – keine geratenen produktiven Befehle vorab als funktionierend darstellen.
+
+## Vorbereiteter Pipeline-Anmeldeweg (noch nicht eingerichtet)
+
+Die vorhandene CLI-Version 1.3.0 enthält `ServicePrincipalAuthenticationProvider`: `PA_CLI_USE_SP_AUTH=true` wählt ihn ausdrücklich; auch `CI=true` wählt diesen Modus. Ihre Implementierung erwartet `PA_CLI_SP_CLIENT_ID`, `PA_CLI_SP_CLIENT_SECRET` und `PA_CLI_SP_TENANT_ID` und verwendet den Client-Credentials-Fluss. `--non-interactive` allein ist kein Nachweis einer funktionierenden technischen Anmeldung. Das wurde ausschließlich in den installierten CLI-Dateien und ihrer Hilfe gelesen: keine neue Identität, kein Secret und kein Recht wurde angelegt oder getestet.
+
+Diese Namen gelten für die im Lockfile gepinnte CLI, nicht ungeprüft für andere Werkzeuge/Versionen. Konkrete minimale Rechte und kostenlose Kontingente werden erst für den nachgewiesenen manuellen Releaseweg festgelegt. Geheimwerte gehören ausschließlich in die dafür vorgesehenen GitHub-Secrets.
