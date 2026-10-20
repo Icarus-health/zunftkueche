@@ -5,7 +5,11 @@ import { MICROSOFT_ENVIRONMENT_ID, MICROSOFT_WORKSPACE_ID } from "../src/bootstr
 
 // Vite resolves the generator's extensionless metadata imports exactly as in the app.
 // Only the SDK host boundary is replaced; generated services/runtime are the actual files.
-test("actual generated classes configure before mount and preserve RequestJson/ResultJson mapping", async () => {
+for(const mode of ["core","documents","revoked-during-import"]) test(`actual generated bootstrap ${mode} defers provider until trusted load`, async () => {
+  let features=mode==="core"?undefined:{documents:true,receiptIntake:false};
+  let startImport,finishImport;
+  const importing=new Promise(resolve=>{startImport=resolve;});
+  const importGate=new Promise(resolve=>{finishImport=resolve;});
   const calls = [], requests = [];
   let finishContext, announceContext;
   const contextStarted = new Promise((resolve) => { announceContext = resolve; });
@@ -18,6 +22,7 @@ test("actual generated classes configure before mount and preserve RequestJson/R
     removeItem: (k) => storage.delete(k),
   } });
   globalThis.__kitchenBootstrapTest = {
+    waitForSharePoint: async()=>{startImport();await importGate;},
     getContext: () => new Promise((resolve) => { calls.push("context"); finishContext = resolve; announceContext(); }),
     getClient: (metadata) => {
       calls.push("generated client");
@@ -25,7 +30,7 @@ test("actual generated classes configure before mount and preserve RequestJson/R
       assert.equal(metadata.zk_kitchencommit.apis.zk_KitchenCommit.parameters[0].name, "RequestJson");
       return { executeAsync: async (request) => {
         requests.push(request);
-        return { success: true, data: { ResultJson: JSON.stringify({ protocolVersion: 2, workspaceId: MICROSOFT_WORKSPACE_ID, canWrite: false, canEdit:false,canConfigure:false,canClose:false,identity:{organizationId:"22222222-2222-4333-8444-555555555555",userId:"33333333-2222-4333-8444-555555555555",workspaceId:MICROSOFT_WORKSPACE_ID}, state: {
+        return { success: true, data: { ResultJson: JSON.stringify({ protocolVersion: 2, workspaceId: MICROSOFT_WORKSPACE_ID, features, canWrite: mode!=="core", canEdit:mode!=="core",canConfigure:false,canClose:false,identity:{organizationId:"22222222-2222-4333-8444-555555555555",userId:"33333333-2222-4333-8444-555555555555",workspaceId:MICROSOFT_WORKSPACE_ID}, state: {
           schemaVersion: 2, revision: 0, operationIds: [], operationRequests: {},
           event: { id: "synthetic", name: "Synthetischer Test", year: 2099, dates: {} },
           sourceNotice: "Synthetischer Test", suppliers: [], articles: [], planLines: [], menu: [], invoices: [], sales: [], movements: [], orders: [], dishPlan: [], lessons: [],
@@ -39,6 +44,7 @@ test("actual generated classes configure before mount and preserve RequestJson/R
       if (["@microsoft/power-apps/app", "@microsoft/power-apps/data"].includes(id)) return `\0test:${id}`;
     },
     load(id) {
+      if(mode==="revoked-during-import" && id.endsWith("/generated/services/SharePointService.ts"))return "await globalThis.__kitchenBootstrapTest.waitForSharePoint(); export const SharePointService = {};";
       if (id === "\0test:@microsoft/power-apps/app") return "export const getContext = () => globalThis.__kitchenBootstrapTest.getContext();";
       if (id === "\0test:@microsoft/power-apps/data") return "export const getClient = (metadata) => globalThis.__kitchenBootstrapTest.getClient(metadata);";
     },
@@ -52,19 +58,27 @@ test("actual generated classes configure before mount and preserve RequestJson/R
     assert.equal(getMicrosoftRepository(), undefined);
     finishContext({ app: { environmentId: MICROSOFT_ENVIRONMENT_ID } });
     await connecting;
-    assert.deepEqual(calls, ["context", "generated client", "generated client", "generated client"]);
+    assert.deepEqual(calls, ["context", "generated client", "generated client"]);
     const repository = getMicrosoftRepository();
     assert.equal(repository.mode, "microsoft");
-    assert.ok(repository.documents, "document repository is wired after generated SharePoint client creation");
-    assert.equal((await repository.load()).event.id, "synthetic");
+    assert.equal(repository.documents, undefined);
+    const loading=repository.load();
+    if(mode==="revoked-during-import") {
+      await importing;features={documents:false,receiptIntake:false};
+      await repository.load();finishImport();
+    }
+    assert.equal((await loading).event.id, "synthetic");
+    if(mode==="documents")assert.ok(repository.documents,"documents alone enables the deferred repository");
+    else assert.equal(repository.documents,undefined);
+    assert.equal(calls.filter(c=>c==="generated client").length,mode==="documents"?3:2);
     assert.deepEqual(requests[0].dataverseRequest, {
       action: "customapi", parameters: { operationName: "zk_KitchenLoad", tableName: "zk_kitchenload", body: { RequestJson: JSON.stringify({ protocolVersion: 2, workspaceId: MICROSOFT_WORKSPACE_ID }) } },
     });
     const { Zk_KitchenCommitService } = await server.ssrLoadModule("/src/generated/services/Zk_KitchenCommitService.ts");
     const result = await Zk_KitchenCommitService.zk_KitchenCommit("exact frozen request bytes");
-    assert.equal(requests[1].dataverseRequest.parameters.operationName, "zk_KitchenCommit");
-    assert.equal(requests[1].dataverseRequest.parameters.tableName, "zk_kitchencommit");
-    assert.deepEqual(requests[1].dataverseRequest.parameters.body, { RequestJson: "exact frozen request bytes" });
+    assert.equal(requests.at(-1).dataverseRequest.parameters.operationName, "zk_KitchenCommit");
+    assert.equal(requests.at(-1).dataverseRequest.parameters.tableName, "zk_kitchencommit");
+    assert.deepEqual(requests.at(-1).dataverseRequest.parameters.body, { RequestJson: "exact frozen request bytes" });
     assert.equal(typeof result.data.ResultJson, "string");
   } finally {
     await server.close();

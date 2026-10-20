@@ -29,6 +29,6 @@ export function runtimeFixture({lostClaim=false, concurrentAbsence=false, lostCr
     if(concurrentAbsence&&arrivals<2){arrivals++;if(arrivals===2)release();await absence;return null;}
     return stored;
   },create:async(_name,bytes)=>{creates++;stored={bytes,version:'etag-1',itemId:'1',connectorIdentifier:'encoded-id'};if(lostCreate){lostCreate=false;throw Error('lost provider response');}},read:async()=>stored};
-  function repository(){const repo={identity,canEdit:true};connectDocumentRepository(repo,services,provider,storage);return repo.documents;}
+  function repository(){const repo={identity,canEdit:true,features:{documents:true,receiptIntake:true}};connectDocumentRepository(repo,services,provider,storage);return repo.documents;}
   return {repository,provider,storage,calls,values,get creates(){return creates;},get row(){return row;}};
 }

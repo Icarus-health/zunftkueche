@@ -15,9 +15,36 @@ namespace Zunftkueche
         public string OwnerType = "";
     }
 
+    public enum BackupScope { Core, Documents }
+    public enum BackupStorePresence { Unknown, NotInstalled, Installed }
+    public enum BackupHistory { Unknown, CoreOnly, Documents }
+
+    // A deployment review supplies this immutable provenance. Historical hashes describe
+    // that review, not a ban on later ordinary core saves. No request can supply a binding.
+    public sealed class BackupScopeBinding
+    {
+        public readonly BackupScope Scope;
+        public readonly BackupHistory History;
+        public readonly Guid OrganizationId, WorkspaceId, DeploymentId;
+        public readonly string RetainedStateSha256, ReviewEvidenceSha256;
+        public BackupScopeBinding(BackupScope scope, BackupHistory history, Guid organizationId, Guid workspaceId,
+            Guid deploymentId, string retainedStateSha256, string reviewEvidenceSha256)
+        {Scope=scope;History=history;OrganizationId=organizationId;WorkspaceId=workspaceId;DeploymentId=deploymentId;
+         RetainedStateSha256=retainedStateSha256;ReviewEvidenceSha256=reviewEvidenceSha256;}
+    }
+    public sealed class BackupScopeEvidence
+    {
+        public readonly BackupScopeBinding Binding;
+        public readonly BackupStorePresence Documents, Drafts;
+        public readonly string MetadataSha256;
+        public BackupScopeEvidence(BackupScopeBinding binding, BackupStorePresence documents, BackupStorePresence drafts, string metadataSha256)
+        {Binding=binding;Documents=documents;Drafts=drafts;MetadataSha256=metadataSha256;}
+    }
+
     /** Optional read-only extension. Ordinary stores and commit paths do not gain writes. */
     public interface IKitchenBackupStore
     {
+        BackupScopeEvidence ReadBackupScope(Guid id);
         BackupWorkspace ReadBackupWorkspace(Guid id);
         JArray ReadAllOperationRows(Guid id);
     }
@@ -54,6 +81,41 @@ namespace Zunftkueche
             StatePolicy.Require(JToken.DeepEquals(Protocol.Parse(snapshot.RawState), snapshot.Row.State), "Raw workspace state mismatch.");
         }
 
+        static bool Hash(string value) => value!=null && value.Length==64 && value.All(c=>c>='0'&&c<='9'||c>='a'&&c<='f');
+        static string ValidateScope(BackupScopeEvidence evidence, Workspace authorization)
+        {
+            StatePolicy.Require(evidence!=null && evidence.Binding!=null,"Reviewed backup scope is unavailable.");
+            var binding=evidence!.Binding!;
+            StatePolicy.Require(binding.OrganizationId==authorization.OrganizationId && binding.WorkspaceId==authorization.Id
+                && binding.DeploymentId!=Guid.Empty && Hash(binding.RetainedStateSha256) && Hash(binding.ReviewEvidenceSha256)
+                && Hash(evidence.MetadataSha256),"Backup scope identity/provenance is incomplete.");
+            if(binding.Scope==BackupScope.Core)
+                StatePolicy.Require(binding.History==BackupHistory.CoreOnly && evidence.Documents==BackupStorePresence.NotInstalled
+                    && evidence.Drafts==BackupStorePresence.NotInstalled,"Core backup requires reviewed history and fresh authoritative absence of both stores.");
+            else
+                StatePolicy.Require(binding.Scope==BackupScope.Documents && binding.History==BackupHistory.Documents
+                    && evidence.Documents==BackupStorePresence.Installed && evidence.Drafts==BackupStorePresence.Installed,
+                    "Document backup requires both installed sources; no core fallback.");
+            return Protocol.Hash(new JObject{{"scope",binding.Scope.ToString()},{"history",binding.History.ToString()},
+                {"organization",binding.OrganizationId.ToString("D")},{"workspace",binding.WorkspaceId.ToString("D")},
+                {"deployment",binding.DeploymentId.ToString("D")},{"retainedState",binding.RetainedStateSha256},
+                {"reviewEvidence",binding.ReviewEvidenceSha256},{"metadata",evidence.MetadataSha256}}.ToString(Formatting.None));
+        }
+        internal static void RequireCoreHistory(JObject state)
+        {
+            // Walk all retained baselines, archives and histories. Core import source hashes,
+            // local paths and legacy document URLs remain intact and still require originals.
+            foreach(var property in state.Descendants().OfType<JProperty>())
+                StatePolicy.Require(property.Name!="intake" || property.Value.Type==JTokenType.Null,
+                    "Retained document intake cannot be downgraded to core.");
+            foreach(var signature in (state["operationRequests"] as JObject ?? new JObject()).Properties()) {
+                var operation=Protocol.Parse((string)signature.Value!);
+                StatePolicy.Require((string?)operation["type"]!="receipt.draft.accept"
+                    && !operation.Descendants().OfType<JProperty>().Any(p=>p.Name=="intake" && p.Value.Type!=JTokenType.Null),
+                    "Retained intake operation requires document backup.");
+            }
+        }
+
         public static JObject Load(JObject request, IKitchenStore store)
         {
             var id = Protocol.WorkspaceId(request);
@@ -67,10 +129,15 @@ namespace Zunftkueche
             StatePolicy.Require(store is IKitchenBackupStore, "Complete backup source is unavailable.");
             var source = (IKitchenBackupStore)store;
 
+            var scope=source.ReadBackupScope(id);
+            var scopeFingerprint=ValidateScope(scope,authorization);
+            var core=scope.Binding.Scope==BackupScope.Core;
+            StatePolicy.Require(core || store is IKitchenDocumentStore,"Document backup source is unavailable.");
             var first = source.ReadBackupWorkspace(id);
             ValidateWorkspace(first);
+            if(core)RequireCoreHistory(first.Row.State);
             var operations = source.ReadAllOperationRows(id);
-            var documentSource=store as IKitchenDocumentStore;
+            var documentSource=core ? null : (IKitchenDocumentStore)store;
             var documents=documentSource?.ReadDocumentRows(id,false);
             var drafts=documentSource?.ReadDocumentRows(id,true);
             var middle = source.ReadBackupWorkspace(id);
@@ -84,6 +151,7 @@ namespace Zunftkueche
             StatePolicy.Require(Fingerprint(first) == Fingerprint(middle) && Fingerprint(first) == Fingerprint(last)
                 && JToken.DeepEquals(Protocol.Canonical(operations), Protocol.Canonical(repeatedOperations)),
                 "Workspace or operation rows changed during backup.");
+            StatePolicy.Require(scopeFingerprint==ValidateScope(source.ReadBackupScope(id),authorization),"Backup scope/metadata changed during snapshot.");
             StatePolicy.Require(first.Row.OrganizationId == authorization.OrganizationId
                 && first.Row.UserId == authorization.UserId, "Backup identity changed.");
 
@@ -112,7 +180,7 @@ namespace Zunftkueche
             return new JObject {
                 { "protocolVersion", 2 }, { "workspaceId", id.ToString("D") }, { "view", "backup" },
                 { "canEdit", true }, { "canConfigure", true }, { "canClose", true },
-                { "identity", identity.DeepClone() }, { "snapshot", snapshot }
+                { "features", Protocol.CoreFeatures.Json() }, { "identity", identity.DeepClone() }, { "snapshot", snapshot }
             };
         }
     }

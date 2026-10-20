@@ -14,6 +14,7 @@ int passed = 0, failed = 0;
 void Check(string name, Action action) { try { action(); Console.WriteLine("PASS " + name); passed++; } catch (Exception e) { Console.WriteLine("FAIL " + name + ": " + e.Message); failed++; } }
 if(args.Length>1&&args[1]=="--documents-only") { DocumentTests.Run(Check,seed); Console.WriteLine($"{passed} passed, {failed} failed"); return failed==0?0:1; }
 if(args.Length>1&&args[1]=="--intake-only") { IntakeTests.Run(Check,seed); Console.WriteLine($"{passed} passed, {failed} failed"); return failed==0?0:1; }
+if(args.Length>1&&args[1]=="--core-runtime-backup-only") { ReleaseCapabilityTests.Run(Check,seed);BackupTests.Run(Check,seed);Console.WriteLine($"{passed} passed, {failed} failed");return failed==0?0:1; }
 void Reject(string name, Action<JObject> edit) { Check(name, () => { var candidate = (JObject)seed.DeepClone(); edit(candidate); try { StatePolicy.Validate(candidate, seed); } catch (ArgumentException) { return; } throw new Exception("invalid candidate accepted"); }); }
 Check("actual normalized source schema and fractional unit prices", () => { var s = (JObject)seed.DeepClone(); s["articles"]![0]!["unitPriceCents"] = 12.34; StatePolicy.Validate(s, seed); });
 Reject("unsupported schema", s => s["schemaVersion"] = 1);

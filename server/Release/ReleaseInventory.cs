@@ -154,10 +154,23 @@ public static class CompleteInventory
         var text=new UTF8Encoding(false,true).GetString(raw);Inspector.ValidateState(text,revision);
         var state=Zunftkueche.Protocol.Parse(text); // Separate parse; originals are never normalized or mutated.
         var ids=state["operationIds"]!.Values<string>().Select(x=>x??throw new Stop()).ToHashSet();var seen=new HashSet<string>();
+        var revisions=new HashSet<int>();
         foreach(var r in receipts) {
             var id=Check.Text(r,"zk_operationid");var hash=Check.Text(r,"zk_requesthash");
-            Check.Require(seen.Add(id)&&ids.Contains(id)&&(string?)state["operationRequests"]?[id]==hash);
-            Check.Require((int?)r["zk_appliedrevision"] is int applied&&applied>0&&applied<=revision);
+            Check.Require(seen.Add(id)&&ids.Contains(id)&&DocumentGuards.Hash(hash));
+            // operationRequests retains the canonical OPERATION signature (legacy v1
+            // omits targetEventId), not the SHA256 of the full wire request. Neither
+            // value can reconstruct or cryptographically prove the other.
+            var signature=(string?)state["operationRequests"]?[id];
+            Check.Require(!string.IsNullOrWhiteSpace(signature));
+            var operation=Zunftkueche.Protocol.Parse(signature!);
+            Check.Require(operation.Count is 2 or 3 && operation["payload"] is JObject
+                && operation["type"]?.Type==JTokenType.String && ((string)operation["type"]!).Length is >0 and <=100
+                && operation.Properties().All(p=>p.Name is "type" or "payload" or "targetEventId"));
+            if(operation.Count==3)Check.Require(operation["targetEventId"]?.Type==JTokenType.String
+                && ((string)operation["targetEventId"]!).Length is >0 and <=500);
+            Check.Require(signature==Zunftkueche.Protocol.Canonical(operation).ToString(Newtonsoft.Json.Formatting.None));
+            Check.Require((int?)r["zk_appliedrevision"] is int applied&&applied>0&&applied<=revision&&revisions.Add(applied));
             Check.Id(Check.Text(r,"zk_actor"));Inspector.RequireVersion(r);
         }
         Check.Require(seen.SetEquals(ids));return Check.Hash(raw);

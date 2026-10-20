@@ -1,6 +1,8 @@
 import { getMicrosoftRepository } from "./microsoft-runtime.ts";
 import type { KitchenState, Operation, CommitResult } from "../domain/state.ts";
+export interface ReleaseFeatures { documents: boolean; receiptIntake: boolean }
 export interface Repository {
+  features?: ReleaseFeatures;
   mode: "local" | "microsoft";
   canWrite?: boolean;
   canEdit?: boolean;

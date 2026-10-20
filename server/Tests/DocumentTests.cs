@@ -22,13 +22,13 @@ static class DocumentTests
     static JObject Request(Store store,string action,JObject value)=>new(){ {"protocolVersion",2},{"workspaceId",store.Row.Id.ToString("D")},{"view","documents"},{"requestId",Guid.NewGuid().ToString("D")},{"action",action},{"value",value},
         {"identity",new JObject{{"organizationId",Org.ToString("D")},{"userId",Actor.ToString("D")},{"workspaceId",store.Row.Id.ToString("D")}}} };
     static JObject Original(Store store)=>new(){ {"uploadId",Upload.ToString("D")},{"eventId",store.Row.State["event"]!["id"]!.DeepClone()},{"principal","editor@example.test"},{"sha256",new string('a',64)},{"mimeType","image/jpeg"},{"size",287},{"originalName","original.jpg"} };
-    static JObject Apply(Store store,string action,JObject value){var response=Protocol.Commit(Request(store,action,value).ToString(),Actor,true,store);return response["value"] as JObject??response;}
+    static JObject Apply(Store store,string action,JObject value){var response=Protocol.Commit(Request(store,action,value).ToString(),Actor,true,store,new ReleaseFeatures(true,false));return response["value"] as JObject??response;}
     static JObject Linked(Store store){var row=Apply(store,"upload.begin",Original(store));row=Apply(store,"upload.claim",row);row["ref"]=new JObject{{"provider","sharepoint"},{"siteCollectionId",DocumentProtocol.Site},{"webId",DocumentProtocol.Web},{"libraryId",DocumentProtocol.Library},{"itemId","1"},{"version","etag-1"},{"connectorIdentifier","encoded-path"},{"webUrl","https://schelmenzunft.sharepoint.com/sites/SchelmenzunftStaufenTraditionszunftderStaufenerStubengesells/Shared Documents/General/Zunftküche/Rechnungen/receipt-"+Upload+".jpg"},{"sha256",new string('a',64)},{"mimeType","image/jpeg"},{"size",287},{"originalName","original.jpg"}};return Apply(store,"upload.link",row);}
     public static void Run(Action<string, Action> check, JObject seed)
     {
         check("reservation is idempotent and claim cannot authorize a second upload",()=>{
             var store=new Store(seed);var begin=Original(store);var first=Apply(store,"upload.begin",begin);var same=Apply(store,"upload.begin",begin);Assert(store.Writes==1&&JToken.DeepEquals(first,same));
-            var claim=Request(store,"upload.claim",first);var claimed=Protocol.Commit(claim.ToString(),Actor,true,store);var replay=Protocol.Commit(claim.ToString(),Actor,true,store);Assert(store.Writes==2&&(string?)claimed["outcome"]=="applied"&&(string?)replay["outcome"]=="replayed"&&JToken.DeepEquals(claimed["acknowledgment"],replay["acknowledgment"]));
+            var claim=Request(store,"upload.claim",first);var claimed=Protocol.Commit(claim.ToString(),Actor,true,store,new ReleaseFeatures(true,false));var replay=Protocol.Commit(claim.ToString(),Actor,true,store,new ReleaseFeatures(true,false));Assert(store.Writes==2&&(string?)claimed["outcome"]=="applied"&&(string?)replay["outcome"]=="replayed"&&JToken.DeepEquals(claimed["acknowledgment"],replay["acknowledgment"]));
             Reject(()=>Apply(store,"upload.claim",(JObject)claimed["value"]!));Assert(store.Writes==2);
             begin["sha256"]=new string('b',64);Reject(()=>Apply(store,"upload.begin",begin));
         });
@@ -36,11 +36,11 @@ static class DocumentTests
             var store=new Store(seed);
             var row=Apply(store,"upload.begin",Original(store));
             var claim=Request(store,"upload.claim",row);
-            var applied=Protocol.Commit(claim.ToString(),Actor,true,store);
+            var applied=Protocol.Commit(claim.ToString(),Actor,true,store,new ReleaseFeatures(true,false));
             var linked=(JObject)applied["value"]!.DeepClone();
             linked["ref"]=Linked(new Store(seed))["ref"]!.DeepClone();
             Apply(store,"upload.link",linked);
-            var replay=Protocol.Commit(claim.ToString(),Actor,true,store);
+            var replay=Protocol.Commit(claim.ToString(),Actor,true,store,new ReleaseFeatures(true,false));
             Assert((string?)replay["outcome"]=="replayed" && (string?)replay["value"]!["status"]=="linked");
             Assert(JToken.DeepEquals(applied["acknowledgment"],replay["acknowledgment"]));
             Assert((string?)replay["acknowledgment"]!["value"]!["status"]=="uploading");
@@ -59,9 +59,9 @@ static class DocumentTests
         });
         check("document caller, workspace/event and transaction boundaries fail closed",()=>{
             var store=new Store(seed);var request=Request(store,"upload.begin",Original(store));
-            Reject(()=>Protocol.Commit(request.ToString(),Actor,false,store));Reject(()=>Protocol.Commit(request.ToString(),Guid.NewGuid(),true,store));
-            request["identity"]!["userId"]=Guid.NewGuid().ToString();Reject(()=>Protocol.Commit(request.ToString(),Actor,true,store));
-            request=Request(store,"upload.begin",Original(store));request["value"]!["eventId"]="foreign";Reject(()=>Protocol.Commit(request.ToString(),Actor,true,store));
+            Reject(()=>Protocol.Commit(request.ToString(),Actor,false,store,new ReleaseFeatures(true,false)));Reject(()=>Protocol.Commit(request.ToString(),Guid.NewGuid(),true,store,new ReleaseFeatures(true,false)));
+            request["identity"]!["userId"]=Guid.NewGuid().ToString();Reject(()=>Protocol.Commit(request.ToString(),Actor,true,store,new ReleaseFeatures(true,false)));
+            request=Request(store,"upload.begin",Original(store));request["value"]!["eventId"]="foreign";Reject(()=>Protocol.Commit(request.ToString(),Actor,true,store,new ReleaseFeatures(true,false)));
             store.Row.CanWrite=false;Reject(()=>Apply(store,"upload.begin",Original(store)));Assert(store.Writes==0);
         });
         check("closed selected event rejects document and draft writes preserving existing rows",()=>{
@@ -69,7 +69,7 @@ static class DocumentTests
             Reject(()=>Apply(store,"upload.begin",Original(store)));Assert(store.Writes==0);
         });
         check("document guard binds exact own API action, caller, row and payload",()=>{
-            var store=new Store(seed);var q=Request(store,"upload.begin",Original(store));var saved=(JObject)Protocol.Commit(q.ToString(),Actor,true,store)["value"]!;saved.Remove("rowVersion");
+            var store=new Store(seed);var q=Request(store,"upload.begin",Original(store));var saved=(JObject)Protocol.Commit(q.ToString(),Actor,true,store,new ReleaseFeatures(true,false))["value"]!;saved.Remove("rowVersion");
             var target=new Entity("zk_kitchendocument",Upload){["zk_workspace"]=new EntityReference("zk_kitchenworkspace",store.Row.Id),["zk_eventid"]=(string)saved["eventId"]!,["zk_payload"]=saved.ToString(Newtonsoft.Json.Formatting.None),["zk_actor"]=Actor.ToString("D"),["zk_recordedat"]=DateTime.Parse((string)saved["history"]!.Last!["recordedAt"]!,System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.RoundtripKind)};
             var parent=ContextProxy.Create(new(){{"MessageName","zk_KitchenCommit"},{"Stage",30},{"Mode",0},{"IsInTransaction",true},{"UserId",Actor},{"InitiatingUserId",Actor},{"InputParameters",new ParameterCollection{{"RequestJson",q.ToString()}}}});
             Dictionary<string,object?> Context()=>new(){{"ParentContext",parent},{"Mode",0},{"Stage",20},{"IsInTransaction",true},{"UserId",Actor},{"InitiatingUserId",Actor},{"MessageName","Create"},{"PrimaryEntityName","zk_kitchendocument"},{"InputParameters",new ParameterCollection{{"Target",target}}}};
@@ -96,7 +96,7 @@ static class DocumentTests
             var store = new FakeStore(seed);
             var request = new JObject { {"protocolVersion",2},{"workspaceId",store.Row.Id.ToString("D")},{"view","documents"},
                 {"identity",new JObject{{"organizationId",store.Row.OrganizationId.ToString("D")},{"userId",store.Row.UserId.ToString("D")},{"workspaceId",store.Row.Id.ToString("D")}}} };
-            try { Protocol.Load(request.ToString(), store); }
+            try { Protocol.Load(request.ToString(), store,new ReleaseFeatures(true,false)); }
             catch (ArgumentException e) { if (e.Message.Contains("Document source unavailable")) return; throw; }
             throw new Exception("missing source accepted");
         });
