@@ -1,0 +1,80 @@
+{
+  "base": "b77ee6396445f3fd8caaa2f8ef8abfe08e9a7faf",
+  "copied": [
+    {
+      "source": ".superpowers/probes/release-inventory-tool/Authentication.cs",
+      "destination": "server/Release/Authentication.cs",
+      "sha256": "aa0c208cd4effd74ad061a316546b0d434709a8ae6f2255770684b2a5d74486b"
+    },
+    {
+      "source": ".superpowers/probes/release-inventory-tool/Core.cs",
+      "destination": "server/Release/Core.cs",
+      "sha256": "958bf3e7bf001c7287e14e07b97d2f8805c3518101f680875701053db92f5f78"
+    },
+    {
+      "source": ".superpowers/probes/release-inventory-tool/Reader.cs",
+      "destination": "server/Release/Reader.cs",
+      "sha256": "0751a52a000d0c2d72ba30e4663a63d1e36ad22e70ca191fcbe10d7623e37743"
+    },
+    {
+      "source": ".superpowers/probes/release-inventory-tool/Inventory.cs",
+      "destination": "server/Release/Inventory.cs",
+      "sha256": "d6aaf87a351ab017f80ce32d10f5e4843578183a8647564aca57dae99f5d7978"
+    },
+    {
+      "source": ".superpowers/probes/release-inventory-tool/Metadata.cs",
+      "destination": "server/Release/Metadata.cs",
+      "sha256": "b7b80c3f89a9b36103ebc64b15fd07a8b7fe013cf39aa534c91e8f8322440754"
+    },
+    {
+      "source": ".superpowers/probes/release-inventory-tool/Backup.cs",
+      "destination": "server/Release/Backup.cs",
+      "sha256": "7c6d306b8799b6a630c76d688be89553a0052cd0860ae5980b62aa808828dea7"
+    },
+    {
+      "source": ".superpowers/probes/release-inventory-tool/contracts/platform-intrinsics.json",
+      "destination": "server/Release/contracts/platform-intrinsics.json",
+      "sha256": "f322fabfaea9c8989004def892e1cee80104422c9ec60cf0615524da9c1feb3e"
+    },
+    {
+      "source": ".superpowers/probes/release-inventory-tool/NuGet.Config",
+      "destination": "server/Release/NuGet.Config",
+      "sha256": "3eb413f39fb8791745d58c6769618f9ada15a480caca042d72838817c4b7c359"
+    },
+    {
+      "source": ".superpowers/probes/release-inventory-tool/global.json",
+      "destination": "server/Release/global.json",
+      "sha256": "6698ac780f3012e9310cbc516a7075c83b4a37982aa2b390f61c6c8961c2daa1"
+    },
+    {
+      "source": ".superpowers/probes/release-inventory-tool/packages.lock.json",
+      "destination": "server/Release/packages.lock.json",
+      "sha256": "24e2b9a7bb525ca2798a3e530431054ee40f4ff0aa898db08555e0c04bac3710"
+    },
+    {
+      "source": ".superpowers/probes/package-activation-preparation/Contracts.cs",
+      "destination": "server/Release/ActivationContracts.cs",
+      "sha256": "c2f5bb06f90f96c790f2d2c393fd4c42c28a19a4ca5e3ef75780a197280d16fb"
+    },
+    {
+      "source": ".superpowers/probes/package-activation-preparation/ActivationCore.cs",
+      "destination": "server/Release/ActivationCore.cs",
+      "sha256": "e1b2d4e2103f3bf3568b6f44717670a5141186b9b3b57f7f78644aec661f2724"
+    },
+    {
+      "source": ".superpowers/probes/package-activation-preparation/OfflineTests.cs",
+      "destination": "server/Release/Tests/AcceptedActivationTests.cs",
+      "sha256": "ce32439b2d96be244c08ccfc33fa77aa3dd6430b84b8fae762f41254e77978ff"
+    },
+    {
+      "source": ".superpowers/probes/package-activation-preparation/fixtures/prior-v5.nupkg",
+      "destination": "server/Release/Tests/fixtures/prior-v5.nupkg",
+      "sha256": "6d74048606fd199b06a20c2856752eb56e87e7bd6bb9d634bdef80387c596247"
+    },
+    {
+      "source": ".superpowers/probes/release-inventory-prelaunch-round4/prelaunch.py",
+      "destination": "server/Release/prelaunch.py",
+      "sha256": "b116376dd9a40c277214bc4dbc8f11397acd140a22772b76b4c8e9c64b810c14"
+    }
+  ]
+}

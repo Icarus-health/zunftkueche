@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup><OutputType>Exe</OutputType><UseAppHost>false</UseAppHost><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><EnableDefaultCompileItems>false</EnableDefaultCompileItems><RestorePackagesWithLockFile>true</RestorePackagesWithLockFile><NuGetAudit>false</NuGetAudit></PropertyGroup>
+<ItemGroup><Compile Include="Program.cs"/><Compile Include="PhaseTests.cs"/><Compile Include="ActivationIntegrationTests.cs"/><Compile Include="AcceptedActivationTests.cs"/><Compile Include="GuardMappingTests.cs"/><Compile Include="ContextProxy.cs"/><ProjectReference Include="../Kitchen.Release.csproj"/><ProjectReference Include="GuardHarness/GuardHarness.csproj" Aliases="Plugin"/><PackageReference Include="Microsoft.CrmSdk.CoreAssemblies" Version="9.0.2.60" NoWarn="NU1701"/><None Include="fixtures/prior-v5.nupkg" CopyToOutputDirectory="PreserveNewest"/></ItemGroup>
+</Project>

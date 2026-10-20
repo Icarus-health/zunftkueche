@@ -70,7 +70,7 @@ namespace Zunftkueche
         }
     }
 
-    /** Register on every direct/bulk mutation. Only the own synchronous API's immediate
+    /** Register only on reviewed eligible individual C/U/D and denial routes. Only the own synchronous API's immediate
       * Create/Update (optionally one matching platform wrapper) is admitted. No SYSTEM. */
     public sealed class KitchenDocumentWriteGuardPlugin : IPlugin
     {
@@ -80,6 +80,8 @@ namespace Zunftkueche
         public void Execute(IServiceProvider provider) {
             var c=(IPluginExecutionContext)(provider.GetService(typeof(IPluginExecutionContext))??throw new InvalidPluginExecutionException("Execution context missing."));
             Require(c.Mode==0&&c.Stage==20&&c.IsInTransaction&&c.UserId!=Guid.Empty&&c.UserId==c.InitiatingUserId);
+            // Denial-only routes have Target references or other shapes. Refuse before payload parsing.
+            Require(c.MessageName=="Create"||c.MessageName=="Update");
             Require(c.InputParameters.Contains("Target")&&c.InputParameters["Target"] is Entity);
             var target=(Entity)c.InputParameters["Target"];
             Require((c.MessageName=="Create"||c.MessageName=="Update")&&(target.LogicalName=="zk_kitchendocument"||target.LogicalName=="zk_kitchendraft")&&c.PrimaryEntityName==target.LogicalName);
@@ -97,8 +99,13 @@ namespace Zunftkueche
             Require(acceptance||(string?)q["view"]=="documents");
             var action=acceptance?"receipt.draft.accept":(string?)q["action"];
             Require(acceptance?c.MessageName=="Update"&&target.LogicalName=="zk_kitchendraft"
-                :target.LogicalName==(action=="draft.save"?"zk_kitchendraft":"zk_kitchendocument")&&new[]{"upload.begin","upload.claim","upload.link","draft.save"}.Contains(action));
+                :target.LogicalName==(action=="draft.save"?"zk_kitchendraft":"zk_kitchendocument")
+                    && ((action=="upload.begin"&&c.MessageName=="Create")
+                        || ((action=="upload.claim"||action=="upload.link")&&c.MessageName=="Update")
+                        || (action=="draft.save"&&(c.MessageName=="Create"||c.MessageName=="Update"))));
             var value=StatePolicy.Obj(acceptance?q["operation"]!["payload"]:q["value"]);
+            Require(c.MessageName=="Create" ? target.RowVersion==null&&value["rowVersion"]==null
+                : acceptance||(!string.IsNullOrWhiteSpace(target.RowVersion)&&target.RowVersion==(string?)value["rowVersion"]));
             var workspace=Protocol.WorkspaceId(q);
             Require(Guid.TryParse((string?)value[acceptance?"draftId":action=="draft.save"?"id":"uploadId"],out var id)&&target.Id==id);
             Require(target.Attributes.Count==5&&new[]{"zk_workspace","zk_eventid","zk_payload","zk_actor","zk_recordedat"}.All(target.Contains));

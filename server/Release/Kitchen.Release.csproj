@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup><OutputType>Exe</OutputType><UseAppHost>false</UseAppHost><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><EnableDefaultCompileItems>false</EnableDefaultCompileItems><RestorePackagesWithLockFile>true</RestorePackagesWithLockFile><NuGetAudit>false</NuGetAudit><Deterministic>true</Deterministic><RuntimeFrameworkVersion>8.0.32</RuntimeFrameworkVersion><RollForward>Disable</RollForward></PropertyGroup>
+<ItemGroup>
+<Compile Include="Program.cs"/>
+<Compile Include="ReleaseContract.cs"/>
+<Compile Include="DocumentSchema.cs"/>
+<Compile Include="DocumentGuards.cs"/>
+<Compile Include="PackageActivation.cs"/>
+<Compile Include="ActivationContracts.cs"/>
+<Compile Include="ActivationCore.cs"/>
+<Compile Include="Authentication.cs"/>
+<Compile Include="Core.cs"/>
+<Compile Include="Reader.cs"/>
+<Compile Include="Inventory.cs"/>
+<Compile Include="Metadata.cs"/>
+<Compile Include="Backup.cs"/>
+<Compile Include="ReleaseInventory.cs"/>
+<Compile Include="../Policy/StatePolicy.cs"/>
+<Compile Include="../Policy/EconomicHistory.cs"/>
+<Compile Include="../Policy/Protocol.cs"/>
+<Compile Include="../Policy/BackupProtocol.cs"/>
+<Compile Include="../Policy/ReceivingClose.cs"/>
+<Compile Include="../Documents/DocumentProtocol.cs"/>
+<Compile Include="../Intake/ReceiptIntake.cs"/>
+<EmbeddedResource Include="contracts/platform-intrinsics.json" LogicalName="Inventory.contracts.platform-intrinsics.json"/>
+<PackageReference Include="Microsoft.Identity.Client" Version="[4.83.0]"/><PackageReference Include="Newtonsoft.Json" Version="[13.0.3]"/>
+</ItemGroup></Project>

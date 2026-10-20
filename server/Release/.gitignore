@@ -1,0 +1,8 @@
+release/
+backups/
+attempts/
+review/
+*-manifest.json
+!provenance.json
+Tests/.runs/
+__pycache__/
