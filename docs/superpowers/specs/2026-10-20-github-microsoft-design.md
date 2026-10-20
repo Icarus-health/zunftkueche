@@ -112,6 +112,6 @@ Nach dem nutzbaren Kern: bessere Belegvorschläge, browserseitige Texterkennung 
 | A9 | Sicherungsumfang, Originale und Wiederherstellungsgrenze sind explizit; begrenzte Pilotfreigabe und vollständige Betriebsfreigabe werden getrennt dokumentiert. |
 | A10 | Release zeigt Commit, Client-/Serverversion, Prüfergebnisse und bekannte Grenzen. Keine zusätzlichen laufenden Kosten wurden aktiviert. |
 
-## 9. Planung statt Umsetzung
+## 9. Freigegebene Umsetzung und Pipeline
 
-Dieser Auftrag erstellt Ist-/Sollzustand und Entwicklungsplan im bestehenden GitHub-Projekt. Produktänderungen, neue Rollen, Datenumstellungen, Uploads und Veröffentlichung folgen erst nach der Prüfung dieses Plans. Frühere Pläne und Berichte bleiben als historische Quellen erhalten; für die nächsten Etappen ist dieser Planungsstand maßgeblich.
+Der Nutzer hat am 20.10.2026 die Umsetzung einschließlich Pipeline freigegeben: zuerst den tatsächlichen Microsoft-Release herstellen, danach dessen Veröffentlichung aus GitHub automatisieren. Konten, bestehende Umgebung/App und kostenfreie Grenze bleiben verbindlich. Eine technische Veröffentlichungsidentität ist noch nicht eingerichtet; erforderliche neue Rechte werden am konkreten Aktionspunkt benannt. Der aktuelle Übergabestand liegt in `docs/project-status.md`, die Reihenfolge und Aufgabe 7 im Entwicklungsplan. Frühere Pläne und Berichte bleiben historische Quellen.

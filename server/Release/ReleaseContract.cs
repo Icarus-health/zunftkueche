@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using Kitchen.Inventory;
 using PackageActivationPreparation;
+using Zunftkueche;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Tests")]
 namespace Kitchen.Release;
@@ -17,7 +18,7 @@ public enum TableKind { Document, Draft }
 public enum ColumnKind { Event, Payload, Actor, RecordedAt, Workspace }
 public enum Presence { Unknown, Missing, ExistingExact, DriftOrDuplicate }
 public enum AdditiveResult { ExistingExact, CreatedObservedExact, StoppedBeforeAttempt, PriorAbsentAfterAttempt, AmbiguousStop, DriftStop }
-public enum TransitionKind { V5ToRefusalDiagnostic, RefusalDiagnosticToFinal }
+public enum TransitionKind { V5ToRefusalDiagnostic, RefusalDiagnosticToFinal, V5ToCore }
 public sealed record EvidenceFile(string RelativePath, long Length, string Sha256)
 {
     public byte[] Verify(string root) {
@@ -34,14 +35,65 @@ public static class ReviewedRelease
     internal static readonly ReviewedTransition[] Transitions = [];
     internal static readonly ReviewedBinding[] Bindings = [];
     internal static readonly ReviewedPhase[] Phases = [];
-    internal static readonly EvidenceFile? FinalVerificationPackage = null;
+    // Bounded known-app/retained-history read-only query shape; no tenant-lifetime claim or mutation authority.
+    internal static readonly BackupScopeBinding? InspectionScope = new(BackupScope.Core, BackupHistory.CoreOnly,
+        new Guid("5ded2106-01c8-f111-be88-002248db2d69"), new Guid("45deaf94-5661-4110-8f16-3d2678c09f04"),
+        new Guid("7f1eddbb-dbba-45c3-bfb4-9e6c171af1f1"),
+        "95107ad3ce992a83747ab4d6919ccb531eb5bfcb02fe5d609e3a82ab07cb76a5",
+        "0e090e6e97ef7516cd436bb228b2ec4c8804b162e864ac1e94fc8ae114e40fc2");
+    internal static readonly FinalVerificationBinding? FinalVerification = null;
     internal static readonly EvidenceFile? CurrentSourceCompletenessReview = null;
     public static bool CanExecute(ReleaseMode mode) => Phases.Any(p=>p.Mode==mode);
     public static string Pending => "native schema/access/route completeness, current originals, fresh checkpoint, diagnostic/final packages and independent reviews pending";
 }
 public sealed record ReviewedTransition(TransitionKind Kind, string PriorHash, int PriorLength, EvidenceFile Package,
-    EvidenceFile SourceBuild, EvidenceFile IndependentReview, WriteMode Mode, EvidenceFile WriterExclusion);
-public sealed record ReviewedPhase(ReleaseMode Mode, EvidenceFile Plan, EvidenceFile Review, EvidenceFile Checkpoint, SchemaStep? Schema=null, ReviewedBinding? Guard=null, ReviewedTransition? Transition=null,EvidenceFile? Routes=null,PreparationContract? Preparation=null);
+    EvidenceFile SourceBuild, EvidenceFile IndependentReview, WriteMode Mode, EvidenceFile WriterExclusion, BackupScopeBinding? ExpectedScope=null);
+public sealed record ReviewedPhase(ReleaseMode Mode, EvidenceFile Plan, EvidenceFile Review, EvidenceFile Checkpoint, SchemaStep? Schema=null, ReviewedBinding? Guard=null, ReviewedTransition? Transition=null,EvidenceFile? Routes=null,PreparationContract? Preparation=null,BackupScopeBinding? ExpectedScope=null);
+// External pairing avoids embedding the package's own hash in its source/binary.
+public sealed record FinalVerificationBinding(EvidenceFile Package,BackupScopeBinding ExpectedScope,EvidenceFile IndependentReview,EvidenceFile Checkpoint)
+{
+    internal CheckpointInput Verify(string root) {
+        ReleaseScope.Require(ExpectedScope);Check.Require(Package.Length>0&&DocumentGuards.Hash(Package.Sha256));_=Package.Verify(root);
+        Check.Match(Check.Parse(IndependentReview.Verify(root)),new JsonObject{["schema"]="kitchen-final-scope-review-v1",["packageSha256"]=Package.Sha256,["packageBytes"]=Package.Length,["scopeFingerprint"]=ReleaseScope.Fingerprint(ExpectedScope),["checkpointSha256"]=Checkpoint.Sha256,["independentlyReviewed"]=true});
+        var input=System.Text.Json.JsonSerializer.Deserialize<CheckpointInput>(Checkpoint.Verify(root))??throw new Stop();
+        Check.Require(input.Accepted.Valid()&&input.CallerId==Check.Id(input.CallerId)&&DocumentGuards.Hash(input.MetadataAccessClientSha256));return input;
+    }
+}
+internal static class ReleaseScope
+{
+    internal static BackupScopeBinding Require(BackupScopeBinding? binding) {
+        Check.Require(binding!=null);var b=binding!;
+        Check.Require(b.OrganizationId.ToString("D")==Target.Organization&&b.WorkspaceId.ToString("D")==Target.Workspace&&b.DeploymentId!=Guid.Empty&&DocumentGuards.Hash(b.RetainedStateSha256)&&DocumentGuards.Hash(b.ReviewEvidenceSha256));
+        Check.Require(b.Scope==BackupScope.Core&&b.History==BackupHistory.CoreOnly||b.Scope==BackupScope.Documents&&b.History==BackupHistory.Documents);return b;
+    }
+    internal static string Fingerprint(BackupScopeBinding binding) {
+        var b=Require(binding);return Check.Fingerprint(new JsonObject{["scope"]=b.Scope.ToString(),["history"]=b.History.ToString(),["organization"]=b.OrganizationId.ToString("D"),["workspace"]=b.WorkspaceId.ToString("D"),["deployment"]=b.DeploymentId.ToString("D"),["retainedStateSha256"]=b.RetainedStateSha256,["reviewEvidenceSha256"]=b.ReviewEvidenceSha256});
+    }
+    internal static void RequireProduction(BackupScopeBinding? binding) {Require(binding);Check.Require(ReferenceEquals(binding,ReviewedBackupScope.Binding));}
+    internal static void ValidateStore(BackupScopeBinding binding,DocumentSchemaProgress progress) {
+        var b=Require(binding);Check.Require(progress==(b.Scope==BackupScope.Core?DocumentSchemaProgress.NotInstalled:DocumentSchemaProgress.Exact));
+    }
+    internal static void ValidateState(BackupScopeBinding binding,byte[] raw,int revision,JsonObject[] receipts) {
+        Require(binding);CompleteInventory.ValidateCurrentPolicy(raw,revision,receipts);
+        if(binding.Scope==BackupScope.Core)BackupProtocol.RequireCoreHistory(Protocol.Parse(new System.Text.UTF8Encoding(false,true).GetString(raw)));
+    }
+    // Null is a named legacy preparation boundary, never a missing backup/activation scope.
+    internal static BackupScopeBinding? Phase(ReviewedPhase phase) {
+        if(phase.ExpectedScope!=null) {
+            var scope=Require(phase.ExpectedScope);
+            Check.Require(phase.Preparation==null&&phase.Mode is ReleaseMode.ActivatePackage or ReleaseMode.RegisterDocumentGuards);
+            if(phase.Mode==ReleaseMode.ActivatePackage) {
+                var transition=phase.Transition??throw new Stop();Check.Require(transition.ExpectedScope!=null&&Fingerprint(scope)==Fingerprint(transition.ExpectedScope));
+                Check.Require(transition.Kind==(scope.Scope==BackupScope.Core?TransitionKind.V5ToCore:TransitionKind.RefusalDiagnosticToFinal));
+            } else Check.Require(scope.Scope==BackupScope.Documents&&phase.Guard!=null);
+            return scope;
+        }
+        Check.Require(phase.Mode==ReleaseMode.ProvisionDocumentSchema&&phase.Schema!=null&&phase.Transition==null&&phase.Guard==null
+            ||phase.Preparation!=null&&(phase.Mode==ReleaseMode.RegisterDocumentGuards&&phase.Guard!=null
+                ||phase.Mode==ReleaseMode.ActivatePackage&&phase.Transition?.Kind==TransitionKind.V5ToRefusalDiagnostic&&phase.Transition.ExpectedScope==null));
+        return null;
+    }
+}
 public sealed record PreparationContract(EvidenceFile DiagnosticPackage,EvidenceFile SourceBuild,EvidenceFile IndependentRefusalReview,EvidenceFile OrdinaryUseAndWriterExclusion)
 {
     internal void Verify(string root,ReviewedPhase phase) {

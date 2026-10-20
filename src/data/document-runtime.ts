@@ -11,6 +11,7 @@ export function connectDocumentRepository(
 ) {
   let pinnedIdentity:string|undefined;
   function identity() {
+    if(repo.features?.documents!==true)throw new Error("Dokumentfunktionen sind vom Server nicht freigegeben.");
     if(!repo.identity || !repo.canEdit)throw new Error('Belegeingang erfordert bestätigte Bearbeitungsrechte.');
     const current=JSON.stringify(repo.identity);
     if(pinnedIdentity && pinnedIdentity!==current)throw new Error('Konto geändert. Belegeingang neu öffnen.');
@@ -26,6 +27,7 @@ export function connectDocumentRepository(
       if(storage.getItem(key)===raw)storage.removeItem(key);
     }
     async function send(raw:string,write:boolean,fresh=false) {
+      identity();
       const result=write ? await services.commit.zk_KitchenCommit(raw) : await services.load.zk_KitchenLoad(raw);
       if(!result.success || typeof result.data?.ResultJson!=='string') {
         throw new Error('Dokumentvorgang nicht bestätigt. Bei erneutem Versuch bleibt derselbe Wiederholungsbezug erhalten.');
@@ -104,5 +106,14 @@ export function connectDocumentRepository(
     link:async value=>(await request('upload.link',clean(value))).value as DocumentRow,
     saveDraft:async value=>(await request('draft.save',clean(value))).value as ExtractDraft,
   };
-  repo.documents=createDocumentRepository({api:provider,store});
+  // Check the CURRENT feature and pinned identity around every provider boundary,
+  // including getOriginal(), which does not use the document store.
+  async function guarded<T>(call:()=>Promise<T>):Promise<T> {identity();const value=await call();identity();return value;}
+  const api:DocumentProvider={
+    identity:()=>guarded(()=>provider.identity()),
+    find:name=>guarded(()=>provider.find(name)),
+    create:(name,bytes)=>guarded(()=>provider.create(name,bytes)),
+    read:ref=>guarded(()=>provider.read(ref)),
+  };
+  repo.documents=createDocumentRepository({api,store});
 }

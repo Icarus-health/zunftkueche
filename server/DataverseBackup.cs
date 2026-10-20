@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
+using Microsoft.Xrm.Sdk.Messages;
+using Microsoft.Xrm.Sdk.Metadata;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -12,6 +14,47 @@ namespace Zunftkueche
 {
     internal sealed partial class DataverseStore : IKitchenBackupStore
     {
+        // Deliberately unbound in this source candidate. Task2b must supply an independently
+        // reviewed deployment/target/history binding, associated externally with package hash.
+        readonly BackupScopeBinding? backupScope = ReviewedBackupScope.Binding;
+        internal DataverseStore(IOrganizationService service, IPluginExecutionContext context, BackupScopeBinding reviewedScope)
+            : this(service,context) { backupScope=reviewedScope; }
+
+        public BackupScopeEvidence ReadBackupScope(Guid id)
+        {
+            var row=Read(id);
+            StatePolicy.Require(row.CanWrite && row.CanConfigure && row.CanClose && row.UserId==context.InitiatingUserId,
+                "Owner backup permission required before metadata reads.");
+            StatePolicy.Require(backupScope!=null && backupScope.OrganizationId==context.OrganizationId && backupScope.WorkspaceId==id,
+                "Reviewed deployment backup scope is not bound.");
+            // RetrieveAllEntities is a complete SDK metadata operation, with no paging or
+            // missing-table exception inference. Any provider error escapes; never downgrade.
+            var response=service.Execute(new RetrieveAllEntitiesRequest {EntityFilters=EntityFilters.Entity,RetrieveAsIfPublished=false}) as RetrieveAllEntitiesResponse;
+            var entities=response?.EntityMetadata;
+            StatePolicy.Require(entities!=null && entities.Length>0 && entities.Length<=10000,"Complete bounded metadata inventory required.");
+            var logical=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var schema=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var metadataIds=new HashSet<Guid>();
+            var facts=new JArray();
+            foreach(var entity in entities!.OrderBy(e=>e.LogicalName,StringComparer.Ordinal)) {
+                StatePolicy.Require(entity.MetadataId.HasValue && entity.MetadataId.Value!=Guid.Empty && metadataIds.Add(entity.MetadataId.Value)
+                    && !string.IsNullOrWhiteSpace(entity.LogicalName) && entity.LogicalName.Length<=128 && logical.Add(entity.LogicalName)
+                    && !string.IsNullOrWhiteSpace(entity.SchemaName) && entity.SchemaName.Length<=128 && schema.Add(entity.SchemaName),"Metadata inventory incomplete/duplicate.");
+                facts.Add(new JObject{{"id",entity.MetadataId!.Value.ToString("D")},{"logicalName",entity.LogicalName},{"schemaName",entity.SchemaName}});
+            }
+            // A trimmed synthetic/partial response cannot establish absence of the new stores.
+            StatePolicy.Require(logical.Contains(WorkspaceTable)&&logical.Contains(ReceiptTable),"Core metadata omitted from complete inventory.");
+            BackupStorePresence Presence(string name,string schemaName) {
+                var matching=entities!.Where(e=>string.Equals(e.LogicalName,name,StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(e.SchemaName,schemaName,StringComparison.OrdinalIgnoreCase)).ToArray();
+                if(matching.Length==0)return BackupStorePresence.NotInstalled;
+                return matching.Length==1 && matching[0].LogicalName==name && matching[0].SchemaName==schemaName
+                    ? BackupStorePresence.Installed : BackupStorePresence.Unknown;
+            }
+            return new BackupScopeEvidence(backupScope!,Presence("zk_kitchendocument","zk_KitchenDocument"),
+                Presence("zk_kitchendraft","zk_KitchenDraft"),Protocol.Hash(facts.ToString(Formatting.None)));
+        }
+
         static JToken BackupValue(object? value)
         {
             if (value == null) return JValue.CreateNull();

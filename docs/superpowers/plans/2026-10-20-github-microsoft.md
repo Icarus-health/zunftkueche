@@ -28,12 +28,19 @@
 4. Wechselndes Dateirecht, bereits hochgeladene Datei oder fehlende Originalversion: Zustand sichtbar erhalten, keine öffentliche Ersatzfreigabe → Aufgaben 4/5.
 5. Teilfehler bei Übernahme, unvollständige Sicherung und Testbeleg in echter Auswertung: keine Teilbuchung und kein falsches vollständiges Ergebnis → Aufgaben 5/6.
 
+## Freigabe und Pipeline-Ergänzung vom 20.10.2026
+
+Der Nutzer hat die Umsetzung freigegeben: **zuerst einen echten Microsoft-Release zum Laufen bringen, danach genau diesen Weg aus GitHub automatisieren, weiterhin ohne zusätzliche Kosten**. Der frühe Bestands-/Release-Nachweis wird sofort begonnen; Aufgabe 1 liefert nur die dafür nötige reproduzierbare Buildgrundlage. Eine Deployment-Pipeline gilt vor dem echten Hostnachweis nicht als fertig. Zunächst an Aufgabe 2 arbeiten, sobald ihre konkret benötigten Buildvoraussetzungen vorliegen; keine Komforterweiterung vor Meilenstein M1.
+
+Der Quellcode, aktuelle Status, Entscheidungen, Prüfergebnisse und nächste konkrete Schritte liegen im Repository. `AGENTS.md` ist der Einstieg für andere Agenten, `docs/project-status.md` die aktuelle Übersicht. Private Originale, unverarbeitete Live-Antworten, Sicherungen und Anmeldedaten werden nicht hochgeladen.
+
 ## Lieferfolge und Grenzen
 
 | Meilenstein | Aufgaben | Ergebnis und Stoppunkt |
 | --- | --- | --- |
 | M0: entwickelbar | 1 | Jeder berechtigte Entwickler kann den Klon ohne Vereinsdaten starten und prüfen. |
 | M1: Microsoft-Kernpilot | 2 | Früher echter Laden/Speichern/Neuladen-Nachweis. Bei ungelöstem Microsoft-Block keine zusätzlichen Komfortfunktionen entwickeln. |
+| M1a: GitHub-Veröffentlichung | 7 nach M1 | Derselbe geprüfte Releaseweg lässt sich bewusst aus GitHub starten. |
 | M2: nutzbarer Küchen-Kern | 3 | Paket A mit vollständigem Arbeitsabend auf Rechner und iPhone. |
 | M3: Belegworkflow | 4, 5 | Paket B mit Originalablage und bewusstem Prüfabschluss. |
 | M4: Betriebsfreigabe | 6 | Abnahme, Sicherungs-/Wiederherstellungsnachweise und verständliche Übergabe; offene Grenzen bleiben ausdrücklich benannt. |
@@ -144,11 +151,29 @@ Aufgaben sind überprüfbare Lieferungen, keine Zusage fester Stunden. Der Aufwa
 - [ ] Einmalige Gesamtprüfung des finalen Release-Commits: Fachablauf, Rollen, Wiederholung/Konflikt, CSV, Desktop und tatsächliches iPhone, Sicherung und Wiederherstellungsgrenze. Unabhängige Gesamtgegenprüfung einmal am Ende; danach nur betroffene Fehlerkorrekturen nachprüfen.
 - [ ] Release mit Commit, Client-/Serververtrag, Prüfergebnissen, bekannten Grenzen und kurzer Bedienanleitung dokumentieren. Erst tatsächlich bestandene Kriterien als erledigt markieren. Nächster Abend und Übergabe an einen Nachfolger müssen ohne Kenntnis der Entwicklungswerkzeuge möglich sein.
 
+## Aufgabe 7: Geprüften Microsoft-Release aus GitHub automatisieren
+
+**Abhängigkeit:** erfolgreicher tatsächlicher Release aus Aufgabe 2 und saubere Buildgrundlage 1; nicht erst Aufgabe 6. **Abnahme:** derselbe bereits nachgewiesene Release ist aus GitHub reproduzierbar, nachlesbar und ohne Browserinteraktion durchführbar. Zusätzliche Kosten bleiben ausgeschlossen.
+
+**Dateien:** neu `.github/workflows/release.yml`, gezielt benötigte versionierte Release-Skripte unter `tools/release/`, bestehende CLI-Pins/Lockfiles nur bei belegtem Bedarf; `docs/release-runbook.md`, `docs/project-status.md`, `AGENTS.md`. `checks.yml` bleibt der Prüfworkflow.
+
+**Schnittstelle:** `workflow_dispatch` startet einen benannten Release von einem Commit auf `main`. Die CI erzeugt ein eindeutig diesem Commit zugeordnetes Artefakt. Backendänderungen werden nur mit passendem versioniertem Paket/Schemaauftrag vor der Oberfläche freigegeben. Ein reines Oberflächenupdate verändert keine Daten, Tabellen oder Rechte. Keine Veröffentlichung allein durch einen Push.
+
+- [ ] Den manuell nachgewiesenen Build-/Veröffentlichungsweg unverändert als begrenzte Skripte übernehmen. Kein zweites Deployment-Framework und kein pauschales Exportieren des gesamten Mandanten.
+- [ ] Gepinnte Power Apps CLI `1.3.0` auf tatsächlich verfügbaren nicht interaktiven Modus prüfen. Falls nötig, eine gezielte Versionserhöhung mit Lockfile und Kompatibilitätstest durchführen. Die aktuelle Microsoft-Dokumentation beschreibt Service-Principal-Anmeldung und `pa app push --non-interactive`; das allein belegt noch nicht die Eignung der vorhandenen Version.
+- [ ] Technischen Veröffentlichungszugang konkret vorbereiten: Ziel-App/Umgebung, benötigte Bearbeitungsrechte, Art/Laufzeit des Zugangsmittels und Ablage als GitHub-Secret benennen. Neue Berechtigungen/Zugangsmittel erst mit der erforderlichen konkreten Zustimmung einrichten; kein persönliches Passwort verwenden, keine Tokens/Secrets in Code oder Logs. Ein App-Publishrecht ist keine Dataverse-Backendberechtigung; zusätzliche Backendrechte separat begrenzen.
+- [ ] Workflow zuerst ohne Zugangsmittel prüfen: fehlende Freigabe, falscher Commit, inkompatibles Client-/Serverpaar oder fehlende Secrets führen vor jeder Microsoft-Mutation zum klaren Stopp. Parallele Releases sind gesperrt. Ein fehlgeschlagener Updateversuch wird nicht stillschweigend wiederholt.
+- [ ] Nur Standardrunner und vorhandene Gratis-Kontingente verwenden. Aktuellen Kontostand/Abrechnungsgrenzen vor Aktivierung prüfen; keine kostenpflichtigen Runner, Mehrverbrauchsfreigabe, neue Umgebung oder Hostingdienste einrichten. Bei fehlendem Gratis-Kontingent bleibt der lokale bestätigte Weg verfügbar.
+- [ ] Ein bewusst gestarteter Lauf aktualisiert dieselbe bestehende App; Commit, Artefakthash und Client-/Serverversion werden protokolliert. Den tatsächlichen Microsoft-Host danach prüfen: richtige Version laden, berechtigt speichern und nach Neuladen lesen. Nur dieses Ergebnis markiert Aufgabe 7 als erledigt.
+- [ ] Dauerhafte Übergabe ergänzen: Start/Abbruch/Wiederanlauf, Secret-Ablauf/Rotation durch den zuständigen Admin, bekannter kompatibler Rückweg und offene Einschränkungen. Rechte oder Kontingente werden nicht aus bloßen Pipeline-Erfolgsmarkierungen abgeleitet.
+
+Herstellergrundlage: [Code Apps mit technischem Zugang veröffentlichen](https://learn.microsoft.com/en-us/power-apps/developer/code-apps/how-to/use-service-principal), [Power-Platform-Actions](https://learn.microsoft.com/power-platform/alm/devops-github-available-actions), [GitHub-Actions-Kontingente](https://docs.github.com/en/billing/concepts/product-billing/github-actions). Vor Umsetzung mit der tatsächlich verwendeten CLI abgleichen.
+
 ## Arbeitsweise in GitHub
 
 - `main` bleibt der gemeinsame, nachvollziehbare Ausgangspunkt. Pro Aufgabe ein kurzer Branch und eine prüfbare Änderung; vorhandene Historie nicht umschreiben.
 - Pro Lieferung ein fachliches Abnahmeziel und unabhängiges Gegenlesen durch einen zweiten Agenten. Eine kleine Korrektur erhält einen gezielten Test; reine Dokumentations-/Layoutkleinigkeiten brauchen keine neue Testkampagne.
 - Alle Tests gegen unbetroffene Bereiche nicht nach jedem Schritt wiederholen. Einmalige Baseline in Aufgabe 1, danach betroffene Prüfungen; Gesamtprüfung in Aufgabe 6.
-- GitHub-Actions prüft und baut. Erste Microsoft-Veröffentlichungen erfolgen bewusst über den dokumentierten bestehenden Zugangsweg; ein Push auf `main` veröffentlicht nichts automatisch. Automatische Veröffentlichung ist ein späteres Wartungsthema.
+- GitHub-Actions prüft und baut. Nach dem ersten tatsächlich erfolgreichen Microsoft-Release automatisiert Aufgabe 7 genau diesen Weg als bewusst gestarteten Release; ein Push auf `main` veröffentlicht nichts automatisch.
 - `docs/project-status.md` wird bei Umsetzung die einzige aktuelle Statusübersicht: Aufgabe, Commit, lokaler Nachweis, echter Hostnachweis, Gerät, offene Grenze, nächster Schritt. Historische Berichte bleiben datiert.
-- In diesem Planungsauftrag werden die zwei Planungsdokumente gespeichert und nach GitHub übertragen. Die Aufgaben beginnen nach Nutzerprüfung des Plans; kein Produktcode, keine Microsoft-Konfiguration und keine Küchendaten werden jetzt geändert.
+- Die Umsetzung einschließlich Pipeline ist am 20.10.2026 freigegeben. Aktuelle Arbeit und Grenzen stehen in `docs/project-status.md`; Sicherheits-/Kostenentscheidungen werden erst am konkreten Aktionspunkt eingeholt, falls sie über bestehende Freigaben hinausgehen.

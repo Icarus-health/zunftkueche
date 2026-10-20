@@ -1,7 +1,7 @@
 import { applyEventOperation } from "../domain/event-context.ts";
 import type { ConfirmedIdentity } from "./preferences.ts";
 import type { KitchenState, Operation } from "../domain/state.ts";
-import type { Repository } from "./repository.ts";
+import type { Repository, ReleaseFeatures } from "./repository.ts";
 import { RejectedError } from "./repository.ts";
 
 export interface KitchenApi {
@@ -167,13 +167,16 @@ export function createMicrosoftRepository(
   let current: KitchenState | null = null;
   let canWrite = false, canConfigure = false, canClose = false;
   let identity: ConfirmedIdentity | null = null;
+  let loadGeneration=0;
+  let features: ReleaseFeatures = {documents:false,receiptIntake:false};
+  function clearFeatures() {features={documents:false,receiptIntake:false};delete repo.documents;}
   let pending: PendingRequest | null = null;
   const legacyMessage = "Eine offene Änderung aus der vorherigen Version wurde unverändert gesichert. Bitte zuerst mit der Verwaltung klären; bis dahin ist das Speichern gesperrt.";
   const quarantined = () => store?.getItem(legacyKey) !== null && store?.getItem(legacyKey) !== undefined;
   function responseIdentity(value: Record<string, any>): ConfirmedIdentity {
     const i=value.identity;
     const uuid=(v:unknown)=>typeof v==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) && v!=='00000000-0000-0000-0000-000000000000';
-    if(!object(i)||!uuid(i.organizationId)||!uuid(i.userId)||i.workspaceId!==workspaceId)throw invalid();
+    if(!object(i)||!uuid(i.organizationId)||!uuid(i.userId)||i.workspaceId!==workspaceId){clearFeatures();throw invalid();}
     return {organizationId:i.organizationId.toLowerCase(),userId:i.userId.toLowerCase(),workspaceId};
   }
   function capabilities(response:Record<string,any>) {
@@ -196,8 +199,10 @@ export function createMicrosoftRepository(
       !object(value) ||
       value.protocolVersion !== 2 ||
       value.workspaceId !== workspaceId
-    )
+    ) {
+      clearFeatures();
       throw invalid();
+    }
     return value;
   }
 
@@ -210,12 +215,17 @@ export function createMicrosoftRepository(
     get canConfigure() {return canConfigure && !quarantined();},
     get canClose() {return canClose && !quarantined();},
     get identity() {return identity ? {...identity} : null;},
+    get features() {return {...features};},
     get blockedReason() {return quarantined()?legacyMessage:"";},
     async load() {
+      const generation=++loadGeneration;
+      clearFeatures();
+      try {
       canWrite = false;canConfigure=false;canClose=false;identity=null;current=null;pending=null;
       const response = await envelope(
         await api.load(JSON.stringify({ protocolVersion: 2, workspaceId })),
       );
+      if(generation!==loadGeneration)throw invalid();
       const confirmed=responseIdentity(response);
       current = stateValue(response.state);
       identity=confirmed;
@@ -227,6 +237,7 @@ export function createMicrosoftRepository(
         pending=parsed;
       }
       capabilities(response);
+      features={documents:object(response.features)&&response.features.documents===true,receiptIntake:object(response.features)&&response.features.receiptIntake===true};
       if(quarantined())return structuredClone(current);
       // A browser reload resumes the exact persisted request, including its original revision.
       if (pending) {
@@ -242,6 +253,7 @@ export function createMicrosoftRepository(
         }
       }
       return structuredClone(current);
+      } catch(error) {if(generation===loadGeneration){clearFeatures();canWrite=false;canConfigure=false;canClose=false;identity=null;current=null;}throw error;}
     },
     async backupSnapshot() {
       if (!identity || !canConfigure || !canClose || quarantined())
@@ -252,7 +264,7 @@ export function createMicrosoftRepository(
         protocolVersion: 2, workspaceId, view: "backup", identity,
       })));
       const confirmed = responseIdentity(response);
-      if (JSON.stringify(confirmed) !== expectedIdentity || response.view !== "backup") throw invalid();
+      if (JSON.stringify(confirmed) !== expectedIdentity || response.view !== "backup") {clearFeatures();throw invalid();}
       capabilities(response);
       if (!canConfigure || !canClose || !object(response.snapshot)) throw invalid();
       const snapshot = response.snapshot;
@@ -271,6 +283,8 @@ export function createMicrosoftRepository(
         );
       }
       if (!pending) {
+        if(op.type === "receipt.draft.accept" && (!features.documents || !features.receiptIntake))
+          throw new RejectedError("Belegübernahme ist vom Server nicht freigegeben.");
         let result;
         try {
           if(!op.targetEventId)throw new Error("Zielveranstaltung fehlt. Bitte neu laden.");
@@ -303,7 +317,7 @@ export function createMicrosoftRepository(
       }
       const response = await envelope(await api.commit(pending.request));
       const confirmed=responseIdentity(response);
-      if(JSON.stringify(confirmed)!==JSON.stringify(identity)){canWrite=false;canConfigure=false;canClose=false;identity=null;throw new Error("Benutzerkonto geändert. Bitte neu laden; offene Änderung bleibt gesichert.");}
+      if(JSON.stringify(confirmed)!==JSON.stringify(identity)){clearFeatures();canWrite=false;canConfigure=false;canClose=false;identity=null;throw new Error("Benutzerkonto geändert. Bitte neu laden; offene Änderung bleibt gesichert.");}
       capabilities(response);
       if (
         response.targetEventId !== op.targetEventId ||

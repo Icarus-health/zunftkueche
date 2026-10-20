@@ -111,8 +111,9 @@ static class Round1Tests
             refusal=new(){["schema"]="kitchen-refusal-diagnostic-review-v1",["organization"]=Target.Organization,["packageId"]=Target.Package,["diagnosticSha256"]=diagnostic.Sha256,["diagnosticBytes"]=diagnostic.Length,["sourceBuildSha256"]=source.Sha256,["ordinaryKitchenCommit"]="refused-before-write",["acceptingDocumentOperations"]=false,["independentlyReviewed"]=true};
             exclusion=new(){["schema"]="kitchen-preparation-exclusion-v1",["organization"]=Target.Organization,["workspace"]=Target.Workspace,["app"]=Target.App,["ordinaryUseDisabled"]=true,["sourceWritersExcluded"]=true,["packageWritersExcluded"]=true,["checkpointSha256"]=checkpoint.Sha256,["reviewSha256"]=phaseReview.Sha256};
             var prep=new PreparationContract(diagnostic,source,SaveJson("refusal.json",refusal),SaveJson("exclusion.json",exclusion));
-            var transition=new ReviewedTransition(final?TransitionKind.RefusalDiagnosticToFinal:TransitionKind.V5ToRefusalDiagnostic,Check.Hash(new byte[]{1,2,3}),3,diagnostic,source,phaseReview,WriteMode.StrictETagCas,prep.OrdinaryUseAndWriterExclusion);
-            Phase=new(mode,phaseReview,phaseReview,checkpoint,Guard:mode==ReleaseMode.RegisterDocumentGuards?Binding:null,Transition:mode==ReleaseMode.ActivatePackage?transition:null,Routes:SaveJson("routes.json",Review),Preparation:final?null:prep);
+            var scope=final?ReleaseScopeTests.Binding(Zunftkueche.BackupScope.Documents):null;
+            var transition=new ReviewedTransition(final?TransitionKind.RefusalDiagnosticToFinal:TransitionKind.V5ToRefusalDiagnostic,Check.Hash(new byte[]{1,2,3}),3,diagnostic,source,phaseReview,WriteMode.StrictETagCas,prep.OrdinaryUseAndWriterExclusion,scope);
+            Phase=new(mode,phaseReview,phaseReview,checkpoint,Guard:mode==ReleaseMode.RegisterDocumentGuards?Binding:null,Transition:mode==ReleaseMode.ActivatePackage?transition:null,Routes:SaveJson("routes.json",Review),Preparation:final?null:prep,ExpectedScope:scope);
         }
         public void Defect(string defect) {
             if(defect=="no-preparation-contract")Phase=Phase with{Preparation=null};

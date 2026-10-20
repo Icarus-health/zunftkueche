@@ -14,8 +14,18 @@ export async function connectMicrosoft(): Promise<void> {
     commit: Zk_KitchenCommitService,
   };
   const repo=configureMicrosoftRuntime(MICROSOFT_WORKSPACE_ID,services);
-  const [{SharePointService},{createSharePointProvider},{connectDocumentRepository}]=await Promise.all([
-    import("../generated/services/SharePointService"),import("../data/sharepoint-documents.ts"),import("../data/document-runtime.ts")
-  ]);
-  connectDocumentRepository(repo,services,createSharePointProvider(SharePointService,getContext),sessionStorage);
+  const load=repo.load.bind(repo);
+  let generation=0;
+  repo.load=async()=>{
+    const current=++generation;
+    const state=await load();
+    if(repo.features?.documents!==true)return state;
+    const identity=JSON.stringify(repo.identity);
+    const [{SharePointService},{createSharePointProvider},{connectDocumentRepository}]=await Promise.all([
+      import("../generated/services/SharePointService"),import("../data/sharepoint-documents.ts"),import("../data/document-runtime.ts")
+    ]);
+    if(current===generation && repo.features?.documents===true && JSON.stringify(repo.identity)===identity)
+      connectDocumentRepository(repo,services,createSharePointProvider(SharePointService,getContext),sessionStorage);
+    return state;
+  };
 }

@@ -6,6 +6,8 @@ Private Quelldaten aus `import/`, lokale Arbeitsdaten, Rechnungsdateien, Zugangs
 
 ## Aktuelle Entwicklungsgrundlage
 
+**Für die Weiterentwicklung:** [Agenten-Einstieg](AGENTS.md), [aktueller Projektstand](docs/project-status.md) und [Release-Runbook](docs/release-runbook.md).
+
 - [Ist- und Sollzustand vom 20.10.2026](docs/superpowers/specs/2026-10-20-github-microsoft-design.md)
 - [Entwicklungsplan: GitHub und bestehendes Microsoft-System](docs/superpowers/plans/2026-10-20-github-microsoft.md)
 
