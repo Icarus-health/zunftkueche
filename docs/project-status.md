@@ -47,3 +47,9 @@ Die reguläre Anmeldung dieses Laufs erfolgte mit Nutzerhandgriff im integrierte
 - `e0f4b8e` (2c): ausschließlich begrenzte Leseinventur freigeschaltet und feste Quelldateiliste aktualisiert. Unabhängig tatsächliche 54 Quellen, sieben Builddateien, 89 Clientdateien, 186 Hostdateien und zehn lokale Originalkopien geprüft; externe lokale Prüfung und Offlinegate bestanden. Der anschließende Bestandslauf wurde nach regulärer Kontoauswahl beendet; der frühere Queryfehler trat nicht mehr auf. Keine produktive Sicherungs-/Aktivierungs-/Releasefreigabe daraus abgeleitet.
 
 - Aktueller Microsoft-Leselauf: 121 native Antworten, 353 lokal erhaltene Dateien; Datenstand und drei Vorgänge unverändert. Beide neuen Tabellen vor und nach der Aufnahme nativ nicht installiert; Originalanforderungen und lokale Kopien geprüft. Die Quellen-Vollständigkeitsfreigabe war absichtlich noch leer, daher bleibt die Aufnahme bis zur unabhängigen Prüfung als unvollständig gekennzeichnet. Kein Paketupdate und keine Daten-/Rechteänderung.
+
+## Aktueller Auftrag: direkter bestehender App-Release
+
+Der Nutzer hat weitere Agenten-/Prüfrunden ausgeschlossen und Pipeline/Extras zurückgestellt. Das vorhandene geprüfte Serverpaket wurde gebaut; die offizielle Microsoft-CLI ist mit Vorstand angemeldet, die Oberfläche ist vorbereitet. Der erste Paketupdate-Versuch mit exakter Versionssperre wurde von Microsoft wegen abweichender RowVersion abgelehnt. Das alte Paket ist nachweislich unverändert.
+
+Der vorhandene alternative Paketinhalt-Upload benötigt keine neuen Rechte, kann aber eine gleichzeitige Paketänderung überschreiben. Die automatische Aktionsfreigabe hat ihn deshalb vor Ausführung abgelehnt. Die konkrete Nutzerbestätigung für ausschließlich dieses Paketupdate ist angefragt. Noch kein neuer Server-/Clientrelease; Küchendaten und Rechte unverändert.
