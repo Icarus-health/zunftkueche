@@ -19,16 +19,16 @@ Zuerst einen echten Release der bestehenden Microsoft-App nachweisen, anschließ
 | Anmeldung | 20.10.2026 reguläre Vorstand-Anmeldung erfolgreich: geprüfter Reader erreichte native Dataverse-Abfragen. Damit ist der jüngste Abbruch kein Anmeldefehler. | Keine erneute Anmeldung ohne korrigierten konkreten Befund. |
 | Bestand | Lesender Lauf erfasste Rohzustand, Operationen, Metadaten und Paket. Kernrevision 3, drei unveränderliche Vorgangsbelege. Zustand und Paket stimmen mit dem früher erhaltenen Stand überein. | Nur private Rohdaten lokal; vollständige Capture-Abnahme noch offen. |
 | Neue Speicher | Frische native Metadatenabfragen klassifizieren Dokument- und Entwurfstabelle als nicht installiert. Der erweiterte Gesamtlauf brach danach ab. | Abwesenheit im fertig gegengeprüften Inventarlauf bestätigen. |
-| Konkreter Abbruch | HTTP 400 / Dataverse `0x80041102` beim neuen Schrittinventar `sdkmessageprocessingsteps` mit Filter über `sdkmessagefilterid/primaryobjecttypecode`. Authentifizierung und Kernlesung waren bereits erfolgt. | Quelle und bereinigte Fehlerantwort vergleichen; kleinstmögliche Query-Korrektur, Test und unabhängige Prüfung. |
-| Kernrelease | Protokoll-2-Code vorhanden; koordinierte Veröffentlichung und Funktions-/Sicherungsgrenze noch umzusetzen. | Nach fertiger Bestandslesung Paket A freigabefähig machen; neue Belegfunktionen zunächst serverseitig aus. |
-| Pipeline | Als Aufgabe 7 ergänzt; beginnt nach erstem echten Microsoft-Release. | Gepinnte CLI und nicht interaktiven Zugang prüfen; Rechte/Kosten vor Aktivierung konkret benennen. |
+| Konkreter Abbruch | HTTP 400 / Dataverse `0x80041102` beim neuen Schrittinventar `sdkmessageprocessingsteps` mit Filter über `sdkmessagefilterid/primaryobjecttypecode`. Authentifizierung und Kernlesung waren bereits erfolgt. | Gezielte Korrektur `b8bb4ab` liest das begrenzte SDK-Schrittinventar ohne Auflösung fehlender Tabellennamen. Zehn fokussierte Tests bestanden, unabhängige Gegenprüfung freigegeben. Noch kein erneuter nativer Lauf. |
+| Kernrelease | Protokoll-2-Code vorhanden; koordinierte Veröffentlichung und Funktions-/Sicherungsgrenze noch umzusetzen. Zusätzlich verwechselt ein neuer Releasevalidator kanonische Vorgangssignaturen mit Hashes vollständiger Anfragen; die erhaltenen Daten selbst sind unverändert. | Laufende Aufgabe 2a: serverbestätigte Kernfreigabe, korrekter Kernbackup-Vertrag und gezielte Validatorkorrektur. Danach Release-Prüfungen/konkrete Bereitstellung 2b. |
+| Pipeline | Als Aufgabe 7 ergänzt; beginnt nach erstem echten Microsoft-Release. | CLI 1.3.0 bestätigt per tatsächlicher Hilfe `pa app push --non-interactive`. Technische Anmeldung/Rechte und Kontingente noch nicht eingerichtet oder praktisch geprüft. |
 
 Die reguläre Anmeldung dieses Laufs erfolgte mit Nutzerhandgriff im integrierten Browser. Es wurden keine Küchendaten, Rollen, Tabellen, Pakete oder Lizenzen verändert. Die 183 privat erhaltenen Dateien sind ein **unvollständiger** Inventarlauf, keine vollständige Sicherung und keine Veröffentlichung.
 
 ## Arbeitsübergabe
 
 - Einstieg: `AGENTS.md`; verbindlicher Plan unter `docs/superpowers/plans/2026-10-20-github-microsoft.md`.
-- Aktueller technischer Fokus: den nachgewiesenen Inventar-Queryfehler beheben, nicht nochmals die Anmeldung umbauen.
+- Inventar-Queryfehler lokal korrigiert und unabhängig gegengeprüft. Aktueller Fokus: Kernfunktionen von späteren Belegtabellen trennen und erhaltene Vorgangssignaturen korrekt prüfen. Keine neue Anmeldung, solange diese bestätigte Validierungsursache unverändert bleibt.
 - Danach: serverbestätigte Kernfreigabe samt Kernbackup/Releaseprüfung, kompatiblen Server/Client in derselben App veröffentlichen und echtes Speichern/Neuladen nachweisen.
 - Private Liveantworten/Sicherungen befinden sich bewusst nicht im Repository. Ohne diese Evidenz darf ein anderer Agent keine Vollständigkeit, installierten Rechte oder erfolgreiche Veröffentlichung behaupten. Benötigte Livefakten über regulären freigegebenen Zugang neu lesen.
 - Tatsächliches iPhone, native Transaktionsrücknahme, vollständige Originalsicherung und Microsoft-Wiederherstellung sind noch nicht abgenommen. Cloud-KI/OCR bleibt aus.
@@ -37,3 +37,5 @@ Die reguläre Anmeldung dieses Laufs erfolgte mit Nutzerhandgriff im integrierte
 
 - `a618100`: Ist/Soll und sechs Aufgaben, unabhängig gegengeprüft; nur Dokumentation.
 - 20.10.2026: Umsetzung/Pipeline vom Nutzer freigegeben. Diagnosekandidat lokal unabhängig gegen 52 Quellen, sieben Builddateien, 186 Hostdateien und 89 Clientdateien geprüft; rein lesender Microsoft-Test zeigte oben genannten tatsächlichen Queryfehler. Kein Schreib-/Deployversuch.
+
+- `b8bb4ab` (R0): feste Metadatenabfrage korrigiert; zehn gezielte synthetische Reader-Tests, sauberer Build/Publish und Offline-Closure. Unabhängige Spec-/Qualitätsprüfung freigegeben, ein kleiner nicht blockierender Testhinweis bleibt dokumentiert. [Prüfzusammenfassung](validation/2026-10-20-inventory-query.md). Keine Liveveröffentlichung.
