@@ -36,6 +36,36 @@ if(args.SequenceEqual(new[]{"--auth-diagnostics-only"})){
     });
     Console.WriteLine($"AUTH_DIAGNOSTICS: {passed} passed, {failed} failed; synthetic only.");return failed==0?0:1;
 }
+if(args.SequenceEqual(new[]{"--inventory-query-only"})){
+    // Catches absent-table name resolution in the server filter, lost global/new-table
+    // handlers on subsequent pages, and any relaxation of the fixed read boundary.
+    foreach(var absent in new[]{true,false})await Async("SDK metadata inventory retains every page with target tables "+(absent?"absent":"present"),async()=>{
+        using var reader=new Reader(()=>Task.FromResult("synthetic"),(_,_)=>{},new StepInventoryHandler(absentTargets:absent));
+        reader.ReleaseQueries(ReleaseQueries.All);
+        var rows=await reader.Rows(ReleaseQueries.Steps,"sdkmessageprocessingstepid",10000);
+        Assert(rows.Select(r=>Check.Id(r,"sdkmessageprocessingstepid")).SequenceEqual(absent?new[]{StepInventoryHandler.Id(3),StepInventoryHandler.Id(4)}:new[]{StepInventoryHandler.Id(1),StepInventoryHandler.Id(2),StepInventoryHandler.Id(3),StepInventoryHandler.Id(4)}));
+        if(!absent){Assert((string?)rows[0]["sdkmessagefilterid"]?["primaryobjecttypecode"]=="zk_kitchendocument");Assert((string?)rows[1]["sdkmessagefilterid"]?["primaryobjecttypecode"]=="zk_kitchendraft");}
+        var global=rows.Single(r=>Check.Id(r,"sdkmessageprocessingstepid")==StepInventoryHandler.Id(3));
+        Assert(global["_sdkmessagefilterid_value"]==null&&(string?)global["sdkmessageid"]?["name"]=="GlobalMutation");
+        Assert((string?)rows.Last()["sdkmessagefilterid"]?["primaryobjecttypecode"]=="unrelated_table");
+        Assert(rows.All(r=>(string?)r["eventhandler_plugintype"]?["typename"]=="Synthetic.Handler"));
+    });
+    foreach(var defect in new[]{"missing-count","changed-count","truncated","duplicate","changed-query","foreign-origin","overflow"}){
+        var d=defect;await Async("SDK metadata inventory refuses "+d,async()=>{
+            using var reader=new Reader(()=>Task.FromResult("synthetic"),(_,_)=>{},new StepInventoryHandler(d));
+            reader.ReleaseQueries(ReleaseQueries.All);
+            try{await reader.Rows(ReleaseQueries.Steps,"sdkmessageprocessingstepid",d=="overflow"?3:10000);}catch(Stop){return;}
+            throw new Exception("incomplete metadata accepted");
+        });
+    }
+    await Async("SDK metadata correction does not authorize arbitrary metadata queries",async()=>{
+        var tokens=0;using var reader=new Reader(()=>{tokens++;return Task.FromResult("synthetic");},(_,_)=>{},new StepInventoryHandler());
+        reader.ReleaseQueries(ReleaseQueries.All);
+        try{await reader.Rows("sdkmessageprocessingsteps?$filter=name eq 'arbitrary'","sdkmessageprocessingstepid");}catch(Stop){Assert(tokens==0);return;}
+        throw new Exception("arbitrary path accepted");
+    });
+    Console.WriteLine($"INVENTORY_QUERY: {passed} passed, {failed} failed; synthetic HTTP only.");return failed==0?0:1;
+}
 if(args.SequenceEqual(new[]{"--guard-only"})){GuardMappingTests.Run(Test);Console.WriteLine($"GUARD: {passed} passed, {failed} failed");return failed==0?0:1;}
 if(args.SequenceEqual(new[]{"--round1-only"})){await Round1Tests.Run(Async);await ActivationIntegrationTests.RunPrerequisites(Async);Console.WriteLine($"ROUND1: {passed} passed, {failed} failed");return failed==0?0:1;}
 if(args.SequenceEqual(new[]{"--phases-only"})){await PhaseTests.Run(Async);Console.WriteLine($"PHASES: {passed} passed, {failed} failed");return failed==0?0:1;}
@@ -82,3 +112,30 @@ Console.WriteLine($"FOUNDATION: {passed} passed, {failed} failed; unique new cas
 var accepted=await OfflineTests.Run();
 return failed==0&&accepted==0?0:1;
 sealed class FakeJournal:IAttemptJournal{public bool Begun,Fail;public bool AttemptPersisted=>Begun;public void Begin(string s){if(Fail)throw new IOException();Begun=true;}public void Observe(string s){}}
+
+// Synthetic provider boundary: the observed 400 is triggered before OR can select
+// globals whenever a missing logical name is used in primaryobjecttypecode.
+sealed class StepInventoryHandler(string defect="",bool absentTargets=false):HttpMessageHandler {
+    const string Root="sdkmessageprocessingsteps?$expand=sdkmessageid,sdkmessagefilterid,eventhandler_plugintype&$count=true";
+    public static string Id(int n)=>$"00000000-0000-4000-8000-{n:D12}";
+    static JsonObject Row(int n,string? table,string message)=>new(){
+        ["sdkmessageprocessingstepid"]=Id(n),["_sdkmessagefilterid_value"]=table==null?null:Id(n+10),
+        ["sdkmessagefilterid"]=table==null?null:new JsonObject{["sdkmessagefilterid"]=Id(n+10),["primaryobjecttypecode"]=table},
+        ["sdkmessageid"]=new JsonObject{["sdkmessageid"]=Id(n+20),["name"]=message},
+        ["eventhandler_plugintype"]=new JsonObject{["plugintypeid"]=Id(n+30),["typename"]="Synthetic.Handler"}
+    };
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken cancellation){
+        var path=Uri.UnescapeDataString(request.RequestUri!.AbsoluteUri[Target.Api.Length..]);
+        if(path!=Root&&path!=Root+"&$skiptoken=page2")return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest){Content=new StringContent("{\"error\":{\"code\":\"0x80041102\",\"message\":\"Synthetic missing logical entity in MetadataCache\"}}")});
+        var second=path.EndsWith("&$skiptoken=page2",StringComparison.Ordinal);
+        var rows=second?new JsonArray(Row(2,"zk_kitchendraft","Update"),Row(defect=="duplicate"?1:3,null,"GlobalMutation")):new JsonArray(Row(4,"unrelated_table","OtherMutation"),Row(1,"zk_kitchendocument","Create"));
+        if(absentTargets)rows=second?new JsonArray(Row(3,null,"GlobalMutation")):new JsonArray(Row(4,"unrelated_table","OtherMutation"));
+        var result=new JsonObject{["value"]=rows};
+        if(defect!="missing-count")result["@odata.count"]=second&&defect=="changed-count"?5:absentTargets?2:4;
+        if(!second&&defect!="truncated")result["@odata.nextLink"]=defect switch{
+            "changed-query"=>Target.Api+Root.Replace("$count=true","$count=false")+"&$skiptoken=page2",
+            "foreign-origin"=>"https://foreign.invalid/api/data/v9.2/"+Root+"&$skiptoken=page2",
+            _=>Target.Api+Root+"&$skiptoken=page2"};
+        return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK){Content=new StringContent(result.ToJsonString())});
+    }
+}

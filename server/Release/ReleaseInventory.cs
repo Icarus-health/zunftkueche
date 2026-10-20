@@ -10,7 +10,9 @@ public static class ReleaseQueries
     public static string Rows(TableKind t)=>$"{DocumentSchema.Set(t)}?$filter=_zk_workspace_value eq {Target.Workspace}&$orderby={DocumentSchema.Logical(t)}id asc&$count=true";
     public static string AllRows(TableKind t)=>$"{DocumentSchema.Set(t)}?$orderby={DocumentSchema.Logical(t)}id asc&$count=true";
     public static string Filters(TableKind t)=>$"sdkmessagefilters?$filter=primaryobjecttypecode eq '{DocumentSchema.Logical(t)}'&$expand=sdkmessageid&$count=true";
-    public const string Steps="sdkmessageprocessingsteps?$filter=sdkmessagefilterid/primaryobjecttypecode eq 'zk_kitchendocument' or sdkmessagefilterid/primaryobjecttypecode eq 'zk_kitchendraft' or _sdkmessagefilterid_value eq null&$expand=sdkmessageid,sdkmessagefilterid,eventhandler_plugintype&$count=true";
+    // Logical table-name filters resolve through MetadataCache even when OR includes
+    // global steps. Read the fixed, bounded metadata superset so absent tables remain valid.
+    public const string Steps="sdkmessageprocessingsteps?$expand=sdkmessageid,sdkmessagefilterid,eventhandler_plugintype&$count=true";
     public const string Roles="roles?$expand=roleprivileges_association&$count=true";
     public const string Users="systemusers?$filter=domainname eq 'Vorstand@Schelmenzunft.onmicrosoft.com'&$expand=systemuserroles_association,teammembership_association&$count=true";
     public static string ValidParents(TableKind t)=>"GetValidReferencedEntities(ReferencingEntityName='"+DocumentSchema.Logical(t)+"')";
