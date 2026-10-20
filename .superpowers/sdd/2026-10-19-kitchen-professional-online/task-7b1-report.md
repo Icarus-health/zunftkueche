@@ -1,6 +1,8 @@
 # Task7b.1 — frozen release foundation report
 
-**Current correction freeze (supersedes the initial status and source gaps1–2 below): `2cf5d6ec752179e246b1dbe96c4eec79c4b45b9c`.** The requested exact-object and route prerequisite gaps are implemented and locally verified, including incremental partial-table checkpoint handling. Status: **DONE_WITH_CONCERNS for source delivery, pending independent review and native acceptance.** Fresh cloud-original acquisition remains explicitly unsupported/Incomplete. The initial report below is retained as historical evidence; the correction appendix contains current commands, counts and pins.
+**Current fix round1 source freeze: `b5a048798fb2063073885808d1ccba4ff7b8ed0f`. Status: source corrections I1–I4 implemented and locally verified; independent rereview pending, native activation incomplete.** This supersedes the earlier delivery assessments below. The appended fix-round1 section records exact current commands, focused counts, candidate closure and remaining external/unsupported facts. No native success is claimed.
+
+**Previous correction freeze (historical pre-review status; superseded by fix round1 below): `2cf5d6ec752179e246b1dbe96c4eec79c4b45b9c`.** The requested exact-object and route prerequisite gaps are implemented and locally verified, including incremental partial-table checkpoint handling. Status: **DONE_WITH_CONCERNS for source delivery, pending independent review and native acceptance.** Fresh cloud-original acquisition remains explicitly unsupported/Incomplete. The initial report below is retained as historical evidence; the correction appendix contains current commands, counts and pins.
 
 Status: **DONE_WITH_CONCERNS for the bounded source delivery; NOT activation-ready.** The source limitations below must be resolved/reviewed before a live mutation permit. No native release, complete live backup, access test, restore or publication was performed. Date: 20 October 2026.
 
@@ -233,3 +235,143 @@ server/Release/ReleaseInventory.cs
 server/Release/Tests/PhaseTests.cs
 server/Release/Tests/Program.cs
 ```
+
+
+## Fix round1/5 — I1–I4 correction freeze, 20 October 2026
+
+Requirements: `task-7b1-fix-round1.md` and complete independent `task-7b1-review.md`. Parent's I2 ruling is controlling: refusal-only preparation is separately typed/reviewed, missing witnesses remain unproved, final accepting activation still requires genuine full route witnesses. No new catalog, native evidence, provider integration, permission, account or paid/dependency scope was added.
+
+- FIX_BASE: `9e723c8e5aaeb52f60f0fe70d15cb6c4387038a0`.
+- Source freeze: **`b5a048798fb2063073885808d1ccba4ff7b8ed0f`**, commit `fix(release): bind staged prerequisites and complete capture provenance`.
+- Correction review range: `9e723c8e5aaeb52f60f0fe70d15cb6c4387038a0..b5a048798fb2063073885808d1ccba4ff7b8ed0f`; 17 files, 1063 insertions, 63 deletions. Original full-task BASE remains `b77ee6396445f3fd8caaa2f8ef8abfe08e9a7faf`.
+- This appended report is a separate evidence commit after source freeze. No report file belongs to the executable source/build closure.
+
+### I1 — fixed generated primary and closed system metadata
+
+`NativeSystemMetadata` validates the fixed new primary logical IDs `zk_kitchendocumentid` and `zk_kitchendraftid`, Uniqueidentifier type/type-name, primary flags, create/read/update/security and RequiredLevel shape. It validates all 31 named UserOwned system attributes from the supplied historical shape, including ownership and virtual companions. Missing/changed required system fields, an incorrect primary ID/type, or an unknown custom/system field stops classification. The explicit conditional workspace-lookup display field remains bounded to the fixed lookup and its read-only metadata shape. There is no general `zk_` exemption.
+
+New embedded `contracts/user-owned-system-shape.json` derives only the nonprivate shape from parent's `historical-system-attribute-shapes.json`, extract SHA256 `b644eb6372dbaa99cecef8f2318e1ac3f333863561d5527024a04fae2546cc71`. Its historical source metadata SHA256 is `28b5035b9a36458024c175fa0607bfb96a00c486bf0cbd5d25090f1c071d8527`. This is an explicit historical candidate contract, **not fresh proof of either new table**. No historical metadata GUIDs, private labels/state, or guessed new primary SchemaName casing were copied. Actual new metadata fields/casing remain in the raw capture and fingerprints and require native review. Unexpected actual shape stops for review.
+
+Both partial and exact fixtures now include generated primary GUID metadata plus the full historical UserOwned system shape. The existing next-column phase test obtains a fresh empty partial-table read using only the unfiltered all-table query; it does not query a nonexistent workspace/payload column. Nonempty/unknown/secured/extra-field partial stores still stop; final phases still require Exact. New checks cover both Document and Draft classifier positives and wrong primary name/type, missing primary/system, incorrect owner flag and unknown custom/system negatives, preserving input objects.
+
+### I2 — preparation prerequisites distinct from accepting activation
+
+`RouteReviewKind.RefusalPreparation` and `NativeWitnessState.Unproved` retain the complete metadata/disposition matrix with a fresh inventory fingerprint. Every missing witness is explicitly null file/null hash; a fake placeholder hash is rejected. The same full mandatory/discovered disposition checks still run; preparation only changes whether an actual native witness must already exist.
+
+A `PreparationContract` is required for the fixed v5-to-refusal-diagnostic transition and bounded initial guard preparation. It binds exact diagnostic bytes and source-build evidence, an independent refusal review stating ordinary KitchenCommit refuses before write and document acceptance is disabled, and ordinary-use/source/package-writer exclusion evidence bound to the phase's review and checkpoint hashes. Preparatory guard registration additionally brackets observed package bytes with metadata reads and requires the exact reviewed diagnostic hash/length. These prerequisites run before dispatch and again through the immediate checkpoint; file/proof validation also runs before authentication in Program. Output explicitly labels refusal preparation without claiming native witness/release acceptance.
+
+The final diagnostic-to-accepting transition requires `FinalWitnessed` review and actual retained native-witness files/hashes for every mandatory and discovered route. It cannot consume an unproved preparation review or a preparation contract. There is no CLI/config skip flag, generic deployment path, rollback supervisor or return-to-use operation.
+
+**Concrete remaining fact:** this tool binds independently reviewed evidence of ordinary-use/write exclusion and package refusal; it does not itself disable ordinary use or prove external exclusion. No real refusal-only diagnostic artifact/source-build refusal review, exclusion record, route review or executable transition/binding was fabricated or supplied. The existing local plugin package is not newly relabelled as refusal-only. These real artifacts and operational facts must be established and separately reviewed before adding a literal preparation phase. All executable catalogs remain empty. This distinction removes the source-level witness cycle without claiming those absent facts.
+
+### I3 — source-derived original provenance in both paths
+
+`OriginalRequirements` derives typed LocalImport / CloudVersion / Unresolved requirements from fresh raw aggregate JSON plus every document and draft payload, including nested immutable histories, refs and page versions. A SharePoint provider/ref or a document URL remains a cloud requirement even when its SHA256 matches a verified retained local import. Unknown provider/hash-bearing histories or unresolved page/path provenance stop completeness. A supplied `RequiredOriginalHashes` list must equal the fresh local derivation and cannot omit sources or promote provenance.
+
+`ReleaseInspector.RetainAndValidateOriginals` first retains verified historical local imports and their exact manifest, records derived source requirements, then refuses cloud/unresolved completion. `NativeCheckpoint.ValidateFreshOriginals` derives from the newly read raw state and actual store payload rows before mutation eligibility. No cloud reader or new scopes were added. Focused same-hash cases for aggregate, document history, draft history, draft page and unknown provider exercise both production paths and assert retained local bytes survive while completion fails. Local-only derivation agrees across both paths; an omitted asserted hash, unresolved local path and cloud URL refuse.
+
+Fresh cloud originals remain **explicitly unsupported/Incomplete**. The existing v2 frontend full-backup source may be a separately assessed future input; no such adapter or freshness inference was implemented here.
+
+### I4 — connected consistency boundary around retained core and extended capture
+
+`Inspector.Run(false)` now returns `CoreCaptureFacts` for the original retained workspace/receipt/raw-state fingerprints and verified named artifact hashes. `ReleaseInspector` passes these facts into `CaptureConsistency.Run`: the extended first core read must match before stores/originals/completeness facts are considered; stores are repeated and the final core read must match those same retained facts. Policy/original/completeness evaluation occurs inside that bracket, followed by final file verification. Named earlier raw bytes are never overwritten or normalized.
+
+The focused control-flow regression creates real synthetic named Backup artifacts, derives retained core facts, changes only the core-to-extension gap, and attempts completion through the production connected flow. Workspace-gap and receipt-gap variants stop before extended reads/fact evaluation and retain the earlier raw bytes. Further cases change workspace or extended stores during original evaluation and stop finalization. A stable case proves the exact order core → stores → originals → stores → core and successfully verifies the synthetic retained closure. This is not a live atomic-snapshot claim or substitute for operational writer exclusion.
+
+### Focused verification, exact commands and results
+
+All commands below use the existing SDK8.0.426/runtime8.0.32 and existing package cache. No restore or dependency download was run in round1. Process wrapper `task-7b1-evidence/run-round1.py` uses one subprocess per command with a **90-second timeout** and records exact cwd/argv/exit plus stdout/stderr. Builds/publish use single-node, no build server, no shared compiler and no restore. Environment additions (nothing else repurposed):
+
+```text
+DOTNET_CLI_HOME=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet-home
+NUGET_PACKAGES=/Users/sorenkube/Documents/Codex/2026-10-14/das/work/nuget
+MSBUILDDISABLENODEREUSE=1
+DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER=1
+DOTNET_CLI_TELEMETRY_OPTOUT=1
+DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+```
+
+Actual dotnet cwd for every following command: `/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/server/Release`. Logs and matching `*-command.json` are under the private task evidence folder.
+
+- `round1-red-build` — I1 fixture-first build: exit0, 0 warnings / 0 errors, 4.06s.
+
+```text
+/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet/dotnet build Tests/Tests.csproj --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false
+```
+
+- `round1-red-tests` — I1 red: exit1, **64 passed / 3 failed**. Realistic generated-primary/system fixtures exposed the old installed/exact and partial checkpoint refusals. This is intentional reproduced defect evidence, not a successful run.
+
+```text
+/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet/dotnet Tests/bin/Debug/net8.0/Tests.dll --phases-only
+```
+
+- `round1-focused-build` — Production corrections plus new test groups compiled: exit0, 0 warnings / 0 errors, 3.86s.
+
+```text
+/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet/dotnet build Tests/Tests.csproj --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false
+```
+
+- `round1-focused-fixture-build` — Final test-fixture compile: exit0, 0 warnings / 0 errors, 2.04s. No compiled C# change followed this compile. The later launcher/resource scope and documentation edits are covered by the final offline closure.
+
+```text
+/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet/dotnet build Tests/Tests.csproj --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false
+```
+
+- `round1-phase-tests` — Green affected phase group: exit0, **67 passed / 0 failed**.
+
+```text
+/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet/dotnet Tests/bin/Debug/net8.0/Tests.dll --phases-only
+```
+
+- `round1-regression-tests` — Green correction group: exit0, **53 passed / 0 failed**.
+
+```text
+/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet/dotnet Tests/bin/Debug/net8.0/Tests.dll --round1-only
+```
+
+- `round1-publish-freeze` — Local Release publish: exit0; current runtime written to release/reviewed. No native/package publication.
+
+```text
+/Users/sorenkube/Documents/Codex/2026-10-14/das/work/dotnet/dotnet publish Kitchen.Release.csproj --no-restore --no-self-contained -c Release -o release/reviewed --disable-build-servers -m:1 -p:UseSharedCompilation=false
+```
+
+The green67 contains the affected prior phase group and its realistic fixture correction, including one added exact-installed positive. The separate53 comprises16 primary/system metadata cases,9 source-original provenance cases,5 connected-capture cases,14 guard/preparation/catalog cases and9 package-transition prerequisite integration cases. Those package tests run actual ActivationCore with typed fake prerequisite boundaries; all package/guard/native evidence values are synthetic. No old full124/all frontend or56 accepted activation suite was repeated. No12 unchanged Python unit-suite repetition; the changed literal resource/source closure was checked through the full actual offline gate.
+
+A local stdlib helper regenerates only candidate source/build manifests and current pins, verifies all15 copied historical source hashes plus the separate historical extract, then invokes the independent gate in default offline mode. Helper command/cwd (repository root):
+
+```text
+python3 .superpowers/sdd/2026-10-19-kitchen-professional-online/task-7b1-evidence/round1-close.py
+```
+
+Its recorded actual gate command (60-second bound, repository-root cwd) is:
+
+```text
+python3 -I -B /Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/server/Release/prelaunch.py --source-sha256 ddd7c0ad5e34cdd20627f1dd8fb3ad6761f9581447a849993bed3cfbb3402a78 --build-sha256 0c1c0ac35fd20614d5ed719cd769c3696fa6fcb168d2b6f1b3d08bc94b02aadf --host-sha256 52531b1179f7c925f05dcdeb87b4fc4ff74ef61344a259e448e714dc8a27d5b5 --client-sha256 492543275cd07eb9c1b529a6ba10277590ff39dfa005d2ea0d7fea56222a7968
+```
+
+Result exit0: `PLAN_VERIFIED_OFFLINE: source/build/host/client closure; no candidate/authentication loaded. Native release gates remain open.` This local generated-pin check is artifact consistency evidence, not independent review authority. `git diff --check` passed. All15 historical copied-source hashes and the supplied extract SHA were unchanged. Product plugin source/package/locks were unchanged, so no unnecessary plugin rebuild/pack was performed; the retained local package hash below was rechecked.
+
+### Current candidate closure and handoff
+
+Explicit production Compile entries remain21. Embedded resources are now2: platform intrinsics and the closed historical UserOwned system shape. Source scope adds only the system resource and focused Round1Tests file, giving52 files. Existing host/framework and client closures remain unchanged. Candidate pins require fresh parent independent source/launcher/closure review before any native use:
+
+| Artifact | Count | SHA256 |
+|---|---:|---|
+| launcher | 1 | `afa7a1f2e459b5bda4b9e767ee920aa2edf0ba814eee93a632231ace6baa40cd` |
+| source-manifest | 52 | `ddd7c0ad5e34cdd20627f1dd8fb3ad6761f9581447a849993bed3cfbb3402a78` |
+| build-manifest | 7 | `0c1c0ac35fd20614d5ed719cd769c3696fa6fcb168d2b6f1b3d08bc94b02aadf` |
+| host-manifest | 186 | `52531b1179f7c925f05dcdeb87b4fc4ff74ef61344a259e448e714dc8a27d5b5` |
+| client-manifest | 89 | `492543275cd07eb9c1b529a6ba10277590ff39dfa005d2ea0d7fea56222a7968` |
+
+| Retained artifact | Bytes | SHA256 |
+|---|---:|---|
+| `server/Release/release/reviewed/Kitchen.Release.dll` | 483328 | `b06d01a3b65102795416b62744d7afb218ddcd0468492e136fb0ea5c3793ab68` |
+| `server/Release/release/reviewed/Kitchen.Release.pdb` | 74216 | `ec8d7c6fcf98affcf806f77025a821d623e72d440e9a25e5fd31cb20f8f263e2` |
+| `server/artifacts/task7b1/Zunftkueche.Dataverse.1.0.0.nupkg` | 316760 | `c9500518a9579d1e0e6b3097a3ed05bfec1165c226f1e178ca09a04a5e4ac34f` |
+| `server/Release/contracts/user-owned-system-shape.json` | 19572 | `5f22a203f8bf9bf4ce48b41e9b477e99b75dd2e57bc516f6d6bf7499e57550cf` |
+
+Private evidence includes exact command/log files, `round1-candidate-pins.json`, `round1-provenance-check.json`, and `round1-freeze-artifacts.json` at `/Users/sorenkube/Documents/Codex/2026-10-14/das/work/zunftkueche-app/.superpowers/sdd/2026-10-19-kitchen-professional-online/task-7b1-evidence`. Existing raw/private captures and historical pinned tools were neither changed nor used as current native truth. The IAB handoff wording from the preceding correction is unchanged; OAuth/PKCE/account behavior and original Authentication source are untouched.
+
+I1–I4 source corrections are ready for the requested independent rereview; no native activation, complete live backup, route/access witness, restore, device or publication success is claimed. New-table metadata/eligibility, complete current-source visibility/originals, refusal package/exclusion proofs, real final route/access/cascade/transaction witnesses, fresh native checkpoint, physical iPhone and same-app publication remain separate gates. Missing current-source visibility cannot be replaced by a UI table list; absent new tables/zero rows must still be established authoritatively. The cloud-reader limitation remains deliberately refused. No subagents, provider/authentication/CUA/native requests, extra permissions, role/account/env changes, catalog activation or supervisor implementation occurred in this round.
+
+**M1 remains deferred:** the earlier successful locked-restore transcript contains `CSSM_ModuleLoad()` diagnostic noise. Round1 used no restore, and did not suppress that message, repair keychain/auth or reinterpret it as a new failure. Clean current build output does not erase the historical limitation.
