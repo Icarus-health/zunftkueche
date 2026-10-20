@@ -41,7 +41,7 @@ public static class ReviewedRelease
 }
 public sealed record ReviewedTransition(TransitionKind Kind, string PriorHash, int PriorLength, EvidenceFile Package,
     EvidenceFile SourceBuild, EvidenceFile IndependentReview, WriteMode Mode, EvidenceFile WriterExclusion);
-public sealed record ReviewedPhase(ReleaseMode Mode, EvidenceFile Plan, EvidenceFile Review, EvidenceFile Checkpoint, SchemaStep? Schema=null, ReviewedBinding? Guard=null, ReviewedTransition? Transition=null);
+public sealed record ReviewedPhase(ReleaseMode Mode, EvidenceFile Plan, EvidenceFile Review, EvidenceFile Checkpoint, SchemaStep? Schema=null, ReviewedBinding? Guard=null, ReviewedTransition? Transition=null,EvidenceFile? Routes=null);
 
 public static class ReleaseClosure
 {

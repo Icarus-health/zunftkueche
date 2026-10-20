@@ -1,7 +1,7 @@
 using Microsoft.Identity.Client;
 namespace Kitchen.Inventory;
 // Normal public-client PKCE/loopback, tenant/account/issuer/oid checks, in-memory cache only.
-// The public authorize URL is handed to the parent, who opens the approved DuckDuckGo surface.
+// The public authorize URL is handed to the parent, who opens the approved in-app browser surface.
 // This tool never opens a browser, reads a browser/CLI cache, or grants consent.
 public sealed class Authentication
 {
@@ -44,7 +44,7 @@ public sealed class Authentication
         Check.Require(challenge.Length is >= 43 and <= 128 && challenge.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_') && query.GetValueOrDefault("state", "").Length is > 0 and < 4096);
         Check.Require(!query.ContainsKey("login_hint") || query["login_hint"].Equals(Target.User, StringComparison.OrdinalIgnoreCase));
         Check.Require(!query.ContainsKey("prompt") || query["prompt"] == "select_account");
-        await output.WriteLineAsync("AUTH_HANDOFF: parent opens this public authorization URL in the approved DuckDuckGo surface; stop on new consent/grant.");
+        await output.WriteLineAsync("AUTH_HANDOFF: parent opens this public authorization URL in the approved in-app browser surface; stop on new consent/grant.");
         await output.WriteLineAsync("AUTH_URL " + url.AbsoluteUri);
     }
     void Validate()

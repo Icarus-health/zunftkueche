@@ -8,6 +8,7 @@ async Task Async(string n,Func<Task> f){try{await f();passed++;Console.WriteLine
 void Assert(bool x){if(!x)throw new Exception("assertion");}
 void Reject(Action f){try{f();}catch(Stop){return;}throw new Exception("expected refusal");}
 if(args.SequenceEqual(new[]{"--guard-only"})){GuardMappingTests.Run(Test);Console.WriteLine($"GUARD: {passed} passed, {failed} failed");return failed==0?0:1;}
+if(args.SequenceEqual(new[]{"--phases-only"})){await PhaseTests.Run(Async);Console.WriteLine($"PHASES: {passed} passed, {failed} failed");return failed==0?0:1;}
 var hash=Check.Hash(new byte[]{1});
 Test("closed modes default offline and unknown/combined arguments",()=>{Assert(ModeParser.Parse([])==ReleaseMode.Plan);foreach(var args in new[]{new[]{"deploy"},new[]{"inspect","backup"},new[]{"--url=x"}})Reject(()=>ModeParser.Parse(args));});
 Test("no unreviewed live transition/binding/phase catalog",()=>{Assert(ReviewedRelease.Transitions.Length==0&&ReviewedRelease.Bindings.Length==0);foreach(var m in Enum.GetValues<ReleaseMode>())Assert(!ReviewedRelease.CanExecute(m));});

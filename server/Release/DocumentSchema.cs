@@ -60,6 +60,7 @@ public sealed record RelationshipEligibility(bool CanBeReferenced,bool CanBeRefe
     public bool CompleteEligible=>CanBeReferenced&&CanBeReferencing&&ValidReferencedPair&&ValidReferencingPair&&AllParentsRead&&NoCompetingParent;
 }
 public interface IDocumentSchemaBoundary {
+    Task<TargetObservation> ReadExactTarget(SchemaStep step,CancellationToken token);
     Task<CanonicalSchema> ReadCanonicalSchema(TableKind table,CancellationToken token);
     Task<RelationshipEligibility> CheckFixedRelationshipEligibility(TableKind table,CancellationToken token);
     Task CreateFixedTableOnce(TableKind table,CancellationToken token);
@@ -68,8 +69,30 @@ public interface IDocumentSchemaBoundary {
     Task AddFixedSolutionMembershipOnce(TableKind table,FixedComponent component,CancellationToken token);
 }
 public sealed record ObjectReadback(Presence Object,Presence EnclosingCollection);
+public sealed record TargetObservation(Presence State,JsonObject? Row=null,JsonObject? Companion=null);
 public static class AdditiveAttempt
 {
+    // Compare complete returned objects on copies. Only the transport context and optional
+    // metadata type prefix differ by URL; no source field or unknown attribute is removed.
+    internal static bool SameRow(JsonObject a,JsonObject b) {
+        JsonObject Copy(JsonObject row) {var copy=(JsonObject)row.DeepClone();copy.Remove("@odata.context");if(copy["@odata.type"] is JsonValue v&&v.TryGetValue<string>(out var type)&&type.StartsWith("#",StringComparison.Ordinal))copy["@odata.type"]=type[1..];return copy;}
+        return Check.Fingerprint(Copy(a))==Check.Fingerprint(Copy(b));
+    }
+    public static async Task<ObjectReadback> ReadTargets(Func<CancellationToken,Task<TargetObservation>> exactObject,Func<CancellationToken,Task<TargetObservation>> collection,CancellationToken total) {
+        async Task<TargetObservation> One(Func<CancellationToken,Task<TargetObservation>> read) {
+            using var deadline=CancellationTokenSource.CreateLinkedTokenSource(total);deadline.CancelAfter(TimeSpan.FromSeconds(60));
+            try{return await read(deadline.Token).WaitAsync(deadline.Token);}catch{return new(Presence.Unknown);}
+        }
+        // Accept a value only from the bounded await. A late ignored-cancellation completion
+        // cannot mutate an earlier Unknown observation while the other read is running.
+        var a=await One(exactObject);var b=await One(collection);
+        if(a.State==Presence.ExistingExact&&b.State==Presence.ExistingExact) {
+            if(a.Row==null||b.Row==null)return new(Presence.Unknown,Presence.Unknown);
+            if(!SameRow(a.Row,b.Row))return new(Presence.DriftOrDuplicate,Presence.DriftOrDuplicate);
+            if((a.Companion==null)!=(b.Companion==null) || a.Companion!=null&&!SameRow(a.Companion,b.Companion!))return new(Presence.DriftOrDuplicate,Presence.DriftOrDuplicate);
+        }
+        return new(a.State,b.State);
+    }
     public static async Task<ObjectReadback> ReadBoth(Func<CancellationToken,Task<Presence>> exactObject,Func<CancellationToken,Task<Presence>> enclosingCollection,CancellationToken total) {
         Presence a=Presence.Unknown,b=Presence.Unknown;
         using(var perRead=CancellationTokenSource.CreateLinkedTokenSource(total)){perRead.CancelAfter(TimeSpan.FromSeconds(60));try{a=await exactObject(perRead.Token).WaitAsync(perRead.Token);}catch{}}
@@ -106,6 +129,34 @@ internal sealed class FixedDocumentSchemaBoundary : IDocumentSchemaBoundary, IDi
 {
     readonly Reader reader;readonly Func<Task<string>> token;readonly IAttemptJournal journal;readonly HttpClient client;int attempted;
     internal FixedDocumentSchemaBoundary(Reader reader,Func<Task<string>> token,IAttemptJournal journal,HttpMessageHandler? handler=null){this.reader=reader;this.token=token;this.journal=journal;client=new(handler??new HttpClientHandler{AllowAutoRedirect=false,UseCookies=false}){Timeout=TimeSpan.FromSeconds(90)};}
+    public async Task<TargetObservation> ReadExactTarget(SchemaStep step,CancellationToken cancellation) {
+        try {
+            JsonObject? row;
+            if(step.Action==SchemaAction.SolutionMembership) {
+                // AddSolutionComponent assigns its row ID. A fixed target lookup locates it;
+                // a separately issued GUID GET then reads the actual object, never a guessed ID.
+                var schema=await ReadCanonicalSchema(step.Table,cancellation);
+                var (id,type)=SchemaPhase.Component(schema,step.Table,step.Component);
+                var candidates=await reader.ExactMembershipCandidates(id,type).WaitAsync(cancellation);
+                if(candidates.Length==0)return new(Presence.Missing);
+                if(candidates.Length!=1)return new(Presence.DriftOrDuplicate);
+                row=await reader.ExactObservedRow(candidates[0],false,cancellation);
+                Check.Require(AdditiveAttempt.SameRow(row,candidates[0]));
+                Check.Match(row,new JsonObject{["objectid"]=id,["componenttype"]=type,["_solutionid_value"]=Target.Solution});
+                Check.Id(row,"solutioncomponentid");return new(Presence.ExistingExact,row);
+            }
+            row=await reader.ExactMetadata(step,cancellation);
+            if(row==null)return new(Presence.Missing);
+            SchemaPhase.ValidateRow(step,row);
+            JsonObject? child=null;
+            if(step.Action is SchemaAction.Table or SchemaAction.Relationship) {
+                var column=step.Action==SchemaAction.Table?ColumnKind.Event:ColumnKind.Workspace;
+                child=await reader.ExactMetadata(new(step.Table,SchemaAction.ScalarColumn,column),cancellation);
+                Check.Require(child!=null);SchemaPhase.ValidateColumn(column,child!);
+            }
+            return new(Presence.ExistingExact,row,child);
+        }catch{return new(Presence.Unknown);}
+    }
     public async Task<CanonicalSchema> ReadCanonicalSchema(TableKind table,CancellationToken token) {
         try {
             reader.ReleaseQueries(ReleaseQueries.All);var entities=await reader.Rows(ReleaseQueries.Entities(table),"MetadataId",2).WaitAsync(token);
@@ -175,6 +226,42 @@ public enum FixedComponent { Table, Event, Payload, Actor, RecordedAt, Workspace
 public sealed record SchemaStep(TableKind Table,SchemaAction Action,ColumnKind Column=ColumnKind.Event,FixedComponent Component=FixedComponent.Table);
 public static class SchemaPhase
 {
+    internal static string ExactPath(SchemaStep step)=>step.Action switch {
+        SchemaAction.Table=>Queries.Table(DocumentSchema.Logical(step.Table)),
+        SchemaAction.ScalarColumn=>Queries.Table(DocumentSchema.Logical(step.Table))+$"/Attributes(LogicalName='{DocumentSchema.Field(step.Column)}')/"+(string)DocumentSchema.Column(step.Column)["@odata.type"]!,
+        SchemaAction.Relationship=>$"RelationshipDefinitions(SchemaName='{DocumentSchema.Relation(step.Table)}')/Microsoft.Dynamics.CRM.OneToManyRelationshipMetadata",
+        _=>throw new Stop()
+    };
+    internal static void ValidateColumn(ColumnKind column,JsonObject row) {
+        var expected=DocumentSchema.Column(column);expected.Remove("DisplayName");expected["LogicalName"]=DocumentSchema.Field(column);
+        DocumentSchema.MatchMetadata(row,expected);Check.Id(row,"MetadataId");
+        if(column==ColumnKind.Workspace)Check.Match(row,new JsonObject{["Targets"]=new JsonArray("zk_kitchenworkspace")});
+    }
+    internal static void ValidateRow(SchemaStep step,JsonObject row) {
+        Check.Id(row,"MetadataId");JsonObject expected;
+        if(step.Action==SchemaAction.Table) {
+            expected=DocumentSchema.Table(step.Table);expected.Remove("Attributes");expected.Remove("DisplayName");expected.Remove("DisplayCollectionName");
+            expected["LogicalName"]=DocumentSchema.Logical(step.Table);expected["PrimaryIdAttribute"]=DocumentSchema.Logical(step.Table)+"id";expected["PrimaryNameAttribute"]="zk_eventid";expected["IsManaged"]=false;
+        } else if(step.Action==SchemaAction.Relationship){expected=DocumentSchema.Relationship(step.Table);expected.Remove("Lookup");}
+        else if(step.Action==SchemaAction.ScalarColumn){ValidateColumn(step.Column,row);return;}
+        else throw new Stop();
+        DocumentSchema.MatchMetadata(row,expected);
+    }
+    internal static TargetObservation FromCollection(SchemaStep step,CanonicalSchema schema) {
+        var state=Observe(step,schema);if(state!=Presence.ExistingExact)return new(state);
+        try {
+            var row=step.Action switch {
+                SchemaAction.Table=>schema.Entities.Single(e=>(string?)e["LogicalName"]==DocumentSchema.Logical(step.Table)),
+                SchemaAction.ScalarColumn=>schema.Attributes.Single(a=>(string?)a["LogicalName"]==DocumentSchema.Field(step.Column)),
+                SchemaAction.Relationship=>schema.ManyToOne.Single(r=>(string?)r["SchemaName"]==DocumentSchema.Relation(step.Table)),
+                SchemaAction.SolutionMembership=>Membership(),
+                _=>throw new Stop()
+            };
+            JsonObject Membership(){var(id,type)=Component(schema,step.Table,step.Component);return schema.Components.Single(c=>(string?)c["objectid"]==id&&(int?)c["componenttype"]==type&&(string?)c["_solutionid_value"]==Target.Solution);}
+            JsonObject? companion=step.Action is SchemaAction.Table or SchemaAction.Relationship?schema.Attributes.Single(a=>(string?)a["LogicalName"]==DocumentSchema.Field(step.Action==SchemaAction.Table?ColumnKind.Event:ColumnKind.Workspace)):null;
+            return new(state,row,companion);
+        }catch{return new(Presence.Unknown);}
+    }
     public static (string Id,int Type) Component(CanonicalSchema s,TableKind t,FixedComponent component) {
         Check.Require(s.Complete);
         Check.Require(Observe(new SchemaStep(t,SchemaAction.Table),s)==Presence.ExistingExact);
@@ -198,15 +285,21 @@ public static class SchemaPhase
                     var (id,type)=Component(s,step.Table,step.Component);var members=s.Components.Where(c=>(string?)c["objectid"]==id&&(int?)c["componenttype"]==type&&(string?)c["_solutionid_value"]==Target.Solution).ToArray();return members.Length==0?Presence.Missing:members.Length==1?Presence.ExistingExact:Presence.DriftOrDuplicate;
                 default:return Presence.Unknown;
             }
-            if(rows.Length==0)return Presence.Missing;if(rows.Length!=1)return Presence.DriftOrDuplicate;
+            if(rows.Length==0) {
+                // A pre-existing workspace lookup without its exact relationship is partial/drift,
+                // not permission to deep-insert another lookup through a relationship.
+                if(step.Action==SchemaAction.Relationship&&s.Attributes.Any(a=>(string?)a["LogicalName"]=="zk_workspace"||(string?)a["SchemaName"]=="zk_workspace"))return Presence.DriftOrDuplicate;
+                return Presence.Missing;
+            }
+            if(rows.Length!=1)return Presence.DriftOrDuplicate;
             Check.Id(rows[0],"MetadataId");DocumentSchema.MatchMetadata(rows[0],expected);
-            if(step.Action==SchemaAction.Table){var primary=s.Attributes.Single(a=>(string?)a["LogicalName"]=="zk_eventid");var name=DocumentSchema.Column(ColumnKind.Event);name.Remove("DisplayName");DocumentSchema.MatchMetadata(primary,name);}
+            if(step.Action is SchemaAction.Table or SchemaAction.Relationship){var c=step.Action==SchemaAction.Table?ColumnKind.Event:ColumnKind.Workspace;ValidateColumn(c,s.Attributes.Single(a=>(string?)a["LogicalName"]==DocumentSchema.Field(c)));}
             return Presence.ExistingExact;
         }catch{return Presence.DriftOrDuplicate;}
     }
     public static async Task<AdditiveResult> Run(SchemaStep step,IDocumentSchemaBoundary boundary,Func<CancellationToken,Task<bool>> checkpoint,IAttemptJournal journal,CancellationToken token=default) {
         Check.Require(Enum.IsDefined(step.Action)&&Enum.IsDefined(step.Table));
-        Task<ObjectReadback> Read(CancellationToken t)=>AdditiveAttempt.ReadBoth(async c=>Observe(step,await boundary.ReadCanonicalSchema(step.Table,c)),async c=>Observe(step,await boundary.ReadCanonicalSchema(step.Table,c)),t);
+        Task<ObjectReadback> Read(CancellationToken t)=>AdditiveAttempt.ReadTargets(c=>boundary.ReadExactTarget(step,c),async c=>FromCollection(step,await boundary.ReadCanonicalSchema(step.Table,c)),t);
         async Task<bool> Prerequisites(CancellationToken t) {
             if(step.Action!=SchemaAction.Table && Observe(new SchemaStep(step.Table,SchemaAction.Table),await boundary.ReadCanonicalSchema(step.Table,t))!=Presence.ExistingExact)return false;
             return await checkpoint(t)&&(step.Action!=SchemaAction.Relationship||(await boundary.CheckFixedRelationshipEligibility(step.Table,t)).CompleteEligible);

@@ -8,13 +8,59 @@ public static class ReleaseQueries
 {
     public static string Entities(TableKind t)=>$"EntityDefinitions?$filter=LogicalName eq '{DocumentSchema.Logical(t)}' or SchemaName eq '{DocumentSchema.Schema(t)}'&$count=true";
     public static string Rows(TableKind t)=>$"{DocumentSchema.Set(t)}?$filter=_zk_workspace_value eq {Target.Workspace}&$orderby={DocumentSchema.Logical(t)}id asc&$count=true";
+    public static string AllRows(TableKind t)=>$"{DocumentSchema.Set(t)}?$orderby={DocumentSchema.Logical(t)}id asc&$count=true";
     public static string Filters(TableKind t)=>$"sdkmessagefilters?$filter=primaryobjecttypecode eq '{DocumentSchema.Logical(t)}'&$expand=sdkmessageid&$count=true";
     public const string Steps="sdkmessageprocessingsteps?$filter=sdkmessagefilterid/primaryobjecttypecode eq 'zk_kitchendocument' or sdkmessagefilterid/primaryobjecttypecode eq 'zk_kitchendraft' or _sdkmessagefilterid_value eq null&$expand=sdkmessageid,sdkmessagefilterid,eventhandler_plugintype&$count=true";
     public const string Roles="roles?$expand=roleprivileges_association&$count=true";
     public const string Users="systemusers?$filter=domainname eq 'Vorstand@Schelmenzunft.onmicrosoft.com'&$expand=systemuserroles_association,teammembership_association&$count=true";
     public static string ValidParents(TableKind t)=>"GetValidReferencedEntities(ReferencingEntityName='"+DocumentSchema.Logical(t)+"')";
     public const string ValidChildren="GetValidReferencingEntities(ReferencedEntityName='zk_kitchenworkspace')";
-    public static readonly string[] All=Enum.GetValues<TableKind>().SelectMany(t=>new[]{Entities(t),Rows(t),Filters(t),ValidParents(t)}.Concat(new[]{"/Attributes/Microsoft.Dynamics.CRM.StringAttributeMetadata","/Attributes/Microsoft.Dynamics.CRM.MemoAttributeMetadata","/Attributes/Microsoft.Dynamics.CRM.DateTimeAttributeMetadata","/Attributes/Microsoft.Dynamics.CRM.LookupAttributeMetadata"}.Select(s=>Queries.Table(DocumentSchema.Logical(t))+s))).Concat(new[]{Steps,Roles,Users,ValidChildren}).ToArray();
+    public static readonly string[] All=Enum.GetValues<TableKind>().SelectMany(t=>new[]{Entities(t),Rows(t),AllRows(t),Filters(t),ValidParents(t)}.Concat(new[]{"/Attributes/Microsoft.Dynamics.CRM.StringAttributeMetadata","/Attributes/Microsoft.Dynamics.CRM.MemoAttributeMetadata","/Attributes/Microsoft.Dynamics.CRM.DateTimeAttributeMetadata","/Attributes/Microsoft.Dynamics.CRM.LookupAttributeMetadata"}.Select(s=>Queries.Table(DocumentSchema.Logical(t))+s))).Concat(new[]{Steps,Roles,Users,ValidChildren}).ToArray();
+}
+public enum DocumentSchemaProgress { NotInstalled,Partial,Exact }
+public sealed record CurrentStore(DocumentSchemaProgress Progress,CanonicalSchema Schema,JsonObject[] Rows,string Hash,string SchemaHash);
+internal static class CurrentDocumentStore
+{
+    internal static DocumentSchemaProgress Classify(TableKind table,CanonicalSchema schema) {
+        Check.Require(schema.Complete);
+        var comparison=DocumentSchema.Compare(table,schema);
+        if(comparison==Presence.Missing)return DocumentSchemaProgress.NotInstalled;
+        // A partially constructed table may be captured only if every present fixed object is
+        // exact, the primary name exists and no custom collision/unknown secured field is hidden.
+        Check.Require(SchemaPhase.Observe(new(table,SchemaAction.Table),schema)==Presence.ExistingExact&&schema.Keys.Length==0);
+        Check.Require(schema.Attributes.Select(a=>Check.Text(a,"LogicalName")).Distinct().Count()==schema.Attributes.Length);
+        var known=Enum.GetValues<ColumnKind>().Select(DocumentSchema.Field).ToHashSet();
+        foreach(var attribute in schema.Attributes) {
+            var name=Check.Text(attribute,"LogicalName");Check.Require((bool?)attribute["IsSecured"]==false);
+            Check.Require(attribute["IsCustomAttribute"] is JsonValue custom&&custom.TryGetValue<bool>(out var isCustom)&&(!isCustom||known.Contains(name)));
+            Check.Require(!name.StartsWith("zk_",StringComparison.Ordinal)||known.Contains(name));
+            if(known.Contains(name)) {
+                var kind=Enum.GetValues<ColumnKind>().Single(c=>DocumentSchema.Field(c)==name);SchemaPhase.ValidateColumn(kind,attribute);
+                Check.Match(attribute,new JsonObject{["IsValidForCreate"]=true,["IsValidForRead"]=true,["IsValidForUpdate"]=true});
+            }
+        }
+        Check.Require(SchemaPhase.Observe(new(table,SchemaAction.Relationship),schema) is Presence.Missing or Presence.ExistingExact);
+        Check.Require(schema.ManyToOne.All(r=>(string?)r["SchemaName"]==DocumentSchema.Relation(table)||r["IsHierarchical"]?.GetValue<bool>()==false&&r["CascadeConfiguration"] is JsonObject c&&new[]{"Reparent","Share","Unshare","Assign","Delete"}.All(k=>(string?)c[k] is "NoCascade" or "Restrict" or "RemoveLink")));
+        var ids=new[]{(Check.Id(schema.Entities.Single(),"MetadataId"),1)}.Concat(schema.Attributes.Where(a=>known.Contains(Check.Text(a,"LogicalName"))).Select(a=>(Check.Id(a,"MetadataId"),2))).Concat(schema.ManyToOne.Where(r=>(string?)r["SchemaName"]==DocumentSchema.Relation(table)).Select(r=>(Check.Id(r,"MetadataId"),10)));
+        foreach(var(id,type) in ids) {
+            var members=schema.Components.Where(c=>(string?)c["objectid"]==id).ToArray();
+            Check.Require(members.Length<=1&&members.All(c=>(int?)c["componenttype"]==type&&(string?)c["_solutionid_value"]==Target.Solution));
+        }
+        return comparison==Presence.ExistingExact?DocumentSchemaProgress.Exact:DocumentSchemaProgress.Partial;
+    }
+    internal static async Task<CurrentStore> Read(TableKind table,CanonicalSchema schema,Reader reader,bool requireExact,CancellationToken token) {
+        var progress=Classify(table,schema);Check.Require(!requireExact||progress==DocumentSchemaProgress.Exact);
+        var schemaHash=Check.Fingerprint(System.Text.Json.JsonSerializer.SerializeToNode(schema)!);
+        if(progress==DocumentSchemaProgress.NotInstalled)return new(progress,schema,[],Check.Fingerprint(new JsonObject{["schema"]="kitchen-native-inventory-v1",["table"]=DocumentSchema.Logical(table),["state"]="NotInstalledByNativeEvidence"}),schemaHash);
+        reader.ReleaseQueries(ReleaseQueries.All);
+        // No workspace/payload filter is valid until those columns exist. All-table zero rows
+        // is mandatory for partial metadata; caller complete-read visibility still needs review.
+        var rows=await reader.Rows(progress==DocumentSchemaProgress.Partial?ReleaseQueries.AllRows(table):ReleaseQueries.Rows(table),DocumentSchema.Logical(table)+"id",progress==DocumentSchemaProgress.Partial?1:4000).WaitAsync(token);
+        Check.Require(progress!=DocumentSchemaProgress.Partial||rows.Length==0);
+        foreach(var row in rows){Inspector.RequireVersion(row);Check.Require(Check.Id(row,"_zk_workspace_value")==Target.Workspace);Metadata.ValidateFields(row,schema.Attributes.Select(a=>Check.Text(a,"LogicalName")).ToHashSet());}
+        var hash=Check.Fingerprint(new JsonObject{["progress"]=progress.ToString(),["rowsHash"]=CompleteInventory.Collection(DocumentSchema.Logical(table),rows,DocumentSchema.Logical(table)+"id"),["schemaHash"]=schemaHash});
+        return new(progress,schema,rows,hash,schemaHash);
+    }
 }
 public enum StoreState { Unknown, NotInstalledByNativeEvidence, Installed }
 public sealed record StoreCapture(StoreState State,JsonObject[] Rows,string MetadataHash,bool CompletenessProven);
@@ -86,7 +132,7 @@ public sealed class ReleaseInspector(Reader reader,Backup backup,string objectId
             var proof=Check.Parse(review.Verify(root));
             Check.Match(proof,new JsonObject{["organization"]=Target.Organization,["workspace"]=Target.Workspace,["workspaceFingerprint"]=Check.Fingerprint(workspace),["receiptFingerprint"]=CompleteInventory.Collection("receipts",receipts,"zk_kitchenoperationid"),["storeAndAccessFingerprint"]=Check.Fingerprint(stores)});
             var installed=new List<string>{"zk_kitchenworkspace","zk_kitchenoperation"};
-            foreach(var table in Enum.GetValues<TableKind>())if((string?)stores[DocumentSchema.Logical(table)]?["status"]=="InstalledVisibilityNotProvenComplete")installed.Add(DocumentSchema.Logical(table));
+            foreach(var table in Enum.GetValues<TableKind>())if((string?)stores[DocumentSchema.Logical(table)]?["status"] is "InstalledVisibilityNotProvenComplete" or "PartialInstalledEmptyVisibilityNotProvenComplete")installed.Add(DocumentSchema.Logical(table));
             Check.Require(proof["completeReadStoreCoverage"] is JsonArray a&&a.Count==installed.Count&&a.Select(x=>x!.GetValue<string>()).ToHashSet().SetEquals(installed));
             backup.Json("current-source-completeness-reviewed.json",proof);return true;
         }catch{return false;}
@@ -120,23 +166,14 @@ public sealed class ReleaseInspector(Reader reader,Backup backup,string objectId
     async Task<JsonObject> ReadNewStores(string prefix) {
         var result=new JsonObject();
         foreach(var t in Enum.GetValues<TableKind>()) {
-            var name=DocumentSchema.Logical(t);var entities=await reader.Rows(ReleaseQueries.Entities(t),"MetadataId",2);
-            backup.Json(prefix+name+"-discovery.json",new JsonArray(entities.Select(e=>e.DeepClone()).ToArray()));
-            Check.Require(entities.Length<=1);
-            if(entities.Length==0){result[name]=new JsonObject{["status"]="NotInstalledByNativeEvidence",["discoveryHash"]=CompleteInventory.Collection(name+"-discovery",entities,"MetadataId")};continue;}
-            Check.Require(Check.Text(entities[0],"LogicalName")==name&&Check.Text(entities[0],"SchemaName")==DocumentSchema.Schema(t));
-            var all=new JsonObject();
-            foreach(var suffix in new[]{"/Attributes","/Keys","/ManyToOneRelationships","/OneToManyRelationships","/Attributes/Microsoft.Dynamics.CRM.StringAttributeMetadata","/Attributes/Microsoft.Dynamics.CRM.MemoAttributeMetadata","/Attributes/Microsoft.Dynamics.CRM.DateTimeAttributeMetadata","/Attributes/Microsoft.Dynamics.CRM.LookupAttributeMetadata"}) {
-                var rows=await reader.Rows(Queries.Table(name)+suffix,"MetadataId",500);all[suffix]=new JsonArray(rows.Select(r=>r.DeepClone()).ToArray());
-            }
-            var data=await reader.Rows(ReleaseQueries.Rows(t),name+"id",4000);
-            var attributes=all["/Attributes"]!.AsArray();Check.Require(attributes.All(a=>a?["IsSecured"]?.GetValue<bool>()==false));
-            var columns=attributes.Select(a=>Check.Text(a,"LogicalName")).ToHashSet(StringComparer.Ordinal);
-            foreach(var row in data){Inspector.RequireVersion(row);Metadata.ValidateFields(row,columns);Check.Require(Check.Id(row,"_zk_workspace_value")==Target.Workspace);var payload=Zunftkueche.Protocol.Parse(Check.Text(row,"zk_payload"));capturedPayloads.Add(payload);Check.Require((string?)payload["id"]==Check.Id(row,name+"id")&&(string?)payload["workspaceId"]==Target.Workspace&&(string?)payload["eventId"]==Check.Text(row,"zk_eventid"));}
-            all["rows"]=new JsonArray(data.Select(r=>r.DeepClone()).ToArray());
-            all["filters"]=new JsonArray((await reader.Rows(ReleaseQueries.Filters(t),"sdkmessagefilterid",1000)).Select(r=>r.DeepClone()).ToArray());
+            var name=DocumentSchema.Logical(t);
+            using var boundary=new FixedDocumentSchemaBoundary(reader,()=>throw new Stop(),new DurableAttemptJournal(Path.Combine("/private/tmp","kitchen-readonly-no-write"),"inventory"));
+            var current=await CurrentDocumentStore.Read(t,await boundary.ReadCanonicalSchema(t,CancellationToken.None),reader,false,CancellationToken.None);
+            var all=new JsonObject{["schema"]=System.Text.Json.JsonSerializer.SerializeToNode(current.Schema),["progress"]=current.Progress.ToString(),["rows"]=new JsonArray(current.Rows.Select(r=>r.DeepClone()).ToArray())};
+            foreach(var row in current.Rows){var payload=Zunftkueche.Protocol.Parse(Check.Text(row,"zk_payload"));capturedPayloads.Add(payload);Check.Require((string?)payload["id"]==Check.Id(row,name+"id")&&(string?)payload["workspaceId"]==Target.Workspace&&(string?)payload["eventId"]==Check.Text(row,"zk_eventid"));}
+            if(current.Progress!=DocumentSchemaProgress.NotInstalled)all["filters"]=new JsonArray((await reader.Rows(ReleaseQueries.Filters(t),"sdkmessagefilterid",1000)).Select(r=>r.DeepClone()).ToArray());
             backup.Json(prefix+name+"-inventory.json",all);
-            result[name]=new JsonObject{["status"]="InstalledVisibilityNotProvenComplete",["observedRows"]=data.Length,["hash"]=Check.Fingerprint(all)};
+            result[name]=new JsonObject{["status"]=current.Progress switch{DocumentSchemaProgress.NotInstalled=>"NotInstalledByNativeEvidence",DocumentSchemaProgress.Partial=>"PartialInstalledEmptyVisibilityNotProvenComplete",_=>"InstalledVisibilityNotProvenComplete"},["observedRows"]=current.Rows.Length,["hash"]=Check.Fingerprint(all)};
         }
         foreach(var pair in new[]{("all-new-and-global-steps",ReleaseQueries.Steps,"sdkmessageprocessingstepid"),("roles",ReleaseQueries.Roles,"roleid"),("current-caller-roles-teams",ReleaseQueries.Users,"systemuserid")}) {
             var rows=await reader.Rows(pair.Item2,pair.Item3,10000);var array=new JsonArray(rows.Select(r=>r.DeepClone()).ToArray());backup.Json(prefix+pair.Item1+".json",array);result[pair.Item1]=Check.Fingerprint(array);

@@ -40,12 +40,37 @@ public sealed class Reader : IDisposable
     internal void Guard(string id) => allowed.Add(Queries.Guards(id));
     internal void Owner(string id) => allowed.Add(Queries.User(id));
     internal void CaptureSemanticResponse(string name,byte[] bytes) { Check.Require(name is "CanBeReferenced" or "CanBeReferencing"); capture($"semantic-read-{++serial:D4}-{name}.bin",bytes); }
+    // These helpers are private to the fixed release adapters. No caller supplies a URL.
+    internal async Task<JsonObject?> ExactMetadata(Kitchen.Release.SchemaStep step,CancellationToken cancellation) {
+        Check.Require(allowed.Contains(Queries.Table(Kitchen.Release.DocumentSchema.Logical(step.Table))));
+        var path=Kitchen.Release.SchemaPhase.ExactPath(step);
+        var reply=await SendResponse(new Uri(Target.Api+path),8*1024*1024,true,cancellation);
+        if(reply.Status==HttpStatusCode.NotFound)return null;
+        var row=Check.Parse(reply.Bytes);Check.NoNestedContinuation(row);return row;
+    }
+    internal async Task<JsonObject[]> ExactMembershipCandidates(string objectId,int type) {
+        Check.Require(allowed.Contains(Queries.Components)&&type is 1 or 2 or 10);
+        var path=$"solutioncomponents?$filter=objectid eq {Check.Id(objectId)} and componenttype eq {type} and _solutionid_value eq {Target.Solution}&$count=true";
+        allowed.Add(path);return await Rows(path,"solutioncomponentid",2);
+    }
+    internal async Task<JsonObject[]> ExactGuardCandidates(Kitchen.Release.ReviewedBinding binding) {
+        Check.Require(Kitchen.Release.DocumentGuards.IndividualMessage(binding.Message));
+        var path=$"sdkmessageprocessingsteps?$filter=_sdkmessagefilterid_value eq {Check.Id(binding.FilterId)} and _eventhandler_value eq {Check.Id(binding.TypeId)}&$expand=sdkmessageid,sdkmessagefilterid,eventhandler_plugintype&$count=true";
+        allowed.Add(path);return await Rows(path,"sdkmessageprocessingstepid",2);
+    }
+    internal async Task<JsonObject> ExactObservedRow(JsonObject locator,bool guard,CancellationToken cancellation) {
+        var path=guard?$"sdkmessageprocessingsteps({Check.Id(locator,"sdkmessageprocessingstepid")})?$expand=sdkmessageid,sdkmessagefilterid,eventhandler_plugintype":$"solutioncomponents({Check.Id(locator,"solutioncomponentid")})";
+        // A locator-to-object disappearance is Unknown, never Missing.
+        var reply=await SendResponse(new Uri(Target.Api+path),8*1024*1024,false,cancellation);
+        var row=Check.Parse(reply.Bytes);Check.NoNestedContinuation(row);return row;
+    }
     public async Task<byte[]> Get(string path)
     {
         Check.Require(allowed.Contains(path));
         return await Send(new Uri(Target.Api + path), path == Queries.PackageBytes ? 32 * 1024 * 1024 : 8 * 1024 * 1024);
     }
-    async Task<byte[]> Send(Uri uri, int bound)
+    async Task<byte[]> Send(Uri uri,int bound)=>(await SendResponse(uri,bound,false,CancellationToken.None)).Bytes;
+    async Task<(HttpStatusCode Status,byte[] Bytes)> SendResponse(Uri uri, int bound,bool allowNotFound,CancellationToken caller)
     {
         Check.Require(uri.Scheme == "https" && uri.Host == new Uri(Target.Url).Host && uri.Port == 443 && uri.UserInfo == "" && uri.Fragment == "");
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -53,9 +78,9 @@ public sealed class Reader : IDisposable
         request.Headers.Add("OData-Version", "4.0");
         request.Headers.Add("OData-MaxVersion", "4.0");
         request.Headers.Add("Prefer", "odata.include-annotations=\"Microsoft.Dynamics.CRM.lookuplogicalname\",odata.maxpagesize=500");
-        using var cancel = new CancellationTokenSource(client.Timeout);
+        using var cancel = CancellationTokenSource.CreateLinkedTokenSource(caller);
+        cancel.CancelAfter(client.Timeout);
         using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancel.Token);
-        Check.Require(response.StatusCode == HttpStatusCode.OK);
         Check.Require(response.Content.Headers.ContentLength is not long length || length <= bound);
         using var stream = await response.Content.ReadAsStreamAsync(cancel.Token);
         using var data = new MemoryStream();
@@ -73,12 +98,14 @@ public sealed class Reader : IDisposable
         capture($"request-{index:D4}.json", System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new
         {
             method = "GET",
+            status = (int)response.StatusCode,
             url = uri.AbsoluteUri,
             receivedUtc = DateTime.UtcNow,
             bytes = bytes.Length,
             sha256 = Check.Hash(bytes)
         }));
-        return bytes;
+        Check.Require(response.StatusCode == HttpStatusCode.OK || allowNotFound&&response.StatusCode==HttpStatusCode.NotFound);
+        return (response.StatusCode,bytes);
     }
     public async Task<JsonObject> Object(string path)
     {

@@ -74,8 +74,10 @@ public sealed record CheckpointInput(Checkpoint Accepted,EvidenceFile BackupMani
 internal sealed class NativeCheckpoint : ICurrentReleaseCheckpoint
 {
     readonly Reader reader;readonly Backup capture;readonly string root;readonly CheckpointInput input;readonly bool requireInstalled;
-    internal NativeCheckpoint(Reader reader,Backup capture,string root,CheckpointInput input,bool requireInstalled) {
+    readonly Func<CancellationToken,Task>? routePrerequisite;
+    internal NativeCheckpoint(Reader reader,Backup capture,string root,CheckpointInput input,bool requireInstalled,Func<CancellationToken,Task>? routePrerequisite=null) {
         Check.Require(input.Accepted.Valid());this.reader=reader;this.capture=capture;this.root=root;this.input=input;this.requireInstalled=requireInstalled;
+        this.routePrerequisite=routePrerequisite;
     }
     public async Task<Checkpoint> RemeasureAndVerifyRetainedEvidence(CancellationToken token) {
         VerifyRetained();reader.ReleaseQueries(ReleaseQueries.All);
@@ -98,6 +100,7 @@ internal sealed class NativeCheckpoint : ICurrentReleaseCheckpoint
         var repeated=await reader.Rows(Queries.Receipts,"zk_kitchenoperationid",4000).WaitAsync(token);var docsAgain=await Store(TableKind.Document,token);var draftsAgain=await Store(TableKind.Draft,token);
         Check.Require(CompleteInventory.Collection("receipts",receipts,"zk_kitchenoperationid")==CompleteInventory.Collection("receipts",repeated,"zk_kitchenoperationid")&&docs==docsAgain&&drafts==draftsAgain&&Check.Fingerprint(first)==Check.Fingerprint(await reader.Object(Queries.Workspace).WaitAsync(token)));
         VerifyRetained();
+        if(routePrerequisite!=null)await routePrerequisite(token);
         return input.Accepted with{OwnerId=Check.Id(first,"_ownerid_value"),OwnerType=Check.Text(first,"_ownerid_value@Microsoft.Dynamics.CRM.lookuplogicalname"),Revision=(long)first["zk_revision"]!,WorkspaceRowVersion=first["versionnumber"]!.ToJsonString(),RawStateSha256=Check.Hash(raw),ReceiptCount=receipts.Length,ReceiptCollectionSha256=CompleteInventory.Collection("receipts",receipts,"zk_kitchenoperationid"),DocumentCount=docs.Count,DocumentCollectionSha256=docs.Hash,DraftCount=drafts.Count,DraftCollectionSha256=drafts.Hash,OriginalVersionCount=input.Originals.Length,OriginalVersionsAndBytesManifestSha256=originals};
     }
     void VerifyRetained() {
@@ -107,13 +110,8 @@ internal sealed class NativeCheckpoint : ICurrentReleaseCheckpoint
     }
     async Task<(int Count,string Hash,string SchemaHash)> Store(TableKind table,CancellationToken token) {
         using var boundary=new FixedDocumentSchemaBoundary(reader,()=>throw new Stop(),new DurableAttemptJournal(Path.Combine(root,"attempts"),"checkpoint-no-write"));
-        var schema=await boundary.ReadCanonicalSchema(table,token);Check.Require(schema.Complete);
-        var sh=Check.Fingerprint(System.Text.Json.JsonSerializer.SerializeToNode(schema)!);
-        if(schema.Entities.Length==0){Check.Require(!requireInstalled);return(0,Check.Fingerprint(new JsonObject{["schema"]="kitchen-native-inventory-v1",["table"]=DocumentSchema.Logical(table),["state"]="NotInstalledByNativeEvidence"}),sh);}
-        if(requireInstalled)Check.Require(DocumentSchema.Compare(table,schema)==Presence.ExistingExact);
-        var rows=await reader.Rows(ReleaseQueries.Rows(table),DocumentSchema.Logical(table)+"id",4000).WaitAsync(token);
-        foreach(var r in rows){Inspector.RequireVersion(r);Check.Require(Check.Id(r,"_zk_workspace_value")==Target.Workspace);Metadata.ValidateFields(r,schema.Attributes.Select(a=>Check.Text(a,"LogicalName")).ToHashSet());}
-        return(rows.Length,CompleteInventory.Collection(DocumentSchema.Logical(table),rows,DocumentSchema.Logical(table)+"id"),sh);
+        var current=await CurrentDocumentStore.Read(table,await boundary.ReadCanonicalSchema(table,token),reader,requireInstalled,token);
+        return(current.Rows.Length,current.Hash,current.SchemaHash);
     }
     public async Task VerifyInstalledTypeApiSolutionClosure(CancellationToken token) {var metadata=new Metadata(reader,capture,"package-readback-"+Guid.NewGuid().ToString("N")+"-");await metadata.Read().WaitAsync(token);}
 }
@@ -124,9 +122,12 @@ internal static class PhaseDispatch
         Check.Require(ReviewedRelease.Phases.Contains(phase)&&phase.Mode==mode);
         _=phase.Plan.Verify(root);_=phase.Review.Verify(root);
         var input=System.Text.Json.JsonSerializer.Deserialize<CheckpointInput>(phase.Checkpoint.Verify(root))??throw new Stop();
-        var checkpoint=new NativeCheckpoint(reader,capture,root,input,mode is ReleaseMode.ActivatePackage or ReleaseMode.RegisterDocumentGuards);
         // One operation per reviewed invocation, fixed journal scope blocks restart until independent reconciliation.
         var journal=new DurableAttemptJournal(Path.Combine(root,"attempts"),mode+"-"+phase.Plan.Sha256);
+        using var routeBoundary=new FixedDocumentGuardBoundary(reader,token,journal);
+        Task Routes(CancellationToken t)=>PhaseRoutePrerequisites.Validate(mode,phase.Routes,root,routeBoundary,phase.Guard,t);
+        using(var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(180)))await Routes(deadline.Token); // Before any phase attempt.
+        var checkpoint=new NativeCheckpoint(reader,capture,root,input,mode is ReleaseMode.ActivatePackage or ReleaseMode.RegisterDocumentGuards,Routes);
         async Task<bool> Fresh(CancellationToken t)=>await checkpoint.RemeasureAndVerifyRetainedEvidence(t)==input.Accepted;
         if(mode==ReleaseMode.ProvisionDocumentSchema) {
             Check.Require(phase.Schema!=null&&phase.Guard==null&&phase.Transition==null);

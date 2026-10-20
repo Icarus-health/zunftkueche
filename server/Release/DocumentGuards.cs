@@ -12,18 +12,22 @@ public static class DocumentGuards
     public static bool IndividualMessage(string m)=>m is "Create" or "Update" or "Delete" or "Assign" or "GrantAccess" or "ModifyAccess" or "RevokeAccess" or "SetState";
     public static void Validate(RouteInventory inventory,IReadOnlyList<RouteEvidence> evidence) {
         Check.Require(inventory.Complete);
+        var required=new HashSet<(TableKind,string)>();
         foreach(var table in Enum.GetValues<TableKind>()) {
             var discovered=inventory.Filters.Where(f=>(string?)f["primaryobjecttypecode"]==DocumentSchema.Logical(table)).Select(f=>Check.Text(f["sdkmessageid"],"name"));
             var steps=inventory.Steps.Concat(inventory.GlobalSteps).Select(f=>Check.Text(f["sdkmessageid"],"name"));
             foreach(var message in RequiredMessages.Concat(DiscoveryMessages).Concat(discovered).Concat(steps).Distinct(StringComparer.Ordinal)) {
+                required.Add((table,message));
                 var rows=evidence.Where(e=>e.Table==table&&e.Message==message).ToArray();Check.Require(rows.Length==1);
                 var r=rows[0];Check.Require(Hash(r.AuthoritativeEvidenceHash)&&Hash(r.NativeWitnessHash));
                 if(r.Disposition==RouteDisposition.RegisterDenialOrOwnCud)Check.Require(IndividualMessage(message));
+                if(message is "Create" or "Update" or "Delete")Check.Require(r.Disposition==RouteDisposition.RegisterDenialOrOwnCud);
                 if(message=="DeleteMultiple")Check.Require(r.Disposition==RouteDisposition.Unavailable);
                 if(message is "Upsert" or "CreateMultiple" or "UpdateMultiple" or "UpsertMultiple")Check.Require(r.Disposition==RouteDisposition.Traversal);
                 Check.Require(Enum.IsDefined(r.Disposition));
             }
         }
+        Check.Require(evidence.Count==required.Count&&evidence.All(e=>required.Contains((e.Table,e.Message))));
     }
     public static bool Hash(string? h)=>h!=null&&System.Text.RegularExpressions.Regex.IsMatch(h,"\\A[0-9a-f]{64}\\z");
     public static JsonObject Binding(ReviewedBinding b,RouteInventory inventory) {
@@ -44,6 +48,7 @@ public static class DocumentGuards
     }
 }
 public interface IDocumentGuardBoundary {
+    Task<TargetObservation> ReadExactGuard(ReviewedBinding binding,CancellationToken token);
     Task<RouteInventory> ReadCanonicalInventory(CancellationToken token);
     Task CreateFixedGuardOnce(ReviewedBinding binding,CancellationToken token);
 }
@@ -51,6 +56,16 @@ internal sealed class FixedDocumentGuardBoundary : IDocumentGuardBoundary,IDispo
 {
     readonly Reader reader;readonly Func<Task<string>> token;readonly IAttemptJournal journal;readonly HttpClient client;int attempted;
     internal FixedDocumentGuardBoundary(Reader reader,Func<Task<string>> token,IAttemptJournal journal,HttpMessageHandler? handler=null){this.reader=reader;this.token=token;this.journal=journal;client=new(handler??new HttpClientHandler{AllowAutoRedirect=false,UseCookies=false}){Timeout=TimeSpan.FromSeconds(90)};}
+    public async Task<TargetObservation> ReadExactGuard(ReviewedBinding binding,CancellationToken cancellation) {
+        try {
+            var rows=await reader.ExactGuardCandidates(binding).WaitAsync(cancellation);
+            if(rows.Length==0)return new(Presence.Missing);
+            if(rows.Length!=1)return new(Presence.DriftOrDuplicate);
+            var exact=await reader.ExactObservedRow(rows[0],true,cancellation);
+            Check.Require(AdditiveAttempt.SameRow(exact,rows[0]));DocumentGuards.VerifyStep(exact,binding);
+            return new(Presence.ExistingExact,exact);
+        }catch{return new(Presence.Unknown);}
+    }
     public async Task<RouteInventory> ReadCanonicalInventory(CancellationToken cancellation) {
         try {
             reader.ReleaseQueries(ReleaseQueries.All);var filters=new List<JsonObject>();
@@ -72,6 +87,9 @@ internal sealed class FixedDocumentGuardBoundary : IDocumentGuardBoundary,IDispo
 }
 public static class GuardPhase
 {
+    internal static TargetObservation FromCollection(ReviewedBinding binding,RouteInventory inventory) {
+        var state=Observe(binding,inventory);return state==Presence.ExistingExact?new(state,inventory.Steps.Concat(inventory.GlobalSteps).Single(s=>(string?)s["_sdkmessagefilterid_value"]==binding.FilterId&&(string?)s["_eventhandler_value"]==binding.TypeId)):new(state);
+    }
     public static Presence Observe(ReviewedBinding binding,RouteInventory inventory) {
         if(!inventory.Complete)return Presence.Unknown;
         try {
@@ -81,6 +99,40 @@ public static class GuardPhase
         }catch{return Presence.DriftOrDuplicate;}
     }
     public static Task<AdditiveResult> Run(ReviewedBinding binding,IDocumentGuardBoundary boundary,Func<CancellationToken,Task<bool>> checkpoint,IAttemptJournal journal,CancellationToken token=default)=>AdditiveAttempt.Run(
-        t=>AdditiveAttempt.ReadBoth(async c=>Observe(binding,await boundary.ReadCanonicalInventory(c)),async c=>Observe(binding,await boundary.ReadCanonicalInventory(c)),t),
+        t=>AdditiveAttempt.ReadTargets(c=>boundary.ReadExactGuard(binding,c),async c=>FromCollection(binding,await boundary.ReadCanonicalInventory(c)),t),
         t=>boundary.CreateFixedGuardOnce(binding,t),checkpoint,journal,token);
+}
+
+public sealed record PinnedRouteEvidence(RouteEvidence Route,EvidenceFile Authoritative,EvidenceFile NativeWitness);
+public sealed record RouteReview(string Schema,string Organization,string Solution,PinnedRouteEvidence[] Evidence)
+{
+    internal static RouteReview Load(EvidenceFile? pin,string root) {
+        Check.Require(pin!=null);
+        var raw=pin!.Verify(root);_=Check.Parse(raw); // Reject duplicate keys before typed deserialization.
+        var review=System.Text.Json.JsonSerializer.Deserialize<RouteReview>(raw,new System.Text.Json.JsonSerializerOptions{UnmappedMemberHandling=System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow})??throw new Stop();
+        review.VerifyFiles(root);return review;
+    }
+    internal void VerifyFiles(string root) {
+        Check.Require(Schema=="kitchen-document-route-review-v1"&&Organization==Target.Organization&&Solution==Target.Solution);
+        if(Evidence==null)throw new Stop();
+        foreach(var item in Evidence) {
+            if(item==null||item.Route==null||item.Authoritative==null||item.NativeWitness==null)throw new Stop();
+            Check.Require(Check.Hash(item.Authoritative.Verify(root))==item.Route.AuthoritativeEvidenceHash&&Check.Hash(item.NativeWitness.Verify(root))==item.Route.NativeWitnessHash);
+        }
+    }
+    internal void Validate(RouteInventory current,ReviewedBinding? binding=null) {
+        DocumentGuards.Validate(current,Evidence.Select(e=>e.Route).ToArray());
+        if(binding!=null)Check.Require(Evidence.Single(e=>e.Route.Table==binding.Table&&e.Route.Message==binding.Message).Route.Disposition==RouteDisposition.RegisterDenialOrOwnCud);
+    }
+}
+internal static class PhaseRoutePrerequisites
+{
+    // New tables do not have usable routes before schema installation. Schema-only creation
+    // remains gated by native current-source completeness; final package/guard phases require this review.
+    internal static bool Required(ReleaseMode mode)=>mode is ReleaseMode.ActivatePackage or ReleaseMode.RegisterDocumentGuards;
+    internal static async Task Validate(ReleaseMode mode,EvidenceFile? pin,string root,IDocumentGuardBoundary boundary,ReviewedBinding? binding,CancellationToken cancellation) {
+        if(!Required(mode))return;
+        var review=RouteReview.Load(pin,root);
+        review.Validate(await boundary.ReadCanonicalInventory(cancellation),binding);
+    }
 }
