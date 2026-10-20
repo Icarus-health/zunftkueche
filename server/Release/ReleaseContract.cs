@@ -35,8 +35,12 @@ public static class ReviewedRelease
     internal static readonly ReviewedTransition[] Transitions = [];
     internal static readonly ReviewedBinding[] Bindings = [];
     internal static readonly ReviewedPhase[] Phases = [];
-    // Read-only query-shape review is staged separately from runtime backup/mutation authority.
-    internal static readonly BackupScopeBinding? InspectionScope = null;
+    // Bounded known-app/retained-history read-only query shape; no tenant-lifetime claim or mutation authority.
+    internal static readonly BackupScopeBinding? InspectionScope = new(BackupScope.Core, BackupHistory.CoreOnly,
+        new Guid("5ded2106-01c8-f111-be88-002248db2d69"), new Guid("45deaf94-5661-4110-8f16-3d2678c09f04"),
+        new Guid("7f1eddbb-dbba-45c3-bfb4-9e6c171af1f1"),
+        "95107ad3ce992a83747ab4d6919ccb531eb5bfcb02fe5d609e3a82ab07cb76a5",
+        "0e090e6e97ef7516cd436bb228b2ec4c8804b162e864ac1e94fc8ae114e40fc2");
     internal static readonly FinalVerificationBinding? FinalVerification = null;
     internal static readonly EvidenceFile? CurrentSourceCompletenessReview = null;
     public static bool CanExecute(ReleaseMode mode) => Phases.Any(p=>p.Mode==mode);
