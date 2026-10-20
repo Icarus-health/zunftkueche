@@ -16,7 +16,7 @@ namespace Zunftkueche
     {
         // Deliberately unbound in this source candidate. Task2b must supply an independently
         // reviewed deployment/target/history binding, associated externally with package hash.
-        readonly BackupScopeBinding? backupScope;
+        readonly BackupScopeBinding? backupScope = ReviewedBackupScope.Binding;
         internal DataverseStore(IOrganizationService service, IPluginExecutionContext context, BackupScopeBinding reviewedScope)
             : this(service,context) { backupScope=reviewedScope; }
 

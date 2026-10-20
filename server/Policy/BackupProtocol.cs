@@ -32,6 +32,12 @@ namespace Zunftkueche
         {Scope=scope;History=history;OrganizationId=organizationId;WorkspaceId=workspaceId;DeploymentId=deploymentId;
          RetainedStateSha256=retainedStateSha256;ReviewEvidenceSha256=reviewEvidenceSha256;}
     }
+    // Source-reviewed production seam shared by the native backup and release adapters.
+    // Remains unbound until actual absence/history evidence and independent source review.
+    public static class ReviewedBackupScope
+    {
+        public static readonly BackupScopeBinding? Binding = null;
+    }
     public sealed class BackupScopeEvidence
     {
         public readonly BackupScopeBinding Binding;

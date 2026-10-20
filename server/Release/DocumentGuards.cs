@@ -140,8 +140,12 @@ internal static class PhaseRoutePrerequisites
     // New tables do not have usable routes before schema installation. Schema-only creation
     // remains gated by native current-source completeness; final package/guard phases require this review.
     internal static bool Required(ReleaseMode mode)=>mode is ReleaseMode.ActivatePackage or ReleaseMode.RegisterDocumentGuards;
+    internal static bool Required(ReviewedPhase phase) {
+        var scope=ReleaseScope.Phase(phase);
+        return phase.Mode==ReleaseMode.RegisterDocumentGuards||phase.Mode==ReleaseMode.ActivatePackage&&scope?.Scope!=Zunftkueche.BackupScope.Core;
+    }
     internal static RouteReview Load(ReviewedPhase phase,string root) {
-        Check.Require(Required(phase.Mode));
+        Check.Require(Required(phase));
         var preparation=phase.Mode==ReleaseMode.ActivatePackage
             ? (phase.Transition??throw new Stop()).Kind switch{TransitionKind.V5ToRefusalDiagnostic=>true,TransitionKind.RefusalDiagnosticToFinal=>false,_=>throw new Stop()}
             : phase.Preparation!=null;
@@ -151,7 +155,7 @@ internal static class PhaseRoutePrerequisites
         return review;
     }
     internal static async Task Validate(ReviewedPhase phase,string root,IDocumentGuardBoundary boundary,Func<CancellationToken,Task> verifyInstalledDiagnostic,CancellationToken cancellation) {
-        if(!Required(phase.Mode))return;
+        if(!Required(phase))return;
         var review=Load(phase,root);review.Validate(await boundary.ReadCanonicalInventory(cancellation),phase.Guard);
         if(review.Kind==RouteReviewKind.RefusalPreparation&&phase.Mode==ReleaseMode.RegisterDocumentGuards)await verifyInstalledDiagnostic(cancellation);
     }

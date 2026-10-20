@@ -8,6 +8,9 @@ void Test(string n,Action f){try{f();passed++;Console.WriteLine("PASS "+n);}catc
 async Task Async(string n,Func<Task> f){try{await f();passed++;Console.WriteLine("PASS "+n);}catch(Exception e){failed++;Console.WriteLine("FAIL "+n+": "+e.GetType().Name);}}
 void Assert(bool x){if(!x)throw new Exception("assertion");}
 void Reject(Action f){try{f();}catch(Stop){return;}throw new Exception("expected refusal");}
+if(args.SequenceEqual(new[]{"--release-scope-only"})) {
+    await ReleaseScopeTests.Run(Async);Console.WriteLine($"RELEASE_SCOPE: {passed} passed, {failed} failed; synthetic only.");return failed==0?0:1;
+}
 if(args.SequenceEqual(new[]{"--current-policy-only"})) {
     CurrentPolicyTests.Run(Test);Console.WriteLine($"CURRENT_POLICY: {passed} passed, {failed} failed; synthetic only.");return failed==0?0:1;
 }

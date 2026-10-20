@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
 using Kitchen.Inventory;
 using PackageActivationPreparation;
+using Zunftkueche;
 namespace Kitchen.Release;
 
 // Pure stable identity deliberately excludes file ID, ETag and changing row-version.
@@ -27,6 +28,7 @@ public sealed class FixedPackageBoundary : IFixedPackageBoundary, IDisposable
     readonly ReviewedTransition transition;int attempted;string? fileId;string? rowVersion;
     internal FixedPackageBoundary(Reader reader,Func<Task<string>> token,ICurrentReleaseCheckpoint checkpoint,IAttemptJournal journal,ReviewedTransition transition,HttpMessageHandler? handler=null) {
         Check.Require(ReviewedRelease.Transitions.Contains(transition));
+        if(transition.Kind!=TransitionKind.V5ToRefusalDiagnostic)ReleaseScope.RequireProduction(transition.ExpectedScope);
         this.reader=reader;this.token=token;this.checkpoint=checkpoint;this.journal=journal;this.transition=transition;
         client=new(handler??new HttpClientHandler{AllowAutoRedirect=false,UseCookies=false}){Timeout=Timeout.InfiniteTimeSpan};
     }
@@ -59,6 +61,7 @@ public static class PackageActivation
     public static async Task<ActivationResult> Run(ReviewedTransition transition,string evidenceRoot,Checkpoint current,string etag,string stable,
         IFixedPackageBoundary boundary,IAttemptJournal journal,CancellationToken token=default) {
         Check.Require(ReviewedRelease.Transitions.Contains(transition));
+        if(transition.Kind!=TransitionKind.V5ToRefusalDiagnostic)ReleaseScope.RequireProduction(transition.ExpectedScope);
         _=transition.SourceBuild.Verify(evidenceRoot);_=transition.IndependentReview.Verify(evidenceRoot);
         if(transition.Mode==WriteMode.ExclusiveWriterNoAtomicCas)_=transition.WriterExclusion.Verify(evidenceRoot);
         var bytes=transition.Package.Verify(evidenceRoot);
@@ -73,10 +76,12 @@ public sealed record CheckpointInput(Checkpoint Accepted,EvidenceFile BackupMani
     EvidenceFile CompletenessReview,EvidenceFile ClientManifest,string MetadataAccessClientSha256,string CallerId,string[] RequiredOriginalHashes,OriginalVersion[] Originals);
 internal sealed class NativeCheckpoint : ICurrentReleaseCheckpoint
 {
-    readonly Reader reader;readonly Backup capture;readonly string root;readonly CheckpointInput input;readonly bool requireInstalled;
+    readonly Reader reader;readonly Backup capture;readonly string root;readonly CheckpointInput input;readonly BackupScopeBinding? expectedScope;readonly ReviewedPhase? preparation;
     readonly Func<CancellationToken,Task>? routePrerequisite;
-    internal NativeCheckpoint(Reader reader,Backup capture,string root,CheckpointInput input,bool requireInstalled,Func<CancellationToken,Task>? routePrerequisite=null) {
-        Check.Require(input.Accepted.Valid());this.reader=reader;this.capture=capture;this.root=root;this.input=input;this.requireInstalled=requireInstalled;
+    internal NativeCheckpoint(Reader reader,Backup capture,string root,CheckpointInput input,BackupScopeBinding? expectedScope,Func<CancellationToken,Task>? routePrerequisite=null,ReviewedPhase? preparation=null) {
+        Check.Require(input.Accepted.Valid());this.reader=reader;this.capture=capture;this.root=root;this.input=input;this.expectedScope=expectedScope;this.preparation=preparation;
+        if(expectedScope!=null)ReleaseScope.Require(expectedScope);
+        else Check.Require(preparation!=null&&ReleaseScope.Phase(preparation)==null);
         this.routePrerequisite=routePrerequisite;
     }
     public async Task<Checkpoint> RemeasureAndVerifyRetainedEvidence(CancellationToken token) {
@@ -85,34 +90,57 @@ internal sealed class NativeCheckpoint : ICurrentReleaseCheckpoint
         var receipts=await reader.Rows(Queries.Receipts,"zk_kitchenoperationid",4000).WaitAsync(token);
         var docs=await Store(TableKind.Document,token);var drafts=await Store(TableKind.Draft,token);
         var raw=new System.Text.UTF8Encoding(false,true).GetBytes(Check.Text(first,"zk_state"));
-        CompleteInventory.ValidateCurrentPolicy(raw,(int)first["zk_revision"]!,receipts);
+        if(expectedScope!=null)ReleaseScope.ValidateState(expectedScope,raw,(int)first["zk_revision"]!,receipts);
+        else CompleteInventory.ValidateCurrentPolicy(raw,(int)first["zk_revision"]!,receipts);
         // Current document/source rows are hashed completely, including immutable histories and acceptance receipts.
         // Cloud originals require a separately implemented fixed version-byte reader; retained bytes alone do not prove fresh cloud state.
         var originals=ValidateFreshOriginals(root,raw,docs,drafts,input.Originals,input.RequiredOriginalHashes);
-        var metadata=new Metadata(reader,capture,"checkpoint-"+Guid.NewGuid().ToString("N")+"-");await metadata.Read();
-        var who=await reader.Object("WhoAmI").WaitAsync(token);Check.Require(Check.Id(who,"OrganizationId")==Target.Organization&&Check.Id(who,"UserId")==input.CallerId);
-        var access=await reader.Object(Queries.Access(input.CallerId)).WaitAsync(token);var privileges=await reader.Object(Queries.Privileges(input.CallerId)).WaitAsync(token);
-        var roles=await reader.Rows(ReleaseQueries.Roles,"roleid",10000).WaitAsync(token);var users=await reader.Rows(ReleaseQueries.Users,"systemuserid",10).WaitAsync(token);
-        var routes=await reader.Rows(ReleaseQueries.Steps,"sdkmessageprocessingstepid",10000).WaitAsync(token);
-        var closure=new JsonObject{["core"]=metadata.Fingerprint,["access"]=access,["privileges"]=privileges,["roles"]=new JsonArray(roles.Select(r=>r.DeepClone()).ToArray()),["users"]=new JsonArray(users.Select(r=>r.DeepClone()).ToArray()),["routes"]=new JsonArray(routes.Select(r=>r.DeepClone()).ToArray()),["documentSchema"]=docs.SchemaHash,["draftSchema"]=drafts.SchemaHash,["clientManifest"]=Check.Hash(input.ClientManifest.Verify(root))};
+        var closure=await ReadClosure(docs,drafts,first,receipts,token);
         Check.Require(Check.Fingerprint(closure)==input.MetadataAccessClientSha256);
         var repeated=await reader.Rows(Queries.Receipts,"zk_kitchenoperationid",4000).WaitAsync(token);var docsAgain=await Store(TableKind.Document,token);var draftsAgain=await Store(TableKind.Draft,token);
         Check.Require(CompleteInventory.Collection("receipts",receipts,"zk_kitchenoperationid")==CompleteInventory.Collection("receipts",repeated,"zk_kitchenoperationid")&&docs.Hash==docsAgain.Hash&&docs.SchemaHash==docsAgain.SchemaHash&&drafts.Hash==draftsAgain.Hash&&drafts.SchemaHash==draftsAgain.SchemaHash&&Check.Fingerprint(first)==Check.Fingerprint(await reader.Object(Queries.Workspace).WaitAsync(token)));
+        var closureAgain=await ReadClosure(docsAgain,draftsAgain,first,receipts,token);
+        Check.Require(Check.Fingerprint(closure)==Check.Fingerprint(closureAgain));
+        Check.Require(Check.Fingerprint(first)==Check.Fingerprint(await reader.Object(Queries.Workspace).WaitAsync(token))&&CompleteInventory.Collection("receipts",receipts,"zk_kitchenoperationid")==CompleteInventory.Collection("receipts",await reader.Rows(Queries.Receipts,"zk_kitchenoperationid",4000).WaitAsync(token),"zk_kitchenoperationid"));
         VerifyRetained();
         if(routePrerequisite!=null)await routePrerequisite(token);
-        return input.Accepted with{OwnerId=Check.Id(first,"_ownerid_value"),OwnerType=Check.Text(first,"_ownerid_value@Microsoft.Dynamics.CRM.lookuplogicalname"),Revision=(long)first["zk_revision"]!,WorkspaceRowVersion=first["versionnumber"]!.ToJsonString(),RawStateSha256=Check.Hash(raw),ReceiptCount=receipts.Length,ReceiptCollectionSha256=CompleteInventory.Collection("receipts",receipts,"zk_kitchenoperationid"),DocumentCount=docs.Rows.Length,DocumentCollectionSha256=docs.Hash,DraftCount=drafts.Rows.Length,DraftCollectionSha256=drafts.Hash,OriginalVersionCount=input.Originals.Length,OriginalVersionsAndBytesManifestSha256=originals};
+        var measured=input.Accepted with{OwnerId=Check.Id(first,"_ownerid_value"),OwnerType=Check.Text(first,"_ownerid_value@Microsoft.Dynamics.CRM.lookuplogicalname"),Revision=(long)first["zk_revision"]!,WorkspaceRowVersion=first["versionnumber"]!.ToJsonString(),RawStateSha256=Check.Hash(raw),ReceiptCount=receipts.Length,ReceiptCollectionSha256=CompleteInventory.Collection("receipts",receipts,"zk_kitchenoperationid"),DocumentCount=docs.Rows.Length,DocumentCollectionSha256=docs.Hash,DraftCount=drafts.Rows.Length,DraftCollectionSha256=drafts.Hash,OriginalVersionCount=input.Originals.Length,OriginalVersionsAndBytesManifestSha256=originals};
+        Check.Require(measured==input.Accepted);return measured;
     }
     void VerifyRetained() {
         Check.Require(Check.Hash(input.BackupManifest.Verify(root))==input.Accepted.BackupManifestSha256&&Check.Hash(input.ValidatorEvidence.Verify(root))==input.Accepted.ValidatorEvidenceSha256&&Check.Hash(input.InventoryManifest.Verify(root))==input.Accepted.InventoryManifestSha256);
         _=input.CompletenessReview.Verify(root);_=input.ClientManifest.Verify(root);
         var folder=Path.GetDirectoryName(Path.Combine(root,input.BackupManifest.RelativePath))!;Check.Require(Backup.IsComplete(folder));
+        Check.Require(Check.Parse(input.BackupManifest.Verify(root))["fullCurrentNativeBackup"]?.GetValue<bool>()==true);
     }
     internal static string ValidateFreshOriginals(string root,byte[] raw,CurrentStore docs,CurrentStore drafts,OriginalVersion[] originals,string[] assertedHashes) =>
         OriginalRequirements.ValidateLocal(root,raw,docs.Rows.Select(r=>Zunftkueche.Protocol.Parse(Check.Text(r,"zk_payload"))),drafts.Rows.Select(r=>Zunftkueche.Protocol.Parse(Check.Text(r,"zk_payload"))),originals,assertedHashes);
     async Task<CurrentStore> Store(TableKind table,CancellationToken token) {
         using var boundary=new FixedDocumentSchemaBoundary(reader,()=>throw new Stop(),new DurableAttemptJournal(Path.Combine(root,"attempts"),"checkpoint-no-write"));
-        var current=await CurrentDocumentStore.Read(table,await boundary.ReadCanonicalSchema(table,token),reader,requireInstalled,token);
+        var schema=await boundary.ReadCanonicalSchema(table,token);
+        if(expectedScope!=null)ReleaseScope.ValidateStore(expectedScope,CurrentDocumentStore.Classify(table,schema));
+        var current=await CurrentDocumentStore.Read(table,schema,reader,expectedScope?.Scope==BackupScope.Documents||expectedScope==null&&preparation!.Mode!=ReleaseMode.ProvisionDocumentSchema,token);
         return current;
+    }
+    internal static async Task<JsonObject> ReadCoreClosure(Reader reader,Backup capture,string prefix,string? expectedCaller,CancellationToken token,JsonObject? workspace=null,JsonObject[]? receipts=null) {
+        var metadata=new Metadata(reader,capture,prefix);await metadata.Read().WaitAsync(token);
+        if(workspace!=null)metadata.ValidateRecordFields(workspace,receipts??throw new Stop());
+        var who=await reader.Object("WhoAmI").WaitAsync(token);var caller=Check.Id(who,"UserId");
+        Check.Require(Check.Id(who,"OrganizationId")==Target.Organization&&(expectedCaller==null||caller==expectedCaller));
+        var access=await reader.Object(Queries.Access(caller)).WaitAsync(token);Inspector.ValidateRights(access);
+        var privileges=await reader.Object(Queries.Privileges(caller)).WaitAsync(token);Check.Require(privileges["RolePrivileges"] is JsonArray);
+        capture.Json(prefix+"caller-identity.json",who);capture.Json(prefix+"access.json",access);capture.Json(prefix+"privileges-team-depth-limited.json",privileges);
+        return new JsonObject{["core"]=metadata.Fingerprint,["who"]=who,["access"]=access,["privileges"]=privileges};
+    }
+    async Task<JsonObject> ReadClosure(CurrentStore docs,CurrentStore drafts,JsonObject workspace,JsonObject[] receipts,CancellationToken token) {
+        var prefix="checkpoint-"+Guid.NewGuid().ToString("N")+"-";
+        var closure=new JsonObject{["schema"]="kitchen-scoped-checkpoint-closure-v1",["scope"]=expectedScope?.Scope.ToString()??"preparation-not-backup-scope",["scopeFingerprint"]=expectedScope==null?null:ReleaseScope.Fingerprint(expectedScope),["coreMetadataAccess"]=await ReadCoreClosure(reader,capture,prefix,input.CallerId,token,workspace,receipts),["documentSchema"]=docs.SchemaHash,["draftSchema"]=drafts.SchemaHash,["clientManifest"]=Check.Hash(input.ClientManifest.Verify(root))};
+        if(expectedScope?.Scope!=BackupScope.Core) {
+            foreach(var pair in new[]{("roles",ReleaseQueries.Roles,"roleid"),("users",ReleaseQueries.Users,"systemuserid"),("routes",ReleaseQueries.Steps,"sdkmessageprocessingstepid")}) {
+                var rows=await reader.Rows(pair.Item2,pair.Item3,pair.Item1=="users"?10:10000).WaitAsync(token);var array=new JsonArray(rows.Select(r=>r.DeepClone()).ToArray());capture.Json(prefix+pair.Item1+".json",array);closure[pair.Item1]=array;
+            }
+        }
+        return closure;
     }
     public async Task VerifyInstalledTypeApiSolutionClosure(CancellationToken token) {var metadata=new Metadata(reader,capture,"package-readback-"+Guid.NewGuid().ToString("N")+"-");await metadata.Read().WaitAsync(token);}
 }
@@ -123,6 +151,7 @@ internal static class PhaseDispatch
         Check.Require(ReviewedRelease.Phases.Contains(phase)&&phase.Mode==mode);
         _=phase.Plan.Verify(root);_=phase.Review.Verify(root);
         var input=System.Text.Json.JsonSerializer.Deserialize<CheckpointInput>(phase.Checkpoint.Verify(root))??throw new Stop();
+        var scope=ReleaseScope.Phase(phase);if(scope!=null)ReleaseScope.RequireProduction(scope);
         // One operation per reviewed invocation, fixed journal scope blocks restart until independent reconciliation.
         var journal=new DurableAttemptJournal(Path.Combine(root,"attempts"),mode+"-"+phase.Plan.Sha256);
         using var routeBoundary=new FixedDocumentGuardBoundary(reader,token,journal);
@@ -133,9 +162,9 @@ internal static class PhaseDispatch
             Check.Require(Check.Fingerprint(before)==Check.Fingerprint(after)&&bytes.LongLength==preparation.DiagnosticPackage.Length&&Check.Hash(bytes)==preparation.DiagnosticPackage.Sha256);
         }
         Task Routes(CancellationToken t)=>PhaseRoutePrerequisites.Validate(phase,root,routeBoundary,InstalledDiagnostic,t);
-        using(var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(180)))await Routes(deadline.Token); // Before any phase attempt.
+        if(PhaseRoutePrerequisites.Required(phase))using(var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(180)))await Routes(deadline.Token); // Before any phase attempt.
         if(phase.Preparation!=null)Console.WriteLine("REFUSAL_PREPARATION_ONLY: ordinary use remains disabled; unproved native witnesses are not release acceptance.");
-        var checkpoint=new NativeCheckpoint(reader,capture,root,input,mode is ReleaseMode.ActivatePackage or ReleaseMode.RegisterDocumentGuards,Routes);
+        var checkpoint=new NativeCheckpoint(reader,capture,root,input,scope,PhaseRoutePrerequisites.Required(phase)?Routes:null,scope==null?phase:null);
         async Task<bool> Fresh(CancellationToken t)=>await checkpoint.RemeasureAndVerifyRetainedEvidence(t)==input.Accepted;
         if(mode==ReleaseMode.ProvisionDocumentSchema) {
             Check.Require(phase.Schema!=null&&phase.Guard==null&&phase.Transition==null);
