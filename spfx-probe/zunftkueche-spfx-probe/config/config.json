@@ -1,0 +1,18 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "kitchen-probe-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/kitchenProbe/KitchenProbeWebPart.js",
+          "manifest": "./src/webparts/kitchenProbe/KitchenProbeWebPart.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "KitchenProbeWebPartStrings": "lib/webparts/kitchenProbe/loc/{locale}.js"
+  }
+}

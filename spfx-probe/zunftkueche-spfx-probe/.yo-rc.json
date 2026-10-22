@@ -1,0 +1,23 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "whichFolder": "subdir",
+    "solutionName": "zunftkueche-spfx-probe",
+    "environment": "spo",
+    "packageManager": "npm",
+    "skipFeatureDeployment": true,
+    "useGulp": false,
+    "componentType": "webpart",
+    "template": "none",
+    "componentName": "KitchenProbe",
+    "componentDescription": "Zunftküche Teams-Verbindungstest",
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "nodeVersion": "22.22.3",
+    "sdksVersions": {},
+    "version": "1.23.2",
+    "libraryName": "zunftkueche-spfx-probe",
+    "libraryId": "a0223437-c175-4fbb-9443-e37836f2a50a",
+    "solutionShortDescription": "zunftkueche-spfx-probe description",
+    "isDomainIsolated": false
+  }
+}

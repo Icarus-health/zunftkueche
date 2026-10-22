@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "zunftkueche-spfx-probe-client-side-solution",
+    "id": "a0223437-c175-4fbb-9443-e37836f2a50a",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "Schelmenzunft Staufen",
+      "websiteUrl": "https://schelmenzunft.de/",
+      "privacyUrl": "https://schelmenzunft.de/datenschutz/",
+      "termsOfUseUrl": "https://schelmenzunft.de/impressum/",
+      "mpnId": "Undefined-1.23.2"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "Zunftküche: isolierter Teams-Verbindungstest"
+      },
+      "longDescription": {
+        "default": "Ein künstlicher Artikel zur Prüfung von Anmeldung, Lesen, Speichern und Neuladen in Microsoft Teams. Keine vollständige Warenwirtschaft."
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "zunftkueche-spfx-probe Feature",
+        "description": "The feature that activates elements of the zunftkueche-spfx-probe solution.",
+        "id": "801ef34c-a438-4abd-8644-8a4e006e2566",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/zunftkueche-spfx-probe.sppkg"
+  }
+}
