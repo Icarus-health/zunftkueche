@@ -25,7 +25,7 @@ export default class KitchenProbeWebPart extends BaseClientSideWebPart<Props> {
   public render(): void {
     this.domElement.innerHTML = `<section class="${styles.probe}">
       <header><span class="${styles.tag}">ZUNFTKÜCHE · VERBINDUNGSTEST</span><h1>Bestand auf einen Blick</h1><p>Ein künstlicher Artikel. Gemeinsam gespeichert in SharePoint.</p></header>
-      <div class="${styles.context}"><span data-user></span><span data-host></span><span>Testversion 1.0.0</span></div>
+      <div class="${styles.context}"><span data-user></span><span data-host></span><span>Testversion 1.0.1</span></div>
       <article><span class="${styles.tag}">TESTARTIKEL</span><h2>Wasser</h2><p>Flaschen · ausschließlich künstliche Testdaten</p>
         <div class="${styles.amount}" data-amount>—</div>
         <label for="probe-quantity">Gezählter Bestand in Flaschen</label>

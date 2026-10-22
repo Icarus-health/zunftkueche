@@ -1,5 +1,5 @@
 export interface Snapshot { id: number; title: string; quantity: number; etag: string; modified: string; editor: string }
-interface Row { Id: number; Title: string; Quantity: number; 'odata.etag'?: string; '@odata.etag'?: string; Modified?: string; Editor?: { Title: string } }
+interface Row { Id: number; Title: string; Quantity: number; 'odata.etag'?: string; '@odata.etag'?: string; Modified?: string; Editor?: { Title: string }; FieldTypeKind?: number }
 interface Payload { value?: Row[]; FieldTypeKind?: number }
 export interface Response { status: number; ok: boolean; json(): Promise<Payload> }
 export type Request = (url: string, options: { method: string; headers: Record<string, string>; body?: string }) => Promise<Response>;
@@ -27,9 +27,10 @@ export class ProbeStore {
     if (existing.status === 404) {
       await this.call(`${this.site}/_api/web/lists`, 'POST', { Title: 'Zunftkueche_SPFX_Test_20261022', BaseTemplate: 100, EnableVersioning: true, Description: 'Isolierter SPFx-Verbindungstest. Ausschließlich künstliche Testdaten; keine Küchen-Echtbestände.' });
     } else if (!existing.ok) throw new Error(`Testliste nicht zugänglich (${existing.status}).`);
-    const field = await this.request(`${this.list}/fields/getbyinternalnameortitle('Quantity')`, { method: 'GET', headers: { Accept: 'application/json;odata=nometadata', 'odata-version': '' } });
-    if (field.status === 404) await this.call(`${this.list}/fields`, 'POST', { Title: 'Quantity', FieldTypeKind: 9, Required: true });
-    else if (!field.ok || (await field.json()).FieldTypeKind !== 9) throw new Error('Die Mengenspalte ist nicht passend eingerichtet.');
+    const fields = await (await this.call(`${this.list}/fields?$filter=InternalName%20eq%20'Quantity'&$select=InternalName,FieldTypeKind`)).json();
+    if (!Array.isArray(fields.value)) throw new Error('Die Mengenspalte konnte nicht geprüft werden.');
+    if (fields.value.length === 0) await this.call(`${this.list}/fields`, 'POST', { Title: 'Quantity', FieldTypeKind: 9, Required: true });
+    else if (fields.value.length !== 1 || fields.value[0].FieldTypeKind !== 9) throw new Error('Die Mengenspalte ist nicht passend eingerichtet.');
     const rows = await (await this.call(`${this.list}/items?$select=Id&$top=2`)).json();
     if (!Array.isArray(rows.value)) throw new Error('Testliste konnte nicht gelesen werden.');
     if (rows.value.length === 0) await this.call(`${this.list}/items`, 'POST', { Title: 'SPFx-Testartikel Wasser', Quantity: 12 });

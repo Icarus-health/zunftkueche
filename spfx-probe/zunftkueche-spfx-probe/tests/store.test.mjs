@@ -36,3 +36,18 @@ test('a real article or a blank amount cannot be changed through the probe', asy
   await assert.rejects(store.save({ ...before, title: 'Echter Artikel' }, 9), /Testartikel/);
   await assert.rejects(store.save(before, -1), /Menge/);
 });
+
+test('setup creates a missing Quantity column using the field collection result', async () => {
+  let fieldCreated = false;
+  const store = new ProbeStore('https://example.sharepoint.com/sites/test', async (url, options) => {
+    if (url.includes('/fields?')) return response(200, { value: [] });
+    if (url.includes('/fields/getbyinternal')) return response(400, { error: { code: '-2147024809, System.ArgumentException' } });
+    if (url.endsWith('/fields') && options.method === 'POST') { fieldCreated = true; assert.equal(JSON.parse(options.body).FieldTypeKind, 9); return response(201); }
+    if (url.includes('$filter=Title')) return response(200, { value: [{ Id: 1, Title: 'SPFx-Testartikel Wasser', Quantity: 12, 'odata.etag': '"1"' }] });
+    if (url.includes('/items?')) return response(200, { value: [] });
+    return response(options.method === 'POST' ? 201 : 200);
+  });
+  const loaded = await store.prepare();
+  assert.equal(fieldCreated, true);
+  assert.equal(loaded.quantity, 12);
+});
