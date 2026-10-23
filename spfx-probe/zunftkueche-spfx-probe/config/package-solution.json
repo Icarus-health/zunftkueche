@@ -3,7 +3,7 @@
   "solution": {
     "name": "zunftkueche-spfx-probe-client-side-solution",
     "id": "a0223437-c175-4fbb-9443-e37836f2a50a",
-    "version": "1.0.1.0",
+    "version": "1.1.0.0",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": true,
     "isDomainIsolated": false,
@@ -16,10 +16,10 @@
     },
     "metadata": {
       "shortDescription": {
-        "default": "Zunftküche: isolierter Teams-Verbindungstest"
+        "default": "Zunftküche – Artikel, Lieferanten und Bestellungen"
       },
       "longDescription": {
-        "default": "Ein künstlicher Artikel zur Prüfung von Anmeldung, Lesen, Speichern und Neuladen in Microsoft Teams. Keine vollständige Warenwirtschaft."
+        "default": "Küchenverwaltung in Teams mit Artikeln, Lieferangeboten, Bestellungen, Vorjahresübernahme und Abendbeständen. Speicherung auf der vorhandenen SharePoint-Seite."
       },
       "screenshotPaths": [],
       "videoUrl": "",
@@ -30,7 +30,7 @@
         "title": "zunftkueche-spfx-probe Feature",
         "description": "The feature that activates elements of the zunftkueche-spfx-probe solution.",
         "id": "801ef34c-a438-4abd-8644-8a4e006e2566",
-        "version": "1.0.1.0"
+        "version": "1.1.0.0"
       }
     ]
   },

@@ -9,6 +9,14 @@
           "manifest": "./src/webparts/kitchenProbe/KitchenProbeWebPart.manifest.json"
         }
       ]
+    },
+    "kitchen-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/kitchen/KitchenWebPart.js",
+          "manifest": "./src/webparts/kitchen/KitchenWebPart.manifest.json"
+        }
+      ]
     }
   },
   "externals": {},

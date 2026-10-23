@@ -1,0 +1,11 @@
+/* eslint-disable @rushstack/no-new-null -- Persisted unknown quantities and prices are explicitly nullable. */
+export function h(value: unknown): string { return String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!)); }
+export function n(value: number | null | undefined): string { return value === null || value === undefined?'':new Intl.NumberFormat('de-DE',{maximumFractionDigits:4,useGrouping:false}).format(value); }
+export function money(value: number | null): string { return value===null?'Preis offen':new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:4}).format(value); }
+export function field(name: string,label: string,value: unknown='',required=false,type='text',extra=''): string { return `<label>${h(label)}<input name="${h(name)}" type="${type}" value="${h(value)}" ${required?'required':''} ${extra} /></label>`; }
+export function note(name: string,label: string,value: string): string { return `<label>${h(label)}<textarea name="${h(name)}" rows="3" maxlength="1000">${h(value)}</textarea></label>`; }
+export function select(name: string,label: string,options: Array<[string,string]>,value: string,extra=''): string { return `<label>${h(label)}<select name="${h(name)}" ${extra}>${options.map(([id,title])=>`<option value="${h(id)}" ${id===value?'selected':''}>${h(title)}</option>`).join('')}</select></label>`; }
+export function check(name: string,label: string,checked: boolean): string { return `<label class="check"><input type="checkbox" name="${h(name)}" ${checked?'checked':''} />${h(label)}</label>`; }
+export function button(action: string,label: string,id='',primary=false): string { return `<button type="button" data-action="${action}" data-id="${h(id)}" class="${primary?'primary':''}">${h(label)}</button>`; }
+export function panel(title: string,body: string): string { return `<section class="panel"><h2>${h(title)}</h2>${body}</section>`; }
+export function empty(text: string): string { return `<p class="empty">${h(text)}</p>`; }
