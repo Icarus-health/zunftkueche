@@ -1,0 +1,59 @@
+Zunftküche Version 1.1.0 — Prüfstand 23.10.2026
+
+STATUS
+Lokal umgesetzt und als SPFx-Paket gebaut. Diese Version ist noch nicht im
+Teams-Kanal Küche installiert. Der letzte Zugriff auf Safari meldete einen
+gesperrten Mac; die Entsperr-Anfrage ist offen.
+
+UMFANG
+Heute-Übersicht mit ausdrücklich erfassten Abendbeständen und Nachbestell-/
+Überhang-Hinweis. Artikel, Lieferanten und ihre Lieferangebote mit Gebinden.
+Bestellentwürfe, dokumentierte Bestellungen, verknüpfte Nachbestellungen,
+Saisons und Übernahme ausgewählter Vorjahrespositionen mit neuen Mengen.
+CSV-Vorschau für neue Artikel oder Lieferanten.
+
+KOSTEN UND DATEN
+Keine neuen kostenpflichtigen Dienste, keine neuen Abhängigkeiten und keine
+neuen API-Berechtigungen vorgesehen. Speicherung ausschließlich auf der
+SharePoint-Seite des jeweiligen Kanals mit bestehenden Benutzerrechten.
+Originale Test-App und bisherige Vereinsdaten werden erhalten.
+Produktivlisten ZK_V1_* starten leer. Abnahmelisten ZK_AbnahmeV1_* sind getrennt.
+
+GEPRÜFT
+33/33 automatisierte Prüfungen erfolgreich. Produktions-Build mit Lint und
+Paketvalidierung erfolgreich, ohne Warnungen. Geprüft sind unter anderem
+Vorjahreskopie ohne Änderung der Quelle, Dezimalkomma und unbekannte Preise,
+Versionskonflikte, unvollständige Bestellrevisionen, Wiederholung verlorener
+Speicherantworten, unveränderliche Bestellhistorie, aktuelle Referenzen und
+Gebinde, eindeutige Schlüssel und Fortsetzung teilweise erfolgter CSV-Importe.
+
+Im lokalen Browser wurden Lieferant, Artikel und Lieferangebot angelegt,
+Entwürfe gespeichert und erneut gelesen, eine Vorjahresbestellung übernommen
+und bearbeitet sowie 1,5 Sack à 25 kg als 37,5 kg angezeigt.
+Nach der Abschlussprüfung wurden CSS und Fehlerbehandlung korrigiert. Die
+Tests und Paketprüfung sind erneut erfolgreich; die echte schmale Ansicht und
+die neue Bestätigungsanzeige müssen noch im Browser/Teams geprüft werden.
+
+NOCH OFFEN
+Katalog-Update des bestehenden Pakets; Installation ausschließlich auf der
+Küche-SharePoint-Seite; Vollseiten-App anlegen; Teams-Registerkarte Zunftküche
+im Kanal Küche einrichten, ohne Kanalankündigung. Danach künstliche Abnahme
+mit Speichern, Neuladen, Vorjahresübernahme und zwei Konten bei konkurrierender
+Änderung; zuletzt normale leere Produktivoberfläche und Bildschirmnachweis.
+
+GRENZEN DER ERSTEN VERSION
+Keine automatische Lieferantenbestellung, kein SumUp-Abgleich und keine
+automatisch errechneten Lagerbestände. Bestelltext kann angezeigt werden.
+Warenwert netto ohne Pfand; unbekannte Preise bleiben sichtbar offen.
+Eine Bestandsmeldung ist eine datierte Zählung. Bestellung und Verbrauch
+verändern den erfassten Bestand nicht automatisch.
+SharePoint ist keine Datenbank mit Transaktionen über mehrere Listen.
+Bestellungen nutzen unveränderliche Positionen und einen abschließenden
+Versionswechsel; Stammdaten werden unmittelbar vor dem Schreiben erneut
+geprüft. Abgebrochene, nicht veröffentlichte Positionen bleiben unsichtbar.
+
+QUELLSTAND
+Lokaler Feature-Zweig feature/kitchen-v1-20261023. Kein GitHub-Push.
+Der öffentliche Upload wurde zuvor von der automatischen Freigabeprüfung
+wegen organisationsbezogener SharePoint-Ziele abgelehnt. Es erfolgte kein
+Umgehen dieser Sperre. Die Quellcodesicherung bleibt lokal.

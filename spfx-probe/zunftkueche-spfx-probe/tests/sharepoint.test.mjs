@@ -34,3 +34,24 @@ test('ordered history stays frozen after master changes',async()=>{
  const article=(await store.load()).articles[0];await store.saveMaster('articles',{...article.value,name:'Anders'},article,'rename');assert.equal((await store.load()).orders[0].value.lines[0].articleName,'Wasser');
  await assert.rejects(store.saveOrder({...sent,lines:[{...sent.lines[0],quantity:100}]},stored,'rewrite'),/Nachbestellung/);
 });
+
+test('current reference checks reject stale counts, offers and used-unit changes',async()=>{
+ const {store}=await prepared();let state=await store.load();const season=state.seasons[0];await store.saveMaster('seasons',{...season.value,archived:true},season,'archive');
+ const count={id:'count',seasonId:'s2026',area:'Küche',articleId:'a',articleName:'Wasser',unit:'Flasche',quantity:0,countedAt:'2026-10-23T12:00:00Z',countedBy:'Test',note:'',reorder:false};
+ await assert.rejects(store.saveMaster('counts',count,undefined,'count-op'),/Saison/);
+ await assert.rejects(store.saveMaster('counts',{...count,articleId:'absent'},undefined,'missing-op'),/Saison|Artikel/);
+ const article=state.articles[0];await assert.rejects(store.saveMaster('articles',{...article.value,unit:'kg'},article,'unit-change'),/Einheit/);
+ const supplier=state.suppliers[0];await store.saveMaster('suppliers',{...supplier.value,active:false},supplier,'disable');
+ await assert.rejects(store.saveMaster('offers',{...state.offers[0].value,id:'new-offer'},undefined,'offer-op'),/Lieferant/);
+});
+test('schema initialization requires an indexed unique key',async()=>{
+ const {store,server}=await prepared();server.keyUnique=false;await assert.rejects(store.initialize(),/Listenschema|eindeutig/);
+});
+test('a stale draft cannot reinterpret a changed supplier pack',async()=>{
+ const {store,order}=await prepared();const offer=(await store.load()).offers[0];await store.saveMaster('offers',{...offer.value,packSize:6},offer,'resize');
+ await assert.rejects(store.saveOrder(order,undefined,'stale-pack'),/Gebinde|Einheit/);
+});
+
+test('schema initialization rejects rich text storage rather than corrupting JSON',async()=>{
+ const {store,server}=await prepared();server.richText=true;await assert.rejects(store.initialize(),/Listenschema/);
+});

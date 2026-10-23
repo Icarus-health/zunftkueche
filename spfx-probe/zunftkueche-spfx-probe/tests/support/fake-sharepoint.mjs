@@ -1,11 +1,11 @@
 const reply=(status,body={})=>({status,ok:status>=200&&status<300,json:async()=>body});
 export class Server {
- lists=new Map();failHeader=false;dropAfterCommit=false;failPage=false;
+ lists=new Map();keyUnique=true;richText=false;failHeader=false;dropAfterCommit=false;failPage=false;
  constructor(){for(const n of ['Saisons','Artikel','Lieferanten','Lieferangebote','Bestellungen','Bestellpositionen','Bestandsmeldungen'])this.lists.set('ZK_V1_'+n,[]);}
  request=async(url,options)=>{
   const u=new URL(url), name=decodeURIComponent(u.pathname).match(/getbytitle\('([^']+)'\)/)?.[1],rows=this.lists.get(name),body=options.body?JSON.parse(options.body):{};
   if(!rows)return reply(404);
-  if(!u.pathname.includes('/items'))return reply(200,{Description:'[ZK-V1]',value:[{InternalName:'ZKKey',FieldTypeKind:2},{InternalName:'ZKData',FieldTypeKind:3}]});
+  if(!u.pathname.includes('/items'))return reply(200,{Description:'[ZK-V1]',value:[{InternalName:'ZKKey',FieldTypeKind:2,Indexed:true,EnforceUniqueValues:this.keyUnique},{InternalName:'ZKData',FieldTypeKind:3,SchemaXml:'<Field Type="Note" RichText="'+(this.richText?'TRUE':'FALSE')+'" />'}]});
   if(options.method==='GET'){
    let selected=rows;const key=u.searchParams.get('$filter')?.match(/ZKKey eq '([^']+)'/)?.[1];if(key)selected=rows.filter(r=>r.ZKKey===key);
    const offset=Number(u.searchParams.get('offset')||0);if(offset&&this.failPage)return reply(403);

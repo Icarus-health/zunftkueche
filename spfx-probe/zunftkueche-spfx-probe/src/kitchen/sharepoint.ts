@@ -37,9 +37,9 @@ export class SharePointStore {
    const url=this.list(kind); const found=await this.request(url+'?$select=Description',{method:'GET',headers:{Accept:'application/json;odata=nometadata','odata-version':''}});
    if(found.status===404) await this.http(this.site+'/_api/web/lists','POST',{Title:this.prefix+names[kind],Description:'[ZK-V1] Zunftküche – App-Daten Schema 1. '+(this.testMode?'Ausschließlich künstliche Abnahmedaten.':'Vereinsverwaltung.'),BaseTemplate:100,EnableVersioning:true});
    else {if(!found.ok)throw new Error(`Einrichtung nicht möglich (${found.status}).`);const meta=await found.json() as {Description?:string};if(!meta.Description?.includes('[ZK-V1]'))throw new Error('Eine gleichnamige fremde Liste wird nicht verändert.');}
-   const fields=await (await this.http(url+'/fields?$select=InternalName,FieldTypeKind,RichText')).json() as {value?:Array<{InternalName:string;FieldTypeKind:number;RichText?:boolean}>};
+   const fields=await (await this.http(url+'/fields?$select=InternalName,FieldTypeKind,Indexed,EnforceUniqueValues,SchemaXml')).json() as {value?:Array<{InternalName:string;FieldTypeKind:number;Indexed?:boolean;EnforceUniqueValues?:boolean;SchemaXml?:string}>};
    if(!Array.isArray(fields.value))throw new Error('Listenschema konnte nicht geprüft werden.');
-   for(const [name,type] of [['ZKKey',2],['ZKData',3]] as const){const field=fields.value.find(f=>f.InternalName===name);if(!field)await this.http(url+'/fields','POST',{Title:name,FieldTypeKind:type,Required:true,...(type===2?{Indexed:true,EnforceUniqueValues:true}:{RichText:false})});else if(field.FieldTypeKind!==type||field.RichText===true)throw new Error('Vorhandenes Listenschema passt nicht. Es wird nichts umgebaut.');}
+   for(const [name,type] of [['ZKKey',2],['ZKData',3]] as const){const field=fields.value.find(f=>f.InternalName===name);if(!field)await this.http(url+'/fields','POST',{Title:name,FieldTypeKind:type,Required:true,...(type===2?{Indexed:true,EnforceUniqueValues:true}:{SchemaXml:'<Field Type="Note" Name="ZKData" DisplayName="ZKData" Required="TRUE" RichText="FALSE" AppendOnly="FALSE" />'})});else if(field.FieldTypeKind!==type||(type===2&&(!field.Indexed||!field.EnforceUniqueValues))||(type===3&&/RichText="TRUE"|AppendOnly="TRUE"/i.test(field.SchemaXml||'')))throw new Error('Vorhandenes Listenschema passt nicht. Es wird nichts umgebaut.');}
   }
  }
  private decode<T extends {id:string}>(raw: unknown): Stored<T> {
@@ -78,17 +78,25 @@ export class SharePointStore {
   return {seasons,suppliers,articles,offers,orders:headers.map(h=>this.hydrate(h,positions)),counts};
  }
  public async saveMaster<K extends MasterKind>(kind: K,value: EntityMap[K],previous: Stored<EntityMap[K]> | undefined,operationId: string): Promise<Stored<EntityMap[K]>> {
-  validateEntity(kind,value);if(kind==='counts'&&previous)throw new Error('Bestandsmeldungen bleiben erhalten. Bitte eine neue Zählung erfassen.');return this.put(kind,value,previous,operationId);
+  validateEntity(kind,value);if(kind==='counts'&&previous)throw new Error('Bestandsmeldungen bleiben erhalten. Bitte eine neue Zählung erfassen.');
+  const committed=await this.one<EntityMap[K]>(kind,value.id);
+  if(committed?.operationId===operationId)return this.put(kind,value,previous,operationId);
+  const state=await this.load();
+  if(kind==='offers'){const offer=value as EntityMap['offers'];if(!state.articles.some(a=>a.value.id===offer.articleId&&a.value.active))throw new Error('Artikel fehlt oder ist inaktiv.');if(!state.suppliers.some(s=>s.value.id===offer.supplierId&&s.value.active))throw new Error('Lieferant fehlt oder ist inaktiv.');}
+  if(kind==='counts'){const count=value as EntityMap['counts'];if(!state.seasons.some(s=>s.value.id===count.seasonId&&!s.value.archived))throw new Error('Bitte eine aktive Saison wählen.');const article=state.articles.find(a=>a.value.id===count.articleId&&a.value.active)?.value;if(!article||article.unit!==count.unit)throw new Error('Artikel oder Einheit wurde geändert. Bitte neu laden und erneut zählen.');}
+  if(kind==='articles'){const article=value as EntityMap['articles'];const current=state.articles.find(a=>a.value.id===article.id);if(current&&current.value.unit!==article.unit&&(state.offers.some(o=>o.value.articleId===article.id)||state.counts.some(c=>c.value.articleId===article.id)||state.orders.some(o=>o.value.lines.some(l=>l.articleId===article.id))))throw new Error('Die Einheit eines verwendeten Artikels bleibt erhalten. Bitte einen neuen Artikel anlegen.');}
+  return this.put(kind,value,previous,operationId);
  }
  public async saveOrder(order: Order,previous: Stored<Order> | undefined,operationId: string): Promise<Stored<Order>> {
   validateOrder(order);
   if(previous&&previous.value.status!=='Entwurf'){
    const allowed=previous.value.status==='Bestellt'&&['Abgeschlossen','Storniert'].includes(order.status);
    if(!allowed||!same({...previous.value,status:order.status},order))throw new Error('Bestellte Positionen bleiben erhalten. Bitte eine verknüpfte Nachbestellung anlegen.');
-  }else validateOrder(order,catalog(await this.load()));
+  }
   const {lines,...base}=order;const header: Header={...base,revision:operationId,lineIds:lines.map(l=>l.id)};
   const existing=await this.one<Header>('orders',order.id);
   if(existing?.operationId===operationId){if(!same(existing.value,header))throw new Error('Dieser Speichervorgang hat andere Eingaben. Bitte neu laden.');const restored=this.hydrate(existing,await this.rows<Position>('positions'));if(!same(restored.value,order))throw new Error('Bestellpositionen des Speichervorgangs unterscheiden sich.');return restored;}
+  if(!previous||previous.value.status==='Entwurf')validateOrder(order,catalog(await this.load()));
   if(previous&&existing?.etag!==previous.etag)throw conflict();
   if(!previous&&existing)throw new Error('Diese Bestellung oder Vorjahresübernahme ist bereits vorhanden. Bitte neu laden.');
   for(const line of lines){const position: Position={id:`${order.id}:${operationId}:${line.id}`,orderId:order.id,revision:operationId,line};await this.put('positions',position,undefined,operationId);}

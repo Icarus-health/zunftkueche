@@ -1,0 +1,65 @@
+Zunftküche — kurze Bedienanleitung für Version 1
+
+Diese Anleitung beschreibt die gebaute Version. Die Einrichtung im Kanal
+Küche und die abschließende Prüfung dort stehen noch aus.
+
+1. EINMAL VORBEREITEN
+Nach der Installation zuerst „Arbeitsbereich einrichten“ wählen. Damit werden
+nur die sieben neuen Listen der App auf der Kanal-Seite angelegt. Danach eine
+Saison anlegen, etwa Fasnet 2027. Küche und Zunftscheuer teilen Artikel und
+Lieferanten; Bestellungen und Zählungen sind nach Bereich und Saison getrennt.
+
+2. LIEFERANTEN UND ARTIKEL
+Bei Lieferanten Name, üblichen Bestellweg und bei Bedarf Kontakt oder
+Kundennummer eintragen. Bei Artikeln die Zähleinheit festlegen: etwa kg,
+Flasche oder Stück. Anschließend unter dem Artikel ein Lieferangebot
+hinzufügen: Lieferant, Bestellnummer, Gebinde und Gebindegröße.
+Beispiel: Wasser, Einheit Flasche, Angebot Kiste à 12 Flasche.
+Preis netto je Gebinde und Pfand sind optional. Leere Preise bleiben offen.
+Verwendete Einheiten bleiben fest. Für eine andere Einheit einen neuen Artikel
+anlegen. Nicht mehr benötigte Stammdaten inaktiv setzen; nichts wird gelöscht.
+Artikel und Lieferanten können über CSV mit Vorschau ergänzt werden.
+Lieferangebote werden in dieser Version im Artikel ergänzt.
+
+3. BESTELLEN
+In „Bestellungen“ einen Entwurf anlegen, Lieferanten wählen und dessen
+Lieferangebote hinzufügen. Mengen sind Gebinde: 3 Kiste à 12 ergibt 36 Flasche.
+Dezimalkomma ist erlaubt, etwa 1,5 Sack à 25 kg. Entwürfe können gespeichert
+und später bearbeitet werden.
+Die Bestellung wie gewohnt telefonisch, per E-Mail, im Shop oder bei Abholung
+aufgeben. Anschließend im Entwurf Mengen und Gebinde prüfen, die Prüfkästchen
+setzen und „Als bestellt dokumentieren“ bestätigen. Damit werden Zeitpunkt und
+erfassende Person festgehalten. Die App verschickt selbst keine Bestellung.
+Bestellte Positionen bleiben als Beleg erhalten; Änderungen über eine neue
+verknüpfte Nachbestellung erfassen.
+
+4. AUS DEM VORJAHR ÜBERNEHMEN
+Zielsaison und Bereich wählen, dann „Aus Vorjahr übernehmen“. Ausgangssaison
+und Bestellung auswählen, benötigte Positionen anhaken und Mengen anpassen.
+Es entsteht ein neuer Entwurf. Die alte Bestellung bleibt erhalten. Lieferdatum,
+Bestellnachweis und aktuelle Preise werden zurückgesetzt; Vorjahrespreise sind
+nur eine gekennzeichnete Orientierung. Aktuelle Gebinde noch einmal prüfen.
+Dieselbe Quelle kann je Zielsaison und Bereich nur einmal übernommen werden.
+
+5. ABENDS KURZ ZÄHLEN
+Unter „Heute“ „Bestand zählen“ wählen. Artikel, gezählte Menge und optional
+Nachbestellen/Überhang und einen Hinweis eintragen. Null ist eine gezählte
+Menge; ein Strich bedeutet noch nicht gezählt. Die Übersicht zeigt die letzte
+Zählung dieses Artikels in der gewählten Saison und im gewählten Bereich.
+
+6. WENN DAS SPEICHERN ABBRICHT
+Die App zeigt Erfolg erst nach erneutem Lesen aus SharePoint. Bei unklarem
+Ausgang bleiben Eingaben gesperrt. „Denselben Vorgang erneut versuchen“
+verwendet exakt denselben Speichervorgang und verhindert doppelte Datensätze.
+Mit „Stand laden und Eingaben schließen“ zuerst den tatsächlichen Stand prüfen;
+danach bei Bedarf neu bearbeiten. Fremde Änderungen werden nicht überschrieben.
+Teilweise erfolgte CSV-Importe mit demselben Vorschaufenster fortsetzen.
+
+TECHNISCHER HINWEIS FÜR DIE BETREUUNG
+Das Paket aktualisiert die vorhandene SPFx-Test-Lösung auf 1.1.0.0 und ergänzt
+die produktive Komponente Zunftküche; die alte Testkomponente bleibt erhalten.
+Keine Bereitstellung auf allen Websites aktivieren. Ziel ist ausschließlich die
+SharePoint-Seite des geteilten Kanals Küche. Dort eine Vollseiten-App-Seite
+mit der Komponente Zunftküche anlegen und als SharePoint-Registerkarte im Kanal
+einbinden. Eine Kanalankündigung ist nicht nötig. Vor Freigabe künstliche
+Abnahme über den gekennzeichneten Testmodus durchführen.

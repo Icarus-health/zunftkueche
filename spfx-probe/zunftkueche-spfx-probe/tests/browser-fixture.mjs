@@ -12,7 +12,7 @@ if(!localStorage.getItem(storage)){
  await store.saveOrder({id:'historic',seasonId:'s2026',area:'Küche',supplierId:'sup',supplierName:'TEST Getränkemarkt',status:'Bestellt',occasion:'TEST Vorjahresbestellung',deliveryDate:'2026-02-13',method:'Telefon',note:'Reine Testdaten',sourceId:null,sourceYear:null,recordedBy:'TEST Abnahme',recordedAt:'2026-02-01T12:00:00Z',lines:[{id:'line',articleId:'a',offerId:'off',articleName:'TEST Mineralwasser',code:'W1',unit:'Flasche',packName:'Kiste',packSize:12,quantity:8,priceNet:8.5,priorPriceNet:null,priceYear:null,reviewed:true}]},undefined,'seed-order');
 }
 const root=document.getElementById('kitchen-root');
-const css=await (await fetch('/lib/webparts/kitchen/KitchenWebPart.module.scss.css')).text();
+const css=await (await fetch('/production.css')).text();
 const style=document.createElement('style');style.textContent=css;document.head.append(style);
 const className=css.match(/\.(kitchen_[a-zA-Z0-9]+)/)?.[1]||'kitchen';root.className=className;
 const view=new KitchenView(root,store,'TEST Lokale Abnahme');
