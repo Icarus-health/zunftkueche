@@ -60,6 +60,8 @@ export class WwController {
         return operationForm(this.draft as Recipe | Plan | Movement, this.p.state()); if (this.useTemplate)
         return templateUse(this.useTemplate, documents(this.p.state().ww, 'slot'), this.p.state()); if (this.draft && ['slot', 'rule', 'template', 'prices'].includes(this.draft.kind))
         return procurementForm(this.draft as Slot | Rule | Template | PriceList, this.p.state()); return procurementOverview(this.screen as Screen, this.docs(), this.p.state(), this.p.area()) || operationOverview(this.screen, this.p.state(), this.p.area(), this.p.season(), this.place) || empty('Diesen Bereich bitte über die Navigation öffnen.'); }
+    public renderPlanning(): string { return operationOverview('recipes',this.p.state(),this.p.area(),this.p.season()); }
+    public billForOrder(id:string):void { const order=this.p.state().orders.find(o=>o.value.id===id)?.value;if(!order)throw new Error('Bestellung fehlt.');this.clear();this.screen='bills';this.draft={...this.create('bill') as Bill,supplierId:order.supplierId,orderIds:[id],name:'Rechnung · '+order.supplierName}; }
     public open(screen: Screen): void { this.clear(); this.screen = screen; this.p.redraw(); }
     private create(kind: WwDocument['kind']): WwDocument { const common = { id: crypto.randomUUID(), scope: ['slot', 'plan', 'bill', 'movement', 'system'].includes(kind) ? this.p.season() : 'global', at: new Date().toISOString(), by: this.p.actor, confirmed: false }; const supplierId = this.p.state().suppliers.find(s => s.value.active)?.value.id || ''; if (kind === 'slot')
         return { ...common, kind, name: '', date: today(), time: '', place: this.p.area() }; if (kind === 'rule')
