@@ -72,8 +72,8 @@ export function copyScheduledOrder(source: Order, target: Season, area: Area, st
  const old = withSchedule(source);
  if (old.deliveries!.some(d => !validDate(dates[d.id]))) throw new Error('Bitte für jeden Liefertermin das neue Datum bestätigen.');
  const quantities = Object.fromEntries(old.lines.map(l => [l.id, l.quantity ?? 0]));
- const { deliveries: _deliveries, contributions: _contributions, ...legacy } = source;
- legacy.lines = source.lines.map(l => { const { schedule: _schedule, sources: _sources, ...clean } = l; return clean; });
+ const legacy=structuredClone(source);delete legacy.deliveries;delete legacy.contributions;
+ legacy.lines=source.lines.map(l=>{const clean={...l};delete clean.schedule;delete clean.sources;return clean;});
  const base = copyOrder(legacy, target, area, catalog(state), quantities);
  base.deliveries = old.deliveries!.map(d => ({ ...d, date: dates[d.id] }));
  base.lines = base.lines.map(l => {
@@ -81,7 +81,7 @@ export function copyScheduledOrder(source: Order, target: Season, area: Area, st
   const prior = old.lines.find(x => x.id === l.id)!;
   if (offer.packSize !== prior.packSize || offer.packName !== prior.packName || l.unit !== prior.unit) throw new Error('Gebinde oder Einheit wurde geändert. Bitte die Mengen neu planen: ' + l.articleName);
   const quoted = effectiveOffer(offer, documents(state.ww, 'prices'), base.deliveries![0].date!);
-  const { sources: _sources, ...clean } = l;
+  const clean={...l};delete clean.sources;
   return { ...clean, schedule: structuredClone(prior.schedule!), quantity: prior.quantity, priceNet: quoted.priceNet };
  });
  delete base.contributions;

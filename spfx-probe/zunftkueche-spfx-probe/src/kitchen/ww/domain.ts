@@ -29,7 +29,9 @@ export function validateDocument(v: WwDocument): void {
         throw new Error('Zeitpunkt bitte prüfen.');
     if (typeof v.confirmed !== 'boolean')
         throw new Error('Bestätigung bitte prüfen.');
-    if (v.kind === 'slot') {
+    if(v.kind==='allocation'){area(v.area);list(v.entries,500);unique(v.entries.map(e=>e.planId+':'+e.articleId));for(const e of v.entries){key(e.planId);key(e.articleId);validDate(e.date);amount(e.stockUse);amount(e.incomingUse);}}
+    else if(v.kind==='billLink'){key(v.billId);area(v.area);list(v.orderIds);unique(v.orderIds);v.orderIds.forEach(key);text(v.reason,'Grund der Zuordnung');if(!v.confirmed)throw new Error('Bestellzuordnung bitte bestätigen.');}
+    else if (v.kind === 'slot') {
         text(v.name, 'Terminname', 160);
         validDate(v.date);
         text(v.time, 'Zeitfenster', 80, true);

@@ -1,3 +1,9 @@
+import {ingredientForm,readIngredient} from '../ingredient-form.ts';
+import type {IngredientDraft} from '../ingredient-form';
+import type {Article,Offer} from '../model';
+import {recipeDemand} from './domain.ts';
+import {money} from '../markup.ts';
+import {withSchedule,scheduledOrder} from '../supplier-orders.ts';
 import type { Area, Order, Stored, Workspace } from '../model';
 import type { PriceList, Rule, Slot, Template, WwDocument, Recipe, Plan, Movement, Bill, BillLine } from './model';
 import type { WwStore } from './store';
@@ -9,7 +15,7 @@ import { documents } from './model.ts';
 import { templateOrders, validateDocument, offerIdentity } from './domain.ts';
 import { procurementForm, procurementLine, procurementOverview, templateUse } from './procurement-view.ts';
 import { operationForm, operationLine, operationOverview, demandView } from './operations-view.ts';
-import { planProcurementForm, planOrders } from './plan-procurement.ts';
+import { planProcurementForm, mergePlanOrders,procurementReservation } from './plan-procurement.ts';
 import { exportBusinessRows } from './reports.ts';
 import { TableWizard } from './table-wizard.ts';
 import { billsOverview, billForm, billLine, billDetail } from './bills-view.ts';
@@ -27,6 +33,7 @@ export interface Ports {
     markDirty: () => void;
     redraw: () => void;
     mutate: (work: () => Promise<unknown>, message: string, after?: () => void) => Promise<void>;
+    ingredient?: (article:Article,offer:Offer,operationId:string,after:()=>void)=>Promise<void>;
     orders: (orders: Order[], operationId: string) => Promise<unknown>;
 }
 export class WwController {
@@ -35,6 +42,7 @@ export class WwController {
     private previous?: Stored<WwDocument>;
     private useTemplate?: Template;
     private demand?: Plan;
+    private ingredient?:IngredientDraft;
     private wizard?: TableWizard;
     private procurementPlan?: Plan;
     private place = '';
@@ -43,13 +51,14 @@ export class WwController {
         bytes: Uint8Array;
         hash: string;
     };
+    private billLinking?:Stored<Bill>;
     private billViewing?: Stored<Bill>;
     private operationId = crypto.randomUUID();
     public constructor(private readonly p: Ports) { }
-    public clear(): void { this.screen = ''; this.draft = undefined; this.previous = undefined; this.useTemplate = undefined; this.demand = undefined; this.wizard = undefined; this.procurementPlan = undefined; this.sourceText = ''; this.billUpload = undefined; this.billViewing = undefined; this.operationId = crypto.randomUUID(); }
+    public clear(): void { this.screen = ''; this.draft = undefined; this.ingredient=undefined; this.previous = undefined; this.useTemplate = undefined; this.demand = undefined; this.wizard = undefined; this.procurementPlan = undefined; this.sourceText = ''; this.billUpload = undefined; this.billLinking=undefined;this.billViewing = undefined; this.operationId = crypto.randomUUID(); }
     private docs(): WwDocument[] { return (this.p.state().ww?.records || []).map(r => r.value); }
     public render(): string { if (!this.p.state().ww?.ready)
-        return `<section class="panel"><h1>Warenwirtschaft erweitern</h1><p>Die neuen Bereiche speichern ihre Daten getrennt von euren bisherigen Bestellungen. Die vorhandenen Daten bleiben erhalten.</p>${button('ww-setup', 'Neue Bereiche einrichten', '', true)}</section>`; if (this.procurementPlan)
+        return `<section class="panel"><h1>Warenwirtschaft erweitern</h1><p>Die neuen Bereiche speichern ihre Daten getrennt von euren bisherigen Bestellungen. Die vorhandenen Daten bleiben erhalten.</p>${button('ww-setup', 'Neue Bereiche einrichten', '', true)}</section>`; if(this.billLinking){const b=this.billLinking.value;const links=documents(this.p.state().ww,'billLink').filter(l=>l.billId===b.id).sort((a,b)=>b.at.localeCompare(a.at));const ids=links[0]?.orderIds||b.orderIds;return '<form data-form="ww-bill-link" class="panel"><h1>Bestellzuordnung ergänzen</h1><p>Rechnungswerte und Original bleiben erhalten. Die Ergänzung erhält Zeitpunkt und Begründung.</p>'+this.p.state().orders.filter(o=>o.value.supplierId===b.supplierId&&o.value.seasonId===b.scope&&o.value.area===b.area).map(o=>'<label class="check"><input type="checkbox" name="order_'+h(o.value.id)+'" '+(ids.includes(o.value.id)?'checked':'')+'>'+h(o.value.occasion)+' · '+h(o.value.deliveryDate||'Termin offen')+'</label>').join('')+'<label>Grund der Ergänzung<input name="reason" required maxlength="1000"></label><div class="actions"><button type="submit" class="primary">Zuordnung nachvollziehbar speichern</button>'+button('ww-cancel','Abbrechen')+'</div></form>'; } if (this.ingredient) return ingredientForm(this.ingredient,this.p.state(),true); if (this.procurementPlan)
         return planProcurementForm(this.procurementPlan, this.p.state()); if (this.wizard)
         return this.wizard.render(); if (this.billViewing)
         return billDetail(this.billViewing, this.p.state()); if (this.draft?.kind === 'bill')
@@ -60,21 +69,27 @@ export class WwController {
         return operationForm(this.draft as Recipe | Plan | Movement, this.p.state()); if (this.useTemplate)
         return templateUse(this.useTemplate, documents(this.p.state().ww, 'slot'), this.p.state()); if (this.draft && ['slot', 'rule', 'template', 'prices'].includes(this.draft.kind))
         return procurementForm(this.draft as Slot | Rule | Template | PriceList, this.p.state()); return procurementOverview(this.screen as Screen, this.docs(), this.p.state(), this.p.area()) || operationOverview(this.screen, this.p.state(), this.p.area(), this.p.season(), this.place) || empty('Diesen Bereich bitte über die Navigation öffnen.'); }
-    public renderPlanning(): string { return operationOverview('recipes',this.p.state(),this.p.area(),this.p.season()); }
+    public renderPlanning(): string { this.screen='recipes';return this.render(); }
     public billForOrder(id:string):void { const order=this.p.state().orders.find(o=>o.value.id===id)?.value;if(!order)throw new Error('Bestellung fehlt.');this.clear();this.screen='bills';this.draft={...this.create('bill') as Bill,supplierId:order.supplierId,orderIds:[id],name:'Rechnung · '+order.supplierName}; }
+    private readRecipe(form:HTMLFormElement,original:Recipe):Recipe{const data=new FormData(form),get=(n:string):string=>String(data.get(n)||'').trim();return{...original,name:get('name'),category:get('category'),yield:parseDecimal(get('yield'))!,salePriceGross:parseDecimal(get('salePriceGross')),confirmed:data.has('confirmed'),ingredients:Array.from(form.querySelectorAll<HTMLElement>('[data-line]')).map(row=>{const articleId=row.querySelector<HTMLSelectElement>('[name=articleId]')!.value,article=this.p.state().articles.find(a=>a.value.id===articleId)?.value;return{articleId,quantity:parseDecimal(row.querySelector<HTMLInputElement>('[name=quantity]')!.value)??0,unit:article?.unit||''};})};}
+    public supplierChanged():void{if(this.draft?.kind!=='bill')return;const form=this.p.root.querySelector<HTMLFormElement>('form[data-form=ww-bill]');if(!form)return;for(const input of Array.from(form.querySelectorAll<HTMLInputElement>('[name^=order_]')))input.checked=false;this.draft=this.readBill(form,this.draft);this.p.redraw();}
+    public profileChosen(id:string):void{this.wizard?.useProfile(id);}
+    public updateCosts():void{const form=this.p.root.querySelector<HTMLFormElement>('form[data-form=ww-recipe]'),box=form?.querySelector('[data-recipe-cost]');if(!form||!box||this.draft?.kind!=='recipe')return;try{const r=this.readRecipe(form,this.draft),d=recipeDemand({...r,confirmed:true},1,this.p.state(),documents(this.p.state().ww,'prices'));box.textContent='Wareneinsatz netto je Portion: '+money(d.costNet)+' · gesamtes Rezept: '+money(recipeDemand({...r,confirmed:true},r.yield,this.p.state(),documents(this.p.state().ww,'prices')).costNet)+' · Verkauf brutto: '+money(r.salePriceGross); }catch{box.textContent='Zutatenmengen und Portionen ergänzen, um den Wareneinsatz zu sehen.';}}
     public open(screen: Screen): void { this.clear(); this.screen = screen; this.p.redraw(); }
     private create(kind: WwDocument['kind']): WwDocument { const common = { id: crypto.randomUUID(), scope: ['slot', 'plan', 'bill', 'movement', 'system'].includes(kind) ? this.p.season() : 'global', at: new Date().toISOString(), by: this.p.actor, confirmed: false }; const supplierId = this.p.state().suppliers.find(s => s.value.active)?.value.id || ''; if (kind === 'slot')
-        return { ...common, kind, name: '', date: today(), time: '', place: this.p.area() }; if (kind === 'rule')
+        return { ...common, kind, name: '', date: documents(this.p.state().ww,'slot')[0]?.date || this.p.state().seasons.find(s=>s.value.id===this.p.season())?.value.year+'-02-01', time: '', place: this.p.area() }; if (kind === 'rule')
         return { ...common, kind, supplierId, weekdays: [3, 5, 6, 0], leadDays: 1, cutoff: '', minNet: null, feeNet: null, note: '' }; if (kind === 'template')
         return { ...common, kind, name: '', supplierId, area: this.p.area(), lines: [], note: '' }; if (kind === 'prices')
         return { ...common, kind, name: '', supplierId, validFrom: today(), lines: [] }; if (kind === 'recipe')
         return { ...common, kind, familyId: common.id, name: '', category: '', yield: 1, salePriceGross: null, ingredients: [] }; if (kind === 'plan')
-        return { ...common, kind, name: '', area: this.p.area(), date: today(), lines: [], note: '' }; if (kind === 'movement')
+        return { ...common, kind, name: '', area: this.p.area(), date: documents(this.p.state().ww,'slot')[0]?.date || this.p.state().seasons.find(s=>s.value.id===this.p.season())?.value.year+'-02-01', lines: [], note: '' }; if (kind === 'movement')
         return { ...common, kind, area: this.p.area(), articleId: this.p.state().articles.find(a => a.value.active)?.value.id || '', quantity: 0, unit: '', type: 'waste', place: '', toArea: null, toPlace: '', note: '' }; if (kind === 'bill')
         return { ...common, kind, name: '', supplierId, number: '', date: today(), area: this.p.area(), orderIds: [], fileHash: '', fileName: '', attachment: '', net: null, tax: null, gross: null, adjustmentNet: 0, lines: [], note: '' }; throw new Error('Vorgangsart ist noch nicht ausgewählt.'); }
     public async action(action: string, id: string, target?: HTMLElement): Promise<void> {
         if (this.wizard && await this.wizard.action(action))
             return;
+        if(action==='ww-ingredient'){if(this.draft?.kind!=='recipe')return;this.draft=this.readRecipe(this.p.root.querySelector<HTMLFormElement>('form[data-form=ww-recipe]')!,this.draft);this.ingredient={articleId:crypto.randomUUID(),offerId:crypto.randomUUID(),supplierId:this.p.state().suppliers.find(s=>s.value.active)?.value.id||''};this.p.redraw();return;}
+        if(action==='ww-ingredient-cancel'){this.ingredient=undefined;this.p.redraw();this.updateCosts();return;}
         if (action === 'ww-system-new' || action === 'ww-price-import') {
             if (!this.p.canLeave())
                 return;
@@ -84,7 +99,9 @@ export class WwController {
             this.p.redraw();
             return;
         }
+        if(action==='ww-bill-link'){this.screen='bills';this.billLinking=this.p.state().ww?.records.find(r=>r.value.id===id&&r.value.kind==='bill') as Stored<Bill>|undefined;this.p.redraw();return;}
         if (action === 'ww-bill-view') {
+            this.screen='bills';
             if (!this.p.canLeave())
                 return;
             this.billViewing = this.p.state().ww?.records.find(r => r.value.id === id && r.value.kind === 'bill') as Stored<Bill> | undefined;
@@ -238,7 +255,7 @@ export class WwController {
                 return;
             }
             if (this.draft.kind === 'recipe' || this.draft.kind === 'plan') {
-                form.querySelector('.ww-lines')!.insertAdjacentHTML('beforeend', operationLine(this.draft.kind, this.p.state()));
+                form.querySelector('.ww-lines')!.insertAdjacentHTML('beforeend', operationLine(this.draft.kind, this.p.state()));this.updateCosts();
                 this.p.markDirty();
                 return;
             }
@@ -258,7 +275,7 @@ export class WwController {
             if (!this.p.canLeave())
                 return;
             this.procurementPlan = documents(this.p.state().ww, 'plan').find(d => d.id === id);
-            this.p.redraw();
+            this.demand=undefined;this.p.redraw();
             return;
         }
         if (action === 'ww-demand') {
@@ -281,13 +298,16 @@ export class WwController {
     public async save(form: HTMLFormElement): Promise<void> {
         const data = new FormData(form), get = (key: string): string => String(data.get(key) || '').trim();
         const screen = this.screen;
+        if(form.dataset.form==='ww-bill-link'){const original=this.billLinking!;const orderIds=this.p.state().orders.filter(o=>o.value.supplierId===original.value.supplierId&&o.value.seasonId===original.value.scope&&o.value.area===original.value.area&&data.has('order_'+o.value.id)).map(o=>o.value.id);const link={id:crypto.randomUUID(),kind:'billLink' as const,scope:original.value.scope,area:original.value.area,at:new Date().toISOString(),by:this.p.actor,confirmed:true,billId:original.value.id,orderIds,reason:get('reason')};validateDocument(link);await this.p.mutate(()=>this.p.store.save(link,undefined,this.operationId),'Bestellbezug ergänzt; Rechnungswerte bleiben erhalten.',()=>{this.screen='bills';this.billViewing=original;});return;}
+        if(form.dataset.form==='ww-ingredient'){if(!this.ingredient||this.draft?.kind!=='recipe'||!this.p.ingredient)throw new Error('Zutatenanlage nicht verfügbar.');const value=readIngredient(form,this.ingredient);if(this.p.state().articles.some(a=>a.value.name.toLocaleLowerCase('de-DE')===value.article.name.toLocaleLowerCase('de-DE')))throw new Error('Dieser Artikel existiert bereits. Bitte vorhandene Zutat wählen.');const recipe=structuredClone(this.draft);await this.p.ingredient(value.article,value.offer,this.operationId,()=>{this.screen='recipes';this.draft={...recipe,ingredients:[...recipe.ingredients,{articleId:value.article.id,quantity:0,unit:value.article.unit}]};this.ingredient=undefined;this.p.markDirty();});return;}
         if (form.dataset.form === 'ww-procure') {
             const slot = documents(this.p.state().ww, 'slot').find(s => s.id === get('slot'));
             if (!slot)
                 throw new Error('Liefertermin wählen.');
             const allocations = Array.from(form.querySelectorAll<HTMLElement>('[data-allocation]')).map(r => ({ articleId: r.dataset.allocation!, offerId: r.querySelector<HTMLSelectElement>('[name=offerId]')!.value, stockUse: parseDecimal(r.querySelector<HTMLInputElement>('[name=stockUse]')!.value)!, incomingUse: parseDecimal(r.querySelector<HTMLInputElement>('[name=incomingUse]')!.value)! }));
-            const orders = planOrders(this.procurementPlan!, slot, this.p.state(), allocations), operationId = this.operationId;
-            await this.p.mutate(() => this.p.orders(orders, operationId), 'Bestellentwürfe aus geprüftem Bedarf angelegt.', () => { this.screen = 'plans'; });
+            const targets=Object.fromEntries(this.p.state().suppliers.map(s=>[s.value.id,get('target_'+s.value.id)]));const orders = mergePlanOrders(this.procurementPlan!, slot, this.p.state(), allocations,targets), operationId = this.operationId;
+            const reservation=procurementReservation(this.procurementPlan!,allocations,this.p.state()),previous=this.p.state().ww?.records.find(r=>r.value.id===reservation.id);
+            await this.p.mutate(async()=>{await this.p.store.save(reservation,previous,operationId+'-allocation');return this.p.orders(orders,operationId);}, 'Bedarf in gemeinsame Lieferantenbestellungen übernommen. Gesamte Bestellung vor Abgabe prüfen.', () => { this.screen = 'plans'; });
             return;
         }
         if (form.dataset.form === 'ww-use') {
@@ -299,8 +319,9 @@ export class WwController {
             if (slots.length !== ids.length)
                 throw new Error('Liefertermine wurden geändert. Bitte neu laden.');
             const orders = slots.flatMap(slot => templateOrders({ ...template, lines: template.lines.map((l, i) => ({ ...l, quantity: parseDecimal(get('qty_' + slot.id + '_' + i)) })) }, [slot], this.p.state(), documents(this.p.state().ww, 'prices')));
+            const combined=withSchedule(orders[0],slots.map(s=>({id:s.id,date:s.date,time:s.time,place:s.place})));combined.id='template:'+template.id+':'+this.p.season()+':'+this.p.area().replace('ü','ue');combined.note='';combined.occasion=template.name;combined.lines=combined.lines.map(l=>({...l,schedule:Object.fromEntries(slots.map((slot,index)=>[slot.id,orders[index].lines.find(x=>x.offerId===l.offerId)?.quantity??null]))}));const one=scheduledOrder(combined);
             const operationId = this.operationId;
-            await this.p.mutate(() => this.p.orders(orders, operationId), 'Bestellentwürfe angelegt und nachgelesen.', () => { this.screen = 'templates'; });
+            await this.p.mutate(() => this.p.orders([one], operationId), 'Gemeinsame Lieferantenbestellung angelegt und nachgelesen.', () => { this.screen = 'templates'; });
             return;
         }
         if (!this.draft)

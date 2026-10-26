@@ -160,12 +160,14 @@ export interface SystemImport extends Base {
     rows: SystemRow[];
     recipes: Recipe[];
 }
-export type WwDocument = Slot | Rule | Template | PriceList | Recipe | Plan | Movement | Bill | Profile | SystemImport;
+export interface BillLink extends Base { kind:'billLink'; billId:string; area:Area; orderIds:string[]; reason:string }
+export interface AllocationLedger extends Base {kind:'allocation';area:Area;entries:Array<{planId:string;articleId:string;date:string;stockUse:number;incomingUse:number}>}
+export type WwDocument = AllocationLedger | BillLink | Slot | Rule | Template | PriceList | Recipe | Plan | Movement | Bill | Profile | SystemImport;
 export interface WwState {
     ready: boolean;
     records: Stored<WwDocument>[];
 }
-export const immutableKinds = new Set<WwDocument['kind']>(['prices', 'recipe', 'bill', 'movement', 'system']);
+export const immutableKinds = new Set<WwDocument['kind']>(['prices', 'recipe', 'bill', 'movement', 'system', 'billLink']);
 export function documents<T extends WwDocument['kind']>(state: WwState | undefined, kind: T): Array<Extract<WwDocument, {
     kind: T;
 }>> { return (state?.records || []).map(r => r.value).filter((r): r is Extract<WwDocument, {
