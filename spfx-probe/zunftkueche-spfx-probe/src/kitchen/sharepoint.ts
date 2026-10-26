@@ -1,10 +1,11 @@
+import { WwStore } from './ww/store.ts';
 import { validateEntity, validateOrder } from './domain.ts';
 import { catalog } from './model.ts';
 import type { EntityMap, InventorySession, MasterKind, Order, OrderLine, Receipt, Stored, Workspace } from './model';
 import { validateInventory, validateReceipt } from './operations.ts';
 
-export interface HttpResponse { status: number; ok: boolean; json(): Promise<unknown> }
-export interface HttpOptions { method: string; headers: Record<string,string>; body?: string }
+export interface HttpResponse { status: number; ok: boolean; json(): Promise<unknown>; arrayBuffer?(): Promise<ArrayBuffer> }
+export interface HttpOptions { method: string; headers: Record<string,string>; body?: string | ArrayBuffer }
 export type HttpRequest = (url: string, options: HttpOptions) => Promise<HttpResponse>;
 type ListKind = MasterKind | 'orders' | 'positions' | 'inventories';
 interface Envelope<T> { schema: number; operationId: string; entity: T }
@@ -18,11 +19,13 @@ function key(value: string): void { if (!/^[a-zA-Z0-9:_-]{1,240}$/.test(value)) 
 
 export class SharePointStore {
  public readonly testMode: boolean;
+ public readonly ww: WwStore;
  private readonly site: string;
  private readonly prefix: string;
  public constructor(site: string, private readonly request: HttpRequest, testMode = false) {
   const url = new URL(site); if (url.protocol !== 'https:' || url.search || url.hash) throw new Error('SharePoint-Ziel ist ungültig.');
   this.site=site.replace(/\/$/,'');this.testMode=testMode;this.prefix=testMode?'ZK_AbnahmeV1_':'ZK_V1_';
+  this.ww=new WwStore(this.site,request,testMode,async id=>{const row=await this.one<EntityMap['seasons']>('seasons',id);return !row||row.value.archived;});
  }
  private list(kind: ListKind): string { return `${this.site}/_api/web/lists/getbytitle('${this.prefix+names[kind]}')`; }
  private async http(url: string, method = 'GET', body?: object, extra: Record<string,string> = {}): Promise<HttpResponse> {
