@@ -16,6 +16,6 @@ export type MasterKind = keyof EntityMap;
 export type Master = EntityMap[MasterKind];
 export interface Stored<T> { itemId: number; etag: string; operationId: string; value: T }
 export interface Catalog { seasons: Season[]; suppliers: Supplier[]; articles: Article[]; offers: Offer[] }
-export interface Workspace { seasons: Stored<Season>[]; suppliers: Stored<Supplier>[]; articles: Stored<Article>[]; offers: Stored<Offer>[]; orders: Stored<Order>[]; counts: Stored<Count>[]; inventories?: Stored<InventorySession>[]; inventoriesReady?: boolean }
+export interface Workspace { ww?: import('./ww/model').WwState; seasons: Stored<Season>[]; suppliers: Stored<Supplier>[]; articles: Stored<Article>[]; offers: Stored<Offer>[]; orders: Stored<Order>[]; counts: Stored<Count>[]; inventories?: Stored<InventorySession>[]; inventoriesReady?: boolean }
 export const METHODS: Method[] = ['Telefon', 'E-Mail', 'Onlineshop', 'Abholung'];
 export function catalog(state: Workspace): Catalog { return { seasons: state.seasons.map(x => x.value), suppliers: state.suppliers.map(x => x.value), articles: state.articles.map(x => x.value), offers: state.offers.map(x => x.value) }; }
