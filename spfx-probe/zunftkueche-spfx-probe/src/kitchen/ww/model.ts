@@ -1,3 +1,4 @@
+/* eslint-disable @rushstack/no-new-null -- Unknown business values are explicit in stored documents. */
 import type { Area, Stored } from '../model';
 export interface Base { id:string; kind:string; scope:string; at:string; by:string; confirmed:boolean }
 export interface Slot extends Base { kind:'slot'; name:string; date:string; time:string; place:string }
@@ -12,7 +13,7 @@ export interface BillLine { id:string; articleId:string|null; name:string; quant
 export interface Bill extends Base { kind:'bill'; name:string; supplierId:string; number:string; date:string; area:Area; orderIds:string[]; fileHash:string; fileName:string; attachment:string; net:number|null; tax:number|null; gross:number|null; adjustmentNet:number; lines:BillLine[]; note:string }
 export type Purpose='sales'|'menuOrders';
 export type ImportField='externalId'|'productCode'|'productName'|'quantity'|'unit'|'date'|'status'|'amount'|'currency';
-export interface Profile extends Base { kind:'profile'; name:string; purpose:Purpose; separator:';'|','|'\t'; decimalSeparator:','|'.'; dateFormat:'iso'|'de'|'excel'; basis:'net'|'gross'|'unknown'; columnMap:Partial<Record<ImportField,number>>; mappings:Array<{externalCode:string;productId:string;factor:number}>; activeStatuses:string[]; cancelledStatuses:string[]; refundStatuses:string[] }
+export interface Profile extends Base { kind:'profile'; name:string; purpose:Purpose; separator:';'|','|'\t'; decimalSeparator:','|'.'; dateFormat:'iso'|'de'|'excel'; basis:'net'|'gross'|'unknown'; columnMap:Partial<Record<ImportField,number>>; mappings:Array<{externalCode:string;productId:string;factor:number;unit?:string}>; activeStatuses:string[]; cancelledStatuses:string[]; refundStatuses:string[]; defaultStatus?:'active' }
 export interface SystemRow { externalId:string; productId:string; name:string; quantity:number; date:string; status:'active'|'cancelled'|'refund'; amount:number|null }
 export interface SystemImport extends Base { kind:'system'; name:string; area:Area; purpose:Purpose; sourceId:string; from:string; to:string; fileHash:string; canonicalKey:string; basis:'net'|'gross'|'unknown'; currency:string; rows:SystemRow[]; recipes:Recipe[] }
 export type WwDocument=Slot|Rule|Template|PriceList|Recipe|Plan|Movement|Bill|Profile|SystemImport;
