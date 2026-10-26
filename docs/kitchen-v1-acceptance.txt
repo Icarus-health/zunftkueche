@@ -1,59 +1,111 @@
-Zunftküche Version 1.1.0 — Prüfstand 23.10.2026
+Zunftküche Version 1.1.0 — Prüfstand 26.10.2026
 
-STATUS
-Lokal umgesetzt und als SPFx-Paket gebaut. Diese Version ist noch nicht im
-Teams-Kanal Küche installiert. Der letzte Zugriff auf Safari meldete einen
-gesperrten Mac; die Entsperr-Anfrage ist offen.
+ERGEBNIS
+Installiert und in der nativen Microsoft-Teams-App geprüft.
+Team: Schelmenzunft Staufen Traditionszunft der Staufener Stubengesellschaft 1449 e.V.
+Kanal: Küche (geteilter Kanal)
+Registerkarte: Zunftküche (SharePoint-Vollseiten-App)
+Aktuelle Startansicht: produktiver leerer Arbeitsbereich, ohne Testmodus.
+Produktive Saison, Artikel und Lieferanten sind noch nicht angelegt.
 
-UMFANG
-Heute-Übersicht mit ausdrücklich erfassten Abendbeständen und Nachbestell-/
-Überhang-Hinweis. Artikel, Lieferanten und ihre Lieferangebote mit Gebinden.
-Bestellentwürfe, dokumentierte Bestellungen, verknüpfte Nachbestellungen,
-Saisons und Übernahme ausgewählter Vorjahrespositionen mit neuen Mengen.
-CSV-Vorschau für neue Artikel oder Lieferanten.
+BEREITSTELLUNG
+Bestehendes SPFx-Paket auf Version 1.1.0.0 aktualisiert und nur aktiviert.
+Appkatalog: Enabled, Valid app package Yes, Added to all sites No.
+Auf der eigenen SharePoint-Seite von Küche installiert.
+Die ursprüngliche SPFx-Testkomponente bleibt im Paket erhalten.
+Die bisherige Vorstand-Testseite und bisherige Vereinsdaten wurden nicht
+verändert. Keine Kanalankündigung gesendet, keine Mitgliedschaften geändert.
+Keine neuen Lizenzen, API-Freigaben, Hosting-Dienste oder Bezahlangebote aktiviert.
 
-KOSTEN UND DATEN
-Keine neuen kostenpflichtigen Dienste, keine neuen Abhängigkeiten und keine
-neuen API-Berechtigungen vorgesehen. Speicherung ausschließlich auf der
-SharePoint-Seite des jeweiligen Kanals mit bestehenden Benutzerrechten.
-Originale Test-App und bisherige Vereinsdaten werden erhalten.
-Produktivlisten ZK_V1_* starten leer. Abnahmelisten ZK_AbnahmeV1_* sind getrennt.
+Produktive Seite:
+https://schelmenzunft.sharepoint.com/sites/SchelmenzunftStaufenTraditionszunftderStaufenerStubengesellschaft1449e.V.-Kche/SitePages/Zunftk%C3%BCche.aspx
 
-GEPRÜFT
-33/33 automatisierte Prüfungen erfolgreich. Produktions-Build mit Lint und
-Paketvalidierung erfolgreich, ohne Warnungen. Geprüft sind unter anderem
-Vorjahreskopie ohne Änderung der Quelle, Dezimalkomma und unbekannte Preise,
-Versionskonflikte, unvollständige Bestellrevisionen, Wiederholung verlorener
-Speicherantworten, unveränderliche Bestellhistorie, aktuelle Referenzen und
-Gebinde, eindeutige Schlüssel und Fortsetzung teilweise erfolgter CSV-Importe.
+In Teams unabhängig nach erneutem Öffnen beobachtete Adresse:
+.../SitePages/Zunftk%C3%BCche.aspx?useTeamsAuth=true
+Der Parameter zk-test fehlt. Die Oberfläche zeigt Version 1.1.0 ohne
+Abnahme-Kennzeichnung. Artikel- und Lieferantenliste sind leer.
 
-Im lokalen Browser wurden Lieferant, Artikel und Lieferangebot angelegt,
-Entwürfe gespeichert und erneut gelesen, eine Vorjahresbestellung übernommen
-und bearbeitet sowie 1,5 Sack à 25 kg als 37,5 kg angezeigt.
-Nach der Abschlussprüfung wurden CSS und Fehlerbehandlung korrigiert. Die
-Tests und Paketprüfung sind erneut erfolgreich; die echte schmale Ansicht und
-die neue Bestätigungsanzeige müssen noch im Browser/Teams geprüft werden.
+GEPRÜFT DIREKT IN TEAMS — KONTO SCHREIBER
+1. Saison TEST Fasnet 2026 angelegt und nachgelesen.
+2. TEST Getränkemarkt mit Bestellweg Telefon angelegt.
+3. TEST Mineralwasser mit Zähleinheit Flasche und Lieferangebot
+   TEST-W12 / Kiste à 12 / Nettopreis 8,50 Euro angelegt.
+4. Entwurf mit 8 Kisten gespeichert: 96 Flaschen, 68,00 Euro netto.
+5. Entwurf erneut geöffnet, auf 9 Kisten geändert, Prüffeld gesetzt und
+   über die ausdrückliche Bestätigungsanzeige als bestellt dokumentiert.
+   Erneut gelesen: 9 Kisten, 108 Flaschen, 76,50 Euro netto, Zeitpunkt
+   und Konto Schreiber. Es wurde nichts an einen Lieferanten gesendet.
+6. TEST Fasnet 2027 angelegt. Bestellung aus 2026 mit 10 Kisten übernommen.
+   Neuer Entwurf: Bezug auf 2026; aktueller Preis und Liefertermin leer;
+   Prüfkästchen zurückgesetzt; 8,50 Euro als Vorjahrespreis gekennzeichnet.
+7. Neue Kopie auf 11 Kisten geändert und gespeichert. Nach Neu laden
+   und erneutem Öffnen weiterhin 11 Kisten / 132 Flaschen / Preis offen.
+8. Quelle 2026 erneut geöffnet: unverändert Bestellt, 9 Kisten,
+   ursprünglicher Zeitpunkt und 76,50 Euro netto.
+9. Abendzählung: 24 Flaschen mit Nachbestellhinweis gespeichert.
+   Heute zeigt Menge, Zeitpunkt, Konto und 1 Nachbestellung vorgemerkt.
+10. CSV-Text mit einem künstlichen Artikel TEST CSV Salz / kg geprüft,
+    Vorschau angezeigt, übernommen und als gespeicherten Artikel gelesen.
+11. Kanal verlassen, wieder geöffnet und produktive Registerkarte erneut
+    geöffnet: normale Startansicht ohne Testdaten.
 
-NOCH OFFEN
-Katalog-Update des bestehenden Pakets; Installation ausschließlich auf der
-Küche-SharePoint-Seite; Vollseiten-App anlegen; Teams-Registerkarte Zunftküche
-im Kanal Küche einrichten, ohne Kanalankündigung. Danach künstliche Abnahme
-mit Speichern, Neuladen, Vorjahresübernahme und zwei Konten bei konkurrierender
-Änderung; zuletzt normale leere Produktivoberfläche und Bildschirmnachweis.
+GEPRÜFT MIT ZWEI KONTEN
+Schreiber öffnete den Lieferanteneditor in Teams. Vorstand speicherte
+im Browser einen neueren Telefonwert TEST-B-neuer-Stand und las ihn zurück.
+Der ältere Teams-Editor versuchte TEST-A-veraltet zu speichern. Ergebnis:
+„Der Datensatz wurde inzwischen geändert. Bitte neu laden; fremde Änderungen
+werden nicht überschrieben.“ Die Eingaben wurden gesperrt und die
+Wiederherstellungsoptionen angezeigt. „Stand laden und Eingaben schließen“
+zeigte danach auch in Teams TEST-B-neuer-Stand. Kein Überschreiben.
 
-GRENZEN DER ERSTEN VERSION
-Keine automatische Lieferantenbestellung, kein SumUp-Abgleich und keine
-automatisch errechneten Lagerbestände. Bestelltext kann angezeigt werden.
+AUTOMATISIERTE PRÜFUNGEN
+Vollständige Node-Tests am 26.10.2026: 33/33 erfolgreich, keine Fehler.
+Produktions-Build/Lint/Paketvalidierung vom unveränderten Quellstand
+cbc5e8de7902da081615b590e8ad0adeb099911b erfolgreich.
+Paket unabhängig auf ZIP-Integrität, Version, beide Komponenten, passende
+Produktions-CSS-Klassen und fehlende neue API-Berechtigungen geprüft.
+Paket-SHA256:
+3acb7e237a0b2be658c90e0a1fc37da6f608f99a54f5d990baec08d40b8cc35c
+
+SCREENSHOTS
+Teams-Kueche-Produktiv.jpg — produktiver Start im richtigen Kanal.
+Teams-Vorjahreskopie.jpg — gespeicherte neue Kopie nach erneutem Laden.
+Teams-Konflikttest.jpg — abgewiesene veraltete Änderung und Wiederherstellung.
+
+TESTDATEN UND PRODUKTIVDATEN
+Die künstlichen Prüfdatensätze bleiben ausschließlich in ZK_AbnahmeV1_*
+erhalten. Die normalen ZK_V1_*-Listen sind eingerichtet und leer.
+Keine vorhandenen Vereinsunterlagen importiert, migriert oder gelöscht.
+
+GRENZEN
+Geprüft wurde die native Teams-Desktop-App auf diesem Mac sowie das zweite
+Vereinskonto in Safari. Eine echte iPhone-/Android-Abnahme und Offlinebetrieb
+wurden nicht durchgeführt. Automatischer Lieferantenversand, SumUp-Abgleich
+und automatische Bestandsfortschreibung gehören nicht zu dieser Version.
+Zählungen sind datierte Meldungen; Bestellungen verändern den Bestand nicht.
 Warenwert netto ohne Pfand; unbekannte Preise bleiben sichtbar offen.
-Eine Bestandsmeldung ist eine datierte Zählung. Bestellung und Verbrauch
-verändern den erfassten Bestand nicht automatisch.
-SharePoint ist keine Datenbank mit Transaktionen über mehrere Listen.
-Bestellungen nutzen unveränderliche Positionen und einen abschließenden
-Versionswechsel; Stammdaten werden unmittelbar vor dem Schreiben erneut
-geprüft. Abgebrochene, nicht veröffentlichte Positionen bleiben unsichtbar.
+Gezielte Netzwerkunterbrechungen und teilweise fehlgeschlagene CSV-Importe
+wurden automatisiert geprüft, nicht durch Trennen der echten Teams-Verbindung.
 
-QUELLSTAND
-Lokaler Feature-Zweig feature/kitchen-v1-20261023. Kein GitHub-Push.
-Der öffentliche Upload wurde zuvor von der automatischen Freigabeprüfung
-wegen organisationsbezogener SharePoint-Ziele abgelehnt. Es erfolgte kein
-Umgehen dieser Sperre. Die Quellcodesicherung bleibt lokal.
+TECHNISCHE ENTSCHEIDUNGEN UND FOLGEN
+- Vorhandenen separaten Arbeitsklon weiterverwendet; keine fremde Arbeitskopie
+  verändert. Der lokale Feature-Zweig bleibt für weitere Pflege erhalten.
+- Sieben versionierte Listen mit validiertem Klartext-JSON und eindeutigem
+  Schlüssel. Die App übernimmt Eingabeprüfung und Beziehungen; diese Daten
+  sollten deshalb nicht direkt in den internen SharePoint-Spalten editiert werden.
+- Bestellpositionen werden unveränderlich vorbereitet und erst über den
+  Versionswechsel des Bestellkopfs veröffentlicht. Unveröffentlichte Reste
+  bleiben unsichtbar; sie werden nicht automatisch gelöscht.
+- Moderne Teams-Webansicht mit ES2020-Ziel und exakter Preisrechnung, ohne
+  neue Abhängigkeiten. Alte Browser sind nicht gesondert unterstützt.
+- Bei unklarem Speicherergebnis gleiche Eingaben wiederholen oder zuerst
+  den tatsächlichen Stand laden. Dies verhindert doppelte oder geänderte
+  Wiederholungen und kann bei Störungen einen zusätzlichen Klick erfordern.
+- Teams übernimmt Linkänderungen teils erst nach Verlassen und erneutem
+  Öffnen des Kanals. Der endgültige produktive Link wurde danach nachgelesen.
+
+QUELLCODE
+Lokal gesichert; kein GitHub-Push. Ein öffentlicher Upload war zuvor von der
+automatischen Freigabeprüfung wegen organisationsbezogener SharePoint-Ziele
+abgelehnt worden und wurde nicht umgangen. Die Installation erfolgte
+ausschließlich im vorhandenen Microsoft-365-Mandanten.

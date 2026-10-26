@@ -1,12 +1,13 @@
 Zunftküche — kurze Bedienanleitung für Version 1
 
-Diese Anleitung beschreibt die gebaute Version. Die Einrichtung im Kanal
-Küche und die abschließende Prüfung dort stehen noch aus.
+Die Version ist seit 26.10.2026 im Kanal Küche als Registerkarte Zunftküche
+installiert und in der nativen Teams-App geprüft. Der produktive Arbeitsbereich
+ist eingerichtet und startet leer; die künstlichen Testdaten sind getrennt.
 
 1. EINMAL VORBEREITEN
-Nach der Installation zuerst „Arbeitsbereich einrichten“ wählen. Damit werden
-nur die sieben neuen Listen der App auf der Kanal-Seite angelegt. Danach eine
-Saison anlegen, etwa Fasnet 2027. Küche und Zunftscheuer teilen Artikel und
+Die Listen im Kanal Küche sind bereits eingerichtet. Als ersten Schritt eine
+Saison anlegen, etwa Fasnet 2027. Bei einer späteren Installation an einem
+anderen Ort legt „Arbeitsbereich einrichten“ die sieben neuen App-Listen an. Küche und Zunftscheuer teilen Artikel und
 Lieferanten; Bestellungen und Zählungen sind nach Bereich und Saison getrennt.
 
 2. LIEFERANTEN UND ARTIKEL
@@ -61,5 +62,5 @@ die produktive Komponente Zunftküche; die alte Testkomponente bleibt erhalten.
 Keine Bereitstellung auf allen Websites aktivieren. Ziel ist ausschließlich die
 SharePoint-Seite des geteilten Kanals Küche. Dort eine Vollseiten-App-Seite
 mit der Komponente Zunftküche anlegen und als SharePoint-Registerkarte im Kanal
-einbinden. Eine Kanalankündigung ist nicht nötig. Vor Freigabe künstliche
-Abnahme über den gekennzeichneten Testmodus durchführen.
+einbinden. Eine Kanalankündigung ist nicht nötig. Die getrennte künstliche
+Abnahme wurde am 26.10.2026 durchgeführt. Nach Änderungen erneut prüfen.
