@@ -4,6 +4,7 @@ export class Server {
  constructor(){for(const n of ['Saisons','Artikel','Lieferanten','Lieferangebote','Bestellungen','Bestellpositionen','Bestandsmeldungen'])this.lists.set('ZK_V1_'+n,[]);}
  request=async(url,options)=>{
   const u=new URL(url), name=decodeURIComponent(u.pathname).match(/getbytitle\('([^']+)'\)/)?.[1],rows=this.lists.get(name),body=options.body?JSON.parse(options.body):{};
+  if(u.pathname.endsWith('/_api/web/lists')&&options.method==='POST'){this.lists.set(body.Title,[]);return reply(201);}
   if(!rows)return reply(404);
   if(!u.pathname.includes('/items'))return reply(200,{Description:'[ZK-V1]',value:[{InternalName:'ZKKey',FieldTypeKind:2,Indexed:true,EnforceUniqueValues:this.keyUnique},{InternalName:'ZKData',FieldTypeKind:3,SchemaXml:'<Field Type="Note" RichText="'+(this.richText?'TRUE':'FALSE')+'" />'}]});
   if(options.method==='GET'){

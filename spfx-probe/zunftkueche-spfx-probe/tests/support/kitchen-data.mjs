@@ -1,0 +1,11 @@
+export const season={id:'s2027',name:'Fasnet 2027',year:2027,archived:false};
+export const supplier={id:'sup',name:'Getränkemarkt',phone:'',email:'',method:'Telefon',customerNumber:'',note:'',active:true};
+export const article={id:'water',name:'Mineralwasser',unit:'Flasche',category:'Getränke',active:true};
+export const offer={id:'offer',articleId:'water',supplierId:'sup',code:'W12',packName:'Kiste',packSize:12,priceNet:8.5,priceDate:'2026-10-26',deposit:null,note:'',active:true};
+export const line={id:'line',articleId:'water',offerId:'offer',articleName:'Mineralwasser',code:'W12',unit:'Flasche',packName:'Kiste',packSize:12,quantity:8,priceNet:8.5,priorPriceNet:null,priceYear:null,reviewed:true};
+export const order={id:'order',seasonId:'s2027',area:'Küche',supplierId:'sup',supplierName:'Getränkemarkt',status:'Bestellt',occasion:'Zunftabend',deliveryDate:null,method:'Telefon',note:'',sourceId:null,sourceYear:null,recordedBy:'TEST Person',recordedAt:'2026-10-26T10:00:00Z',lines:[line]};
+export const receipt={id:'receipt',receivedAt:'2026-10-26T12:00:00Z',receivedBy:'TEST Person',note:'Teilmenge',lines:[{lineId:'line',quantity:3}]};
+export const inventoryLine={articleId:'water',articleName:'Mineralwasser',unit:'Flasche',packName:'Kiste',packSize:12,packs:2,loose:3,assessment:'ok',note:''};
+export const inventory={id:'inventory',seasonId:'s2027',area:'Küche',status:'Entwurf',createdAt:'2026-10-26T13:00:00Z',completedAt:null,countedBy:'TEST Person',lines:[inventoryLine]};
+export const stored=value=>({itemId:1,etag:'"1"',operationId:'seed',value});
+export const workspace=()=>({seasons:[stored(season)],suppliers:[stored(supplier)],articles:[stored(article)],offers:[stored(offer)],orders:[stored(order)],counts:[],inventories:[],inventoriesReady:true});

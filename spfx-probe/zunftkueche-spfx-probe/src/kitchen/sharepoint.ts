@@ -1,15 +1,16 @@
 import { validateEntity, validateOrder } from './domain.ts';
 import { catalog } from './model.ts';
-import type { EntityMap, MasterKind, Order, OrderLine, Stored, Workspace } from './model';
+import type { EntityMap, InventorySession, MasterKind, Order, OrderLine, Receipt, Stored, Workspace } from './model';
+import { validateInventory, validateReceipt } from './operations.ts';
 
 export interface HttpResponse { status: number; ok: boolean; json(): Promise<unknown> }
 export interface HttpOptions { method: string; headers: Record<string,string>; body?: string }
 export type HttpRequest = (url: string, options: HttpOptions) => Promise<HttpResponse>;
-type ListKind = MasterKind | 'orders' | 'positions';
+type ListKind = MasterKind | 'orders' | 'positions' | 'inventories';
 interface Envelope<T> { schema: number; operationId: string; entity: T }
 interface Header extends Omit<Order,'lines'> { revision: string; lineIds: string[] }
 interface Position { id: string; orderId: string; revision: string; line: OrderLine }
-const names: Record<ListKind,string> = {seasons:'Saisons',suppliers:'Lieferanten',articles:'Artikel',offers:'Lieferangebote',orders:'Bestellungen',positions:'Bestellpositionen',counts:'Bestandsmeldungen'};
+const names: Record<ListKind,string> = {seasons:'Saisons',suppliers:'Lieferanten',articles:'Artikel',offers:'Lieferangebote',orders:'Bestellungen',positions:'Bestellpositionen',counts:'Bestandsmeldungen',inventories:'Inventuren'};
 const kinds = Object.keys(names) as ListKind[];
 const conflict = (): Error => new Error('Der Datensatz wurde inzwischen geändert. Bitte neu laden; fremde Änderungen werden nicht überschrieben.');
 const same = (a: unknown,b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
@@ -46,7 +47,7 @@ export class SharePointStore {
   const row=raw as {Id?:number;ZKKey?:string;ZKData?:string;'odata.etag'?:string;'@odata.etag'?:string};
   let doc: Envelope<T>;try {doc=JSON.parse(row.ZKData || '') as Envelope<T>;}catch{throw new Error('Ein App-Datensatz ist nicht lesbar. Bitte Administrator informieren.');}
   const etag=row['odata.etag']||row['@odata.etag'];
-  if(doc.schema!==1||!doc.entity||doc.entity.id!==row.ZKKey||!doc.operationId||!etag||etag==='*'||!Number.isInteger(row.Id))throw new Error('Datenschema oder Versionskennung passt nicht. Es wird nichts überschrieben.');
+  if(![1,2].includes(doc.schema)||!doc.entity||doc.entity.id!==row.ZKKey||!doc.operationId||!etag||etag==='*'||!Number.isInteger(row.Id))throw new Error('Datenschema oder Versionskennung passt nicht. Es wird nichts überschrieben.');
   key(doc.entity.id);return {itemId:row.Id!,etag,operationId:doc.operationId,value:doc.entity};
  }
  private async rows<T extends {id:string}>(kind: ListKind, filter?: string): Promise<Stored<T>[]> {
@@ -63,19 +64,25 @@ export class SharePointStore {
   if(previous&&(!current||current.etag!==previous.etag))throw conflict();
   if(!previous&&current)throw new Error('Dieser Datensatz oder diese Vorjahresübernahme ist bereits vorhanden. Bitte neu laden.');
   const label=(value as unknown as {name?:string;supplierName?:string}).name||(value as unknown as {supplierName?:string}).supplierName||names[kind];
-  await this.http(this.list(kind)+'/items'+(current?'('+current.itemId+')':''),'POST',{Title:label.slice(0,200),ZKKey:value.id,ZKData:JSON.stringify({schema:1,operationId,entity:value})},current?{'X-HTTP-Method':'MERGE','IF-MATCH':previous!.etag}:{});
+  const schema=kind==='orders'&&((value as unknown as Header).receipts||[]).length?2:1;
+  const data=JSON.stringify({schema,operationId,entity:value});if(data.length>60000)throw new Error('Der Vorgang ist zu groß für einen Datensatz. Bitte Administrator informieren.');
+  await this.http(this.list(kind)+'/items'+(current?'('+current.itemId+')':''),'POST',{Title:label.slice(0,200),ZKKey:value.id,ZKData:data},current?{'X-HTTP-Method':'MERGE','IF-MATCH':previous!.etag}:{});
   let confirmed: Stored<T> | undefined;try{confirmed=await this.one<T>(kind,value.id);}catch{throw new Error('Speicherung noch nicht bestätigt. Bitte neu laden und den Stand prüfen.');}
   if(!confirmed||confirmed.operationId!==operationId||!same(confirmed.value,value))throw new Error('Speicherung noch nicht bestätigt. Bitte neu laden und den Stand prüfen.');return confirmed;
  }
  private hydrate(header: Stored<Header>,positions: Stored<Position>[]): Stored<Order> {
   const h=header.value;if(!Array.isArray(h.lineIds)||!h.lineIds.length||new Set(h.lineIds).size!==h.lineIds.length)throw new Error('Bestellpositionen sind unvollständig.');
   const lines=h.lineIds.map(id=>{const matches=positions.filter(p=>p.value.orderId===h.id&&p.value.revision===h.revision&&p.value.line.id===id);if(matches.length!==1)throw new Error('Bestellpositionen sind unvollständig. Bitte neu laden.');return matches[0].value.line;});
-  const value: Order={id:h.id,seasonId:h.seasonId,area:h.area,supplierId:h.supplierId,supplierName:h.supplierName,status:h.status,occasion:h.occasion,deliveryDate:h.deliveryDate,method:h.method,note:h.note,sourceId:h.sourceId,sourceYear:h.sourceYear,recordedBy:h.recordedBy,recordedAt:h.recordedAt,lines};validateOrder(value);return {...header,value};
+  const value: Order={id:h.id,seasonId:h.seasonId,area:h.area,supplierId:h.supplierId,supplierName:h.supplierName,status:h.status,occasion:h.occasion,deliveryDate:h.deliveryDate,method:h.method,note:h.note,sourceId:h.sourceId,sourceYear:h.sourceYear,recordedBy:h.recordedBy,recordedAt:h.recordedAt,lines,...(h.receipts?{receipts:h.receipts}:{})};validateOrder(value);return {...header,value};
  }
  public async load(): Promise<Workspace> {
   const [seasons,suppliers,articles,offers,headers,positions,counts]=await Promise.all([this.rows<EntityMap['seasons']>('seasons'),this.rows<EntityMap['suppliers']>('suppliers'),this.rows<EntityMap['articles']>('articles'),this.rows<EntityMap['offers']>('offers'),this.rows<Header>('orders'),this.rows<Position>('positions'),this.rows<EntityMap['counts']>('counts')]);
   for(const [kind,records] of [['seasons',seasons],['suppliers',suppliers],['articles',articles],['offers',offers],['counts',counts]] as const)for(const row of records)validateEntity(kind,row.value);
-  return {seasons,suppliers,articles,offers,orders:headers.map(h=>this.hydrate(h,positions)),counts};
+  const check=await this.request(this.list('inventories')+'?$select=Description',{method:'GET',headers:{Accept:'application/json;odata=nometadata','odata-version':''}});
+  if(check.status!==404&&!check.ok)throw new Error(`Zähllisten nicht lesbar (${check.status}). Bitte Verbindung und Rechte prüfen.`);
+  if(check.ok){const meta=await check.json() as {Description?:string};if(!meta.Description?.includes('[ZK-V1]'))throw new Error('Eine gleichnamige fremde Liste wird nicht verwendet.');}
+  const inventories=check.status===404?[]:await this.rows<InventorySession>('inventories');for(const row of inventories)validateInventory(row.value);
+  return {seasons,suppliers,articles,offers,orders:headers.map(h=>this.hydrate(h,positions)),counts,inventories,inventoriesReady:check.status!==404};
  }
  public async saveMaster<K extends MasterKind>(kind: K,value: EntityMap[K],previous: Stored<EntityMap[K]> | undefined,operationId: string): Promise<Stored<EntityMap[K]>> {
   validateEntity(kind,value);if(kind==='counts'&&previous)throw new Error('Bestandsmeldungen bleiben erhalten. Bitte eine neue Zählung erfassen.');
@@ -89,6 +96,7 @@ export class SharePointStore {
  }
  public async saveOrder(order: Order,previous: Stored<Order> | undefined,operationId: string): Promise<Stored<Order>> {
   validateOrder(order);
+  if(!same(previous?.value.receipts||[],order.receipts||[]))throw new Error('Lieferannahmen bitte über Lieferung prüfen erfassen.');
   if(previous&&previous.value.status!=='Entwurf'){
    const allowed=previous.value.status==='Bestellt'&&['Abgeschlossen','Storniert'].includes(order.status);
    if(!allowed||!same({...previous.value,status:order.status},order))throw new Error('Bestellte Positionen bleiben erhalten. Bitte eine verknüpfte Nachbestellung anlegen.');
@@ -102,5 +110,26 @@ export class SharePointStore {
   for(const line of lines){const position: Position={id:`${order.id}:${operationId}:${line.id}`,orderId:order.id,revision:operationId,line};await this.put('positions',position,undefined,operationId);}
   const previousHeader=previous&&existing?existing:undefined;const saved=await this.put('orders',header,previousHeader,operationId);
   const confirmed=this.hydrate(saved,await this.rows<Position>('positions'));if(!same(confirmed.value,order))throw new Error('Bestellung noch nicht bestätigt. Bitte neu laden.');return confirmed;
+ }
+ public async saveReceipt(previous: Stored<Order>,receipt: Receipt,operationId: string): Promise<Stored<Order>> {
+  const current=await this.one<Header>('orders',previous.value.id);if(!current)throw new Error('Bestellung nicht gefunden.');
+  const order=this.hydrate(current,await this.rows<Position>('positions'));
+  const recorded=(order.value.receipts||[]).find(r=>r.id===receipt.id);
+  if(recorded){if(!same(recorded,receipt))throw new Error('Diese Lieferannahme hat andere Eingaben. Bitte neu laden.');return order;}
+  if(current.etag!==previous.etag)throw conflict();
+  const state=await this.load();if(!state.seasons.some(s=>s.value.id===order.value.seasonId&&!s.value.archived))throw new Error('Bitte eine aktive Saison wählen. Das Archiv bleibt erhalten.');
+  validateReceipt(order.value,receipt);
+  const header:Header={...current.value,receipts:[...(current.value.receipts||[]),structuredClone(receipt)]};
+  const saved=await this.put('orders',header,current,operationId);return this.hydrate(saved,await this.rows<Position>('positions'));
+ }
+ public async saveInventory(value: InventorySession,previous: Stored<InventorySession> | undefined,operationId: string): Promise<Stored<InventorySession>> {
+  validateInventory(value);const current=await this.one<InventorySession>('inventories',value.id);
+  if(current?.operationId===operationId)return this.put('inventories',value,previous,operationId);
+  if(current?.value.status==='Abgeschlossen')throw new Error('Abgeschlossene Zählungen bleiben erhalten. Bitte eine neue Zählung beginnen.');
+  if(previous&&current?.etag!==previous.etag)throw conflict();
+  const state=await this.load();if(!state.seasons.some(s=>s.value.id===value.seasonId&&!s.value.archived))throw new Error('Bitte eine aktive Saison wählen. Das Archiv bleibt erhalten.');
+  if(current&&(current.value.seasonId!==value.seasonId||current.value.area!==value.area||current.value.createdAt!==value.createdAt))throw new Error('Der Zählbereich und Beginn bleiben erhalten.');
+  for(const l of value.lines){const article=state.articles.find(a=>a.value.id===l.articleId)?.value;if(!article||article.unit!==l.unit)throw new Error('Artikel oder Einheit wurde geändert. Bitte neu laden und erneut zählen.');}
+  return this.put('inventories',value,previous,operationId);
  }
 }

@@ -1,5 +1,6 @@
 /* eslint-disable @rushstack/no-new-null -- Null preserves unknown amounts/prices during JSON persistence. */
 import type { Area, Catalog, MasterKind, Order, Season } from './model';
+import { validateStoredReceipts } from './operations.ts';
 
 const methods = ['Telefon', 'E-Mail', 'Onlineshop', 'Abholung'];
 function object(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Datensatz ist ungültig.'); return value as Record<string, unknown>; }
@@ -35,6 +36,7 @@ export function validateOrder(order: Order, state?: Catalog): void {
    if (v.status !== 'Entwurf' && v.status !== 'Storniert' && (!l.reviewed || l.quantity === null || l.quantity === 0)) throw new Error('Alle Mengen und Gebinde vor dem Bestellen prüfen; bestellte Mengen müssen größer als null sein.');
  }
  if ((v.status === 'Bestellt' || v.status === 'Abgeschlossen') && (!v.recordedBy || !v.recordedAt)) throw new Error('Bestellende Person und Zeitpunkt fehlen.');
+ validateStoredReceipts(order);
  if (state) {
    const season = state.seasons.find(s => s.id === order.seasonId); if (!season || season.archived) throw new Error('Bitte eine aktive Saison wählen.');
    if (!state.suppliers.some(s => s.id === order.supplierId && s.active)) throw new Error('Lieferant fehlt oder ist inaktiv.');
@@ -50,5 +52,5 @@ export function copyOrder(source: Order, target: Season, targetArea: Area, state
  const supplier = state.suppliers.find(s => s.id === source.supplierId && s.active); if (!supplier) throw new Error('Lieferant fehlt oder ist inaktiv.');
  const sourceYear = state.seasons.find(s=>s.id === source.seasonId)?.year; if (!sourceYear) throw new Error('Vorjahressaison fehlt.');
  const lines = source.lines.filter(l => Object.hasOwn(quantities,l.id)).map(l => { const article=state.articles.find(a=>a.id===l.articleId && a.active); const offer=state.offers.find(o=>o.id===l.offerId && o.active && o.articleId===l.articleId && o.supplierId===source.supplierId); if (!article || !offer) throw new Error(`Artikel oder Lieferangebot für ${l.articleName} fehlt oder ist inaktiv.`); return {...l,articleName:article.name,unit:article.unit,code:offer.code,packName:offer.packName,packSize:offer.packSize,quantity:quantities[l.id],priceNet:null,priorPriceNet:l.priceNet,priceYear:sourceYear,reviewed:false}; });
- const result: Order = {...structuredClone(source),id:copyId(`${source.id}|${target.id}|${targetArea}`),seasonId:target.id,area:targetArea,supplierName:supplier.name,status:'Entwurf',deliveryDate:null,method:supplier.method,recordedAt:null,recordedBy:null,sourceId:source.id,sourceYear,lines}; validateOrder(result,state); return result;
+ const result: Order = {...structuredClone(source),id:copyId(`${source.id}|${target.id}|${targetArea}`),seasonId:target.id,area:targetArea,supplierName:supplier.name,status:'Entwurf',deliveryDate:null,method:supplier.method,recordedAt:null,recordedBy:null,sourceId:source.id,sourceYear,lines}; delete result.receipts;validateOrder(result,state); return result;
 }
