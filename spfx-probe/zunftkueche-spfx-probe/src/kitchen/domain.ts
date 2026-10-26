@@ -1,5 +1,6 @@
 /* eslint-disable @rushstack/no-new-null -- Null preserves unknown amounts/prices during JSON persistence. */
 import type { Area, Catalog, MasterKind, Order, Season } from './model';
+import { validateSchedule } from './supplier-orders.ts';
 import { validateStoredReceipts } from './operations.ts';
 
 const methods = ['Telefon', 'E-Mail', 'Onlineshop', 'Abholung'];
@@ -36,6 +37,7 @@ export function validateOrder(order: Order, state?: Catalog): void {
    if (v.status !== 'Entwurf' && v.status !== 'Storniert' && (!l.reviewed || l.quantity === null || l.quantity === 0)) throw new Error('Alle Mengen und Gebinde vor dem Bestellen prüfen; bestellte Mengen müssen größer als null sein.');
  }
  if ((v.status === 'Bestellt' || v.status === 'Abgeschlossen') && (!v.recordedBy || !v.recordedAt)) throw new Error('Bestellende Person und Zeitpunkt fehlen.');
+ validateSchedule(order);
  validateStoredReceipts(order);
  if (state) {
    const season = state.seasons.find(s => s.id === order.seasonId); if (!season || season.archived) throw new Error('Bitte eine aktive Saison wählen.');

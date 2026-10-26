@@ -1,4 +1,5 @@
 /* eslint-disable @rushstack/no-new-null -- Blank counts remain explicitly unknown. */
+import { deliveryRemaining } from './supplier-orders.ts';
 import type { Count, InventorySession, Order, Receipt, Workspace } from './model';
 
 function record(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Vorgang ist ungültig.'); return value as Record<string, unknown>; }
@@ -14,8 +15,9 @@ export function validateReceipt(order: Order, receipt: Receipt): void {
  if((order.receipts||[]).length>=100)throw new Error('Für eine Bestellung sind höchstens 100 Lieferannahmen möglich. Bitte einen neuen Vorgang anlegen.');
  if((order.receipts||[]).some(x=>x.id===receipt.id))throw new Error('Doppelte Lieferannahme.');
  if(!Array.isArray(r.lines)||!r.lines.length||r.lines.length>200)throw new Error('Bitte mindestens eine gelieferte Menge angeben.');
+ if(order.deliveries&&!order.deliveries.some(d=>d.id===receipt.deliveryId))throw new Error('Bitte den Liefertermin wählen.');
  const seen=new Set<string>();
- for(const raw of receipt.lines){const l=record(raw);key(l.lineId);if(seen.has(String(l.lineId)))throw new Error('Doppelte Lieferposition.');seen.add(String(l.lineId));amount(l.quantity);if(l.quantity===0)throw new Error('Gelieferte Menge muss größer als null sein.');const ordered=order.lines.find(x=>x.id===l.lineId);if(!ordered||ordered.quantity===null)throw new Error('Bestellposition ist nicht vorhanden.');if(Math.round((receivedQuantity(order,ordered.id)+l.quantity)*10000)>Math.round(ordered.quantity*10000))throw new Error('Die Menge überschreitet die offene Restmenge. Überlieferung bitte zunächst mit dem Lieferanten klären.');}
+ for(const raw of receipt.lines){const l=record(raw);key(l.lineId);if(seen.has(String(l.lineId)))throw new Error('Doppelte Lieferposition.');seen.add(String(l.lineId));amount(l.quantity);if(l.quantity===0)throw new Error('Gelieferte Menge muss größer als null sein.');const ordered=order.lines.find(x=>x.id===l.lineId);if(!ordered||ordered.quantity===null)throw new Error('Bestellposition ist nicht vorhanden.');if(order.deliveries&&Math.round(l.quantity*10000)>Math.round(deliveryRemaining(order,ordered.id,receipt.deliveryId!)*10000))throw new Error('Die Menge überschreitet die Restmenge dieses Liefertermins.');if(Math.round((receivedQuantity(order,ordered.id)+l.quantity)*10000)>Math.round(ordered.quantity*10000))throw new Error('Die Menge überschreitet die offene Restmenge. Überlieferung bitte zunächst mit dem Lieferanten klären.');}
 }
 export function validateStoredReceipts(order: Order): void { if(order.receipts===undefined)return;if(!Array.isArray(order.receipts)||order.receipts.length>100)throw new Error('Lieferhistorie ist ungültig.');if(order.receipts.length&&order.status==='Entwurf')throw new Error('Ein Entwurf kann keine Lieferungen enthalten.');const prior:Receipt[]=[];for(const r of order.receipts){validateReceipt({...order,status:'Bestellt',receipts:prior},r);prior.push(r);} }
 export function countQuantity(packs: number | null, loose: number | null, packSize: number): number | null {

@@ -50,7 +50,7 @@ export class SharePointStore {
   const row=raw as {Id?:number;ZKKey?:string;ZKData?:string;'odata.etag'?:string;'@odata.etag'?:string};
   let doc: Envelope<T>;try {doc=JSON.parse(row.ZKData || '') as Envelope<T>;}catch{throw new Error('Ein App-Datensatz ist nicht lesbar. Bitte Administrator informieren.');}
   const etag=row['odata.etag']||row['@odata.etag'];
-  if(![1,2].includes(doc.schema)||!doc.entity||doc.entity.id!==row.ZKKey||!doc.operationId||!etag||etag==='*'||!Number.isInteger(row.Id))throw new Error('Datenschema oder Versionskennung passt nicht. Es wird nichts überschrieben.');
+  if(![1,2,3].includes(doc.schema)||!doc.entity||doc.entity.id!==row.ZKKey||!doc.operationId||!etag||etag==='*'||!Number.isInteger(row.Id))throw new Error('Datenschema oder Versionskennung passt nicht. Es wird nichts überschrieben.');
   key(doc.entity.id);return {itemId:row.Id!,etag,operationId:doc.operationId,value:doc.entity};
  }
  private async rows<T extends {id:string}>(kind: ListKind, filter?: string): Promise<Stored<T>[]> {
@@ -67,7 +67,7 @@ export class SharePointStore {
   if(previous&&(!current||current.etag!==previous.etag))throw conflict();
   if(!previous&&current)throw new Error('Dieser Datensatz oder diese Vorjahresübernahme ist bereits vorhanden. Bitte neu laden.');
   const label=(value as unknown as {name?:string;supplierName?:string}).name||(value as unknown as {supplierName?:string}).supplierName||names[kind];
-  const schema=kind==='orders'&&((value as unknown as Header).receipts||[]).length?2:1;
+  const schema=(kind==='orders'&&(value as unknown as Header).deliveries)||(kind==='positions'&&(value as unknown as Position).line.schedule)?3:kind==='orders'&&((value as unknown as Header).receipts||[]).length?2:1;
   const data=JSON.stringify({schema,operationId,entity:value});if(data.length>60000)throw new Error('Der Vorgang ist zu groß für einen Datensatz. Bitte Administrator informieren.');
   await this.http(this.list(kind)+'/items'+(current?'('+current.itemId+')':''),'POST',{Title:label.slice(0,200),ZKKey:value.id,ZKData:data},current?{'X-HTTP-Method':'MERGE','IF-MATCH':previous!.etag}:{});
   let confirmed: Stored<T> | undefined;try{confirmed=await this.one<T>(kind,value.id);}catch{throw new Error('Speicherung noch nicht bestätigt. Bitte neu laden und den Stand prüfen.');}
@@ -76,7 +76,7 @@ export class SharePointStore {
  private hydrate(header: Stored<Header>,positions: Stored<Position>[]): Stored<Order> {
   const h=header.value;if(!Array.isArray(h.lineIds)||!h.lineIds.length||new Set(h.lineIds).size!==h.lineIds.length)throw new Error('Bestellpositionen sind unvollständig.');
   const lines=h.lineIds.map(id=>{const matches=positions.filter(p=>p.value.orderId===h.id&&p.value.revision===h.revision&&p.value.line.id===id);if(matches.length!==1)throw new Error('Bestellpositionen sind unvollständig. Bitte neu laden.');return matches[0].value.line;});
-  const value: Order={id:h.id,seasonId:h.seasonId,area:h.area,supplierId:h.supplierId,supplierName:h.supplierName,status:h.status,occasion:h.occasion,deliveryDate:h.deliveryDate,method:h.method,note:h.note,sourceId:h.sourceId,sourceYear:h.sourceYear,recordedBy:h.recordedBy,recordedAt:h.recordedAt,lines,...(h.receipts?{receipts:h.receipts}:{})};validateOrder(value);return {...header,value};
+  const value: Order={id:h.id,seasonId:h.seasonId,area:h.area,supplierId:h.supplierId,supplierName:h.supplierName,status:h.status,occasion:h.occasion,deliveryDate:h.deliveryDate,method:h.method,note:h.note,sourceId:h.sourceId,sourceYear:h.sourceYear,recordedBy:h.recordedBy,recordedAt:h.recordedAt,lines,...(h.receipts?{receipts:h.receipts}:{}),...(h.deliveries?{deliveries:h.deliveries}:{}),...(h.supplierNote!==undefined?{supplierNote:h.supplierNote}:{}),...(h.contributions?{contributions:h.contributions}:{})};validateOrder(value);return {...header,value};
  }
  public async load(): Promise<Workspace> {
   const [seasons,suppliers,articles,offers,headers,positions,counts]=await Promise.all([this.rows<EntityMap['seasons']>('seasons'),this.rows<EntityMap['suppliers']>('suppliers'),this.rows<EntityMap['articles']>('articles'),this.rows<EntityMap['offers']>('offers'),this.rows<Header>('orders'),this.rows<Position>('positions'),this.rows<EntityMap['counts']>('counts')]);
