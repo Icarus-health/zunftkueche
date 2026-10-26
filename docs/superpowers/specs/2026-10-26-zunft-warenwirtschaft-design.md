@@ -29,7 +29,7 @@ Als fachlicher Vergleich dienen Standardfunktionen aus Odoo und ERPNext: Liefera
 | Bestand | Einzelzählung und fortsetzbare Zählliste | Lagerorte, Bewegungsjournal, Umlagerung, Schwund, Leergut, Vergleich von Soll und Ist |
 | Rezepturen | Nicht in der aktuellen SPFx-App | Gerichte und Getränke, Zutaten, Ausbeute, Versionen, Portionsplanung und Einkaufsvorschläge |
 | Rechnungen | Nicht in der aktuellen SPFx-App | Originaldatei, Auslesen, Prüfmaske, Zuordnung und Mengen-/Preisabgleich |
-| SumUp | Nicht angebunden | Artikelverkaufsimport mit Zuordnung, Zeitraumprüfung, Bestseller, Absatz, Erlöse und Rezepturverbrauch |
+| Kassen- und Bestellsysteme | Nicht angebunden | Herstellerneutraler Excel-/CSV-Import für Verkäufe und Menübestellungen mit Zuordnung, Zeitraumprüfung und Dublettenschutz |
 | Saisonabschluss | Bestellübersicht | Einkauf, Absatz, Verbrauch, Rest, Retouren und interne Verpflegung mit Vorjahresvergleich und Export |
 
 Älterer Code enthält fachliche Ansätze für Rechnungsprüfung, Rezepturen, Korrekturen und Bestellplanung. Er hängt teilweise an der früheren Dataverse-Anwendung. Wiederverwendet werden geeignete Regeln und Tests, nicht ungeprüft deren Speicherzugriff. Die alte Bedarfsberechnung begrenzt sich auf Freitag und Samstag; diese Einschränkung darf nicht übernommen werden. Der alte Beleghelfer schlägt nur Kopffelder vor und hat keine aktive PDF- oder Bilderkennung. Er ist kein fertiger Rechnungsimport.
@@ -88,19 +88,30 @@ Eine Rechnung kann mehrere Lieferungen betreffen; eine Lieferung kann über mehr
 
 **Eine Rechnung erzeugt keinen zweiten Lagerzugang.** Datei-Hash und Lieferant plus Rechnungsnummer dienen getrennt zur Dublettenprüfung. Eine bestätigte Rechnung wird durch eine nachvollziehbare Korrektur oder Gutschrift berichtigt, nicht unbemerkt überschrieben. Ein Übertragungsfehler darf keine zweite Rechnung erzeugen.
 
-## SumUp Import
+## Import aus Kassen und Bestellsystemen
 
-Der erste Weg ist ein manuell heruntergeladener Artikelverkaufsbericht mit Importvorschau. Das benötigt keine neue SumUp-Anmeldung der App und keinen kostenpflichtigen Connector. Die konkrete SumUp-Variante ist dem Nutzer noch nicht bekannt. Der Import wird daher als anpassbarer Dateiablauf geplant; eine tatsächliche Exportdatei ist vor Freigabe des passenden Adapters zu prüfen. Das blockiert die übrigen Module nicht.
+Vom Nutzer am 26.10.2026 ausdrücklich präzisiert: Der Import wird herstellerneutral gehalten. Die Produktbezeichnung lautet **Kassen- und Bestellsystem**. Zunächst werden **CSV und Excel im Format .xlsx** unterstützt. Ein bestimmter Hersteller ist weder Pflichtfeld noch Voraussetzung für die übrige Warenwirtschaft. Herstellerspezifische API-Anbindungen sind kein Teil dieses ersten Importwegs.
 
-SumUp dokumentiert unterschiedliche Berichte. Der POS-Artikelverkaufsbericht kann Produkt, Artikelnummer, Menge, Rabatte sowie Brutto- und Nettoumsatz enthalten; seine Struktur und Gruppierung hängen von den Exportfiltern ab. Ein Auszahlungs- oder bloßer Zahlungsbericht reicht deshalb nicht für sichere Bestseller- und Verbrauchsberechnungen. [POS-CSV-Export](https://help.sumup.com/de-DE/pos/articles/75000061013-artikelverkaufsbericht-so-lesen-sie-den-csv-export), [verfügbare Berichte](https://help.sumup.com/de-DE/articles/1K6tiRe1quFjBtGgGSs21e-Berichte).
+Der Ablauf lautet **Datei auswählen → Blatt und Kopfzeile wählen → Spalten zuordnen → Artikel und Zeitraum prüfen → bestätigen**. Die App schlägt passende Spalten vor; unbekannte Überschriften lassen sich manuell zuordnen. Die einmal geprüfte Zuordnung kann als frei benanntes Importprofil gespeichert werden. Beispielsweise „Kasse Zunftscheuer“ oder „Menübestellungen Küche“. Das Quellsystem ist ein frei gewählter Name, kein fest eingebauter Hersteller.
 
-Der Import zeigt Konto-/Standortbezug, Zeitraum, Gruppierung, Währung, Zeilen, Gesamtbeträge und offene Produktzuordnungen. Bekannte Artikel werden über feste SumUp-Kennungen zugeordnet, unbekannte Namen einmalig manuell verbunden. Rabatte werden nicht erneut abgezogen, wenn der Export sie bereits berücksichtigt. Rückerstattung und physische Warenrücknahme sind verschiedene Vorgänge.
+Jeder Import hat einen ausdrücklichen Zweck:
 
-Identische Dateien werden erkannt. Zusätzlich werden inhaltliche Überschneidungen geprüft: dieselben Verkäufe können in einem Tages- und Wochenbericht vorkommen. Wo Einzeldaten keine stabilen Verkaufskennungen liefern, gilt ein abgestimmter nicht überlappender Berichtszeitraum je Standort. Überlappende Berichte dürfen nicht additiv als neuer Verbrauch gebucht werden. Eine Korrektur ersetzt den alten Import kontrolliert oder stellt sie zur Prüfung zurück.
+- **Verkäufe:** bestätigte tatsächliche Absatzmengen, optional Erlöse und Rabatte. Grundlage für Bestseller und – bei bestätigten Rezepturen – rechnerischen Verbrauch. Fehlende Erlöse bleiben offen und werden nicht aus einem aktuellen Verkaufspreis erfunden.
+- **Menübestellungen:** vorbestellte Portionen für einen Veranstaltungstermin. Grundlage für Portionsplanung und Bedarf. Eine noch offene Menübestellung ist kein bereits erfolgter Verkauf und keine zweite Umsatz- oder Verbrauchsbuchung. Stornierte Bestellungen zählen nicht zum Bedarf. Auch eine als erfüllt bezeichnete Bestellung wird nicht allein dadurch als bezahlter Verkauf behandelt.
+
+Typische Zuordnungsfelder sind Datum/Zeitraum, externer Artikelcode, Artikel-/Menübezeichnung, Menge, Einheit, Status, Standort/Bereich sowie optional Einzelpreis, Gesamtbetrag, Währung, Rabatt und externe Vorgangskennung. Welche Spalten erforderlich sind, hängt vom Importzweck ab. Nicht jeder Export muss alle Felder enthalten. Ein bloßer Zahlungs- oder Auszahlungsbericht ohne Artikel und Mengen reicht nicht für Bestseller oder Rezepturverbrauch. Personenbezogene Bestellerdaten sind für die geplante Mengenübernahme nicht erforderlich und werden nicht routinemäßig eingelesen.
+
+CSV-Dateien können unterschiedliche Trennzeichen, Zeichencodierungen, Zahlen- und Datumsformate haben. Das Profil legt diese Interpretation fest; mehrdeutige Werte benötigen eine Entscheidung. Excel-Dateien werden nach Blatt und Kopfzeile eingelesen. Makros, externe Verknüpfungen und Formeln werden nicht ausgeführt. Ein fehlender oder unklarer gespeicherter Formelwert wird zur Prüfung gemeldet. Ältere binäre .xls-Dateien sind zunächst vor dem Import als .xlsx oder CSV zu speichern.
+
+Die Vorschau zeigt Quelle, Importzweck, Saison, Bereich, Datum/Zeitraum, Währung, Summen und offene Produktzuordnungen. Artikel werden über feste externe Kennungen je Quellprofil zugeordnet; unbekannte Namen werden einmalig manuell verbunden. Die gleiche Kennung eines anderen Systems ist nicht automatisch derselbe Artikel. Abweichende Einheiten benötigen eine ausdrückliche Umrechnung. Rabatte werden nicht erneut abgezogen, wenn der Export sie bereits berücksichtigt. Rückerstattung und physische Warenrücknahme sind verschiedene Vorgänge.
+
+Identische Dateien werden anhand der Prüfsumme erkannt. Zusätzlich werden normalisierte Inhalte und Überschneidungen geprüft: Die gleichen Verkäufe können in einem Tages- und Wochenbericht vorkommen. Wo stabile Vorgangskennungen fehlen, gilt ein abgestimmter nicht überlappender Berichtszeitraum je Quelle und Standort. Überlappende Berichte dürfen nicht additiv als neuer Absatz oder Verbrauch übernommen werden. Korrekturen ersetzen einen früheren Import kontrolliert oder bleiben zur Prüfung offen. Auch Umbenennen einer Datei oder erneutes Speichern als Excel darf keinen doppelten Import ermöglichen.
 
 Ein nach Mitternacht endender Zunftabend erhält einen ausdrücklichen Betriebszeitraum. Eine Tageszuordnung wird nicht aus einem Dateinamen erraten. Ohne passende Zeitauflösung darf die App keine exakten stündlichen Bestände berechnen.
 
-Zuerst werden nachvollziehbare Artikelmengen, Bestseller und Erlöse angezeigt. Mit bestätigten Rezepturen kann daraus ein berechneter Sollverbrauch entstehen. Für die erste Betriebsfassung ist als ausdrücklicher Vorschlag festgelegt: Verbrauch entsteht durch direkten Artikelverkauf oder durch Rezepturauflösung der bestätigten Verkäufe. Es gibt keine zusätzliche Herstellungsbuchung und keine automatische Bestandsführung produzierter Portionen. Damit werden dieselben Zutaten nicht zusätzlich schon beim Kochen ausgebucht. Speisenreste können im Abendresümee dokumentiert werden; sie werden nicht automatisch in Rohwaren zurückgerechnet. Eine spätere Produktionsverwaltung wäre ein eigener Ausbau. Echte Zählung und rechnerischer Bestand bleiben sichtbar unterscheidbar.
+Für dieselbe Veranstaltung werden Verkäufe und Menübestellungen getrennt angezeigt. Sie können einander zum Abgleich zugeordnet werden, werden aber nicht blind addiert. Eine manuell gepflegte Portionsplanung und dieselben importierten Menübestellungen dürfen ebenfalls nicht doppelt als Bedarf angerechnet werden; die Planung wählt die gültige Grundlage oder eine ausdrücklich zusätzliche Menge.
+
+Für die erste Betriebsfassung ist festgelegt: Verbrauch entsteht durch direkten Artikelverkauf oder durch Rezepturauflösung der bestätigten Verkäufe. Es gibt keine zusätzliche Herstellungsbuchung und keine automatische Bestandsführung produzierter Portionen. Damit werden dieselben Zutaten nicht zusätzlich schon beim Kochen ausgebucht. Speisenreste können im Abendresümee dokumentiert werden; sie werden nicht automatisch in Rohwaren zurückgerechnet. Eine spätere Produktionsverwaltung wäre ein eigener Ausbau. Echte Zählung und rechnerischer Bestand bleiben sichtbar unterscheidbar.
 
 ## Bestand und Saisonabschluss
 
@@ -126,7 +137,7 @@ Saisonübernahme kopiert Vorlagen und ausgewählte Planungen als neue Entwürfe.
 | Rechnung, Originaldatei, Abgleich | Mehrere Lieferungen je Rechnung möglich, Positionen und Korrekturen |
 | Verkaufsprodukt und Rezepturversion | Ausbeute, Zutaten, direkter Artikelbezug oder Rezepturverbrauch |
 | Portionsplan und Bedarfszuordnung | Verwendungstag, berücksichtigte Bestände und offene Lieferungen |
-| Verkaufsimport und Produktzuordnung | Quellprofil, Zeitraum, Standort, Dateiprüfsumme und Dublettenschutz |
+| Systemimport und Produktzuordnung | Frei benanntes Quellprofil, Zweck Verkäufe/Menübestellungen, Zeitraum, Standort, normalisierte Quelle und Dublettenschutz |
 | Warenbewegung und Zählung | Quelle, Wirksamkeitszeit, Person, Korrekturbezug und Ort |
 
 Bestehende Kennungen und historische Einheiten bleiben erhalten. Neue Bereiche bekommen eigene app-eigene Datengruppen; Dateien liegen in einer vorhandenen SharePoint-Dokumentbibliothek. Speicherzugriff wird von Import- und Rechenregeln getrennt, damit UI-Anpassungen keine Datenmigration verlangen.
@@ -152,7 +163,7 @@ Der gesamte Zielumfang wird gemeinsam geplant, aber in betriebsfähigen Abschnit
 1. **Einkauf und Vorbereitung:** CI, flexible Termine, Lieferregeln, Ordersätze, versionierte Preislisten und Mengenmatrix. Beispielabnahme: Ein Helfer bereitet je Lieferant Ware für Mittwoch, Freitag, Samstag und einen frei hinzugefügten Montag vor; Bestelltext und Lieferannahme zeigen die richtigen Termine.
 2. **Rezepte und Bedarf:** Gerichte/Getränke anlegen, Rezeptversion prüfen, Portionen pro Abend planen, Bestand und offene Lieferungen einmalig anrechnen und echte Bestellentwürfe erzeugen.
 3. **Belege und Warenfluss:** Eure digitalen Rechnungen einlesen, Positionen prüfen, Lieferungen zuordnen, Korrekturen und Direktkäufe erfassen; kein doppelter Warenzugang. Wareneingänge, Lagerorte, Retouren und Umlagerungen funktionieren zusammen.
-4. **SumUp und Abschluss:** Tatsächliches Exportformat einlesen, unbekannte Artikel zuordnen, Zeitüberschneidungen verhindern, Verkäufe und bestätigten Sollverbrauch auswerten, Abendzählung und Saisonbericht verbinden.
+4. **Kassen und Bestellsysteme und Abschluss:** CSV und Excel einlesen, Spalten und Artikel über Importprofile zuordnen, Verkäufe und Menübestellungen getrennt behandeln, Zeitüberschneidungen verhindern, Verkäufe und bestätigten Sollverbrauch auswerten, Abendzählung und Saisonbericht verbinden.
 
 Für jeden Abschnitt: Regeln mit echten Grenzfällen testen, Bedienung mit realistischen Artikellisten und künstlichen Geschäftsvorfällen prüfen, Paket bauen, danach getrennte Prüfung in der vorhandenen Teams-Registerkarte. Änderungen werden lokal vorbereitet; keine tägliche Fernsteuerung des Microsoft-Editors nötig. Eine automatische Veröffentlichungspipeline ist ein eigener, bisher nicht eingerichteter Betriebsweg.
 
@@ -162,10 +173,10 @@ Für die abschließende Abnahme muss eine wenig erfahrene Person ohne Hilfestell
 
 Eine unabhängige Gegenprüfung hat die fehlende Festlegung zur Produktion hervorgehoben. Der Entwurf entscheidet diesen Punkt als Vorschlag für die erste Betriebsfassung: keine gesonderte Herstellungsbuchung, sondern direkter Artikelverbrauch oder Rezepturverbrauch aus bestätigten Verkäufen. Diese Entscheidung vereinfacht den Dienstablauf; sie ist keine bereits vom Nutzer getroffene Fachentscheidung. Weitere wesentliche offene Planungsfragen wurden über die Importmaterialien hinaus nicht benannt.
 
-## Noch vom tatsächlichen Material abhängig
+## Importmaterial und Freigabestand
 
-Der Nutzer hat bestätigt, dass die genaue SumUp-Variante noch nicht bekannt ist. Damit bleibt das tatsächlich verfügbare Exportformat offen. Für die Import-Abnahme wird ein tatsächlicher Artikelverkaufs-Export benötigt; bis dahin ist der SumUp-Adapter ein nachzuweisender Teil, keine bestätigte fertige Integration. Die Antwort ist keine Voraussetzung für die unabhängige Planung von Lieferterminen, Ordersätzen, CI oder Rezepten.
+Der Nutzer hat den Gesamtumfang am 26.10.2026 freigegeben und den Kassenimport ausdrücklich auf einen herstellerneutralen Import aus Kassen- und Menübestellsystemen per Excel oder CSV präzisiert. Die genaue SumUp-Variante ist damit keine Voraussetzung für die Umsetzung. Ein tatsächlicher Export des später eingesetzten Systems bleibt für die abschließende Prüfung dieses Dateiformats nötig. Bis dahin wird mit nachvollziehbaren künstlichen CSV- und Excel-Dateien gearbeitet; damit ist noch keine echte Herstelleranbindung nachgewiesen.
 
 Die acht vorhandenen Rechnungs-PDFs können als lokaler, unveränderter Prüfkorpus dienen. Lieferantenpreislisten in einem strukturierten Format sind noch nicht als bestätigter Prüfkorpus identifiziert. Die bestehende Verkaufs-Preisliste und Test-Excel werden nicht ohne Prüfung als aktuelle Betriebsdaten übernommen.
 
-Freigabe dieses Gesamtumfangs steht aus. Danach folgt der konkrete Implementierungsplan auf der bestehenden SPFx-Basis; keine Produktivveröffentlichung ist mit der Konzeptfreigabe behauptet.
+Die Freigabe betrifft den beschriebenen Funktionsumfang. Die Umsetzung wird auf der bestehenden SPFx-Basis geplant. Eine Produktivveröffentlichung oder Datenübernahme ist damit nicht als bereits erfolgt behauptet.
