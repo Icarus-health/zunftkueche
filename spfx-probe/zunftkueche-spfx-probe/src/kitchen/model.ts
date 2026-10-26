@@ -9,7 +9,7 @@ export interface OrderLine { id: string; articleId: string; offerId: string; art
 export interface Receipt { id: string; receivedAt: string; receivedBy: string; note: string; lines: Array<{lineId: string; quantity: number}> }
 export interface Order { id: string; seasonId: string; area: Area; supplierId: string; supplierName: string; status: 'Entwurf' | 'Bestellt' | 'Abgeschlossen' | 'Storniert'; occasion: string; deliveryDate: string | null; method: Method; note: string; sourceId: string | null; sourceYear: number | null; recordedBy: string | null; recordedAt: string | null; lines: OrderLine[]; receipts?: Receipt[] }
 export interface Count { id: string; seasonId: string; area: Area; articleId: string; articleName: string; unit: string; quantity: number; countedAt: string; countedBy: string; note: string; reorder: boolean; surplus?: boolean }
-export interface InventoryLine { articleId: string; articleName: string; unit: string; packName: string; packSize: number; packs: number | null; loose: number | null; assessment: 'ok' | 'reorder' | 'surplus'; note: string }
+export interface InventoryLine { articleId: string; articleName: string; unit: string; packName: string; packSize: number; packs: number | null; loose: number | null; assessment: 'ok' | 'reorder' | 'surplus'; note: string; countedAt?: string; countedBy?: string }
 export interface InventorySession { id: string; seasonId: string; area: Area; status: 'Entwurf' | 'Abgeschlossen'; createdAt: string; completedAt: string | null; countedBy: string; lines: InventoryLine[] }
 export interface EntityMap { seasons: Season; suppliers: Supplier; articles: Article; offers: Offer; counts: Count }
 export type MasterKind = keyof EntityMap;

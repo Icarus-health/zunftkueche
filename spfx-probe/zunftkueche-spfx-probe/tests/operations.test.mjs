@@ -28,7 +28,15 @@ test('counting distinguishes blank from zero and converts packs plus loose units
 test('draft inventories are not observations and unfinished rows never become zero counts',()=>{
  const observed=fn('observedCounts');const state=workspace();state.inventories=[stored(inventory)];assert.equal(observed(state).length,0);
  state.inventories=[stored({...inventory,status:'Abgeschlossen',completedAt:'2026-10-26T14:00:00Z',lines:[inventoryLine,{...inventoryLine,articleId:'salt',articleName:'Salz',packs:null,loose:null}]})];
- const counts=observed(state);assert.equal(counts.length,1);assert.equal(counts[0].quantity,27);assert.equal(counts[0].countedAt,'2026-10-26T14:00:00Z');
+ const counts=observed(state);assert.equal(counts.length,1);assert.equal(counts[0].quantity,27);assert.equal(counts[0].countedAt,inventory.createdAt);
+});
+test('completing an old draft preserves observation time and cannot replace a newer count',()=>{
+ const state=workspace();state.counts=[stored({id:'fresh',seasonId:inventory.seasonId,area:inventory.area,articleId:'water',articleName:'Mineralwasser',unit:'Flasche',quantity:5,countedAt:'2026-10-26T14:00:00Z',countedBy:'Fresh counter',note:'',reorder:false})];
+ state.inventories=[stored({...inventory,status:'Abgeschlossen',completedAt:'2026-10-27T18:00:00Z',countedBy:'Finisher',lines:[{...inventoryLine,countedAt:'2026-10-26T13:00:00Z',countedBy:'Original counter'}]})];
+ assert.equal(ops.latestCounts(state,inventory.seasonId,inventory.area)[0].quantity,5);
+ const historical=ops.observedCounts(state).find(c=>c.id==='inventory:water');assert.equal(historical.countedBy,'Original counter');assert.equal(historical.countedAt,'2026-10-26T13:00:00Z');
+ delete state.inventories[0].value.lines[0].countedAt;delete state.inventories[0].value.lines[0].countedBy;
+ assert.equal(ops.latestCounts(state,inventory.seasonId,inventory.area)[0].quantity,5,'legacy drafts conservatively retain their start time');
 });
 test('inventory validation rejects duplicate articles and empty completion',()=>{
  const validate=fn('validateInventory');validate(inventory);

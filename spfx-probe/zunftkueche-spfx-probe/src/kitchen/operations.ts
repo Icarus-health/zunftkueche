@@ -11,6 +11,7 @@ export function deliveryState(order: Order): string { if(!(order.receipts||[]).l
 export function validateReceipt(order: Order, receipt: Receipt): void {
  const r=record(receipt);key(r.id);time(r.receivedAt);text(r.receivedBy,'Erfassende Person',200);text(r.note,'Hinweis',1000,true);
  if(order.status!=='Bestellt')throw new Error('Lieferungen nur zu tatsächlich aufgegebenen, bestellten Vorgängen erfassen.');
+ if((order.receipts||[]).length>=100)throw new Error('Für eine Bestellung sind höchstens 100 Lieferannahmen möglich. Bitte einen neuen Vorgang anlegen.');
  if((order.receipts||[]).some(x=>x.id===receipt.id))throw new Error('Doppelte Lieferannahme.');
  if(!Array.isArray(r.lines)||!r.lines.length||r.lines.length>200)throw new Error('Bitte mindestens eine gelieferte Menge angeben.');
  const seen=new Set<string>();
@@ -26,13 +27,13 @@ export function validateInventory(value: InventorySession): void {
  const v=record(value);key(v.id);key(v.seasonId);if(v.area!=='Küche'&&v.area!=='Zunftscheuer')throw new Error('Bereich bitte prüfen.');time(v.createdAt);text(v.countedBy,'Erfassende Person',200);
  if(v.status!=='Entwurf'&&v.status!=='Abgeschlossen')throw new Error('Zählstatus bitte prüfen.');if(v.status==='Entwurf'&&v.completedAt!==null)throw new Error('Der Zählentwurf darf nicht abgeschlossen sein.');if(v.status==='Abgeschlossen')time(v.completedAt);
  if(!Array.isArray(v.lines)||!v.lines.length||v.lines.length>300)throw new Error('Bitte zwischen einem und 300 Artikeln zählen.');const seen=new Set<string>();let counted=0;
- for(const raw of value.lines){const l=record(raw);key(l.articleId);if(seen.has(String(l.articleId)))throw new Error('Doppelter Artikel in der Zählung.');seen.add(String(l.articleId));text(l.articleName,'Artikelname',160);text(l.unit,'Einheit',40);text(l.packName,'Gebinde',40);text(l.note,'Hinweis',1000,true);if(!['ok','reorder','surplus'].includes(String(l.assessment)))throw new Error('Einschätzung bitte prüfen.');if(countQuantity(l.packs as number|null,l.loose as number|null,l.packSize as number)!==null)counted++;}
+ for(const raw of value.lines){const l=record(raw);key(l.articleId);if(seen.has(String(l.articleId)))throw new Error('Doppelter Artikel in der Zählung.');seen.add(String(l.articleId));text(l.articleName,'Artikelname',160);text(l.unit,'Einheit',40);text(l.packName,'Gebinde',40);text(l.note,'Hinweis',1000,true);if(l.countedAt!==undefined||l.countedBy!==undefined){time(l.countedAt);text(l.countedBy,'Zählende Person',200);}if(!['ok','reorder','surplus'].includes(String(l.assessment)))throw new Error('Einschätzung bitte prüfen.');if(countQuantity(l.packs as number|null,l.loose as number|null,l.packSize as number)!==null)counted++;}
  if(v.status==='Abgeschlossen'&&!counted)throw new Error('Bitte mindestens eine Menge zählen.');
  if(JSON.stringify(value).length>58000)throw new Error('Die Zählliste ist zu groß. Bitte Hinweise kürzen oder weniger Artikel gemeinsam erfassen.');
 }
 export function observedCounts(state: Workspace): Count[] {
  const counts=state.counts.map(c=>c.value);
- for(const {value:s}of state.inventories||[]){if(s.status!=='Abgeschlossen'||!s.completedAt)continue;for(const l of s.lines){const quantity=countQuantity(l.packs,l.loose,l.packSize);if(quantity===null)continue;counts.push({id:s.id+':'+l.articleId,seasonId:s.seasonId,area:s.area,articleId:l.articleId,articleName:l.articleName,unit:l.unit,quantity,countedAt:s.completedAt,countedBy:s.countedBy,note:l.note,reorder:l.assessment==='reorder',surplus:l.assessment==='surplus'});}}
+ for(const {value:s}of state.inventories||[]){if(s.status!=='Abgeschlossen'||!s.completedAt)continue;for(const l of s.lines){const quantity=countQuantity(l.packs,l.loose,l.packSize);if(quantity===null)continue;counts.push({id:s.id+':'+l.articleId,seasonId:s.seasonId,area:s.area,articleId:l.articleId,articleName:l.articleName,unit:l.unit,quantity,countedAt:l.countedAt||s.createdAt,countedBy:l.countedBy||s.countedBy,note:l.note,reorder:l.assessment==='reorder',surplus:l.assessment==='surplus'});}}
  return counts;
 }
 export function latestCounts(state: Workspace, seasonId: string, area: string): Count[] { const latest=new Map<string,Count>();for(const c of observedCounts(state).filter(c=>c.seasonId===seasonId&&c.area===area).sort((a,b)=>a.countedAt.localeCompare(b.countedAt)||a.id.localeCompare(b.id)))latest.set(c.articleId,c);return [...latest.values()]; }

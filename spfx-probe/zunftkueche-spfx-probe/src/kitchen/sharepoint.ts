@@ -120,6 +120,7 @@ export class SharePointStore {
   const state=await this.load();if(!state.seasons.some(s=>s.value.id===order.value.seasonId&&!s.value.archived))throw new Error('Bitte eine aktive Saison wählen. Das Archiv bleibt erhalten.');
   validateReceipt(order.value,receipt);
   const header:Header={...current.value,receipts:[...(current.value.receipts||[]),structuredClone(receipt)]};
+  validateOrder({...order.value,receipts:header.receipts});
   const saved=await this.put('orders',header,current,operationId);return this.hydrate(saved,await this.rows<Position>('positions'));
  }
  public async saveInventory(value: InventorySession,previous: Stored<InventorySession> | undefined,operationId: string): Promise<Stored<InventorySession>> {

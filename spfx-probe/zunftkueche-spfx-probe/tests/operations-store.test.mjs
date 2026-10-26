@@ -10,6 +10,12 @@ test('receipt persistence is idempotent after an acknowledged write response is 
  const loaded=(await store.load()).orders[0];assert.equal(loaded.value.receipts.length,1);assert.equal(loaded.value.receipts[0].receivedAt,receipt.receivedAt);
  const raw=JSON.parse(server.lists.get('ZK_V1_Bestellungen')[0].ZKData);assert.equal(raw.schema,2,'older clients must reject a header with receipts');
 });
+test('a receipt history limit rejects before writing and leaves the workspace readable',async()=>{
+ const {server}=await setup();const isolated=new SharePointStore('https://example.sharepoint.com/sites/kitchen',server.request);
+ const header=server.lists.get('ZK_V1_Bestellungen')[0];const envelope=JSON.parse(header.ZKData);envelope.schema=2;envelope.entity.receipts=Array.from({length:100},(_,i)=>({...receipt,id:'r'+i,lines:[{lineId:'line',quantity:.01}]}));header.ZKData=JSON.stringify(envelope);
+ const current=(await isolated.load()).orders[0];await assert.rejects(isolated.saveReceipt(current,{...receipt,id:'r101',lines:[{lineId:'line',quantity:.01}]},'too-many'),/100|Lieferhistorie|Lieferannahmen/);
+ assert.equal((await isolated.load()).orders[0].value.receipts.length,100);
+});
 test('competing receiving rejects a stale version without overreceiving',async()=>{
  const {store,saved}=await setup();assert.equal(typeof store.saveReceipt,'function');await store.saveReceipt(saved,{...receipt,lines:[{lineId:'line',quantity:6}]},'first');
  await assert.rejects(store.saveReceipt(saved,{...receipt,id:'other',lines:[{lineId:'line',quantity:6}]},'other'),/geändert/);

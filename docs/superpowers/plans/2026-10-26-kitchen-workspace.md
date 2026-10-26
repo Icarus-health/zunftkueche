@@ -23,23 +23,23 @@
 ### Task 1: Reliable receipt and inventory domain/storage
 **Files:** src/kitchen/model.ts, domain.ts, sharepoint.ts; new operations.ts; tests/operations.test.mjs and operations-store.test.mjs; support/fake-sharepoint.mjs.
 **Interfaces:** Receipt on Order; InventorySession/InventoryLine; Workspace.inventories/inventoriesReady optional; `receivedQuantity`, `deliveryState`, `validateReceipt`, `countQuantity`, `validateInventory`, `observedCounts`; `SharePointStore.saveReceipt` and `saveInventory`.
-- [ ] Write tests for partial/excess/duplicate receipts, reset on copy, blank/zero/pack counts, archive and draft visibility.
-- [ ] Run new tests and observe failures from missing behavior.
-- [ ] Implement domain/storage with version/readback guarantees.
-- [ ] Run full test suite and commit a verified change.
+- [x] Write tests for partial/excess/duplicate receipts, reset on copy, blank/zero/pack counts, archive and draft visibility.
+- [x] Run new tests and observe failures from missing behavior.
+- [x] Implement domain/storage with version/readback guarantees.
+- [x] Run full test suite and commit a verified change.
 
 ### Task 2: Functional workspace UI matching selected image
 **Files:** src/kitchen/view.ts, forms.ts, markup.ts; new workspace.ts and operation-forms.ts; KitchenWebPart.module.scss; tests/view.test.mjs; browser-fixture.mjs.
 **Interfaces:** Real dashboard/receipt/count data; nav Heute/Einkauf/Bestand/Planung/Auswertung/Verwaltung; existing article/supplier actions remain supported.
-- [ ] Add behavioral UI tests for task navigation, receipt and counting draft workflows, filtering and stable retry payload.
-- [ ] Observe new tests fail, then implement UI and styles.
-- [ ] Update the fixture with realistic synthetic scenarios, using no external services or real records.
-- [ ] Run full tests and production build; commit.
+- [x] Add behavioral UI tests for task navigation, receipt and counting draft workflows, filtering and stable retry payload.
+- [x] Observe new tests fail, then implement UI and styles.
+- [x] Update the fixture with realistic synthetic scenarios, using no external services or real records.
+- [x] Run full tests and production build; commit.
 
 ### Task 3: Browser and visual acceptance, package and handoff
 **Files:** design-qa.md, README/usage notes, package version/config, local output artifacts.
-- [ ] Open the selected image and run the existing local fixture against current compiled production code.
-- [ ] Exercise key paths at desktop and narrow viewports; check console errors.
-- [ ] Compare the selected target and implementation in one comparison view; fix important mismatches and recapture.
-- [ ] Run full tests and final production packaging, obtain one fresh whole-change review, address material findings.
-- [ ] Save the working preview, package and usage notes; state local versus published evidence explicitly.
+- [x] Open the selected image and run the existing local fixture against current compiled production code.
+- [x] Exercise key paths at desktop and narrow viewports; check console errors.
+- [x] Compare the selected target and implementation in one comparison view; fix important mismatches and recapture.
+- [x] Run full tests and final production packaging, obtain one fresh whole-change review, address material findings.
+- [x] Save the working preview, package and usage notes; state local versus published evidence explicitly.

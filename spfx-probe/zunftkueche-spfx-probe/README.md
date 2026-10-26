@@ -1,3 +1,59 @@
+# Zunftküche 1.2.0 – Arbeitsbereich
+
+Stand 26.10.2026: lokal gebaut und mit künstlichen Daten geprüft. Dieses Update wurde noch nicht in SharePoint veröffentlicht oder in Teams abgenommen.
+
+## Bedienung
+
+- **Heute:** konkrete Aufgaben, erwartete Lieferungen und zuletzt gezählte Bestände. Die Anzeige verwendet tatsächliche Erfassungen; sie berechnet keinen laufenden Lagerbestand aus Verkäufen.
+- **Einkauf:** Bestellungen vorbereiten, tatsächliche Bestellung dokumentieren, Bestelltext anzeigen und Lieferungen prüfen. Teilmengen bleiben mit Zeitpunkt und Person in der Historie. Eine Dokumentation versendet keine Bestellung an den Lieferanten.
+- **Bestand:** Gebinde plus Einzelmenge zählen, als Entwurf speichern und später fortsetzen. Leer bedeutet ungeprüft, 0 bedeutet nichts vorhanden. Beim Abschluss können bewusst ungeprüfte Artikel offenbleiben. Jede Mengenbeobachtung behält ihren Erfassungszeitpunkt und ihre Person; das Abschließen eines alten Entwurfs aktualisiert alte Mengen nicht künstlich.
+- **Planung:** Positionen einer Vorjahresbestellung mit angepassten Mengen als neuen Entwurf übernehmen. Liefertermine, Bestellstatus, aktuelle Preise und Lieferungen werden nicht übernommen. Frühere Preise bleiben als Vergleich sichtbar.
+- **Verwaltung:** Artikel, Lieferanten, Lieferangebote und Saisons pflegen. CSV-Vorschau für neue Artikel und Lieferanten bleibt verfügbar.
+- **Auswertung:** Bestellwerte und Lieferfortschritt aus erfassten Daten. Unbekannte Preise bleiben offen.
+
+Noch nicht umgesetzt: SumUp-Import, Rezepturen und Zutatenverbrauch, automatischer Lagerabgang, Pfandabrechnung, Retouren, mobile Teams-Abnahme und automatische Veröffentlichung. Diese Funktionen werden nicht durch Demo-Kennzahlen vorgetäuscht.
+
+## Kosten und Daten
+
+Keine neuen Dienste, Lizenzen, API-Berechtigungen oder Laufzeit-Abonnements. Statische Dateien liegen im vorhandenen SPFx-Paket, Speicherung erfolgt auf der bestehenden Kanal-SharePoint-Seite mit den bisherigen Rechten.
+
+Die bisherigen sieben `ZK_V1_`-Listen bleiben erhalten. Die neue optionale Liste `ZK_V1_Inventuren` wird erst durch **Zählliste einrichten** angelegt. Es werden keine Excel-Dateien oder Beispieldaten in die echte App importiert. Testdaten bleiben im separaten Testbereich bzw. in der lokalen Vorschau.
+
+## Lokale Vorschau und Änderungen am Code
+
+Voraussetzung: Node.js 22. Im Ordner dieser README:
+
+```sh
+npm ci
+npm run test:probe
+npm run build
+npm run preview:local
+```
+
+Dann `http://127.0.0.1:53429/` öffnen. Die Vorschau verwendet den gebauten Produktionscode mit einem künstlichen SharePoint-Ersatz und speichert ausschließlich Beispieldaten im Browser. Sie benötigt keine Microsoft-Anmeldung. Nach Codeänderungen erneut `npm run build` ausführen und die Seite neu laden. Der Server bindet nur an die lokale Loopback-Adresse.
+
+Die Einstiegsdateien sind:
+
+- `src/kitchen/workspace.ts`: Startseite, Aufgaben, Navigation und Bereichsübersichten.
+- `src/kitchen/view.ts`: Bedienabläufe und Speichern.
+- `src/kitchen/operation-forms.ts`: Lieferprüfung und Zählliste.
+- `src/webparts/kitchen/KitchenWebPart.module.scss`: Farben, Schriften, Abstände und Bildschirmgrößen.
+- `src/kitchen/model.ts`, `operations.ts`, `sharepoint.ts`: Daten, Regeln und SharePoint-Speicherung.
+
+Kein GitHub-Abgleich oder Pipeline eingerichtet. Änderungen sind lokal nachvollziehbar in Git gespeichert. Die Vorschau ist keine Online-App für die Vereinsmitglieder.
+
+## Update des bestehenden Pakets
+
+Gebautes Paket: `sharepoint/solution/zunftkueche-spfx-probe.sppkg`, Solution-/Feature-Version **1.2.0.0**. Bestehende Solution- und Webpart-IDs bleiben gleich. Vor Veröffentlichung vorhandenes Paket und SharePoint-Listen sichern bzw. vorhandene Versionierung prüfen. Nur die bestehende App im App-Katalog aktualisieren; keine neue Teams-App und keine weiteren Berechtigungen anlegen. Die vorhandene Registerkarte im Kanal Küche soll dieselbe SharePoint-Seite weiterverwenden. Anschließend sichtbare Version, Datenladen, Speichern/Neuladen und Konfliktverhalten direkt in Teams prüfen.
+
+**Versionsgrenze:** Sobald Lieferannahmen erfasst sind, verwenden Bestellköpfe Schema 2. Ein alter Client verweigert damit das Lesen, statt die Historie zu überschreiben. Ein Rücksprung auf 1.1 ist nach erster Lieferannahme nicht ohne abgestimmte Datenbehandlung möglich. Neue Lieferannahmen sind auf 100 pro Bestellung begrenzt; die Grenze wird vor dem Schreiben geprüft.
+
+Die Prüfung und ihre Grenzen sind in `design-qa.md` festgehalten. Schriften/Icons stammen aus dem vorhandenen Fluent-UI-Paket; Lizenzhinweis in `src/webparts/kitchen/assets/`.
+
+---
+
+## Historische Machbarkeitsprobe (unverändert dokumentiert)
+
 # Zunftküche SPFx connection probe
 
 Isolated feasibility test approved on 22 October 2026. This is not a replacement release or data migration. Existing application code, Dataverse, roles, channels and kitchen records remain unchanged.

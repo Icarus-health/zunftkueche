@@ -10,7 +10,8 @@
     "clean": "heft clean",
     "eject-webpack": "heft eject-webpack",
     "start": "heft start --clean",
-    "test:probe": "node --experimental-strip-types --experimental-transform-types --test tests/*.test.mjs"
+    "test:probe": "node --experimental-strip-types --experimental-transform-types --test tests/*.test.mjs",
+    "preview:local": "node tests/preview-server.mjs"
   },
   "dependencies": {
     "tslib": "2.3.1",
