@@ -1,13 +1,77 @@
 /* eslint-disable @rushstack/no-new-null -- Uncounted inventory remains unknown. */
-import type{Order,Workspace}from'../model';
-import type{Plan,Slot}from'./model';
-import{documents}from'./model.ts';
-import{recipeDemand,stockProjection,round,templateOrders}from'./domain.ts';
-import{receivedQuantity}from'../operations.ts';
-import{select,field,h,n}from'../markup.ts';
-import{heading,confirmationActions,dayLabel}from'./common.ts';
-export interface ProcurementRow{articleId:string;name:string;unit:string;required:number;stock:number|null;incoming:number;issues:string[]}
-export interface Allocation{articleId:string;offerId:string;stockUse:number;incomingUse:number}
-export function procurementRows(plan:Plan,s:Workspace):ProcurementRow[]{const sum=new Map<string,ProcurementRow>(),recipes=documents(s.ww,'recipe'),stocks=stockProjection(s,(s.ww?.records||[]).map(r=>r.value),plan.scope,plan.area,'');for(const l of plan.lines){const recipe=recipes.find(r=>r.id===l.recipeId);if(!recipe?.confirmed)throw new Error('Bestätigte Rezeptversion fehlt.');const demand=recipeDemand(recipe,l.portions,s,documents(s.ww,'prices'),plan.date);if(demand.issues.length)throw new Error(demand.issues.join(' '));for(const r of demand.rows){const value=sum.get(r.articleId)||{articleId:r.articleId,name:r.name,unit:r.unit,required:0,stock:stocks.find(c=>c.articleId===r.articleId)?.quantity??null,incoming:0,issues:[]};value.required=round(value.required+r.quantity);sum.set(r.articleId,value);}}for(const row of sum.values()){for(const{value:o}of s.orders.filter(o=>o.value.area===plan.area&&o.value.seasonId===plan.scope&&o.value.status==='Bestellt'))for(const l of o.lines.filter(l=>l.articleId===row.articleId)){if(!o.deliveryDate||o.deliveryDate>plan.date){row.issues.push('Offene Lieferung ohne rechtzeitigen Termin.');continue;}if(l.quantity===null||l.unit!==row.unit){row.issues.push('Offene Liefermenge / Einheit prüfen.');continue;}row.incoming=round(row.incoming+Math.max(0,l.quantity-receivedQuantity(o,l.id))*l.packSize);}}return[...sum.values()];}
-export function planOrders(plan:Plan,slot:Slot,s:Workspace,allocations:Allocation[]):Order[]{if(slot.scope!==plan.scope||slot.date>plan.date)throw new Error('Liefertermin muss in derselben Saison spätestens am Verwendungstag liegen.');if(new Set(allocations.map(a=>a.articleId)).size!==allocations.length)throw new Error('Bestandsmenge darf nicht doppelt angerechnet werden.');const groups=new Map<string,Array<{offerId:string;quantity:number}>>();for(const r of procurementRows(plan,s)){const a=allocations.find(a=>a.articleId===r.articleId);if(!a)throw new Error('Jeden benötigten Artikel zuordnen.');if(!Number.isFinite(a.stockUse)||a.stockUse<0||a.stockUse>(r.stock??0))throw new Error('Angerechneten Bestand oder Zählung bitte prüfen.');if(!Number.isFinite(a.incomingUse)||a.incomingUse<0||a.incomingUse>r.incoming)throw new Error('Angerechnete offene Lieferung bitte prüfen.');const required=round(Math.max(0,r.required-a.stockUse-a.incomingUse));if(!required)continue;const offer=s.offers.find(o=>o.value.id===a.offerId&&o.value.articleId===r.articleId&&o.value.active)?.value;if(!offer)throw new Error('Passendes Lieferangebot auswählen.');const lines=groups.get(offer.supplierId)||[];lines.push({offerId:offer.id,quantity:Math.ceil(required/offer.packSize)});groups.set(offer.supplierId,lines);}if(!groups.size)throw new Error('Kein zusätzlicher Einkaufsbedarf nach den gewählten Anrechnungen.');return[...groups].flatMap(([supplierId,lines])=>templateOrders({id:'plan-'+plan.id,kind:'template',scope:'global',at:plan.at,by:plan.by,confirmed:false,name:plan.name,supplierId,area:plan.area,lines,note:'Bedarf aus Plan '+plan.id+'. Bestand und offene Lieferung gemäß geprüfter Anrechnung; keine automatische Reservierung.'},[slot],s,documents(s.ww,'prices')).map(o=>({...o,id:o.id+'-'+supplierId,sourceId:plan.id,note:o.note+' · Verwendung '+plan.date})));}
-export function planProcurementForm(plan:Plan,s:Workspace):string{const rows=procurementRows(plan,s),slots=documents(s.ww,'slot').filter(slot=>slot.scope===plan.scope&&slot.date<=plan.date);return `<form data-form="ww-procure" class="panel">${heading('Einkauf aus Portionsplan',plan.name+' · Verwendung '+dayLabel(plan.date))}<p class="ww-alert">Bestand wird nicht automatisch reserviert. Dieselbe Ware oder offene Lieferung nicht zusätzlich in anderen Plänen anrechnen. Vorschläge vor dem Bestellen gemeinsam prüfen.</p>${select('slot','Liefertermin',[['','Bitte wählen'],...slots.map(s=>[s.id,dayLabel(s.date)+' · '+s.name]as[string,string])],'')}<div class="ww-preview"><table><thead><tr><th>Artikel / Bruttobedarf</th><th>Bestand anrechnen</th><th>Offene Lieferung anrechnen</th><th>Lieferangebot</th></tr></thead><tbody>${rows.map(r=>`<tr data-allocation="${h(r.articleId)}"><td><strong>${h(r.name)}</strong><p>${n(r.required)} ${h(r.unit)}</p><small>${h(r.issues.join(' '))}</small></td><td>${field('stockUse','Anrechnen',0,true,'text','inputmode="decimal"')}<small>${r.stock===null?'Noch nicht bekannt':n(r.stock)+' '+h(r.unit)+' rechnerisch vorhanden'}</small></td><td>${field('incomingUse','Anrechnen',0,true,'text','inputmode="decimal"')}<small>${n(r.incoming)} ${h(r.unit)} rechtzeitig bestellt</small></td><td>${select('offerId','Gebinde wählen',s.offers.filter(o=>o.value.active&&o.value.articleId===r.articleId).map(o=>[o.value.id,(s.suppliers.find(v=>v.value.id===o.value.supplierId)?.value.name||'')+' · '+o.value.packName+' à '+n(o.value.packSize)]),'')}</td></tr>`).join('')}</tbody></table></div><p>Restbedarf wird je Lieferant auf volle Liefergebinde aufgerundet. Es entstehen prüfbare Bestellentwürfe.</p>${confirmationActions('Bestellentwürfe anlegen')}</form>`;}
+import type { Order, Workspace } from '../model';
+import type { Plan, Slot } from './model';
+import { documents } from './model.ts';
+import { recipeDemand, stockProjection, round, templateOrders } from './domain.ts';
+import { receivedQuantity } from '../operations.ts';
+import { select, field, h, n } from '../markup.ts';
+import { heading, confirmationActions, dayLabel } from './common.ts';
+export interface ProcurementRow {
+    articleId: string;
+    name: string;
+    unit: string;
+    required: number;
+    stock: number | null;
+    incoming: number;
+    issues: string[];
+}
+export interface Allocation {
+    articleId: string;
+    offerId: string;
+    stockUse: number;
+    incomingUse: number;
+}
+export function procurementRows(plan: Plan, s: Workspace): ProcurementRow[] { const sum = new Map<string, ProcurementRow>(), recipes = documents(s.ww, 'recipe'), stocks = stockProjection(s, (s.ww?.records || []).map(r => r.value), plan.scope, plan.area, ''); for (const l of plan.lines) {
+    const recipe = recipes.find(r => r.id === l.recipeId);
+    if (!recipe?.confirmed)
+        throw new Error('Bestätigte Rezeptversion fehlt.');
+    const demand = recipeDemand(recipe, l.portions, s, documents(s.ww, 'prices'), plan.date);
+    if (demand.issues.length)
+        throw new Error(demand.issues.join(' '));
+    for (const r of demand.rows) {
+        const value = sum.get(r.articleId) || { articleId: r.articleId, name: r.name, unit: r.unit, required: 0, stock: stocks.find(c => c.articleId === r.articleId)?.quantity ?? null, incoming: 0, issues: [] };
+        value.required = round(value.required + r.quantity);
+        sum.set(r.articleId, value);
+    }
+} for (const row of sum.values()) {
+    for (const { value: o } of s.orders.filter(o => o.value.area === plan.area && o.value.seasonId === plan.scope && o.value.status === 'Bestellt'))
+        for (const l of o.lines.filter(l => l.articleId === row.articleId)) {
+            if (!o.deliveryDate || o.deliveryDate > plan.date) {
+                row.issues.push('Offene Lieferung ohne rechtzeitigen Termin.');
+                continue;
+            }
+            if (l.quantity === null || l.unit !== row.unit) {
+                row.issues.push('Offene Liefermenge / Einheit prüfen.');
+                continue;
+            }
+            row.incoming = round(row.incoming + Math.max(0, l.quantity - receivedQuantity(o, l.id)) * l.packSize);
+        }
+} return [...sum.values()]; }
+export function planOrders(plan: Plan, slot: Slot, s: Workspace, allocations: Allocation[]): Order[] { if (slot.scope !== plan.scope || slot.date > plan.date)
+    throw new Error('Liefertermin muss in derselben Saison spätestens am Verwendungstag liegen.'); if (new Set(allocations.map(a => a.articleId)).size !== allocations.length)
+    throw new Error('Bestandsmenge darf nicht doppelt angerechnet werden.'); const groups = new Map<string, Array<{
+    offerId: string;
+    quantity: number;
+}>>(); for (const r of procurementRows(plan, s)) {
+    const a = allocations.find(a => a.articleId === r.articleId);
+    if (!a)
+        throw new Error('Jeden benötigten Artikel zuordnen.');
+    if (!Number.isFinite(a.stockUse) || a.stockUse < 0 || a.stockUse > (r.stock ?? 0))
+        throw new Error('Angerechneten Bestand oder Zählung bitte prüfen.');
+    if (!Number.isFinite(a.incomingUse) || a.incomingUse < 0 || a.incomingUse > r.incoming)
+        throw new Error('Angerechnete offene Lieferung bitte prüfen.');
+    const required = round(Math.max(0, r.required - a.stockUse - a.incomingUse));
+    if (!required)
+        continue;
+    const offer = s.offers.find(o => o.value.id === a.offerId && o.value.articleId === r.articleId && o.value.active)?.value;
+    if (!offer)
+        throw new Error('Passendes Lieferangebot auswählen.');
+    const lines = groups.get(offer.supplierId) || [];
+    lines.push({ offerId: offer.id, quantity: Math.ceil(required / offer.packSize) });
+    groups.set(offer.supplierId, lines);
+} if (!groups.size)
+    throw new Error('Kein zusätzlicher Einkaufsbedarf nach den gewählten Anrechnungen.'); return [...groups].flatMap(([supplierId, lines]) => templateOrders({ id: 'plan-' + plan.id, kind: 'template', scope: 'global', at: plan.at, by: plan.by, confirmed: false, name: plan.name, supplierId, area: plan.area, lines, note: 'Bedarf aus Plan ' + plan.id + '. Bestand und offene Lieferung gemäß geprüfter Anrechnung; keine automatische Reservierung.' }, [slot], s, documents(s.ww, 'prices')).map(o => ({ ...o, id: o.id + '-' + supplierId, sourceId: null, note: o.note + ' · Verwendung ' + plan.date }))); }
+export function planProcurementForm(plan: Plan, s: Workspace): string { const rows = procurementRows(plan, s), slots = documents(s.ww, 'slot').filter(slot => slot.scope === plan.scope && slot.date <= plan.date); return `<form data-form="ww-procure" class="panel">${heading('Einkauf aus Portionsplan', plan.name + ' · Verwendung ' + dayLabel(plan.date))}<p class="ww-alert">Bestand wird nicht automatisch reserviert. Dieselbe Ware oder offene Lieferung nicht zusätzlich in anderen Plänen anrechnen. Vorschläge vor dem Bestellen gemeinsam prüfen.</p>${select('slot', 'Liefertermin', [['', 'Bitte wählen'], ...slots.map(s => [s.id, dayLabel(s.date) + ' · ' + s.name] as [
+        string,
+        string
+    ])], '')}<div class="ww-preview"><table><thead><tr><th>Artikel / Bruttobedarf</th><th>Bestand anrechnen</th><th>Offene Lieferung anrechnen</th><th>Lieferangebot</th></tr></thead><tbody>${rows.map(r => `<tr data-allocation="${h(r.articleId)}"><td><strong>${h(r.name)}</strong><p>${n(r.required)} ${h(r.unit)}</p><small>${h(r.issues.join(' '))}</small></td><td>${field('stockUse', 'Anrechnen', 0, true, 'text', 'inputmode="decimal"')}<small>${r.stock === null ? 'Noch nicht bekannt' : n(r.stock) + ' ' + h(r.unit) + ' rechnerisch vorhanden'}</small></td><td>${field('incomingUse', 'Anrechnen', 0, true, 'text', 'inputmode="decimal"')}<small>${n(r.incoming)} ${h(r.unit)} rechtzeitig bestellt</small></td><td>${select('offerId', 'Gebinde wählen', s.offers.filter(o => o.value.active && o.value.articleId === r.articleId).map(o => [o.value.id, (s.suppliers.find(v => v.value.id === o.value.supplierId)?.value.name || '') + ' · ' + o.value.packName + ' à ' + n(o.value.packSize)]), '')}</td></tr>`).join('')}</tbody></table></div><p>Restbedarf wird je Lieferant auf volle Liefergebinde aufgerundet. Es entstehen prüfbare Bestellentwürfe.</p>${confirmationActions('Bestellentwürfe anlegen')}</form>`; }

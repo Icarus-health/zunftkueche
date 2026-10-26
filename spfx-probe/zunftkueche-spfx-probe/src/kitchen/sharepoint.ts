@@ -1,7 +1,7 @@
 import { WwStore } from './ww/store.ts';
 import { validateEntity, validateOrder } from './domain.ts';
 import { catalog } from './model.ts';
-import type { EntityMap, InventorySession, MasterKind, Order, OrderLine, Receipt, Stored, Workspace } from './model';
+import type { EntityMap, Offer, InventorySession, MasterKind, Order, OrderLine, Receipt, Stored, Workspace } from './model';
 import { validateInventory, validateReceipt } from './operations.ts';
 
 export interface HttpResponse { status: number; ok: boolean; json(): Promise<unknown>; arrayBuffer?(): Promise<ArrayBuffer> }
@@ -14,7 +14,7 @@ interface Position { id: string; orderId: string; revision: string; line: OrderL
 const names: Record<ListKind,string> = {seasons:'Saisons',suppliers:'Lieferanten',articles:'Artikel',offers:'Lieferangebote',orders:'Bestellungen',positions:'Bestellpositionen',counts:'Bestandsmeldungen',inventories:'Inventuren'};
 const kinds = Object.keys(names) as ListKind[];
 const conflict = (): Error => new Error('Der Datensatz wurde inzwischen geändert. Bitte neu laden; fremde Änderungen werden nicht überschrieben.');
-const same = (a: unknown,b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
+import {sameValue as same} from './ww/equality.ts';
 function key(value: string): void { if (!/^[a-zA-Z0-9:_-]{1,240}$/.test(value)) throw new Error('Datensatzkennung ist ungültig.'); }
 
 export class SharePointStore {
@@ -92,7 +92,7 @@ export class SharePointStore {
   const committed=await this.one<EntityMap[K]>(kind,value.id);
   if(committed?.operationId===operationId)return this.put(kind,value,previous,operationId);
   const state=await this.load();
-  if(kind==='offers'){const offer=value as EntityMap['offers'];if(!state.articles.some(a=>a.value.id===offer.articleId&&a.value.active))throw new Error('Artikel fehlt oder ist inaktiv.');if(!state.suppliers.some(s=>s.value.id===offer.supplierId&&s.value.active))throw new Error('Lieferant fehlt oder ist inaktiv.');}
+  if(kind==='offers'){const offer=value as EntityMap['offers'];const prior=state.offers.find(o=>o.value.id===offer.id)?.value;if(prior&&['articleId','supplierId','code','packName','packSize'].some(k=>prior[k as keyof Offer]!==offer[k as keyof Offer])){const journal=await this.ww.load('global');if(journal.records.some(r=>r.value.kind==='prices'&&r.value.confirmed&&r.value.lines.some(l=>l.offerId===offer.id)))throw new Error('Gebinde und Artikel eines Lieferangebots mit bestätigtem Preisstand bleiben erhalten. Bitte ein neues Lieferangebot anlegen und das bisherige deaktivieren.');}if(!state.articles.some(a=>a.value.id===offer.articleId&&a.value.active))throw new Error('Artikel fehlt oder ist inaktiv.');if(!state.suppliers.some(s=>s.value.id===offer.supplierId&&s.value.active))throw new Error('Lieferant fehlt oder ist inaktiv.');}
   if(kind==='counts'){const count=value as EntityMap['counts'];if(!state.seasons.some(s=>s.value.id===count.seasonId&&!s.value.archived))throw new Error('Bitte eine aktive Saison wählen.');const article=state.articles.find(a=>a.value.id===count.articleId&&a.value.active)?.value;if(!article||article.unit!==count.unit)throw new Error('Artikel oder Einheit wurde geändert. Bitte neu laden und erneut zählen.');}
   if(kind==='articles'){const article=value as EntityMap['articles'];const current=state.articles.find(a=>a.value.id===article.id);if(current&&current.value.unit!==article.unit&&(state.offers.some(o=>o.value.articleId===article.id)||state.counts.some(c=>c.value.articleId===article.id)||state.orders.some(o=>o.value.lines.some(l=>l.articleId===article.id))))throw new Error('Die Einheit eines verwendeten Artikels bleibt erhalten. Bitte einen neuen Artikel anlegen.');}
   return this.put(kind,value,previous,operationId);
