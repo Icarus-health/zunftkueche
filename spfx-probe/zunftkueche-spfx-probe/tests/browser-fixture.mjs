@@ -2,11 +2,11 @@
 import {Server} from './support/fake-sharepoint.mjs';
 import {SharePointStore} from '../lib/kitchen/sharepoint.js';
 import {KitchenView} from '../lib/kitchen/view.js';
-const server=new Server(),storage='zunftkueche-v1.2-preview';
-const request=async(url,options)=>{const saved=localStorage.getItem(storage);if(saved)server.lists=new Map(JSON.parse(saved));const result=await server.request(url,options);if(options.method==='POST')localStorage.setItem(storage,JSON.stringify([...server.lists]));return result;};
+const server=new Server(),storage='zunftkueche-v1.3-preview';
+const request=async(url,options)=>{const saved=localStorage.getItem(storage);if(saved){const parsed=JSON.parse(saved);server.lists=new Map(parsed.lists);server.descriptions=new Map(parsed.descriptions);server.attachments=new Map((parsed.attachments||[]).map(([key,files])=>[key,new Map(files.map(([name,bytes])=>[name,new Uint8Array(bytes)]))]));}const result=await server.request(url,options);if(options.method==='POST')localStorage.setItem(storage,JSON.stringify({lists:[...server.lists],descriptions:[...server.descriptions],attachments:[...server.attachments].map(([key,files])=>[key,[...files].map(([name,bytes])=>[name,[...bytes]])])}));return result;};
 const store=new SharePointStore('https://example.sharepoint.com/sites/kitchen',request,false);
 if(!localStorage.getItem(storage+'-ready')){
- await store.initialize();
+ await store.initialize();await store.ww.initialize();
  const articles=[
  {id:'water',name:'Mineralwasser',unit:'Flaschen',category:'Getränke',active:true},
  {id:'potato',name:'Kartoffelsalat',unit:'kg',category:'Küche',active:true},
@@ -24,6 +24,15 @@ if(!localStorage.getItem(storage+'-ready')){
  await store.saveOrder({...base,id:'current',seasonId:'s2027',deliveryDate:null},undefined,'seed-current');
  await store.saveOrder({...base,id:'draft',seasonId:'s2027',status:'Entwurf',recordedAt:null,recordedBy:null,deliveryDate:null,lines:[{...line(articles[1],offers[1],2),priceNet:null}],supplierId:'butcher',supplierName:'Metzgerei'},undefined,'seed-draft');
  for(const [index,a]of articles.entries())await store.saveMaster('counts',{id:'count-'+a.id,seasonId:'s2027',area:'Küche',articleId:a.id,articleName:a.name,unit:a.unit,quantity:[24,4,12][index],countedAt:'2026-10-26T09:00:00Z',countedBy:'Beispielperson',note:'Beispielzählung',reorder:index===0,surplus:index===2},undefined,'seed-count-'+a.id);
+ const common={scope:'global',at:'2026-10-26T10:00:00Z',by:'Beispielperson',confirmed:false};
+ const records=[
+ {...common,id:'example-recipe',kind:'recipe',familyId:'water-glass',name:'Mineralwasser 0,2 l · Beispiel',category:'Getränke',yield:5,salePriceGross:2,ingredients:[{articleId:'water',quantity:1,unit:'Flaschen'}],confirmed:true},
+ {...common,id:'example-slot-wed',kind:'slot',scope:'s2027',name:'Mittwoch Vorbereitung · Beispiel',date:'2027-02-03',time:'09:00–11:00',place:'Küche'},
+ {...common,id:'example-slot-fri',kind:'slot',scope:'s2027',name:'Freitag Zunftabend · Beispiel',date:'2027-02-05',time:'Vormittag',place:'Küche'},
+ {...common,id:'example-template',kind:'template',name:'Getränke Grundbestellung · Beispiel',supplierId:'sup',area:'Küche',lines:[{offerId:'water-off',quantity:4},{offerId:'wine-off',quantity:2}],note:'Künstlicher Ordersatz. Mengen vor jedem Einsatz prüfen.'},
+ {...common,id:'example-rule',kind:'rule',supplierId:'sup',weekdays:[3,5,6,0],leadDays:2,cutoff:'12 Uhr telefonisch',minNet:null,feeNet:null,note:'Beispiel – tatsächliche Absprache prüfen.'},
+ {...common,id:'example-plan',kind:'plan',scope:'s2027',name:'Freitag · Beispielplanung',date:'2027-02-05',area:'Küche',lines:[{recipeId:'example-recipe',portions:150}],note:'Künstliche Portionsplanung.'}];
+ for(const doc of records)await store.ww.save(doc,undefined,'seed-'+doc.id);
  localStorage.setItem(storage+'-ready','1');
 }
 const css=await (await fetch('/production.css')).text(),style=document.createElement('style');style.textContent=css;document.head.append(style);

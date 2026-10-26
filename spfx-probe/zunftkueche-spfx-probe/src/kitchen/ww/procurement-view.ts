@@ -1,3 +1,4 @@
+/* eslint-disable @rushstack/no-new-null -- Empty imported business values remain explicitly unknown. */
 import type { Area, Workspace } from '../model';
 import type { PriceList, Rule, Slot, Template, WwDocument } from './model';
 import { button,field,h,n,money,note,select,empty } from '../markup.ts';

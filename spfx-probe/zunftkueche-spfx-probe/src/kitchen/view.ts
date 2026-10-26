@@ -1,4 +1,5 @@
 import { WwController } from './ww/controller.ts';
+import {supplierRuleHint} from './ww/procurement-view.ts';
 import { businessTabs } from './ww/common.ts';
 import { documents } from './ww/model.ts';
 import { effectiveOffer } from './ww/domain.ts';
@@ -90,7 +91,7 @@ export class KitchenView {
   else if(this.receiving)body=receiptForm(this.receiving.previous.value);
   else if(this.inventory)body=inventoryForm(this.inventory);
   else if(this.editing)body=masterForm(this.editing,s);
-  else if(this.draft)body=orderForm(this.draft,s);
+  else if(this.draft)body=orderForm(this.draft,s)+supplierRuleHint(documents(s.ww,'rule'),this.draft.supplierId,this.draft.deliveryDate||'')+'<div class="actions">'+documents(s.ww,'slot').map(slot=>button('order-slot',slot.name+' · '+slot.date,slot.id)).join('')+'</div>';
   else if(this.copySource)body=copyForm(this.copySource.value,s);
   else if(this.importKind)body=this.importForm();
   else if(this.selectedOrder)body=this.orderDetail(s.orders.find(o=>o.value.id===this.selectedOrder));
@@ -121,7 +122,8 @@ export class KitchenView {
  private importForm():string{const kind=this.importKind!;return `<form data-form="import" class="panel"><div class="row"><h2>${kind==='articles'?'Artikel':'Lieferanten'} importieren</h2>${button('cancel','Zurück')}</div><p>Neue Datensätze ergänzen. Vorhandene Namen werden zur Prüfung gemeldet.</p>${button('template','CSV-Vorlage herunterladen',kind)}<label>CSV-Datei<input type="file" name="csvFile" accept=".csv,text/csv,text/plain" /></label>${note('csvText','Oder CSV-Text einfügen',this.importText??columns[kind].join(';')+'\n')}<div class="actions">${button('import-preview','Vorschau prüfen','',true)}</div>${this.importErrors.length?`<div role="alert">${this.importErrors.map(e=>`<p>${h(e)}</p>`).join('')}</div>`:''}${this.importItems?`<h3>${this.importItems.length} Datensätze in der Vorschau</h3>${this.importItems.map(i=>`<div class="listrow"><span>${h(i.value.name)}</span><span>${i.done?'Gespeichert':'Neu'}</span></div>`).join('')}<div class="actions">${button('import-apply','Geprüfte Datensätze übernehmen','',true)}</div>`:''}</form>`;}
 
  private async action(action:string,id:string,target?:HTMLElement):Promise<void>{
-  if(action.startsWith('ww-')){await this.wwUI.action(action,id,target);return;}
+  if(this.pendingSave&&!['save-retry','save-reconcile'].includes(action))throw new Error('Bitte zuerst den Speichervorgang über die angezeigten Schaltflächen klären.');
+  if(action==='ww-open'&&!this.dirty)this.view=['recipes','plans'].includes(id)?'planning':id==='journal'?'stock':'orders';if(action.startsWith('ww-')){await this.wwUI.action(action,id,target);return;}
   if(action==='save-retry'){const pending=this.pendingSave;if(pending)await this.run(pending.work,pending.success,pending.after);return;}
   if(action==='save-reconcile'){await this.run(async()=>{},'Aktuellen Stand geladen. Nicht bestätigte Eingaben geschlossen.',undefined,false);return;}
   if(this.pendingSave)throw new Error('Bitte zuerst den Speichervorgang über die angezeigten Schaltflächen klären.');
@@ -141,6 +143,7 @@ export class KitchenView {
   if(action==='count-new'){if(!this.writable())throw new Error('Bitte eine aktive Saison wählen.');this.clearEditor();this.editing={kind:'counts',id:'',value:{id:uuid(),seasonId:this.seasonId,area:this.area,articleId:'',articleName:'',unit:'',quantity:0,countedAt:'',countedBy:this.user,note:'',reorder:false}};this.render();return;}
   if(action==='order-open'){this.clearEditor();this.view='orders';this.selectedOrder=id;this.render();return;}
   if(action==='order-new'||action==='order-edit'||action==='order-follow'){if(!this.writable())throw new Error('Bitte eine aktive Saison wählen.');this.clearEditor();const old=this.state.orders.find(o=>o.value.id===id);if(action==='order-edit'&&old?.value.status!=='Entwurf')throw new Error('Bestellte Positionen bleiben erhalten. Bitte Nachbestellung anlegen.');this.previous=action==='order-edit'?old:undefined;this.draft=old?structuredClone(old.value):{id:uuid(),seasonId:this.seasonId,area:this.area,supplierId:'',supplierName:'',status:'Entwurf',occasion:'',deliveryDate:null,method:'Telefon',note:'',sourceId:null,sourceYear:null,recordedBy:null,recordedAt:null,lines:[]};if(action==='order-follow'&&old){this.draft={...this.draft,id:uuid(),status:'Entwurf',sourceId:old.value.id,sourceYear:this.season()!.year,occasion:('Nachbestellung · '+old.value.occasion).slice(0,160),deliveryDate:null,recordedAt:null,recordedBy:null,lines:this.draft.lines.map(l=>({...l,id:uuid(),quantity:null,reviewed:false}))};}if(action==='order-follow')delete this.draft.receipts;this.render();return;}
+  if(action==='order-slot'&&this.draft){const slot=documents(this.state.ww,'slot').find(s=>s.id===id);if(!slot)throw new Error('Liefertermin fehlt.');this.draft=this.readOrder(this.root.querySelector<HTMLFormElement>('form[data-form=order]')!);this.draft.deliveryDate=slot.date;this.draft.note=[this.draft.note,slot.time,slot.place].filter(Boolean).join(' · ');this.dirty=true;this.render();return;}
   if(action==='line-add'||action==='line-remove'){if(!this.draft)return;const form=this.root.querySelector<HTMLFormElement>('form[data-form="order"]')!;const data=new FormData(form);this.draft=this.readOrder(form);if(action==='line-remove')this.draft.lines=this.draft.lines.filter(l=>l.id!==id);else{const offer=this.state.offers.find(o=>o.value.id===String(data.get('addOffer')))?.value;if(!offer)throw new Error('Bitte ein Lieferangebot wählen.');if(this.draft.lines.some(l=>l.offerId===offer.id))throw new Error('Dieser Artikel ist bereits enthalten. Bitte die vorhandene Menge ändern.');const article=this.state.articles.find(a=>a.value.id===offer.articleId)!.value;const quoted=effectiveOffer(offer,documents(this.state.ww,'prices'),this.draft.deliveryDate||new Date().toISOString().slice(0,10));this.draft.lines.push({id:uuid(),articleId:article.id,offerId:offer.id,articleName:article.name,code:offer.code,unit:article.unit,packName:offer.packName,packSize:offer.packSize,quantity:null,priceNet:quoted.priceNet,priorPriceNet:null,priceYear:null,reviewed:false});}this.dirty=true;this.render();return;}
   if(action==='order-record'||action==='order-record-confirm'){const form=this.root.querySelector<HTMLFormElement>('form[data-form="order"]');if(form)await this.saveOrder(form,true,action==='order-record-confirm');return;}
   if(action==='order-record-back'){this.root.querySelector('[data-order-confirm]')?.remove();return;}

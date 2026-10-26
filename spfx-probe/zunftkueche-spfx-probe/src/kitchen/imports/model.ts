@@ -1,3 +1,4 @@
+/* eslint-disable @rushstack/no-new-null -- Empty imported business values remain explicitly unknown. */
 import type { Area } from '../model';
 import type { ImportField, Purpose, SystemRow } from '../ww/model';
 export interface GridCell { text:string; number?:number; formula?:boolean }
