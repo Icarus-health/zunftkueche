@@ -1,0 +1,24 @@
+// Explicit local-only acceptance host. No Microsoft tokens or real data are used.
+import {createServer} from 'node:http';
+import {readFile} from 'node:fs/promises';
+import {resolve,dirname,extname} from 'node:path';
+import {fileURLToPath} from 'node:url';
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+const reviewOutput=resolve(root,'../../../../outputs/Zunftkueche-v1.2');
+const visualTruth=resolve(root,'../../../../outputs/WW-Pruefung-2026-10-26/Entwurf-1.png');
+const html=`<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zunftküche – lokale Vorschau</title><style>body{margin:0;background:white;font-family:'Segoe UI',sans-serif}.preview-host{height:56px;background:#55548b;color:white;display:flex;align-items:center;justify-content:space-between;padding:0 28px;gap:16px}.preview-host strong{font-size:19px}.preview-host span{font-size:12px}@media(max-width:600px){.preview-host{padding:8px 16px;height:auto;min-height:56px;flex-wrap:wrap;gap:4px}}</style><header class="preview-host"><strong>Küche / Zunftküche</strong><span>Lokale Vorschau · künstliche Beispieldaten · kein SharePoint-Zugriff</span></header><div id="kitchen-root"></div><script type="module" src="/tests/browser-fixture.mjs"></script></html>`;
+const mime={'.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.woff':'font/woff'};
+const server=createServer(async(req,res)=>{try{const path=new URL(req.url,'http://localhost').pathname;
+ if(path==='/comparison'){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end('<!doctype html><html><meta charset="utf-8"><style>body{margin:0;background:#e9eef0;font:16px sans-serif}.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px}.compare img{width:100%;height:auto;display:block}.compare h2{margin:8px 0;font-size:16px}</style><div class="compare"><section><h2>Ausgewählter Entwurf</h2><img src="/qa-reference.png"></section><section><h2>Umsetzung · gleicher Viewport</h2><img src="/qa-implementation.jpg"></section></div></html>');return;}
+ if(path==='/qa-reference.png'||path==='/qa-implementation.jpg'){const file=path.endsWith('.png')?visualTruth:resolve(reviewOutput,'01-Heute-Desktop.jpg');res.writeHead(200,{'Content-Type':path.endsWith('.png')?'image/png':'image/jpeg','Cache-Control':'no-store'});res.end(await readFile(file));return;}
+ if(path==='/'){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(html);return;}
+ if(path==='/favicon.ico'){res.writeHead(204);res.end();return;}
+ let file;if(path==='/production.css')file='lib/webparts/kitchen/KitchenWebPart.module.scss.css';
+ else if(path.startsWith('/lib/kitchen/')||path==='/tests/browser-fixture.mjs'||path==='/tests/support/fake-sharepoint.mjs')file=path.slice(1);
+ else if(/^\/assets\/ui-icons-(base|1|3|5|9)\.woff$/.test(path))file='src/webparts/kitchen'+path;
+ else{res.writeHead(404);res.end('Not found');return;}
+ const absolute=resolve(root,file);if(!absolute.startsWith(root+'/')){res.writeHead(403);res.end();return;}
+ let data=await readFile(absolute);if(path==='/production.css')data=data.toString().replace(/:global\(([^)]+)\)/g,'$1');
+ res.writeHead(200,{'Content-Type':mime[extname(file)]||'text/css','Cache-Control':'no-store'});res.end(data);
+ }catch{res.writeHead(404);res.end('Run npm run build first.');}});
+server.listen(Number(process.env.PORT||53429),'127.0.0.1',()=>console.log('Local synthetic preview: http://127.0.0.1:'+server.address().port+'/'));
