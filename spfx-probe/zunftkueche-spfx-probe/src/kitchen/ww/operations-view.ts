@@ -3,6 +3,7 @@ import { articleAvailable } from '../model.ts';
 import type { EquipmentItem, Movement, Plan, Recipe } from './model';
 import { documents } from './model.ts';
 import { planDemand, recipeDemand, stockProjection } from './domain.ts';
+import type { StockRow } from './domain';
 import { button, field, h, n, money, note, select, empty, check } from '../markup.ts';
 import { heading, confirmationActions, dayLabel, today } from './common.ts';
 import { planAlreadyOrdered } from './plan-procurement.ts';
@@ -107,11 +108,19 @@ export function operationOverview(page: string, s: Workspace, area: Area, season
             }).join('') || empty('Für diese Saison sind noch keine Arbeitsmittel erfasst.')) + '</section>';
     }
     if (page === 'journal') {
-        const docs = (s.ww?.records || []).map(r => r.value), rows = stockProjection(s, docs, season, area, place);
+        const docs = (s.ww?.records || []).map(r => r.value), rows = seasonStockRows(s, stockProjection(s, docs, season, area, place), season);
         const places = [...new Set(['', ...documents(s.ww, 'movement').flatMap(d => [d.place, d.toPlace])])];
         return '<div class="actions">' + places.map(p => button('ww-place', p || 'Standardlager', p)).join('') + '</div>' + heading('Bestandsbewegungen', 'Rechnerischer Bestand ab letzter Zählung · ' + (place || 'Standardlager'), button('ww-new', 'Bewegung buchen', 'movement', true)) + `<p class="ww-alert">Offen bedeutet: Es fehlt ein verlässlicher Anfangsbestand oder eine zeitliche Zuordnung. Abweichungen durch erneutes Zählen klären.</p><section class="panel">${rows.map(r => `<div class="listrow"><div><strong>${h(r.name)}</strong><small>${r.countedAt ? 'Zählgrundlage: ' + h(new Date(r.countedAt).toLocaleString('de-DE')) : 'Noch keine Zählgrundlage'}${r.issues.length ? ' · ' + h(r.issues.join(' ')) : ''}</small></div><strong>${r.quantity === null ? 'Offen' : n(r.quantity) + ' ' + h(r.unit)}</strong></div>`).join('')}</section><h2>Buchungsjournal</h2><section class="panel">${documents(s.ww, 'movement').filter(d => d.area === area || d.toArea === area).sort((a, b) => b.at.localeCompare(a.at)).map(d => `<div class="listrow"><div><strong>${h(s.articles.find(a => a.value.id === d.articleId)?.value.name || d.articleId)}</strong><p>${h(({incoming:'Wareneingang',return:'Retoure',waste:'Verlust / Verderb',internal:'Eigenverbrauch',transfer:'Umlagerung',opening:'Anfangsbestand',count:'Zählkorrektur'})[d.type])} · ${n(d.quantity)} ${h(d.unit)} · ${h(d.place || 'Standardlager')}${d.type === 'transfer' ? ' → ' + h(d.toArea) + ' / ' + h(d.toPlace || 'Standardlager') : ''}</p><small>${h(new Date(d.at).toLocaleString('de-DE'))} · ${h(d.by)} · ${h(d.note)}</small></div></div>`).join('') || empty('Noch keine zusätzlichen Bewegungen. Wareneingänge aus Bestellungen werden automatisch berücksichtigt.')}</section>`;
     }
     return '';
+}
+/**
+ * Articles of the season, as on the overview, the stock page and the count list.
+ * An article outside the season stays listed while stock is still recorded for it, so nothing on the shelf disappears.
+ */
+export function seasonStockRows(s: Workspace, rows: StockRow[], season: string): StockRow[] {
+    const inSeason = new Set(s.articles.filter(a => articleAvailable(a.value, season)).map(a => a.value.id));
+    return rows.filter(r => inSeason.has(r.articleId) || r.countedAt !== null || r.quantity !== null || r.issues.length > 0);
 }
 export function demandView(plan: Plan, s: Workspace): string {
     const { rows, issues } = planDemand(plan, s);

@@ -513,3 +513,30 @@
  }
  @media(prefers-reduced-motion:reduce){button{transition:none;}}
 }
+
+/* 1.18.5: Rückmeldungen dort zeigen, wo gerade gearbeitet wird. */
+.kitchen {
+ :global(.inline-status){flex:1 0 100%;grid-column:1 / -1;width:100%;margin:0 0 4px;padding:10px 14px;border-radius:5px;background:#fff0ed;color:var(--error);font-size:14px;font-weight:600;line-height:1.4;text-align:left;white-space:normal;overflow-wrap:anywhere;}
+ :global(.actions):has(> :global(.inline-status)),:global(.calm-actions):has(> :global(.inline-status)),:global(.sticky-actions):has(> :global(.inline-status)){flex-wrap:wrap;}
+ label>:global(.inline-status),button+:global(.inline-status){margin-top:8px;}
+}
+
+/* 1.18.5: mittlere Breite (Tablet, schmale Teams-Fenster, SharePoint mit eingeblendeter Navigation). */
+.kitchen {
+ /* Die Regel für die waagerechte Telefon-Navigation galt bis 1000 px und zog die senkrechte Leiste auf 100 px je Eintrag. */
+ @media(min-width:761px) and (max-width:1000px){
+  :global(.sidebar) nav{flex-wrap:nowrap;}
+  :global(.sidebar) nav button{flex:0 0 auto;}
+ }
+ @media(min-width:761px){
+  /* Überschrift behält ihre Wortbreite; stattdessen brechen die Schaltflächen daneben um. */
+  :global(.page-heading)>div:first-child{min-width:min-content;}
+  :global(.page-heading) :global(.actions){justify-content:flex-end;}
+  /* Statusfilter: Beschriftung und Auswahl sind zusammen breiter als die alte Höchstbreite und ragten rechts aus der Liste. */
+  :global(.order-list-tools)>label:not(:global(.search-label)){max-width:none;flex:none;}
+  :global(.calm-home-heading) + :global(.workflow-starts) > :global(.workflow-start){grid-template-columns:minmax(max-content,1fr) minmax(0,1.5fr) minmax(146px,auto);}
+ }
+ :global(.settings-row)>button{flex-shrink:0;}
+ /* Lange Wörter wie „Nachbestellbedarf“ liefen am Telefon rechts aus der Schaltfläche. */
+ :global(.calm-notice)>button{min-width:min-content;}
+}

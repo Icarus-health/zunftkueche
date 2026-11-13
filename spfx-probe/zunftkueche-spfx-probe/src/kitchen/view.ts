@@ -102,10 +102,14 @@ export class KitchenView {
  private error='';
  private needsSetup=false;
  private locked:Array<[HTMLInputElement|HTMLSelectElement|HTMLButtonElement|HTMLTextAreaElement,boolean]>=[];
- private readonly click=(event:Event):void=>{const target=event.target instanceof Element?event.target.closest<HTMLButtonElement>('button[data-action]'):undefined;if(target&&!this.busy){this.action(target.dataset.action!,target.dataset.id||'',target).catch(e=>this.showError(e));}};
- private readonly submit=(event:Event):void=>{if(!(event.target instanceof HTMLFormElement))return;event.preventDefault();if(!this.busy)this.save(event.target).catch(e=>this.showError(e));};
- private readonly input=(event:Event):void=>{if(!(event.target instanceof Element))return;const target=event.target as HTMLInputElement;target.dataset.userEdited='true';if(target.dataset.fieldErrorId){clearFieldError(target);this.error='';}if(target.name==='inventoryFilter'||target.name==='deliveryView'||target.name==='receiptDelivery')return;if(target.name==='sheetSearch'){const q=target.value.toLocaleLowerCase('de-DE').trim();let visible=0;for(const row of Array.from(this.root.querySelectorAll<HTMLElement>('[data-sheet-row]'))){row.hidden=!(row.dataset.search||'').toLocaleLowerCase('de-DE').includes(q);if(!row.hidden)visible++;}const empty=this.root.querySelector<HTMLElement>('[data-sheet-empty]');if(empty)empty.hidden=visible>0;return;}if(target.name==='workspaceSearch'){this.query=target.value;this.filterRows();return;}if(target.closest('form')){this.dirty=true;this.info='Ungespeicherte Eingaben.';this.paintStatus();if(this.draft)this.updateOrderTotals();this.wwUI.updateCosts();if(this.inventory){const id=target.name.replace(/^(packs|loose)_/,'');if(id!==target.name)this.countEdits.set(id,new Date().toISOString());this.updateCountTotals();}this.rememberDraft();}};
- private readonly change=(event:Event):void=>{const target=event.target;if(!(target instanceof HTMLSelectElement))return;try{
+ /** Control that started the current action. Errors are repeated next to it when the page status line is out of sight. */
+ private trigger?:HTMLElement;
+ /** Identifies the page currently shown, so a new page starts at the top while redraws of the same page keep their place. */
+ private shownPage?:string;
+ private readonly click=(event:Event):void=>{const target=event.target instanceof Element?event.target.closest<HTMLButtonElement>('button[data-action]'):undefined;if(target&&!this.busy){this.trigger=target;this.action(target.dataset.action!,target.dataset.id||'',target).catch(e=>this.showError(e));}};
+ private readonly submit=(event:Event):void=>{if(!(event.target instanceof HTMLFormElement))return;event.preventDefault();if(!this.busy){this.trigger=(event as SubmitEvent).submitter||event.target.querySelector<HTMLElement>('button[type=submit]')||undefined;this.save(event.target).catch(e=>this.showError(e));}};
+ private readonly input=(event:Event):void=>{if(!(event.target instanceof Element))return;this.trigger=undefined;const target=event.target as HTMLInputElement;target.dataset.userEdited='true';if(target.dataset.fieldErrorId){clearFieldError(target);this.error='';}if(target.name==='inventoryFilter'||target.name==='deliveryView'||target.name==='receiptDelivery')return;if(target.name==='sheetSearch'){const q=target.value.toLocaleLowerCase('de-DE').trim();let visible=0;for(const row of Array.from(this.root.querySelectorAll<HTMLElement>('[data-sheet-row]'))){row.hidden=!(row.dataset.search||'').toLocaleLowerCase('de-DE').includes(q);if(!row.hidden)visible++;}const empty=this.root.querySelector<HTMLElement>('[data-sheet-empty]');if(empty)empty.hidden=visible>0;return;}if(target.name==='workspaceSearch'){this.query=target.value;this.filterRows();return;}if(target.closest('form')){this.dirty=true;this.info='Ungespeicherte Eingaben.';this.paintStatus();if(this.draft)this.updateOrderTotals();this.wwUI.updateCosts();if(this.inventory){const id=target.name.replace(/^(packs|loose)_/,'');if(id!==target.name)this.countEdits.set(id,new Date().toISOString());this.updateCountTotals();}this.rememberDraft();}};
+ private readonly change=(event:Event):void=>{const target=event.target;if(!(target instanceof HTMLSelectElement))return;this.trigger=target;try{
   if(target.name==='seasonContext'||target.name==='areaContext'){if(!this.canLeave()){target.value=target.name==='seasonContext'?this.seasonId:this.area;return;}this.clearEditor();if(target.name==='seasonContext')this.seasonId=target.value;else this.area=target.value as Area;this.rememberContext();if(this.store.ww){this.run(async()=>{},'',undefined,false).catch(e=>this.showError(e));}else this.render();}
   if(target.name==='receiptDelivery'&&this.receiving){if(this.dirty){target.value=this.receiving.deliveryId||'';throw new Error('Bitte die aktuelle Lieferannahme abschließen oder abbrechen, bevor ihr den Termin wechselt.');}this.receiving.deliveryId=target.value;this.render();}
   if(target.name==='supplierId'||target.name==='billType')this.wwUI.billContextChanged(target.name);
@@ -128,18 +132,38 @@ export class KitchenView {
  private writable():boolean{return !!this.season()&&!this.season()!.archived;}
  private canLeave():boolean{if(!this.dirty)return true;this.showError(new Error('Ungespeicherte Eingaben: bitte zuerst speichern oder ausdrücklich abbrechen.'));return false;}
  private clearEditor():void{this.wwUI?.clear();this.quickIngredient=undefined;this.editing=undefined;this.draft=undefined;this.orderReview=false;this.mailOrder=undefined;this.previous=undefined;this.receiving=undefined;this.inventory=undefined;this.inventoryPrevious=undefined;this.countEdits.clear();this.copySource=undefined;this.copyPicker=false;this.reorderPicker=false;this.roundPicker=false;this.deliveryPicker=false;this.importKind=undefined;this.importItems=undefined;this.importErrors=[];this.importText=undefined;this.importStarted=false;this.pendingSave=undefined;this.selectedOrder='';this.dirty=false;this.operationId=uuid();this.info='';this.error='';}
- private showError(error:unknown):void{this.error=message(error);this.paintStatus();}
- private paintStatus():void{const status=this.root.querySelector<HTMLElement>('[data-status]');if(status){status.textContent=this.error||this.info;status.setAttribute('role',this.error?'alert':'status');status.setAttribute('data-error',String(!!this.error));}}
+ private showError(error:unknown):void{this.error=message(error);this.paintStatus(true);}
+ /** fresh: the message was raised just now, so it may move the page to become visible. Repaints of an older message never do. */
+ private paintStatus(fresh=false):void{const status=this.root.querySelector<HTMLElement>('[data-status]');if(status){status.textContent=this.error||this.info;status.setAttribute('role',this.error?'alert':'status');status.setAttribute('data-error',String(!!this.error));}this.paintInlineError(status,fresh);}
+ /** The status line sits at the top of the page. On long pages it is scrolled away, so an error is repeated beside the control that caused it. */
+ private paintInlineError(status:HTMLElement|null,fresh:boolean):void{
+  this.root.querySelector('[data-inline-status]')?.remove();
+  if(!this.error||!status||this.topVisible(status))return;
+  const anchor=this.trigger;if(!anchor||!anchor.isConnected||!this.root.contains(anchor)){if(fresh)status.scrollIntoView?.({block:'nearest'});return;}
+  const hint=this.root.ownerDocument.createElement('p');hint.className='inline-status';hint.setAttribute('data-inline-status','');hint.setAttribute('aria-hidden','true');hint.textContent=this.error;
+  const group=anchor.closest<HTMLElement>('.actions,.calm-actions,.sticky-actions');if(group&&this.root.contains(group))group.prepend(hint);else anchor.insertAdjacentElement('afterend',hint);
+  if(fresh)hint.scrollIntoView?.({block:'nearest'});
+ }
+ /**
+  * Whether the top of an element can be seen: inside the window and not covered by the surrounding SharePoint or Teams page,
+  * which scrolls the app inside its own region. Without layout information the element counts as visible.
+  */
+ private topVisible(element:HTMLElement):boolean{
+  const rect=element.getBoundingClientRect();if(!rect.width&&!rect.height)return true;
+  const hit=element.ownerDocument.elementFromPoint?.(rect.left+Math.min(rect.width/2,60),rect.top+Math.min(rect.height/2,12));
+  return !!hit&&(hit===element||element.contains(hit));
+ }
  private lock(value:boolean):void{this.busy=value;if(value){this.locked=Array.from(this.root.querySelectorAll<HTMLInputElement|HTMLSelectElement|HTMLButtonElement|HTMLTextAreaElement>('input,select,button,textarea')).map(el=>[el,el.disabled]);this.locked.forEach(([el])=>{el.disabled=true;});}else{this.locked.forEach(([el,disabled])=>{if(el.isConnected)el.disabled=disabled;});this.locked=[];}}
  private async run(work:()=>Promise<unknown>,success:string,after?:()=>void,mutation=true):Promise<void>{
   if(this.busy)return;if(mutation)this.pendingSave={work,success,after};this.error='';this.info='Wird mit SharePoint abgeglichen …';this.paintStatus();this.lock(true);
   try{await work();const state=await this.store.load();const missingContext=!!this.seasonId&&!state.seasons.some(s=>s.value.id===this.seasonId);this.state=state;this.needsSetup=false;if(!this.seasonId||!state.seasons.some(s=>s.value.id===this.seasonId))this.seasonId=[...state.seasons].sort((a,b)=>Number(a.value.archived)-Number(b.value.archived)||b.value.year-a.value.year)[0]?.value.id||'';if(this.store.ww&&this.seasonId)this.state.ww=await this.store.ww.load(this.seasonId);if(mutation)this.local.remove('draft');this.clearEditor();this.info=success||(missingContext?'Die bisherige Saison ist nicht mehr verfügbar. Aktuelle Saison ausgewählt; bitte oben prüfen.':'');this.error='';after?.();this.rememberContext();this.render();}
-  catch(error){this.error=message(error);this.needsSetup=this.error.includes('noch nicht eingerichtet');this.paintStatus();if(!this.state)this.render();}
+  catch(error){this.error=message(error);this.needsSetup=this.error.includes('noch nicht eingerichtet');this.paintStatus(true);if(!this.state)this.render();}
   finally{this.lock(false);if(this.pendingSave)this.showRecovery();}
  }
  private showRecovery():void{
   this.root.querySelector('[data-recovery]')?.remove();for(const el of Array.from(this.root.querySelectorAll<HTMLInputElement|HTMLSelectElement|HTMLButtonElement|HTMLTextAreaElement>('input,select,button,textarea')))el.disabled=true;
   const box=document.createElement('section');box.className='panel warning';box.setAttribute('data-recovery','');box.innerHTML='<h2>Gespeicherten Stand prüfen</h2><p>Die Eingaben bleiben bis zur Klärung gesperrt. Ihr könnt denselben Vorgang sicher erneut versuchen oder den aktuellen Stand laden und die Eingabemaske schließen.</p><div class="actions">'+button('save-retry','Denselben Vorgang erneut versuchen','',true)+button('save-reconcile','Stand laden und Eingaben schließen')+'</div>';this.root.querySelector('main')!.prepend(box);
+  const status=this.root.querySelector<HTMLElement>('[data-status]');if(status&&!this.topVisible(status))status.scrollIntoView?.({block:'start'});
  }
  private render():void{
   const s=this.state;const season=this.season();
@@ -168,9 +192,41 @@ export class KitchenView {
   else if(this.view==='management')body=settingsView(season,this.area);
   else body=this.orders();
 
-  this.root.innerHTML=`<div class="app-layout">${sidebar(s,season,this.area,this.seasonId,this.view)}<div class="workspace-main">${this.store.testMode?'<p class="test-banner">Abnahme mit künstlichen Daten · vom Vereinsbestand getrennt</p>':''}<p data-status class="status" aria-live="polite"></p><main tabindex="-1"><p class="work-context">${h(this.area)} · ${h(season?.name||'Keine Saison gewählt')}</p>${season?.archived?'<p class="archive">Archiv: Bestellungen und Bestandsmeldungen dieser Saison sind schreibgeschützt.</p>':''}${this.recovery?'<section class="resume"><h2>Unterbrochene Eingaben fortsetzen</h2><p>'+h(this.recovery.context.area)+' · '+h(this.state?.seasons.find(x=>x.value.id===this.recovery!.context.seasonId)?.value.name||'Saison nicht mehr verfügbar')+' · '+h(stamp(this.recovery.at))+' · nur auf diesem Gerät gespeichert</p><div class="actions">'+button('draft-resume','Entwurf fortsetzen','',true)+button('draft-download','Eingaben herunterladen')+button('draft-discard','Entwurf verwerfen')+'</div></section>':''}${body}</main><footer>Angemeldet: ${h(this.user.split(' · ')[0])} · Speicherung in SharePoint${this.store.testMode?' · Testdaten':''}</footer></div></div>`;const dayView=this.root.querySelector<HTMLSelectElement>('.order-sheet [name=deliveryView]');if(dayView&&dayView.options.length>1&&this.root.ownerDocument.defaultView?.matchMedia?.('(max-width:600px)').matches)dayView.selectedIndex=1;this.applyDeliveryView();this.paintStatus();this.filterRows();if(this.importStarted){for(const el of Array.from(this.root.querySelectorAll<HTMLInputElement|HTMLButtonElement|HTMLTextAreaElement>('input[type=file],textarea,[data-action=import-preview]')))el.disabled=true;}
+  const page=this.pageKey(),samePage=page===this.shownPage,opened=samePage?this.openSections():undefined;
+  this.root.innerHTML=`<div class="app-layout">${sidebar(s,season,this.area,this.seasonId,this.view)}<div class="workspace-main">${this.store.testMode?'<p class="test-banner">Abnahme mit künstlichen Daten · vom Vereinsbestand getrennt</p>':''}<p data-status class="status" aria-live="polite"></p><main tabindex="-1"><p class="work-context">${h(this.area)} · ${h(season?.name||'Keine Saison gewählt')}</p>${season?.archived?'<p class="archive">Archiv: Bestellungen und Bestandsmeldungen dieser Saison sind schreibgeschützt.</p>':''}${this.recovery?'<section class="resume"><h2>Unterbrochene Eingaben fortsetzen</h2><p>'+h(this.recovery.context.area)+' · '+h(this.state?.seasons.find(x=>x.value.id===this.recovery!.context.seasonId)?.value.name||'Saison nicht mehr verfügbar')+' · '+h(stamp(this.recovery.at))+' · nur auf diesem Gerät gespeichert</p><div class="actions">'+button('draft-resume','Entwurf fortsetzen','',true)+button('draft-download','Eingaben herunterladen')+button('draft-discard','Entwurf verwerfen')+'</div></section>':''}${body}</main><footer>Angemeldet: ${h(this.user.split(' · ')[0])} · Speicherung in SharePoint${this.store.testMode?' · Testdaten':''}</footer></div></div>`;const dayView=this.root.querySelector<HTMLSelectElement>('.order-sheet [name=deliveryView]');if(dayView&&dayView.options.length>1&&this.root.ownerDocument.defaultView?.matchMedia?.('(max-width:600px)').matches)dayView.selectedIndex=1;this.applyDeliveryView();if(opened)this.reopenSections(opened);this.paintStatus();this.filterRows();if(!samePage){const first=this.shownPage===undefined||this.shownPage==='setup';this.shownPage=page;if(!first)this.scrollToTop();}if(this.importStarted){for(const el of Array.from(this.root.querySelectorAll<HTMLInputElement|HTMLButtonElement|HTMLTextAreaElement>('input[type=file],textarea,[data-action=import-preview]')))el.disabled=true;}
  }
  private applyDeliveryView():void{const selected=this.root.querySelector<HTMLSelectElement>('[name=deliveryView]')?.value||'all';for(const column of Array.from(this.root.querySelectorAll<HTMLElement>('[data-delivery-column]')))column.hidden=selected!=='all'&&column.dataset.deliveryColumn!==selected;}
+ /** Mirrors the order of render(): one key per page a person would call a different screen. */
+ private pageKey():string{
+  if(!this.state)return 'setup';
+  if(this.quickIngredient)return 'ingredient';
+  if(this.wwUI.screen)return 'ww:'+this.wwUI.pageKey();
+  if(this.receiving)return 'receipt:'+this.receiving.previous.value.id;
+  if(this.inventory)return 'inventory:'+this.inventory.id;
+  if(this.editing)return 'edit:'+this.editing.kind+':'+this.editing.id;
+  if(this.mailOrder)return 'mail:'+this.mailOrder.id;
+  if(this.draft)return (this.orderReview?'order-review:':'order-form:')+this.draft.id;
+  if(this.copySource)return 'copy:'+this.copySource.value.id;
+  if(this.importKind)return 'import:'+this.importKind;
+  if(this.selectedOrder)return 'order:'+this.selectedOrder;
+  if(this.copyPicker)return 'copy-list';
+  if(this.reorderPicker)return 'reorder-list';
+  if(this.deliveryPicker)return 'delivery-round';
+  if(this.roundPicker)return 'order-round';
+  return 'view:'+this.view;
+ }
+ private sectionKey(section:HTMLDetailsElement):string{return (Array.from(section.children).find(child=>child.tagName==='SUMMARY')?.textContent||'').trim();}
+ /** Sections the person opened; only those with a unique title can be found again after a redraw. */
+ private openSections():Set<string>{
+  const all=Array.from(this.root.querySelectorAll<HTMLDetailsElement>('details')).map(section=>({key:this.sectionKey(section),open:section.open}));
+  return new Set(all.filter(item=>item.open&&item.key&&all.filter(other=>other.key===item.key).length===1).map(item=>item.key));
+ }
+ private reopenSections(keys:Set<string>):void{
+  const all=Array.from(this.root.querySelectorAll<HTMLDetailsElement>('details'));
+  for(const section of all){const key=this.sectionKey(section);if(keys.has(key)&&all.filter(other=>this.sectionKey(other)===key).length===1)section.open=true;}
+ }
+ /** A new page starts at its top. The page is only moved when its top is out of sight. */
+ private scrollToTop():void{const top=this.root.querySelector<HTMLElement>('.workspace-main')||this.root;if(!this.topVisible(top))top.scrollIntoView?.({block:'start'});}
  private home():string{return dashboard(this.state!,this.season(),this.area);}
  private articles():string{
   const state=this.state!;
@@ -242,8 +298,8 @@ export class KitchenView {
   if(!this.state)throw new Error('Bitte zuerst den Arbeitsbereich einrichten.');
   if(this.importStarted&&(action==='nav'||action==='cancel'||action==='reload')){await this.run(async()=>{},'Import geschlossen und gespeicherter Stand neu geladen.',undefined,false);return;}
   if(action==='cancel'&&this.editing&&this.draft){this.editing=undefined;this.render();return;}
-  if(action==='dashboard-orders'){if(!this.canLeave())return;this.clearEditor();this.view='orders';this.query='';this.statusFilter=id;this.render();this.root.querySelector<HTMLElement>('main')?.focus();return;}
-  if(action==='nav'||action==='cancel'){if(action==='nav'&&!this.canLeave())return;this.clearEditor();if(action==='nav'){this.view=id as View;this.query='';this.statusFilter='';}this.render();this.root.querySelector<HTMLElement>('main')?.focus();return;}
+  if(action==='dashboard-orders'){if(!this.canLeave())return;this.clearEditor();this.view='orders';this.query='';this.statusFilter=id;this.render();this.root.querySelector<HTMLElement>('main')?.focus({preventScroll:true});return;}
+  if(action==='nav'||action==='cancel'){if(action==='nav'&&!this.canLeave())return;this.clearEditor();if(action==='nav'){this.view=id as View;this.query='';this.statusFilter='';}this.render();this.root.querySelector<HTMLElement>('main')?.focus({preventScroll:true});return;}
   if(action==='receipt-new'){if(!this.writable())throw new Error('Bitte eine aktive Saison wählen.');const [orderId,deliveryId]=id.split('|');const previous=this.state.orders.find(o=>o.value.id===orderId);if(!previous||previous.value.status!=='Bestellt'||deliveryState(previous.value)==='Vollständig geliefert')throw new Error('Für diese Bestellung ist keine Lieferannahme offen.');if(!this.canLeave())return;this.clearEditor();this.view='orders';this.receiving={previous,id:uuid(),deliveryId:deliveryId||previous.value.deliveries?.[0]?.id};this.render();return;}
   if(action==='receipt-missing'){const form=this.root.querySelector<HTMLFormElement>('form[data-form=receipt]');const entry=this.receiving;if(!form||!entry)throw new Error('Bitte zuerst eine Lieferung öffnen.');if(form.querySelector<HTMLInputElement>('[name=deliverySlipFile]')?.files?.length)throw new Error('Bitte die ausgewählte Datei entfernen, bevor ihr eine ausgefallene Lieferung vermerkt.');const data=new FormData(form);if(entry.previous.value.lines.some(l=>parseDecimal(String(data.get('received_'+l.id)||''))!==null&&parseDecimal(String(data.get('received_'+l.id)||''))!==0))throw new Error('Es sind Liefermengen eingetragen. Bitte diese als Wareneingang bestätigen oder die Mengen entfernen.');const note=String(data.get('note')||'').trim();if(!note)throw new Error('Bitte einen kurzen Hinweis zur ausgefallenen Lieferung eingeben.');const date=new Date(String(data.get('receivedAt')));if(!Number.isFinite(date.getTime()))throw new Error('Bitte den Zeitpunkt prüfen.');const value:DeliveryNote={id:entry.id,...(entry.deliveryId?{deliveryId:entry.deliveryId}:{}),recordedAt:date.toISOString(),recordedBy:this.user,note};await this.run(()=>this.store.saveDeliveryNote(entry.previous,value,this.operationId),'Ausgefallene Lieferung vermerkt. Die Mengen bleiben offen.',()=>{this.selectedOrder=entry.previous.value.id;this.view='orders';});return;}
   if(action==='receipt-all'){const form=this.root.querySelector<HTMLFormElement>('form[data-form=receipt]');if(form&&this.receiving){const o=this.receiving.previous.value;for(const l of o.lines){const input=form.querySelector<HTMLInputElement>('[name=received_'+l.id+']');if(input)input.value=n(o.deliveries?deliveryRemaining(o,l.id,this.receiving.deliveryId!):Math.max(0,(l.quantity||0)-receivedQuantity(o,l.id)));}this.dirty=true;this.rememberDraft();this.info='Mengen eingetragen. Bitte prüfen und bei Bedarf ändern; noch nicht gespeichert. '+this.info;this.paintStatus();}return;}
@@ -354,7 +410,7 @@ export class KitchenView {
  private updateCountTotals():void{
   const form=this.root.querySelector<HTMLFormElement>('form[data-form="inventory"]');if(!form||!this.inventory)return;const data=new FormData(form);let counted=0;const visible=new Set(this.inventory.lines.filter(l=>form.querySelector('[data-count-total="'+l.articleId+'"]')?.closest<HTMLElement>('.count-line')?.hidden!==true).map(l=>l.articleId));
   for(const l of this.inventory.lines){const el=form.querySelector<HTMLElement>('[data-count-total="'+l.articleId+'"]');try{const quantity=countQuantity(parseDecimal(String(data.get('packs_'+l.articleId)||'')),parseDecimal(String(data.get('loose_'+l.articleId)||'')),l.packSize);if(quantity!==null&&visible.has(l.articleId))counted++;if(el)el.textContent=quantity===null?'Noch nicht gezählt':n(quantity)+' '+l.unit;}catch{if(el)el.textContent='Menge bitte prüfen';}}
-  const progress=form.querySelector('[data-count-progress]');if(progress)progress.textContent=counted+' von '+visible.size+(visible.size<this.inventory.lines.length?' angezeigten':'')+' Artikeln gezählt';const review=form.querySelector('[data-inventory-review]');if(review)review.replaceChildren();
+  const progress=form.querySelector('[data-count-progress]');if(progress)progress.textContent=counted+' von '+visible.size+(visible.size<this.inventory.lines.length?' angezeigten':'')+' Artikeln gezählt'+(visible.size<this.inventory.lines.length?' · Zählliste gesamt: '+this.inventory.lines.length+' Artikel':'');const review=form.querySelector('[data-inventory-review]');if(review)review.replaceChildren();
  }
  private async readSlip(form:HTMLFormElement):Promise<SlipFile|undefined>{
   const file=form.querySelector<HTMLInputElement>('[name=deliverySlipFile]')?.files?.[0];

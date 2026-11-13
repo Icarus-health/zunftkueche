@@ -68,6 +68,8 @@ export class TableWizard {
             string
         ])]; }
     private sample(): string { return `<div class="ww-preview"><table><caption>Originaldatei · erste ${Math.min(6, this.grid!.rows.length)} Zeilen</caption><tbody>${this.grid!.rows.slice(0, 6).map((r, i) => `<tr><th>${i + 1}</th>${r.map(c => `<td>${h(c.text)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`; }
+    /** Each import step is its own page for scroll handling. */
+    public pageKey(): string { return this.mode + ':' + this.stage; }
     public render(): string {
         let body = '';
         const title = this.mode === 'prices' ? 'Preisliste einlesen' : 'Kassen- und Bestellsystem importieren';

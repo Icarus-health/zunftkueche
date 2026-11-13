@@ -27,4 +27,4 @@ test('dashboard does not treat historical plans as current work or uncounted sto
  const html=dashboard(s,season,'Küche'); assert.doesNotMatch(html,/data-action="order-open"/); assert.match(html,/0 von 1 Artikeln zuletzt gezählt/);assert.doesNotMatch(html,/data-action="reorder-list"/);
 });
 
-test('inventory distinguishes planned items without losing other items',()=>{const html=inventoryForm({...inventory,lines:[{...inventoryLine,packs:null,loose:null}]},['other']);assert.match(html,/name="inventoryFilter"/);assert.match(html,/data-relevant="false"/);assert.match(html,/Alle aktiven Artikel/);});
+test('inventory distinguishes planned items without losing other items',()=>{const html=inventoryForm({...inventory,lines:[{...inventoryLine,packs:null,loose:null}]},['other']);assert.match(html,/name="inventoryFilter"/);assert.match(html,/data-relevant="false"/);assert.match(html,/Alle Artikel der Saison/);});

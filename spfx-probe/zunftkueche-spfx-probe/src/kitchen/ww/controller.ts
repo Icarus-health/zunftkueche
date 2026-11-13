@@ -49,6 +49,10 @@ export interface Ports {
     orders: (orders: Order[], operationId: string) => Promise<unknown>;
 }
 export interface WwDraftSnapshot {screen:Screen|'';draft?:WwDocument;previous?:Stored<WwDocument>;operationId:string;sourceText:string;billProposals:BillLine[];procurementPlan?:Plan;procurementMode?:ProcurementMode;useTemplate?:Template}
+const formScreens: Partial<Record<WwDocument['kind'], Screen>> = {
+    slot: 'slots', rule: 'rules', template: 'templates', prices: 'prices', recipe: 'recipes',
+    plan: 'plans', equipment: 'equipment', movement: 'journal', bill: 'bills'
+};
 export class WwController {
     public screen: Screen | '' = '';
     private draft?: WwDocument;
@@ -75,8 +79,10 @@ export class WwController {
     private billLinking?:Stored<Bill>;
     private billViewing?: Stored<Bill>;
     private operationId:string = crypto.randomUUID();
+    /** True while a form was opened from a page outside the workflow screens; cancelling returns there. */
+    private openedFromOverview = false;
     public constructor(private readonly p: Ports) { }
-    public clear(): void { if(this.previewUrl)URL.revokeObjectURL(this.previewUrl);this.previewUrl='';this.previewImage=undefined; this.screen = ''; this.draft = undefined; this.ingredient=undefined; this.previous = undefined; this.useTemplate = undefined; this.demand = undefined; this.wizard = undefined; this.inboxPage = undefined; this.inboxPending = undefined; this.procurementPlan = undefined; this.procurementMode = 'planning'; this.preparedOrderIds = []; this.sourceText = ''; this.billProposals = []; this.billReadSequence++; this.billUpload = undefined; this.billLinking=undefined;this.billViewing = undefined; this.operationId = crypto.randomUUID(); }
+    public clear(): void { if(this.previewUrl)URL.revokeObjectURL(this.previewUrl);this.previewUrl='';this.previewImage=undefined; this.screen = ''; this.draft = undefined; this.ingredient=undefined; this.previous = undefined; this.useTemplate = undefined; this.demand = undefined; this.wizard = undefined; this.inboxPage = undefined; this.inboxPending = undefined; this.procurementPlan = undefined; this.procurementMode = 'planning'; this.preparedOrderIds = []; this.sourceText = ''; this.billProposals = []; this.billReadSequence++; this.billUpload = undefined; this.billLinking=undefined;this.billViewing = undefined; this.operationId = crypto.randomUUID(); this.openedFromOverview = false; }
     public captureDraft():WwDraftSnapshot|undefined{if(!this.draft&&!this.procurementPlan&&!this.useTemplate)return undefined;return structuredClone({screen:this.screen,draft:this.draft,previous:this.previous,operationId:this.operationId,sourceText:this.sourceText,billProposals:this.billProposals,procurementPlan:this.procurementPlan,procurementMode:this.procurementMode,useTemplate:this.useTemplate});}
     public restoreDraft(value:WwDraftSnapshot):void{this.clear();this.screen=value.screen;this.draft=value.draft?{...value.draft,confirmed:false}:undefined;this.previous=value.previous;this.operationId=value.operationId;this.sourceText=value.sourceText;this.billProposals=value.billProposals;this.procurementPlan=value.procurementPlan;this.procurementMode=value.procurementMode||'planning';this.useTemplate=value.useTemplate;}
     public restoreRows(count:number):void{const container=this.p.root.querySelector('.ww-lines');if(!container||!this.draft)return;while(container.children.length>count)container.lastElementChild?.remove();while(container.children.length<count){const kind=this.draft.kind;const html=kind==='bill'?billLine(this.p.state()):kind==='recipe'||kind==='plan'?operationLine(kind,this.p.state()):kind==='template'||kind==='prices'?procurementLine(kind,this.p.state(),this.draft.supplierId):'';if(!html)break;container.insertAdjacentHTML('beforeend',html);}}
@@ -113,6 +119,13 @@ export class WwController {
         return templateUse(this.useTemplate, documents(this.p.state().ww, 'slot'), this.p.state()); if (this.draft && ['slot', 'rule', 'template', 'prices'].includes(this.draft.kind))
         return procurementForm(this.draft as Slot | Rule | Template | PriceList, this.p.state()); return procurementOverview(this.screen as Screen, this.docs(), this.p.state(), this.p.area()) || operationOverview(this.screen, this.p.state(), this.p.area(), this.p.season(), this.place) || empty('Diesen Bereich bitte über die Navigation öffnen.'); }
     public renderPlanning(): string { this.screen='recipes';return this.render(); }
+    /** Identifies the page render() shows. Redraws of the same page keep their scroll position; a different page starts at the top. */
+    public pageKey(): string {
+        return [this.screen, this.preparedOrderIds.length ? 'prepared' : '', this.billLinking ? 'link:' + this.billLinking.value.id : '',
+            this.ingredient ? 'ingredient' : '', this.procurementPlan ? 'procure:' + this.procurementPlan.id : '', this.wizard ? 'wizard:' + this.wizard.pageKey() : '',
+            this.billViewing ? 'bill:' + this.billViewing.value.id : '', this.draft ? 'draft:' + this.draft.kind + ':' + this.draft.id : '',
+            this.demand ? 'demand:' + this.demand.id : '', this.inboxPending ? 'pending' : '', this.useTemplate ? 'use:' + this.useTemplate.id : ''].join('|');
+    }
     public billForOrder(id:string):void { const order=this.p.state().orders.find(o=>o.value.id===id)?.value;if(!order)throw new Error('Bestellung fehlt.');this.clear();this.screen='bills';this.draft={...this.create('bill') as Bill,supplierId:order.supplierId,orderIds:[id],name:'Rechnung · '+order.supplierName}; }
     private readRecipe(form:HTMLFormElement,original:Recipe):Recipe{const data=new FormData(form),get=(n:string):string=>String(data.get(n)||'').trim();return{...original,name:get('name'),category:get('category'),yield:parseDecimal(get('yield'))!,salePriceGross:parseDecimal(get('salePriceGross')),confirmed:data.has('confirmed'),ingredients:Array.from(form.querySelectorAll<HTMLElement>('[data-line]')).map(row=>{const articleId=row.querySelector<HTMLSelectElement>('[name=articleId]')!.value,article=this.p.state().articles.find(a=>a.value.id===articleId)?.value;return{articleId,quantity:parseDecimal(row.querySelector<HTMLInputElement>('[name=quantity]')!.value)??0,unit:article?.unit||''};})};}
     public billContextChanged(field: string): void {
@@ -504,7 +517,7 @@ export class WwController {
             return;
         }
         if (action === 'ww-cancel') {
-            const screen = this.screen, inbox = this.inboxPage;
+            const screen = this.openedFromOverview ? '' : this.screen, inbox = this.inboxPage;
             this.clear();
             this.screen = screen;
             this.inboxPage = inbox;
@@ -515,8 +528,19 @@ export class WwController {
         if (action === 'ww-new') {
             if (!this.p.canLeave())
                 return;
+            const kind = id as WwDocument['kind'];
+            const draft = this.create(kind);
+            // The main view only shows workflow forms while a workflow screen is active.
+            // A button on another page (e.g. Bestand) therefore has to select the matching screen first.
+            if (!this.screen) {
+                const home = formScreens[kind];
+                if (!home)
+                    throw new Error('Diesen Vorgang bitte über die Navigation öffnen.');
+                this.screen = home;
+                this.openedFromOverview = true;
+            }
             this.previous = undefined;
-            this.draft = this.create(id as WwDocument['kind']);
+            this.draft = draft;
             this.operationId = crypto.randomUUID();
             this.p.redraw();
             return;
