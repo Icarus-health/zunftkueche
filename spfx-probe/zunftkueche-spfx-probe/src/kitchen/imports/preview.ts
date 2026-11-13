@@ -1,6 +1,6 @@
 /* eslint-disable @rushstack/no-new-null -- Unknown source values must remain unknown. */
 import type { GridCell, ImportContext, ImportGrid, ImportPreview, ImportProfile, ProductMapping } from './model';
-import type { ImportField, SystemRow } from '../ww/model';
+import type { ImportField, ImportRow, SystemRow } from '../ww/model';
 import { amount, cents, round, validDate } from '../ww/domain.ts';
 export function importedNumber(cell: GridCell | undefined, decimal: ',' | '.', signed = false): number | null {
     if (!cell || !cell.text.trim())
@@ -46,9 +46,12 @@ export function previewSystemImport(grid: ImportGrid, headerRow: number, profile
         throw new Error('Zeitraum bitte prüfen.');
     if (!Number.isInteger(headerRow) || headerRow < 0 || headerRow >= grid.rows.length - 1)
         throw new Error('Kopfzeile und Datenzeilen wählen.');
-    if (profile.columnMap.quantity === undefined || (profile.columnMap.productCode === undefined && profile.columnMap.productName === undefined))
+    const payment = profile.purpose === 'payments';
+    if (payment && profile.columnMap.amount === undefined)
+        throw new Error('Bitte die Spalte mit dem Zahlungsbetrag zuordnen.');
+    if (!payment && (profile.columnMap.quantity === undefined || (profile.columnMap.productCode === undefined && profile.columnMap.productName === undefined)))
         throw new Error('Artikel und Mengenspalte müssen zugeordnet sein.');
-    const errors: string[] = [], warnings: string[] = [], missing = new Set<string>(), rows: SystemRow[] = [];
+    const errors: string[] = [], warnings: string[] = [], missing = new Set<string>(), rows: ImportRow[] = [];
     const status = (values: string[], s: string): boolean => values.some(v => v.trim().toLocaleLowerCase() === s);
     for (let i = headerRow + 1; i < grid.rows.length; i++) {
         const line = grid.rows[i];
@@ -59,6 +62,40 @@ export function previewSystemImport(grid: ImportGrid, headerRow: number, profile
             for (const field of Object.keys(profile.columnMap) as ImportField[])
                 if (get(field)?.formula)
                     warnings.push('Zeile ' + (i + 1) + ': gespeicherten Formelwert für ' + field + ' am Original prüfen.');
+            const label = (get('status')?.text || '').trim().toLocaleLowerCase();
+            let rowStatus: SystemRow['status'];
+            if (status(profile.cancelledStatuses, label))
+                rowStatus = 'cancelled';
+            else if (status(profile.refundStatuses, label))
+                rowStatus = 'refund';
+            else if (status(profile.activeStatuses, label) || (!label && (profile.purpose !== 'menuOrders' || profile.defaultStatus === 'active')))
+                rowStatus = 'active';
+            else
+                throw new Error('Status „' + label + '“ ausdrücklich zuordnen.');
+            let money = importedNumber(get('amount'), profile.decimalSeparator, true);
+            const dated = !!get('date')?.text.trim();
+            const date = payment && !dated && context.periodStart !== context.periodEnd ? null
+                : dateValue(get('date'), profile, grid, context.periodStart);
+            if (!payment && !dated && context.periodStart !== context.periodEnd)
+                throw new Error('Ohne Datumszeile bitte genau einen Betriebstag wählen.');
+            if (date !== null && (date < context.periodStart || date > context.periodEnd))
+                throw new Error('Datum liegt außerhalb des gewählten Zeitraums.');
+            const currency = get('currency')?.text.trim();
+            if (currency && currency !== context.currency)
+                throw new Error('Währung passt nicht zum Import.');
+            const externalId = (get('externalId')?.text || '').trim();
+            if (payment) {
+                if (money === null) throw new Error('Zahlungsbetrag fehlt.');
+                if (rowStatus === 'active' && !label && money < 0) {
+                    rowStatus = 'refund';
+                    warnings.push('Zeile ' + (i + 1) + ': Negativen Betrag ohne Status als Rückzahlung prüfen.');
+                }
+                if (rowStatus === 'refund') money = -Math.abs(money);
+                if (rowStatus === 'active' && money < 0)
+                    throw new Error('Negativen Betrag bitte als Erstattung oder Korrektur klären.');
+                rows.push({ externalId, paymentMethod: (get('paymentMethod')?.text || '').trim(), date, status: rowStatus, amount: cents(money) });
+                continue;
+            }
             const externalCode = (get('productCode')?.text || get('productName')?.text || '').trim();
             const mapping = mappings.find(m => m.sourceId === context.sourceId && m.externalCode === externalCode);
             if (!mapping) {
@@ -73,41 +110,22 @@ export function previewSystemImport(grid: ImportGrid, headerRow: number, profile
             const value = importedNumber(get('quantity'), profile.decimalSeparator, true);
             if (value === null)
                 throw new Error('Menge fehlt.');
-            const label = (get('status')?.text || '').trim().toLocaleLowerCase();
-            let rowStatus: SystemRow['status'];
-            if (status(profile.cancelledStatuses, label))
-                rowStatus = 'cancelled';
-            else if (status(profile.refundStatuses, label))
-                rowStatus = 'refund';
-            else if (status(profile.activeStatuses, label) || (!label && (profile.purpose === 'sales' || profile.defaultStatus === 'active')))
-                rowStatus = 'active';
-            else
-                throw new Error('Status „' + label + '“ ausdrücklich zuordnen.');
             if (value < 0 && rowStatus !== 'cancelled') {
                 if (profile.purpose !== 'sales')
                     throw new Error('Negative Menümenge bitte als Stornierung klären.');
                 rowStatus = 'refund';
             }
-            let money = importedNumber(get('amount'), profile.decimalSeparator, true);
             if (rowStatus === 'refund' && money !== null)
                 money = -Math.abs(money);
             if (rowStatus === 'active' && money !== null && money < 0)
                 throw new Error('Negativen Betrag bitte als Erstattung oder Korrektur klären.');
-            const date = dateValue(get('date'), profile, grid, context.periodStart);
-            if (!get('date')?.text.trim() && context.periodStart !== context.periodEnd)
-                throw new Error('Ohne Datumszeile bitte genau einen Betriebstag wählen.');
-            if (date < context.periodStart || date > context.periodEnd)
-                throw new Error('Datum liegt außerhalb des gewählten Zeitraums.');
-            const currency = get('currency')?.text.trim();
-            if (currency && currency !== context.currency)
-                throw new Error('Währung passt nicht zum Import.');
-            rows.push({ externalId: (get('externalId')?.text || '').trim(), productId: mapping.targetProductId, name: (get('productName')?.text || externalCode).trim(), quantity: round(Math.abs(value) * mapping.factor), date, status: rowStatus, amount: money === null ? null : cents(money) });
+            rows.push({ externalId, productId: mapping.targetProductId, name: (get('productName')?.text || externalCode).trim(), quantity: round(Math.abs(value) * mapping.factor), date: date!, status: rowStatus, amount: money === null ? null : cents(money) });
         }
         catch (e) {
             errors.push('Zeile ' + (i + 1) + ': ' + (e instanceof Error ? e.message : 'Eingaben prüfen.'));
         }
     }
     if (rows.length > 500)
-        errors.push('Bitte einen auf Artikel und Betriebstag verdichteten Bericht mit höchstens 500 Zeilen exportieren. Einen Zeitraum nicht in überlappenden Teilimporten übernehmen; in der Vorschau wird nichts gekürzt.');
-    return { rows, errors, warnings: [...new Set(warnings)], missing: [...missing], quantity: round(rows.reduce((n, r) => n + (r.status === 'cancelled' ? 0 : r.status === 'refund' ? -r.quantity : r.quantity), 0)), amount: rows.some(r => r.amount === null) ? null : cents(rows.filter(r => r.status !== 'cancelled').reduce((n, r) => n + r.amount!, 0)) };
+        errors.push('Bitte einen verdichteten Bericht mit höchstens 500 Zeilen exportieren. Einen Zeitraum nicht in überlappenden Teilimporten übernehmen; in der Vorschau wird nichts gekürzt.');
+    return { rows, errors, warnings: [...new Set(warnings)], missing: [...missing], quantity: round(rows.reduce((n, r) => n + (!('quantity' in r) || r.status === 'cancelled' ? 0 : r.status === 'refund' ? -r.quantity : r.quantity), 0)), amount: rows.some(r => r.amount === null) ? null : cents(rows.filter(r => r.status !== 'cancelled').reduce((n, r) => n + r.amount!, 0)) };
 }

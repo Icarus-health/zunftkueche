@@ -52,6 +52,23 @@ test('a stale draft cannot reinterpret a changed supplier pack',async()=>{
  await assert.rejects(store.saveOrder(order,undefined,'stale-pack'),/Gebinde|Einheit/);
 });
 
+test('a missed delivery records a note without receiving stock, survives retries and protects concurrent changes',async()=>{
+ const {store,order,server}=await prepared();
+ const sent={...order,status:'Bestellt',recordedBy:'Test',recordedAt:'2026-10-23T12:00:00Z',lines:[{...order.lines[0],reviewed:true}]};
+ const before=await store.saveOrder(sent,undefined,'submitted-note');
+ const note={id:'missed',recordedAt:'2026-10-25T10:00:00Z',recordedBy:'Test',note:'Lieferung ausgefallen'};
+ await assert.rejects(()=>store.saveDeliveryNote(before,{...note,note:''},'empty-op'),/Hinweis/);
+ const after=await store.saveDeliveryNote(before,note,'missing-op');
+ assert.equal(after.value.receipts?.length||0,0);assert.equal(after.value.deliveryNotes[0].note,note.note);
+ assert.equal((await store.saveDeliveryNote(before,note,'missing-op')).value.deliveryNotes.length,1);
+ await assert.rejects(()=>store.saveDeliveryNote(before,{...note,note:'Anders'},'missing-op'),/andere Eingaben/);
+ await assert.rejects(()=>store.saveDeliveryNote(before,{...note,id:'second'},'other-op'),/geändert/);
+ assert.equal((await store.load()).orders[0].value.deliveryNotes.length,1);
+ assert.equal(JSON.parse(server.lists.get('ZK_V1_Bestellungen')[0].ZKData).schema,7);
+ const delivered=await store.saveReceipt(after,{id:'later',receivedAt:'2026-10-26T10:00:00Z',receivedBy:'Test',note:'',lines:[{lineId:'line',quantity:2}]},'delivered-later');assert.equal(delivered.value.deliveryNotes.length,1);assert.equal(delivered.value.receipts[0].lines[0].quantity,2);
+ const completed=await store.saveOrder({...delivered.value,status:'Abgeschlossen'},delivered,'close-note');assert.equal(completed.value.deliveryNotes.length,1);
+});
+
 test('schema initialization rejects rich text storage rather than corrupting JSON',async()=>{
  const {store,server}=await prepared();server.richText=true;await assert.rejects(store.initialize(),/Listenschema/);
 });

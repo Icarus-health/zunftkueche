@@ -1,10 +1,12 @@
 import type { HttpRequest, HttpResponse } from '../sharepoint';
-import type { Stored } from '../model';
-import type { SystemImport, WwDocument, WwState } from './model';
-import { immutableKinds } from './model.ts';
-import { key, validDate, validateDocument } from './domain.ts';
+import type { Order, Stored } from '../model';
+import type { Bill, BillRelations, DeliverySlip, SystemImport, WwDocument, WwState } from './model';
+import { immutableKinds, withOriginal, importPurposes } from './model.ts';
+import { key, validDate, validateDocument, validateBillCostAssignment } from './domain.ts';
 import { sha256 } from '../imports/identity.ts';
 import { sameValue as same } from './equality.ts';
+import { slipExtension, slipFileName } from '../delivery-slip.ts';
+import type { SlipFile } from '../delivery-slip';
 const conflict = (): Error => new Error('Der Vorgang wurde inzwischen geändert. Bitte neu laden; fremde Änderungen bleiben erhalten.');
 interface Index {
     id: string;
@@ -19,7 +21,7 @@ interface Index {
         to: string;
     }>;
 }
-type Entity = WwDocument | Index;
+export type Entity = WwDocument | Index;
 export class WwStore {
     private readonly list: string;
     public constructor(private readonly site: string, private readonly request: HttpRequest, testMode = false, private readonly archived: (seasonId: string) => Promise<boolean> = async () => false) { const u = new URL(site); if (u.protocol !== 'https:' || u.search || u.hash)
@@ -78,16 +80,16 @@ export class WwStore {
             key(e.id);
             validDate(e.from);
             validDate(e.to);
-            if (!/^[a-f0-9]{64}$/.test(e.canonicalKey) || !['Küche', 'Zunftscheuer'].includes(e.area) || !['sales', 'menuOrders'].includes(e.purpose) || e.from > e.to || ids.has(e.id))
+            if (!/^[a-f0-9]{64}$/.test(e.canonicalKey) || !['Küche', 'Zunftscheuer'].includes(e.area) || !importPurposes.some(purpose => purpose === e.purpose) || e.from > e.to || ids.has(e.id))
                 throw new Error('Importregistrierung bitte prüfen.');
             ids.add(e.id);
         }
     }
     else
         validateDocument(doc.entity); return { itemId: row.Id, etag, operationId: doc.operationId, value: doc.entity }; }
-    private async rows(field: string, value: string): Promise<Stored<Entity>[]> { if (!['ZKKey', 'ZKScope', 'ZKRef', 'ZKHash'].includes(field))
+    private async rows(field?: string, value = ''): Promise<Stored<Entity>[]> { if (field && !['ZKKey', 'ZKScope', 'ZKRef', 'ZKHash'].includes(field))
         throw new Error('Unzulässiger Filter.'); if (value.length > 240 || /[']/g.test(value))
-        throw new Error('Filterwert bitte prüfen.'); let url: string | undefined = this.list + '/items?$select=Id,ZKKey,ZKData,ZKScope,ZKKind&$top=200&$filter=' + encodeURIComponent(field + " eq '" + value + "'"); const visited = new Set<string>(), rows: Stored<Entity>[] = []; while (url) {
+        throw new Error('Filterwert bitte prüfen.'); let url: string | undefined = this.list + '/items?$select=Id,ZKKey,ZKData,ZKScope,ZKKind&$top=200' + (field ? '&$filter=' + encodeURIComponent(field + " eq '" + value + "'") : ''); const visited = new Set<string>(), rows: Stored<Entity>[] = []; while (url) {
         if (visited.has(url))
             throw new Error('Ungültige Seitenfolge.');
         visited.add(url);
@@ -106,8 +108,18 @@ export class WwStore {
     private async one(id: string): Promise<Stored<Entity> | undefined> { key(id); const rows = await this.rows('ZKKey', id); if (rows.length > 1)
         throw new Error('Doppelter Vorgangsschlüssel.'); return rows[0]; }
     public async get(id: string): Promise<Stored<WwDocument> | undefined> { const row = await this.one(id); return row && row.value.kind !== 'index' ? row as Stored<WwDocument> : undefined; }
+    public async findConfirmedBillByHash(fileHash: string): Promise<Bill | undefined> {
+        if (!/^[a-f0-9]{64}$/.test(fileHash)) throw new Error('Dateiprüfsumme bitte prüfen.');
+        const [match] = await this.rows('ZKHash', 'bill:' + fileHash);
+        const bill = match?.value;
+        if (!bill) return undefined;
+        if (bill.kind !== 'bill' || !bill.confirmed || bill.fileHash !== fileHash)
+            throw new Error('Belegindex stimmt nicht mit der Datei überein.');
+        return bill;
+    }
     public async load(seasonId: string): Promise<WwState> { key(seasonId); if (!await this.exists())
         return { ready: false, records: [] }; const global = await this.rows('ZKScope', 'global'), local = seasonId === 'global' ? [] : await this.rows('ZKScope', seasonId); return { ready: true, records: [...global, ...local].filter((r): r is Stored<WwDocument> => r.value.kind !== 'index') }; }
+    public async loadAll(): Promise<Stored<Entity>[]> { if (!await this.exists()) throw new Error('Warenwirtschaftsjournal fehlt. Sicherung nicht erstellt.'); return this.rows(); }
     private references(value: Entity): {
         ref: string;
         hash: string;
@@ -139,7 +151,14 @@ export class WwStore {
             throw new Error('Bestätigte Vorgänge bleiben erhalten. Bitte eine neue Version oder einen Korrekturvorgang anlegen.');
         if (value.scope !== 'global' && await this.archived(value.scope))
             throw new Error('Das Archiv bleibt erhalten. Bitte eine aktive Saison wählen.');
+        if (value.kind === 'billLink' && (value.creditForId !== undefined || value.returnIds !== undefined || value.costAssignment !== undefined)) {
+            const original = (await this.get(value.billId))?.value;
+            if (original?.kind !== 'bill' || !original.confirmed || original.scope !== value.scope || original.area !== value.area)
+                throw new Error('Bestätigter Beleg der Saison und des Bereichs fehlt.');
+            await this.checkBillRelations(original, value);
+        }
         if (value.kind === 'bill' && value.confirmed) {
+            await this.checkBillRelations(value, value);
             if (value.fileHash) {
                 if (!current || value.attachment !== 'original-' + value.fileHash + '.pdf')
                     throw new Error('PDF-Original muss vor Bestätigung gespeichert sein.');
@@ -152,13 +171,44 @@ export class WwStore {
                 if (rows.some(r => r.value.id !== value.id))
                     throw new Error('Diese Rechnung oder Datei ist bereits vorhanden.');
         }
+        if (value.kind === 'deliverySlip' && value.confirmed) {
+            if (!current || current.value.kind !== 'deliverySlip' || current.value.fileHash !== value.fileHash
+                || await sha256(await this.readOriginal({ ...current, value })) !== value.fileHash)
+                throw new Error('Lieferscheinoriginal konnte nicht bestätigt werden.');
+        }
+        if(value.kind==='system'&&value.confirmed&&value.originalExtension&&!value.attachment)throw new Error('Originaldatei bitte erneut auswählen und ergänzen.');
+        if(value.kind==='system'&&value.confirmed&&value.attachment){if(!current)throw new Error('Importoriginal fehlt.');const bytes=await this.readOriginal({...current,value});if(await sha256(bytes)!==value.fileHash)throw new Error('Importoriginal stimmt nicht.');}
         if (value.kind === 'system' && value.confirmed)
             return this.saveSystem(value, previous, operationId);
         return this.put(value, previous, operationId) as Promise<Stored<WwDocument>>;
     }
-    public async resumeImport(id: string, operationId: string): Promise<Stored<WwDocument>> { const row = await this.get(id); if (!row || row.value.kind !== 'system')
-        throw new Error('Importentwurf fehlt.'); if (row.value.confirmed)
-        return row; return this.save({ ...row.value, confirmed: true }, row, operationId); }
+    private async checkBillRelations(bill: Bill, relations: BillRelations): Promise<void> {
+        validateBillCostAssignment(relations.costAssignment, bill.gross);
+        if (relations.creditForId) {
+            const target = (await this.get(relations.creditForId))?.value;
+            if (bill.billType !== 'credit' || target?.kind !== 'bill' || !target.confirmed || target.id === bill.id
+                || target.billType === 'credit' || (target.gross ?? 0) < 0 || target.scope !== bill.scope
+                || target.area !== bill.area || target.supplierId !== bill.supplierId)
+                throw new Error('Originalrechnung muss zu Lieferant, Saison und Bereich der Gutschrift passen.');
+        }
+        for (const id of relations.returnIds ?? []) {
+            const target = (await this.get(id))?.value;
+            if (target?.kind !== 'movement' || !target.confirmed || target.type !== 'return' || target.scope !== bill.scope || target.area !== bill.area)
+                throw new Error('Warenrückgabe muss bestätigt sein und zu Saison und Bereich des Belegs passen.');
+        }
+    }
+    public async resumeImport(id: string, operationId: string): Promise<Stored<WwDocument>> {
+        const row = await this.get(id);
+        if (!row || row.value.kind !== 'system') throw new Error('Importentwurf fehlt.');
+        if (row.value.confirmed) return row;
+        const value = { ...row.value, confirmed: true };
+        if (value.originalExtension && !value.attachment) {
+            value.attachment = 'original-' + value.fileHash + '.' + value.originalExtension;
+            try { if (await sha256(await this.readOriginal({ ...row, value })) !== value.fileHash) throw new Error('Prüfsumme'); }
+            catch { throw new Error('Originaldatei bitte erneut auswählen und ergänzen. Der Importentwurf bleibt erhalten.'); }
+        }
+        return this.save(value, row, operationId);
+    }
     // Stage complete rows, reserve the reporting period with an ETag, then expose confirmation.
     // A registered draft is resumable after reload; replacements keep the original immutable.
     private async saveSystem(value: SystemImport, previous: Stored<WwDocument> | undefined, operationId: string): Promise<Stored<WwDocument>> {
@@ -198,15 +248,65 @@ export class WwStore {
         }
         return this.put(value, staged, operationId) as Promise<Stored<WwDocument>>;
     }
-    public async attachOriginal(previous: Stored<WwDocument>, data: Uint8Array, hash: string, extension: string): Promise<string> { if (previous.value.kind !== 'bill' || previous.value.confirmed || data.length > 8 * 1024 * 1024 || !/^[a-f0-9]{64}$/.test(hash) || extension !== 'pdf' || previous.value.fileHash !== hash || await sha256(data) !== hash || new TextDecoder().decode(data.slice(0, 5)) !== '%PDF-')
-        throw new Error('Original oder Prüfsumme bitte prüfen.'); const filename = 'original-' + hash + '.pdf'; const url = this.list + '/items(' + previous.itemId + ')/AttachmentFiles'; const list = await (await this.http(url + '?$select=FileName')).json() as {
+    public async saveSystemWithOriginal(value:SystemImport,bytes:Uint8Array,extension:'csv'|'xlsx',operationId:string):Promise<Stored<WwDocument>>{
+        if(bytes.length>8*1024*1024||await sha256(bytes)!==value.fileHash)throw new Error('Importoriginal oder Prüfsumme bitte prüfen.');
+        const complete={...value,originalExtension:extension,attachment:'original-'+value.fileHash+'.'+extension};validateDocument(complete);
+        const refs=this.references(complete);for(const rows of [await this.rows('ZKRef',refs.ref),await this.rows('ZKHash',refs.hash)])if(rows.some(r=>r.value.id!==value.id))throw new Error('Diese Datei oder dieser Bericht wurde bereits übernommen.');
+        const current=await this.get(value.id);if(current?.value.confirmed)return this.save(complete,current,operationId);
+        const draft: SystemImport={...complete,confirmed:false};
+        delete draft.attachment;
+        const staged=await this.save(draft,current,operationId+'-original');
+        await this.attachOriginal(staged,bytes,value.fileHash,extension);
+        return this.save(complete,staged,operationId);
+    }
+    public async saveDeliverySlip(order: Pick<Order, 'id' | 'seasonId' | 'area'>, deliveryId: string | undefined, file: SlipFile, actor: string): Promise<Stored<WwDocument>> {
+        const extension = slipExtension(file.bytes);
+        const fileHash = await sha256(file.bytes);
+        const id = 'slip-' + await sha256(new TextEncoder().encode(JSON.stringify([order.id, deliveryId, fileHash])));
+        const current = await this.get(id);
+        if (current && current.value.kind !== 'deliverySlip')
+            throw new Error('Vorgangsart des Lieferscheins stimmt nicht.');
+        if (current?.value.confirmed) {
+            if (await sha256(await this.readOriginal(current)) !== fileHash)
+                throw new Error('Gespeicherte Datei stimmt nicht mit dem Lieferschein überein.');
+            return current;
+        }
+        const draft: DeliverySlip = {
+            id, kind: 'deliverySlip', scope: order.seasonId, area: order.area, orderId: order.id,
+            ...(deliveryId ? { deliveryId } : {}), name: slipFileName(file.name, extension),
+            extension, fileHash, confirmed: false, by: actor, at: new Date().toISOString()
+        };
+        const staged = current ?? await this.save(draft, undefined, id + '-draft');
+        if (staged.value.kind !== 'deliverySlip' || staged.value.fileHash !== fileHash
+            || staged.value.orderId !== order.id || staged.value.deliveryId !== deliveryId
+            || staged.value.scope !== order.seasonId || staged.value.area !== order.area)
+            throw new Error('Zuordnung des Lieferscheins stimmt nicht.');
+        const attachment = await this.attachOriginal(staged, file.bytes, fileHash, extension);
+        const fresh = await this.get(id);
+        if (!fresh || fresh.value.kind !== 'deliverySlip')
+            throw new Error('Lieferscheinvorgang nicht lesbar. Bitte erneut versuchen.');
+        if (fresh.value.confirmed && fresh.value.attachment === attachment)
+            return fresh;
+        if (!same(fresh.value, staged.value))
+            throw conflict();
+        return this.save({ ...staged.value, attachment, confirmed: true }, fresh, id + '-complete');
+    }
+    public async attachOriginal(previous: Stored<WwDocument>, data: Uint8Array, hash: string, extension: string): Promise<string> {
+        const value = previous.value;
+        if (!withOriginal(value) || value.confirmed || data.length > 8 * 1024 * 1024 || !/^[a-f0-9]{64}$/.test(hash)
+            || value.fileHash !== hash || await sha256(data) !== hash
+            || (value.kind === 'bill' && (extension !== 'pdf' || new TextDecoder().decode(data.slice(0, 5)) !== '%PDF-'))
+            || (value.kind === 'system' && (!['csv', 'xlsx'].includes(extension) || (extension === 'xlsx' && (data[0] !== 80 || data[1] !== 75))))
+            || (value.kind === 'deliverySlip' && (extension !== value.extension || slipExtension(data) !== extension)))
+            throw new Error('Original oder Prüfsumme bitte prüfen.');
+        const filename = 'original-' + hash + '.'+extension; const url = this.list + '/items(' + previous.itemId + ')/AttachmentFiles'; const list = await (await this.http(url + '?$select=FileName')).json() as {
         value: Array<{
             FileName: string;
         }>;
     }; if (!list.value?.some(f => f.FileName === filename))
-        await this.http(url + "/add(FileName='" + filename + "')", 'POST', new Uint8Array(data).buffer, { 'Content-Type': 'application/octet-stream' }); const bytes = await this.readOriginal({ ...previous, value: { ...previous.value, attachment: filename } }); if (await sha256(bytes) !== hash)
+        await this.http(url + "/add(FileName='" + filename + "')", 'POST', new Uint8Array(data).buffer, { 'Content-Type': 'application/octet-stream' }); const bytes = await this.readOriginal({ ...previous, value: { ...value, attachment: filename } }); if (await sha256(bytes) !== hash)
         throw new Error('Original-Prüfsumme stimmt nach dem Speichern nicht.'); return filename; }
-    public async readOriginal(row: Stored<WwDocument>): Promise<Uint8Array> { if (row.value.kind !== 'bill' || !/^original-[a-f0-9]{64}\.(pdf|png|jpe?g)$/.test(row.value.attachment))
+    public async readOriginal(row: Stored<WwDocument>): Promise<Uint8Array> { if (!withOriginal(row.value) || !/^original-[a-f0-9]{64}\.(pdf|csv|xlsx|jpg|png)$/.test(row.value.attachment||''))
         throw new Error('Originalverweis fehlt.'); const response = await this.http(this.list + '/items(' + row.itemId + ")/AttachmentFiles/getByFileName('" + row.value.attachment + "')/$value"); if (!response.arrayBuffer)
         throw new Error('Originaldatei kann nicht geladen werden.'); return new Uint8Array(await response.arrayBuffer()); }
 }

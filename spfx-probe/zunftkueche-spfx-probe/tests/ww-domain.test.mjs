@@ -13,3 +13,17 @@ test('confirmed sales keep recipe snapshots and refunds do not return physical i
 test('invoices have no stock effect and invalid monetary totals are rejected',()=>{const s=state();const bill={...base('bill','b'),confirmed:true,supplierId:'sup',number:'X',date:'2027-02-01',area:'Küche',orderIds:[],name:'Test',fileHash:'a'.repeat(64),fileName:'test.pdf',attachment:'',net:10,tax:1.9,gross:11.9,adjustmentNet:0,note:'',lines:[{id:'l',articleId:'water',name:'Wasser',quantity:1,unit:'Flasche',unitNet:10,totalNet:10,taxRate:19}]};fn('validateDocument')(bill);assert.throws(()=>fn('validateDocument')({...bill,gross:12}),/Summe|Betr/i);assert.equal(fn('stockProjection')(s,[bill],'s2027','Küche','')[0].quantity,null);});
 test('sales rows without receipt IDs each consume their recipe ingredients exactly once',()=>{const s=state();s.orders=[];s.counts=[stored({id:'anchor',seasonId:'s2027',area:'Küche',articleId:'water',articleName:'Wasser',unit:'Flasche',quantity:10,countedAt:'2027-01-31T10:00:00Z',countedBy:'TEST',note:'',reorder:false})];const imp={...base('system','sales-many'),confirmed:true,area:'Küche',purpose:'sales',sourceId:'profile',name:'Sales',from:'2027-02-01',to:'2027-02-01',fileHash:'a'.repeat(64),canonicalKey:'b'.repeat(64),basis:'gross',currency:'EUR',recipes:[recipe],rows:[1,2].map(()=>({externalId:'',productId:'r1',name:'Test',quantity:5,date:'2027-02-01',status:'active',amount:35}))};assert.equal(d.stockProjection(s,[imp],'s2027','Küche','')[0].quantity,8);});
 test('a confirmed price snapshot refuses an offer whose packaging changed outside the new UI',()=>{const quoted=d.effectiveOffer(offer,[prices],'2027-02-01');assert.equal(quoted.priceNet,9);assert.throws(()=>d.effectiveOffer({...offer,packSize:24,priceNet:18},[prices],'2027-02-01'),/Gebinde|Preisstand|Lieferangebot/);});
+
+test('daily sales use the Berlin calendar after an evening count crosses UTC midnight',()=>{
+ const s=state();s.orders=[];s.counts=[stored({id:'anchor-berlin',seasonId:'s2027',area:'Küche',articleId:'water',articleName:'Wasser',unit:'Flasche',
+  quantity:8,countedAt:'2027-02-13T23:15:00Z',countedBy:'TEST',note:''})];
+ const sale={...base('system','berlin-day'),confirmed:true,area:'Küche',purpose:'sales',recipes:[recipe],
+  rows:[{externalId:'',productId:recipe.id,name:'Gericht',quantity:10,date:'2027-02-13',status:'active',amount:50}]};
+ const project=()=>d.stockProjection(s,[sale],'s2027','Küche','').find(row=>row.articleId==='water');
+ assert.equal(project().quantity,8);
+ sale.rows[0].date='2027-02-14';
+ assert.equal(project().quantity,null);
+ assert.match(project().issues.join(' '),/zeitliche Zuordnung/);
+ sale.rows[0].date='2027-02-15';
+ assert.equal(project().quantity,6);
+});

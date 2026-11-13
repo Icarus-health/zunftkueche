@@ -1,7 +1,9 @@
+import { SharePointInbox } from './ww/inbox.ts';
 import { WwStore } from './ww/store.ts';
 import { validateEntity, validateOrder } from './domain.ts';
 import { catalog } from './model.ts';
-import type { EntityMap, Offer, InventorySession, MasterKind, Order, OrderLine, Receipt, Stored, Workspace } from './model';
+import type { DeliveryNote, EntityMap, Offer, InventorySession, MasterKind, Order, OrderLine, Receipt, Stored, Workspace } from './model';
+import type { SlipFile } from './delivery-slip';
 import { validateInventory, validateReceipt } from './operations.ts';
 
 export interface HttpResponse { status: number; ok: boolean; json(): Promise<unknown>; arrayBuffer?(): Promise<ArrayBuffer> }
@@ -20,13 +22,16 @@ function key(value: string): void { if (!/^[a-zA-Z0-9:_-]{1,240}$/.test(value)) 
 export class SharePointStore {
  public readonly testMode: boolean;
  public readonly ww: WwStore;
+ public readonly inbox: SharePointInbox;
  private readonly site: string;
  private readonly prefix: string;
  public constructor(site: string, private readonly request: HttpRequest, testMode = false) {
   const url = new URL(site); if (url.protocol !== 'https:' || url.search || url.hash) throw new Error('SharePoint-Ziel ist ungültig.');
   this.site=site.replace(/\/$/,'');this.testMode=testMode;this.prefix=testMode?'ZK_AbnahmeV1_':'ZK_V1_';
+  this.inbox=new SharePointInbox(this.site,request,testMode);
   this.ww=new WwStore(this.site,request,testMode,async id=>{const row=await this.one<EntityMap['seasons']>('seasons',id);return !row||row.value.archived;});
  }
+ public get storageScope():string{return this.site+'|'+this.prefix;}
  private list(kind: ListKind): string { return `${this.site}/_api/web/lists/getbytitle('${this.prefix+names[kind]}')`; }
  private async http(url: string, method = 'GET', body?: object, extra: Record<string,string> = {}): Promise<HttpResponse> {
   if (!url.startsWith(this.site+'/_api/')) throw new Error('Unerwartetes SharePoint-Ziel.');
@@ -50,7 +55,7 @@ export class SharePointStore {
   const row=raw as {Id?:number;ZKKey?:string;ZKData?:string;'odata.etag'?:string;'@odata.etag'?:string};
   let doc: Envelope<T>;try {doc=JSON.parse(row.ZKData || '') as Envelope<T>;}catch{throw new Error('Ein App-Datensatz ist nicht lesbar. Bitte Administrator informieren.');}
   const etag=row['odata.etag']||row['@odata.etag'];
-  if(![1,2,3].includes(doc.schema)||!doc.entity||doc.entity.id!==row.ZKKey||!doc.operationId||!etag||etag==='*'||!Number.isInteger(row.Id))throw new Error('Datenschema oder Versionskennung passt nicht. Es wird nichts überschrieben.');
+  if(![1,2,3,4,5,6,7].includes(doc.schema)||!doc.entity||doc.entity.id!==row.ZKKey||!doc.operationId||!etag||etag==='*'||!Number.isInteger(row.Id))throw new Error('Datenschema oder Versionskennung passt nicht. Es wird nichts überschrieben.');
   key(doc.entity.id);return {itemId:row.Id!,etag,operationId:doc.operationId,value:doc.entity};
  }
  private async rows<T extends {id:string}>(kind: ListKind, filter?: string): Promise<Stored<T>[]> {
@@ -67,7 +72,7 @@ export class SharePointStore {
   if(previous&&(!current||current.etag!==previous.etag))throw conflict();
   if(!previous&&current)throw new Error('Dieser Datensatz oder diese Vorjahresübernahme ist bereits vorhanden. Bitte neu laden.');
   const label=(value as unknown as {name?:string;supplierName?:string}).name||(value as unknown as {supplierName?:string}).supplierName||names[kind];
-  const schema=(kind==='orders'&&(value as unknown as Header).deliveries)||(kind==='positions'&&(value as unknown as Position).line.schedule)?3:kind==='orders'&&((value as unknown as Header).receipts||[]).length?2:1;
+  const schema=kind==='orders'&&((value as unknown as Header).deliveryNotes||[]).length?7:kind==='offers'&&'priceStatus' in value?6:kind==='articles'&&('unavailableSeasons' in value||'storagePlace' in value)?5:kind==='suppliers'&&('contactPerson' in value||'address' in value)?4:(kind==='orders'&&(value as unknown as Header).deliveries)||(kind==='positions'&&(value as unknown as Position).line.schedule)?3:kind==='orders'&&((value as unknown as Header).receipts||[]).length?2:1;
   const data=JSON.stringify({schema,operationId,entity:value});if(data.length>60000)throw new Error('Der Vorgang ist zu groß für einen Datensatz. Bitte Administrator informieren.');
   await this.http(this.list(kind)+'/items'+(current?'('+current.itemId+')':''),'POST',{Title:label.slice(0,200),ZKKey:value.id,ZKData:data},current?{'X-HTTP-Method':'MERGE','IF-MATCH':previous!.etag}:{});
   let confirmed: Stored<T> | undefined;try{confirmed=await this.one<T>(kind,value.id);}catch{throw new Error('Speicherung noch nicht bestätigt. Bitte neu laden und den Stand prüfen.');}
@@ -76,7 +81,7 @@ export class SharePointStore {
  private hydrate(header: Stored<Header>,positions: Stored<Position>[]): Stored<Order> {
   const h=header.value;if(!Array.isArray(h.lineIds)||!h.lineIds.length||new Set(h.lineIds).size!==h.lineIds.length)throw new Error('Bestellpositionen sind unvollständig.');
   const lines=h.lineIds.map(id=>{const matches=positions.filter(p=>p.value.orderId===h.id&&p.value.revision===h.revision&&p.value.line.id===id);if(matches.length!==1)throw new Error('Bestellpositionen sind unvollständig. Bitte neu laden.');return matches[0].value.line;});
-  const value: Order={id:h.id,seasonId:h.seasonId,area:h.area,supplierId:h.supplierId,supplierName:h.supplierName,status:h.status,occasion:h.occasion,deliveryDate:h.deliveryDate,method:h.method,note:h.note,sourceId:h.sourceId,sourceYear:h.sourceYear,recordedBy:h.recordedBy,recordedAt:h.recordedAt,lines,...(h.receipts?{receipts:h.receipts}:{}),...(h.deliveries?{deliveries:h.deliveries}:{}),...(h.supplierNote!==undefined?{supplierNote:h.supplierNote}:{}),...(h.contributions?{contributions:h.contributions}:{})};validateOrder(value);return {...header,value};
+  const value: Order={id:h.id,seasonId:h.seasonId,area:h.area,supplierId:h.supplierId,supplierName:h.supplierName,status:h.status,occasion:h.occasion,deliveryDate:h.deliveryDate,method:h.method,note:h.note,sourceId:h.sourceId,sourceYear:h.sourceYear,recordedBy:h.recordedBy,recordedAt:h.recordedAt,lines,...(h.receipts?{receipts:h.receipts}:{}),...(h.deliveryNotes?{deliveryNotes:h.deliveryNotes}:{}),...(h.deliveries?{deliveries:h.deliveries}:{}),...(h.supplierNote!==undefined?{supplierNote:h.supplierNote}:{}),...(h.contributions?{contributions:h.contributions}:{})};validateOrder(value);return {...header,value};
  }
  public async load(): Promise<Workspace> {
   const [seasons,suppliers,articles,offers,headers,positions,counts]=await Promise.all([this.rows<EntityMap['seasons']>('seasons'),this.rows<EntityMap['suppliers']>('suppliers'),this.rows<EntityMap['articles']>('articles'),this.rows<EntityMap['offers']>('offers'),this.rows<Header>('orders'),this.rows<Position>('positions'),this.rows<EntityMap['counts']>('counts')]);
@@ -100,6 +105,7 @@ export class SharePointStore {
  public async saveOrder(order: Order,previous: Stored<Order> | undefined,operationId: string): Promise<Stored<Order>> {
   validateOrder(order);
   if(!same(previous?.value.receipts||[],order.receipts||[]))throw new Error('Lieferannahmen bitte über Lieferung prüfen erfassen.');
+  if(!same(previous?.value.deliveryNotes||[],order.deliveryNotes||[]))throw new Error('Lieferhinweise bitte über Lieferung prüfen erfassen.');
   if(previous&&previous.value.status!=='Entwurf'){
    const allowed=previous.value.status==='Bestellt'&&['Abgeschlossen','Storniert'].includes(order.status);
    if(!allowed||!same({...previous.value,status:order.status},order))throw new Error('Bestellte Positionen bleiben erhalten. Bitte eine verknüpfte Nachbestellung anlegen.');
@@ -124,6 +130,30 @@ export class SharePointStore {
   validateReceipt(order.value,receipt);
   const header:Header={...current.value,receipts:[...(current.value.receipts||[]),structuredClone(receipt)]};
   validateOrder({...order.value,receipts:header.receipts});
+  const saved=await this.put('orders',header,current,operationId);return this.hydrate(saved,await this.rows<Position>('positions'));
+ }
+ public async saveDeliverySlip(orderId: string, deliveryId: string | undefined, file: SlipFile, actor: string): ReturnType<WwStore['saveDeliverySlip']> {
+  const current = await this.one<Header>('orders', orderId);
+  const order = current?.value;
+  if (!order || !['Bestellt','Abgeschlossen'].includes(order.status))
+   throw new Error('Lieferscheine gehören zu einer aufgegebenen Bestellung.');
+  if (order.deliveries?.length ? !order.deliveries.some(slot => slot.id === deliveryId) : !!deliveryId)
+   throw new Error('Bitte den zugehörigen Liefertermin auswählen.');
+  const season = await this.one<EntityMap['seasons']>('seasons', order.seasonId);
+  if (!season || season.value.archived)
+   throw new Error('Bitte eine aktive Saison wählen. Das Archiv bleibt erhalten.');
+  return this.ww.saveDeliverySlip(order, deliveryId, file, actor);
+ }
+ public async saveDeliveryNote(previous: Stored<Order>,entry: DeliveryNote,operationId: string): Promise<Stored<Order>> {
+  const current=await this.one<Header>('orders',previous.value.id);if(!current)throw new Error('Bestellung nicht gefunden.');
+  const order=this.hydrate(current,await this.rows<Position>('positions'));
+  const recorded=(order.value.deliveryNotes||[]).find(r=>r.id===entry.id);
+  if(recorded){if(!same(recorded,entry))throw new Error('Dieser Lieferhinweis hat andere Eingaben. Bitte neu laden.');return order;}
+  if(current.etag!==previous.etag)throw conflict();
+  if(order.value.status!=='Bestellt')throw new Error('Lieferhinweise nur für aufgegebene Bestellungen erfassen.');
+  const state=await this.load();if(!state.seasons.some(s=>s.value.id===order.value.seasonId&&!s.value.archived))throw new Error('Bitte eine aktive Saison wählen. Das Archiv bleibt erhalten.');
+  const header:Header={...current.value,deliveryNotes:[...(current.value.deliveryNotes||[]),structuredClone(entry)]};
+  validateOrder({...order.value,deliveryNotes:header.deliveryNotes});
   const saved=await this.put('orders',header,current,operationId);return this.hydrate(saved,await this.rows<Position>('positions'));
  }
  public async saveInventory(value: InventorySession,previous: Stored<InventorySession> | undefined,operationId: string): Promise<Stored<InventorySession>> {

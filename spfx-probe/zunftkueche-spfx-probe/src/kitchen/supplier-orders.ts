@@ -1,6 +1,6 @@
 /* eslint-disable @rushstack/no-new-null -- Unknown dates and quantities are explicit business values. */
 import type { Area, Delivery, Order, Season, Workspace } from './model';
-import { catalog } from './model.ts';
+import { articleAvailable, catalog } from './model.ts';
 import { copyOrder } from './domain.ts';
 import { effectiveOffer } from './ww/domain.ts';
 import { documents } from './ww/model.ts';
@@ -23,7 +23,7 @@ export function scheduledOrder(order: Order): Order {
  }
  return result;
 }
-export function validateSchedule(order: Order): void {
+export function validateSchedule(order: Order, forDispatch = false): void {
  if (!order.deliveries) {
   if (order.lines.some(l => l.schedule || l.sources) || order.contributions) throw new Error('Lieferaufteilung ohne Liefertermine.');
   return;
@@ -33,10 +33,11 @@ export function validateSchedule(order: Order): void {
  for (const d of order.deliveries) {
   if (!d || !key(d.id) || ids.has(d.id)) throw new Error('Doppelter oder ungültiger Liefertermin.');
   ids.add(d.id);
-  if (d.date !== null && (!validDate(d.date) || dates.has(d.date))) throw new Error('Datum bitte prüfen; je Datum einen Liefertermin verwenden.');
-  if (order.status !== 'Entwurf' && order.status !== 'Storniert' && !d.date) throw new Error('Datum für jeden Liefertermin bestätigen.');
-  if (d.date) dates.add(d.date);
   if (typeof d.time !== 'string' || d.time.length > 100 || typeof d.place !== 'string' || d.place.length > 200) throw new Error('Zeit und Lieferort bitte prüfen.');
+  const slot = d.date + '|' + d.time.trim().toLocaleLowerCase() + '|' + d.place.trim().toLocaleLowerCase();
+  if (d.date !== null && (!validDate(d.date) || dates.has(slot))) throw new Error('Datum, Zeit und Lieferort bitte prüfen; gleiche Liefertermine nur einmal angeben.');
+  if ((forDispatch || (order.status !== 'Entwurf' && order.status !== 'Storniert')) && !d.date) throw new Error('Datum für jeden Liefertermin bestätigen.');
+  if (d.date) dates.add(slot);
  }
  if (order.supplierNote !== undefined && (typeof order.supplierNote !== 'string' || order.supplierNote.length > 1000)) throw new Error('Mitteilung an Lieferanten bitte kürzen.');
  for (const line of order.lines) {
@@ -68,25 +69,31 @@ export function withSchedule(order: Order, initial?: Delivery[]): Order {
  const deliveries = initial?.length ? structuredClone(initial) : [{ id: 'delivery-1', date: order.deliveryDate, time: '', place: order.area }];
  return scheduledOrder({ ...structuredClone(order), deliveries, lines: order.lines.map(l => ({ ...l, schedule: Object.fromEntries(deliveries.map((d, i) => [d.id, i ? 0 : l.quantity])) })) });
 }
-export function copyScheduledOrder(source: Order, target: Season, area: Area, state: Workspace, dates: Record<string, string>): Order {
+export function copyScheduledOrder(source: Order, target: Season, area: Area, state: Workspace, dates: Record<string, string>, selectedIds?: string[]): Order {
  const old = withSchedule(source);
- if (old.deliveries!.some(d => !validDate(dates[d.id]))) throw new Error('Bitte für jeden Liefertermin das neue Datum bestätigen.');
- const quantities = Object.fromEntries(old.lines.map(l => [l.id, l.quantity ?? 0]));
+ if (old.deliveries!.some(d => !Object.hasOwn(dates,d.id) || (dates[d.id] !== '' && !validDate(dates[d.id])))) throw new Error('Datum des Liefertermins bitte prüfen.');
+ const ids = selectedIds ?? old.lines.map(l => l.id);
+ if (!ids.length || new Set(ids).size !== ids.length || ids.some(id => !old.lines.some(l => l.id === id))) throw new Error('Bitte mindestens eine gültige Position auswählen.');
+ const selected = old.lines.filter(l => ids.includes(l.id));
+ if (selected.some(l => { const a=state.articles.find(x=>x.value.id===l.articleId)?.value; return !a || !articleAvailable(a,target.id); })) throw new Error('Mindestens ein Artikel ist für diese Saison nicht vorgesehen. Bitte Auswahl oder Saisonverfügbarkeit prüfen.');
+ const quantities = Object.fromEntries(selected.map(l => [l.id, l.quantity]));
  const legacy=structuredClone(source);delete legacy.deliveries;delete legacy.contributions;
- legacy.lines=source.lines.map(l=>{const clean={...l};delete clean.schedule;delete clean.sources;return clean;});
+ legacy.lines=source.lines.filter(l=>ids.includes(l.id)).map(l=>{const clean={...l};delete clean.schedule;delete clean.sources;return clean;});
  const base = copyOrder(legacy, target, area, catalog(state), quantities);
- base.deliveries = old.deliveries!.map(d => ({ ...d, date: dates[d.id] }));
+ base.deliveries = old.deliveries!.map(d => ({ ...d, date: dates[d.id] || null }));
  base.lines = base.lines.map(l => {
   const offer = state.offers.find(o => o.value.id === l.offerId)!.value;
   const prior = old.lines.find(x => x.id === l.id)!;
   if (offer.packSize !== prior.packSize || offer.packName !== prior.packName || l.unit !== prior.unit) throw new Error('Gebinde oder Einheit wurde geändert. Bitte die Mengen neu planen: ' + l.articleName);
-  const quoted = effectiveOffer(offer, documents(state.ww, 'prices'), base.deliveries![0].date!);
+  const quoted = base.deliveries!.every(d=>d.date) ? effectiveOffer(offer, documents(state.ww, 'prices'), base.deliveries![0].date!) : {...offer,priceNet:null};
   const clean={...l};delete clean.sources;
   return { ...clean, schedule: structuredClone(prior.schedule!), quantity: prior.quantity, priceNet: quoted.priceNet };
  });
  delete base.contributions;
  delete base.receipts;
+ delete base.deliveryNotes;
  base.note = '';
+ if (/^historisch(?:e|er|es)?\b/i.test(base.occasion.trim())) base.occasion='Bestellplanung '+target.year+' · Vorjahr prüfen';
  base.supplierNote = source.supplierNote || '';
  const result = scheduledOrder(base);
  validateSchedule(result);

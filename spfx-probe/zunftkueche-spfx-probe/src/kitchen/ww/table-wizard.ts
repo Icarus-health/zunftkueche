@@ -1,7 +1,8 @@
+import type { InboxOriginal } from './inbox';
 import type { Workspace, Area, Stored } from '../model';
-import type { Profile, PriceList, SystemImport, WwDocument, ImportField } from './model';
+import type { Profile, PriceList, SystemImport, WwDocument, ImportField, PaymentRow, SystemRow } from './model';
 import type { ImportGrid, ImportContext, ImportPreview } from '../imports/model';
-import { documents } from './model.ts';
+import { documents, importPurposes, purposeLabels } from './model.ts';
 import { button, field, select, h, n, check, money } from '../markup.ts';
 import { heading, today } from './common.ts';
 import { readCsv, decodeCsv } from '../imports/csv-reader.ts';
@@ -16,12 +17,24 @@ interface WizardPorts {
     area: () => Area;
     actor: string;
     redraw: () => void;
-    commit: (doc: WwDocument, profile?: Profile, previous?: Stored<Profile>) => Promise<void>;
+    commit: (doc: WwDocument, profile?: Profile, previous?: Stored<Profile>,original?:{bytes:Uint8Array;extension:'csv'|'xlsx'}) => Promise<void>;
 }
-const fields: Array<[
+const productFields: Array<[
     ImportField,
     string
 ]> = [['productCode', 'Artikelnummer / Code'], ['productName', 'Artikelbezeichnung'], ['quantity', 'Verkaufte / bestellte Menge'], ['unit', 'Einheit'], ['date', 'Betriebstag / Verwendungstag'], ['status', 'Status'], ['amount', 'Gesamtumsatz der Zeile'], ['currency', 'Währung'], ['externalId', 'Externe Belegkennung']];
+const paymentFields: Array<[ImportField, string]> = [
+    ['amount', 'Zahlungsbetrag'], ['paymentMethod', 'Zahlart (optional)'], ['date', 'Betriebstag (optional)'],
+    ['status', 'Status (optional)'], ['currency', 'Währung (optional)'], ['externalId', 'Externe Belegkennung (optional)']
+];
+const paymentHeaders: Partial<Record<ImportField, string[]>> = {
+    amount: ['betrag', 'zahlungsbetrag'],
+    paymentMethod: ['zahlart', 'zahlungsart'],
+    date: ['datum', 'betriebstag'],
+    status: ['status'],
+    currency: ['währung'],
+    externalId: ['belegkennung', 'transaktions-id']
+};
 export class TableWizard {
     public mode: 'system' | 'prices';
     private stage: 'file' | 'sheet' | 'columns' | 'products' | 'review' = 'file';
@@ -35,6 +48,7 @@ export class TableWizard {
     private context?: ImportContext;
     private preview?: ImportPreview;
     private header = 0;
+    private paymentColumnsReviewed = false;
     private title = '';
     private supplierId = '';
     private validFrom = today();
@@ -42,7 +56,7 @@ export class TableWizard {
     private priceDoc?: PriceList;
     private replacesId = '';
     private importId = crypto.randomUUID();
-    public constructor(mode: 'system' | 'prices', private readonly p: WizardPorts) { this.mode = mode; }
+    public constructor(mode: 'system' | 'prices', private readonly p: WizardPorts, private readonly original?: InboxOriginal) { this.mode = mode; }
     public useProfile(id:string):void{const p=documents(this.p.state().ww,'profile').find(p=>p.id===id);if(!p)return;const form=this.form();const purpose=form.querySelector<HTMLSelectElement>('[name=purpose]');if(purpose)purpose.value=p.purpose;const name=form.querySelector<HTMLInputElement>('[name=name]');if(name&&!name.value)name.value=p.name;}
     private form(): HTMLFormElement { return this.p.root.querySelector<HTMLFormElement>('form[data-wizard]')!; }
     private data(): FormData { return new FormData(this.form()); }
@@ -58,42 +72,97 @@ export class TableWizard {
         let body = '';
         const title = this.mode === 'prices' ? 'Preisliste einlesen' : 'Kassen- und Bestellsystem importieren';
         if (this.stage === 'file')
-            body = `<p class="ww-step">1 · Datei und Herkunft</p><p>Excel (.xlsx) oder CSV. Die Datei wird auf diesem Gerät gelesen. Danach werden Spalten und Artikel geprüft.</p><div class="formgrid">${field('file', 'Datei auswählen', '', true, 'file', 'accept=".csv,.xlsx"')}${this.mode === 'system' ? select('profile', 'Gespeicherte Quelle / Format', [['', 'Neue Quelle / neues Format'], ...documents(this.p.state().ww, 'profile').map(p => [p.id, p.name] as [
+            body = `<p class="ww-step">1 · Datei und Herkunft</p><p>Excel (.xlsx) oder CSV. Die Datei wird auf diesem Gerät gelesen. Danach werden Spalten und Artikel geprüft.</p><div class="formgrid">${this.original ? '<p><strong>' + h(this.original.name) + '</strong> · SharePoint</p>'
+                : field('file', 'Datei auswählen', '', true, 'file', 'accept=".csv,.xlsx"')}${this.mode === 'system' ? select('profile', 'Gespeicherte Quelle / Format', [['', 'Neue Quelle / neues Format'], ...documents(this.p.state().ww, 'profile').map(p => [p.id, p.name + ' · ' + purposeLabels[p.purpose]] as [
                     string,
                     string
-                ])], '') + field('name', 'Name der Quelle / des Systems', '', true) + select('purpose', 'Welche Daten enthält die Datei?', [['sales', 'Tatsächliche Kassenverkäufe'], ['menuOrders', 'Menüvorbestellungen (Planbedarf)']], 'sales') + field('from', 'Zeitraum von', today(), true, 'date') + field('to', 'Zeitraum bis', today(), true, 'date') + field('currency', 'Währung', 'EUR', true) + select('replacesId', 'Korrektur eines früheren Imports (optional)', [['', 'Neuen Zeitraum übernehmen'], ...documents(this.p.state().ww, 'system').filter(s => s.confirmed && s.area === this.p.area()).map(s => [s.id, s.name + ' · ' + s.from + ' bis ' + s.to] as [
+                ])], '') + field('name', 'Name der Quelle / des Systems', this.original ? 'Kasse' : '', true) + select('purpose', 'Welche Daten enthält die Datei?', [['sales', 'Tatsächliche Kassenverkäufe'], ['payments', 'Zahlungen / Kassensummen'], ['menuOrders', 'Menüvorbestellungen (Planbedarf)']], 'sales') + field('from', 'Zeitraum von', this.original ? '' : today(), true, 'date') + field('to', 'Zeitraum bis', this.original ? '' : today(), true, 'date') + field('currency', 'Währung', 'EUR', true) + select('replacesId', 'Korrektur eines früheren Imports (optional)', [['', 'Neuen Zeitraum übernehmen'], ...documents(this.p.state().ww, 'system').filter(s => s.confirmed && s.area === this.p.area()).map(s => [s.id, s.name + ' · ' + s.from + ' bis ' + s.to] as [
                     string,
                     string
                 ])], '') : field('name', 'Name des Preisstands', '', true) + select('supplierId', 'Lieferant', this.p.state().suppliers.filter(s => s.value.active).map(s => [s.value.id, s.value.name]), '') + field('validFrom', 'Gültig ab', today(), true, 'date')}<details class="ww-full"><summary>Weitere CSV-Einstellungen</summary>${select('separator', 'CSV-Trennzeichen', [[';', 'Semikolon ;'], [',', 'Komma ,'], ['\t', 'Tabulator']], ';')}${select('encoding', 'CSV-Zeichensatz', [['utf-8', 'UTF-8'], ['windows-1252', 'Windows / ältere Excel-CSV']], 'utf-8')}</details></div>${button('ww-file-read', 'Datei lesen', '', true)}`;
         if (this.stage === 'sheet')
             body = `<p class="ww-step">2 · Tabellenblatt</p>${select('sheet', 'Blatt auswählen', this.sheets.map(s => [s, s]), this.sheets[0])}${button('ww-sheet-read', 'Blatt lesen', '', true)}`;
         if (this.stage === 'columns') {
-            const p = this.profile!;
-            body = `<p class="ww-step">2 · Spalten zuordnen</p><p>${h(this.fileName)} · ${Math.max(0, this.grid!.rows.length - this.header - 1)} Datenzeilen. Die Vorschau verändert keine Daten.</p>${this.sample()}${field('header', 'Nummer der Kopfzeile', String(this.header + 1), true, 'number', 'min="1"')}${button('ww-header', 'Kopfzeile übernehmen')}<div class="formgrid">${(this.mode === 'system' ? fields : [['code', 'Artikelnummer des Lieferanten'], ['priceNet', 'Nettopreis je Liefergebinde'], ['deposit', 'Pfand je Liefergebinde']]).map(([id, label]) => select('col_' + id, label, this.options(), String(this.mode === 'system' ? (p.columnMap[id as ImportField] ?? '') : (this.priceColumns[id] ?? '')))).join('')}${select('decimal', 'Zahlenformat', [['quarter', ''], [',', 'Dezimal-Komma: 1.234,56'], ['.', 'Dezimal-Punkt: 1,234.56']].filter(x => x[0] !== 'quarter') as Array<[
-                string,
-                string
-            ]>, p.decimalSeparator)}${this.mode === 'system' ? select('dateFormat', 'Datumsformat', [['de', 'TT.MM.JJJJ'], ['iso', 'JJJJ-MM-TT'], ['excel', 'Excel-Datumszahl']], p.dateFormat) + select('basis', 'Umsatzbeträge sind', [['unknown', 'Noch unbekannt'], ['gross', 'Brutto'], ['net', 'Netto']], p.basis) + field('active', 'Aktive Statuswerte (mit | trennen)', p.activeStatuses.join('|')) + field('cancelled', 'Stornierte Statuswerte', p.cancelledStatuses.join('|')) + field('refund', 'Erstattete Statuswerte', p.refundStatuses.join('|')) + check('defaultActive', 'Leeren Status bei Menüvorbestellungen ausdrücklich als aktiv werten', p.defaultStatus === 'active') : ''}</div>${this.mode==='system'?'<p>Bei „Umsatz“ den gesamten Zeilenbetrag wählen, keinen Stückpreis. Ohne Datumsfeld nur einen einzelnen Tag importieren.</p>':'<p>Preise gelten je ausgewähltem Liefergebinde. Gebinde und Gültigkeit am Original prüfen.</p>'}${button('ww-columns', 'Artikel zuordnen', '', true)}`;
+            const p = this.profile!, payment = this.mode === 'system' && p.purpose === 'payments';
+            const headers = this.grid!.rows[this.header];
+            for (const [key, label] of Object.entries(p.columnHeaders || {})) {
+                const id = key as ImportField, index = p.columnMap[id];
+                if (index !== undefined && headers[index]?.text !== label) delete p.columnMap[id];
+            }
+            const picked = (id: ImportField): number | undefined => {
+                if (p.columnMap[id] !== undefined || !payment || this.previous || this.paymentColumnsReviewed) return p.columnMap[id];
+                const matches = headers.flatMap((cell, index) =>
+                    paymentHeaders[id]?.includes(cell.text.trim().toLocaleLowerCase('de-DE')) ? [index] : []);
+                return matches.length === 1 && !Object.values(p.columnMap).includes(matches[0]) ? matches[0] : undefined;
+            };
+            const column = ([id, label]: [string, string]): string => select('col_' + id, label, this.options(),
+                String((this.mode === 'system' ? picked(id as ImportField) : this.priceColumns[id]) ?? ''));
+            const decimal = select('decimal', 'Zahlenformat', [[',', 'Dezimal-Komma: 1.234,56'], ['.', 'Dezimal-Punkt: 1,234.56']], p.decimalSeparator);
+            const dateFormat = select('dateFormat', 'Datumsformat', [['de', 'TT.MM.JJJJ'], ['iso', 'JJJJ-MM-TT'], ['excel', 'Excel-Datumszahl']], p.dateFormat);
+            const statusFields = field('active', 'Aktive Statuswerte (mit | trennen)', p.activeStatuses.join('|'))
+                + field('cancelled', 'Stornierte Statuswerte', p.cancelledStatuses.join('|'))
+                + field('refund', 'Erstattete Statuswerte', p.refundStatuses.join('|'));
+            let mapping: string;
+            if (payment) {
+                mapping = paymentFields.slice(0, 4).map(column).join('')
+                    + '<details class="ww-full"><summary>Weitere Spalten und Formate</summary><div class="formgrid">'
+                    + paymentFields.slice(4).map(column).join('') + decimal + dateFormat + statusFields + '</div></details>';
+            } else if (this.mode === 'system') {
+                mapping = productFields.map(column).join('') + decimal + dateFormat
+                    + select('basis', 'Umsatzbeträge sind', [['unknown', 'Noch unbekannt'], ['gross', 'Brutto'], ['net', 'Netto']], p.basis)
+                    + statusFields + check('defaultActive', 'Leeren Status bei Menüvorbestellungen ausdrücklich als aktiv werten', p.defaultStatus === 'active');
+            } else {
+                const priceFields: Array<[string, string]> = [['code', 'Artikelnummer des Lieferanten'], ['priceNet', 'Nettopreis je Liefergebinde'], ['deposit', 'Pfand je Liefergebinde']];
+                mapping = priceFields.map(column).join('') + decimal;
+            }
+            const hint = payment ? 'Vorgeschlagene Spalten prüfen. Ohne Datum gilt der Betrag für den gewählten Zeitraum.'
+                : this.mode === 'system' ? 'Bitte den gesamten Zeilenumsatz wählen. Ohne Datumsfeld nur einen Betriebstag importieren.'
+                    : 'Preise gelten je ausgewähltem Liefergebinde.';
+            body = '<p class="ww-step">2 · Spalten zuordnen</p><p>' + h(this.fileName) + ' · '
+                + Math.max(0, this.grid!.rows.length - this.header - 1) + ' Datenzeilen</p>' + this.sample()
+                + field('header', 'Nummer der Kopfzeile', String(this.header + 1), true, 'number', 'min="1"')
+                + button('ww-header', 'Kopfzeile übernehmen') + '<div class="formgrid">' + mapping + '</div>'
+                + '<p>' + h(hint) + '</p>' + button('ww-columns', payment ? 'Zahlungen prüfen' : 'Artikel zuordnen', '', true);
         }
         if (this.stage === 'products') {
             if (this.mode === 'system') {
                 const codes = this.externalCodes(), recipes = documents(this.p.state().ww, 'recipe').filter(r => r.confirmed);
-                body = `<p class="ww-step">3 · Produkte verbinden</p><p>Jeden externen Artikel einer bestätigten Rezeptversion zuordnen. Faktor 1 bedeutet: eine exportierte Einheit entspricht einer Portion / einem Stück.</p>${!recipes.length ? '<p class="ww-alert">Zuerst unter Planung ein geprüftes Rezept oder Verkaufsprodukt anlegen.</p>' : ''}<div class="ww-lines">${codes.map((code, i) => { const m = this.profile!.mappings.find(m => m.externalCode === code); return `<div class="ww-line" data-map="${i}"><div><strong>${h(code)}</strong></div>${select('productId', 'Rezept / Verkaufsprodukt', [['', 'Bitte wählen'], ...recipes.map(r => [r.id, r.name + ' · ' + r.at.slice(0, 10)] as [
+                body = `<p class="ww-step">3 · Produkte verbinden</p><p>Bekannte Zuordnungen sind eingeklappt. Neue Produkte und abweichende Einheiten bitte prüfen. Faktor 1 bedeutet: eine exportierte Einheit entspricht einer Portion / einem Stück.</p>${!recipes.length ? '<p class="ww-alert">Zuerst unter Speisen & Getränke ein geprüftes Rezept oder Verkaufsprodukt anlegen.</p>' : ''}<div class="ww-lines">${codes.map((code, i) => { const m = this.profile!.mappings.find(m => m.externalCode === code); const known=!!m&&recipes.some(r=>r.id===m.productId)&&m.unit===this.externalUnit(code);return `<details class="mapping-review" ${known?'':'open'}><summary>${h(code)} · ${known?'Zuordnung übernommen – bei Bedarf ändern':'Neu oder abweichend – prüfen'}</summary><div class="ww-line" data-map="${i}">${select('productId', 'Rezept / Verkaufsprodukt', [['', 'Bitte wählen'], ...recipes.map(r => [r.id, r.name + ' · ' + r.at.slice(0, 10)] as [
                         string,
                         string
-                    ])], m?.productId || '')}${field('factor', 'Portionen je Exporteinheit', n(m?.factor ?? 1), true, 'text', 'inputmode="decimal"')}${field('unit', 'Einheit der Exportdatei', m?.unit || this.externalUnit(code))}</div>`; }).join('')}</div>${button('ww-products', 'Importvorschau prüfen', '', true)}`;
+                    ])], m?.productId || '')}${field('factor', 'Portionen je Exporteinheit', n(m?.factor ?? 1), true, 'text', 'inputmode="decimal"')}${field('unit', 'Einheit der Exportdatei', m?.unit || this.externalUnit(code))}</div></details>`; }).join('')}</div>${button('ww-products', 'Importvorschau prüfen', '', true)}`;
             }
             else
                 body = this.priceReview(false);
         }
         if (this.stage === 'review') {
             if (this.mode === 'system') {
-                const v = this.preview!;
-                body = `<p class="ww-step">4 · Prüfen und bestätigen</p>${this.replacesId ? '<p class="ww-alert">Korrektur: ersetzt den ausgewählten Import erst nach erfolgreicher vollständiger Bestätigung. Frühere Mengen werden dann nicht zusätzlich gezählt.</p>' : ''}<p><strong>${this.profile!.purpose === 'sales' ? 'Tatsächliche Verkäufe' : 'Menüvorbestellungen – ausschließlich Planbedarf'}</strong> · ${h(this.context!.periodStart)} bis ${h(this.context!.periodEnd)} · ${h(this.p.area())}</p><p>${v.rows.length} Zeilen · Menge ${n(v.quantity)} · Umsatz ${v.amount === null ? 'offen' : n(v.amount) + ' ' + h(this.context!.currency)} · ${h(this.profile!.basis === 'unknown' ? 'Preisart unbekannt' : this.profile!.basis === 'gross' ? 'brutto' : 'netto')}</p>${v.errors.map(e => `<p class="ww-alert">${h(e)}</p>`).join('')}${v.warnings.map(e => `<p class="ww-alert">${h(e)}</p>`).join('')}<div class="ww-preview"><table><thead><tr><th>Datum</th><th>Produkt</th><th>Menge</th><th>Status</th><th>Umsatz</th></tr></thead><tbody>${v.rows.map(r => `<tr><td>${h(r.date)}</td><td>${h(r.name)}</td><td>${n(r.quantity)}</td><td>${h(r.status==='active'?'Berücksichtigt':r.status==='refund'?'Erstattet':'Storniert')}</td><td>${r.amount === null ? 'Offen' : n(r.amount)}</td></tr>`).join('')}</tbody></table></div>${check('reviewed', 'Ich habe Zeitraum, Zuordnungen, Status und Summen am Original geprüft.', false)}${check('saveProfile', 'Diese Quelle und ihre Zuordnungen für spätere Dateien speichern', true)}${v.errors.length ? '' : button('ww-table-confirm', 'Geprüfte Daten übernehmen', '', true)}${button('ww-products-back', 'Zuordnungen ändern')}`;
+                const v = this.preview!, p = this.profile!, context = this.context!, payment = p.purpose === 'payments';
+                const statusLabel = { active: 'Berücksichtigt', refund: 'Erstattet', cancelled: 'Storniert' };
+                const summary = payment ? (v.errors.length ? 'Saldo offen' : 'Saldo ' + n(v.amount) + ' ' + h(context.currency))
+                    : 'Menge ' + n(v.quantity) + ' · Umsatz ' + (v.amount === null ? 'offen' : n(v.amount) + ' ' + h(context.currency))
+                        + ' · ' + (p.basis === 'unknown' ? 'Preisart unbekannt' : p.basis === 'gross' ? 'brutto' : 'netto');
+                body = `<p class="ww-step">${payment ? 3 : 4} · Prüfen und bestätigen</p>`
+                    + (this.replacesId ? '<p class="ww-alert">Dieser Import ersetzt die frühere Übernahme für denselben Zeitraum.</p>' : '')
+                    + '<p><strong>' + h(purposeLabels[p.purpose]) + '</strong> · ' + h(context.periodStart) + ' bis ' + h(context.periodEnd) + ' · ' + h(this.p.area()) + '</p>'
+                    + '<p>' + v.rows.length + ' Zeilen · ' + summary + '</p>'
+                    + [...v.errors, ...v.warnings].map(e => '<p class="ww-alert">' + h(e) + '</p>').join('')
+                    + '<div class="ww-preview"><table><thead><tr><th>Datum</th>'
+                    + (payment ? '<th>Zahlart</th>' : '<th>Produkt</th><th>Menge</th>')
+                    + '<th>Status</th><th>' + (payment ? 'Betrag' : 'Umsatz') + '</th></tr></thead><tbody>'
+                    + v.rows.map(r => '<tr><td>' + h(r.date ?? 'Gesamtzeitraum') + '</td>'
+                        + ('paymentMethod' in r ? '<td>' + h(r.paymentMethod || 'Offen') + '</td>' : '<td>' + h(r.name) + '</td><td>' + n(r.quantity) + '</td>')
+                        + '<td>' + statusLabel[r.status] + '</td><td>' + (r.amount === null ? 'Offen' : n(r.amount)) + '</td></tr>').join('')
+                    + '</tbody></table></div>'
+                    + check('reviewed', 'Ich habe Zeitraum, Zuordnungen, Status und Summen am Original geprüft.', false)
+                    + check('saveProfile', 'Diese Quelle und ihre Zuordnungen für spätere Dateien speichern', true)
+                    + (v.errors.length || !v.rows.length ? '' : button('ww-table-confirm', 'Geprüfte Daten übernehmen', '', true))
+                    + button('ww-products-back', payment ? 'Spalten ändern' : 'Zuordnungen ändern');
             }
             else
                 body = this.priceReview(true);
         }
-        return `<form data-wizard class="panel">${heading(title, 'Herstellerunabhängig · nachvollziehbar · ohne Zusatzdienst')}${body}<div class="actions">${button('ww-cancel', 'Import abbrechen')}</div></form>`;
+        return `<form data-wizard class="panel">${heading(title, this.original ? '' : 'Herstellerunabhängig · nachvollziehbar · ohne Zusatzdienst')}${body}<div class="actions">${button('ww-cancel', this.original ? 'Zurück zum Dateieingang' : 'Import abbrechen')}</div></form>`;
     }
     private externalCodes(): string[] { const map = this.profile!.columnMap; return [...new Set(this.grid!.rows.slice(this.header + 1).filter(r => r.some(c => c.text.trim())).map(r => (r[map.productCode ?? -1]?.text || r[map.productName ?? -1]?.text || '').trim()))]; }
     private externalUnit(code: string): string { const map = this.profile!.columnMap, units = new Set(this.grid!.rows.slice(this.header + 1).filter(r => (r[map.productCode ?? -1]?.text || r[map.productName ?? -1]?.text || '').trim() === code).map(r => r[map.unit ?? -1]?.text.trim() || '')); return units.size === 1 ? [...units][0] : ''; }
@@ -117,25 +186,32 @@ export class TableWizard {
         const data = this.data(), get = (k: string): string => String(data.get(k) || '').trim();
         if (action === 'ww-file-read') {
             const file = this.form().querySelector<HTMLInputElement>('[name=file]')?.files?.[0];
-            if (!file || file.size > 5 * 1024 * 1024)
+            const name = this.original?.name ?? file?.name ?? '';
+            if ((!this.original && !file) || (this.original?.bytes.length ?? file?.size ?? 0) > 5 * 1024 * 1024)
                 throw new Error('Bitte eine CSV- oder XLSX-Datei bis 5 MB wählen.');
-            if (!/\.(xlsx|csv)$/i.test(file.name))
+            if (!/\.(xlsx|csv)$/i.test(name))
                 throw new Error('Bitte .xlsx oder .csv wählen.');
-            this.bytes = new Uint8Array(await file.arrayBuffer());
-            this.hash = await sha256(this.bytes);
-            this.fileName = file.name;
-            const previous = this.p.state().ww?.records.find(r => r.value.id === get('profile') && r.value.kind === 'profile') as Stored<Profile> | undefined;
+            this.bytes = this.original?.bytes ?? new Uint8Array(await file!.arrayBuffer());
+            this.hash = this.original?.hash ?? await sha256(this.bytes);
+            this.fileName = name;
+            if (this.original && (!get('from') || !get('to')))
+                throw new Error('Bitte den Zeitraum der Kassendatei eintragen.');
+            const previous = this.p.state().ww?.records.find(r => r.value.id === get('profile') && r.value.kind === 'profile' && r.value.purpose === get('purpose')) as Stored<Profile> | undefined;
             this.previous = previous;
             this.profile = previous ? structuredClone(previous.value) : { id: crypto.randomUUID(), kind: 'profile', scope: 'global', at: new Date().toISOString(), by: this.p.actor, confirmed: false, name: get('name'), purpose: get('purpose') as Profile['purpose'], separator: get('separator') as Profile['separator'], decimalSeparator: ',', dateFormat: 'de', basis: 'unknown', columnMap: {}, mappings: [], activeStatuses: ['active', 'bezahlt', 'abgeschlossen', 'bestellt'], cancelledStatuses: ['cancelled', 'storniert'], refundStatuses: ['refund', 'erstattet'] };
-            if(this.mode==='system')this.profile.purpose=get('purpose') as Profile['purpose'];
+            if (this.mode === 'system') {
+                const purpose = get('purpose') as Profile['purpose'];
+                if (!importPurposes.includes(purpose)) throw new Error('Bitte die Datenart auswählen.');
+                this.profile.purpose = purpose;
+            }
             if (!previous && this.mode === 'system' && !this.profile.name)
                 throw new Error('Bitte Quelle / System benennen.');
             this.replacesId = get('replacesId');
-            this.title = get('name') || this.profile.name || file.name;
+            this.title = get('name') || this.profile.name || name;
             this.supplierId = get('supplierId');
             this.validFrom = get('validFrom');
             this.context = { seasonId: this.p.season(), area: this.p.area(), locationId: 'standard', sourceId: this.profile.id, periodStart: get('from'), periodEnd: get('to'), currency: get('currency').toUpperCase() || 'EUR' };
-            if (/\.xlsx$/i.test(file.name)) {
+            if (/\.xlsx$/i.test(name)) {
                 this.sheets = await listWorkbookSheets(this.bytes);
                 if(this.sheets.length===1){this.grid=await readWorkbookSheet(this.bytes,this.sheets[0]);this.stage='columns';}else this.stage = 'sheet';
             }
@@ -153,19 +229,25 @@ export class TableWizard {
             if (!Number.isInteger(header) || header < 0 || header >= this.grid!.rows.length - 1)
                 throw new Error('Bitte eine Kopfzeile mit nachfolgenden Daten wählen.');
             this.header = header;
+            this.paymentColumnsReviewed = false;
         }
         if (action === 'ww-columns') {
             const p = this.profile!;
             p.decimalSeparator = get('decimal') as Profile['decimalSeparator'];
             if (this.mode === 'system') {
+                const payment = p.purpose === 'payments';
                 p.columnMap = {};
-                for (const [id] of fields)
+                for (const [id] of payment ? paymentFields : productFields)
                     if (get('col_' + id) !== '')
                         p.columnMap[id] = Number(get('col_' + id));
-                if (p.columnMap.quantity === undefined || (p.columnMap.productCode === undefined && p.columnMap.productName === undefined))
+                if (payment && p.columnMap.amount === undefined) throw new Error('Bitte den Zahlungsbetrag zuordnen.');
+                if (payment && new Set(Object.values(p.columnMap)).size !== Object.values(p.columnMap).length)
+                    throw new Error('Bitte jede Zahlungsspalte nur einmal zuordnen.');
+                if (!payment && (p.columnMap.quantity === undefined || (p.columnMap.productCode === undefined && p.columnMap.productName === undefined)))
                     throw new Error('Artikel und Menge zuordnen.');
+                p.columnHeaders=Object.fromEntries(Object.entries(p.columnMap).map(([key,index])=>[key,this.grid!.rows[this.header][index!]?.text||'']));
                 p.dateFormat = get('dateFormat') as Profile['dateFormat'];
-                p.basis = get('basis') as Profile['basis'];
+                p.basis = payment ? 'unknown' : get('basis') as Profile['basis'];
                 p.activeStatuses = get('active').split('|').map(s => s.trim()).filter(Boolean);
                 p.cancelledStatuses = get('cancelled').split('|').map(s => s.trim()).filter(Boolean);
                 p.refundStatuses = get('refund').split('|').map(s => s.trim()).filter(Boolean);
@@ -183,14 +265,18 @@ export class TableWizard {
                 if (this.priceColumns.code === undefined || this.priceColumns.priceNet === undefined)
                     throw new Error('Artikelnummer und Nettopreis zuordnen.');
             }
-            this.stage = 'products';
+            if (this.mode === 'system' && p.purpose === 'payments') {
+                this.paymentColumnsReviewed = true;
+                this.preview = previewSystemImport(this.grid!, this.header, p, this.context!, []);
+                this.stage = 'review';
+            } else this.stage = 'products';
         }
         if (action === 'ww-products-back')
-            this.stage = 'products';
+            this.stage = this.profile?.purpose === 'payments' ? 'columns' : 'products';
         if (action === 'ww-products') {
             if (this.mode === 'system') {
                 const codes = this.externalCodes();
-                this.profile!.mappings = Array.from(this.form().querySelectorAll<HTMLElement>('[data-map]')).map((r, i) => { const value = (name: string): string => r.querySelector<HTMLInputElement | HTMLSelectElement>('[name=' + name + ']')!.value.trim(); return { externalCode: codes[i], productId: value('productId'), factor: importedNumber({ text: value('factor') }, ',')!, unit: value('unit') }; });
+                this.profile!.mappings = [...this.profile!.mappings.filter(m=>!codes.includes(m.externalCode)),...Array.from(this.form().querySelectorAll<HTMLElement>('[data-map]')).map((r, i) => { const value = (name: string): string => r.querySelector<HTMLInputElement | HTMLSelectElement>('[name=' + name + ']')!.value.trim(); return { externalCode: codes[i], productId: value('productId'), factor: importedNumber({ text: value('factor') }, ',')!, unit: value('unit') }; })];
                 validateDocument(this.profile!);
                 this.preview = previewSystemImport(this.grid!, this.header, this.profile!, this.context!, this.profile!.mappings.map(m => ({ sourceId: this.profile!.id, externalCode: m.externalCode, targetProductId: m.productId, factor: m.factor, unit: m.unit || '' })));
             }
@@ -210,10 +296,25 @@ export class TableWizard {
             else {
                 if (this.preview!.errors.length)
                     throw new Error('Bitte alle Importfehler klären.');
-                const profile = this.profile!, rows = this.preview!.rows, context = this.context!, ids = new Set(rows.map(r => r.productId));
-                const doc: SystemImport = { id: this.importId, kind: 'system', scope: this.p.season(), at: new Date().toISOString(), by: this.p.actor, confirmed: true, name: this.fileName, area: this.p.area(), ...(this.replacesId ? { replacesId: this.replacesId } : {}), purpose: profile.purpose, sourceId: profile.id, from: context.periodStart, to: context.periodEnd, fileHash: this.hash, canonicalKey: await canonicalImportKey(profile, context, rows), basis: profile.basis, currency: context.currency, rows, recipes: documents(this.p.state().ww, 'recipe').filter(r => ids.has(r.id)) };
+                const profile = this.profile!, rows = this.preview!.rows, context = this.context!;
+                const common = {
+                    id: this.importId, kind: 'system' as const, ...(this.original ? { sourceFile: this.original.source } : {}),
+                    scope: this.p.season(), at: new Date().toISOString(), by: this.p.actor, confirmed: true,
+                    name: this.fileName.slice(0, 160), area: this.p.area(), ...(this.replacesId ? { replacesId: this.replacesId } : {}),
+                    sourceId: profile.id, from: context.periodStart, to: context.periodEnd, fileHash: this.hash,
+                    canonicalKey: await canonicalImportKey(profile, context, rows), currency: context.currency
+                };
+                let doc: SystemImport;
+                if (profile.purpose === 'payments') {
+                    doc = { ...common, purpose: 'payments', basis: 'unknown', rows: rows.filter((r): r is PaymentRow => 'paymentMethod' in r), recipes: [] };
+                } else {
+                    const products = rows.filter((r): r is SystemRow => 'productId' in r);
+                    const ids = new Set(products.map(r => r.productId));
+                    doc = { ...common, purpose: profile.purpose, basis: profile.basis, rows: products,
+                        recipes: documents(this.p.state().ww, 'recipe').filter(r => ids.has(r.id)) };
+                }
                 validateDocument(doc);
-                await this.p.commit(doc, data.has('saveProfile') ? profile : undefined, this.previous);
+                await this.p.commit(doc, data.has('saveProfile') ? profile : undefined, this.previous,{bytes:this.bytes!,extension:this.fileName.toLowerCase().endsWith('.xlsx')?'xlsx':'csv'});
             }
             return true;
         }

@@ -1,6 +1,6 @@
 /* eslint-disable @rushstack/no-new-null -- Empty imported business values remain explicitly unknown. */
 import type { Area } from '../model';
-import type { ImportField, Purpose, SystemRow } from '../ww/model';
+import type { ImportField, Purpose, ImportRow } from '../ww/model';
 export interface GridCell {
     text: string;
     number?: number;
@@ -43,7 +43,7 @@ export interface ProductMapping {
     factor: number;
 }
 export interface ImportPreview {
-    rows: SystemRow[];
+    rows: ImportRow[];
     errors: string[];
     warnings: string[];
     missing: string[];

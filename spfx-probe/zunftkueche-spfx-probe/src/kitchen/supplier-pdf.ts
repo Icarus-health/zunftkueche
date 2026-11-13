@@ -1,6 +1,6 @@
 /* eslint-disable @rushstack/no-new-null -- Unknown totals remain explicit. */
 import type { Order, Supplier } from './model';
-import { orderTotal } from './domain.ts';
+import { orderTotal, validateOrder } from './domain.ts';
 import { withSchedule, validateSchedule, validDate } from './supplier-orders.ts';
 
 // PDF 1.4, standard embedded viewer fonts, WinAnsi text. No network or paid service.
@@ -17,18 +17,23 @@ function wrap(text: string, size: number): string[] {
  }
  if (current) lines.push(current); return lines.length ? lines : [''];
 }
-export function supplierPdf(source: Order, supplier: Supplier, generatedAt = new Date().toISOString()): Uint8Array {
- const order = withSchedule(source); validateSchedule(order);
+export function supplierPdf(source: Order, supplier: Supplier, generatedAt = new Date().toISOString(), forDispatch = false): Uint8Array {
+ const order = withSchedule(source);
+ if (forDispatch) {
+  if (order.supplierId !== supplier.id) throw new Error('Lieferant passt nicht zur Bestellung.');
+  validateOrder(order, undefined, true);
+ }
+ else validateSchedule(order);
  if (!order.lines.length) throw new Error('Bitte zuerst Artikel und Mengen ergänzen.');
- const pages: string[] = [], dates = order.deliveries!, rowsPerPage = 11;
+ const pages: string[] = [], dates = order.deliveries!;const chunks:typeof order.lines[]=[];let chunk:typeof order.lines=[],height=0;for(const line of order.lines){const rowHeight=Math.max(36,(wrap(line.articleName,37).length+wrap(line.code,37).length)*10+15);if(height+rowHeight>240&&chunk.length){chunks.push(chunk);chunk=[];height=0;}chunk.push(line);height+=rowHeight;}if(chunk.length)chunks.push(chunk);
  for (let di = 0; di < dates.length; di += 5) {
-  const columns = dates.slice(di, di + 5), width = 350 / columns.length;
-  for (let li = 0; li < order.lines.length; li += rowsPerPage) {
+  const columns = dates.slice(di, di + 5), width = 300 / columns.length;
+  for (let li = 0; li < chunks.length; li++) {
    let stream = '';
    const text = (x: number, y: number, value: string, size = 9, bold = false): void => { stream += `BT /${bold ? 'F2' : 'F1'} ${size} Tf ${x.toFixed(2)} ${y.toFixed(2)} Td (${literal(value)}) Tj ET\n`; };
    stream += '.23 .24 .51 rg 0 535 842 60 re f 1 1 1 rg\n';
    text(30, 565, 'SCHELMENZUNFT STAUFEN', 17, true);
-   text(30, 546, (order.status === 'Entwurf' ? 'ENTWURF - noch nicht aufgegeben' : 'BESTELLUNG') + ' · ' + order.area, 10);
+   text(30, 546, (order.status === 'Entwurf' && !forDispatch ? 'ENTWURF - noch nicht aufgegeben' : 'BESTELLUNG') + ' · ' + order.area, 10);
    stream += '0 0 0 rg\n';
    text(30, 515, supplier.name, 13, true); text(430, 515, 'Kundennummer: ' + (supplier.customerNumber || 'nicht hinterlegt'));
    text(30, 499, order.occasion.slice(0, 66) || 'Lieferantenbestellung');
@@ -37,23 +42,22 @@ export function supplierPdf(source: Order, supplier: Supplier, generatedAt = new
    text(30, 466, 'Bestellkennung: ' + order.id.slice(0, 70), 8);
    stream += '.94 .94 .97 rg 30 416 782 37 re f 0 0 0 rg\n';
    text(36, 438, 'Artikel / Bestellnummer', 9, true); text(245, 438, 'Gebinde', 9, true);
-   columns.forEach((d, i) => { text(370 + i * width, 438, dateLabel(d.date), 9, true); text(370 + i * width, 424, ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][new Date((d.date || '2000-01-01') + 'T12:00Z').getUTCDay()], 8); });
-   text(735, 438, 'Gesamt*', 9, true);
-   const rows = order.lines.slice(li, li + rowsPerPage);
-   rows.forEach((l, i) => {
-    const y = 401 - i * 21;
-    text(36, y, wrap(l.articleName, 37)[0], 9, true); text(36, y - 9, l.code.slice(0, 42), 7);
-    text(245, y, l.packName.slice(0, 18)); text(245, y - 9, (num(l.packSize) + ' ' + l.unit).slice(0, 24), 7);
-    columns.forEach((d, c) => text(370 + c * width, y, num(l.schedule![d.id] ?? null)));
-    text(735, y, num(l.quantity), 9, true);
-    stream += `.85 .85 .89 RG 30 ${y - 12} m 812 ${y - 12} l S\n`;
+   columns.forEach((d, i) => { text(370 + i * width, 438, dateLabel(d.date), 9, true); if (d.date) text(370 + i * width, 424, ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][new Date(d.date + 'T12:00Z').getUTCDay()], 8); });
+   text(678, 438, 'Gesamt*', 9, true); text(738, 438, 'Preis pro Gebinde', 8, true);
+   const rows=chunks[li];let rowY=401;
+   rows.forEach(l=>{
+    const names=wrap(l.articleName,37),codes=wrap(l.code,37),rowHeight=Math.max(36,(names.length+codes.length)*10+15);names.forEach((name,i)=>text(36,rowY-i*10,name,9,true));codes.forEach((code,i)=>text(36,rowY-(names.length+i)*10,code,7));
+    wrap(l.packName,18).forEach((name,i)=>text(245,rowY-i*9,name));text(245,rowY-18,(num(l.packSize)+' '+l.unit),7);
+    columns.forEach((d,c)=>text(370+c*width,rowY,num(l.schedule![d.id]??null)));text(678,rowY,num(l.quantity),9,true);text(738,rowY,l.priceNet===null?'Preis offen':num(l.priceNet)+' EUR',8);
+    rowY-=rowHeight;stream+=`.85 .85 .89 RG 30 ${rowY+9} m 812 ${rowY+9} l S\n`;
    });
-   text(30, 150, '* Gesamtmenge der gesamten Bestellung, auch bei mehreren Seiten. Mengen in den angegebenen Gebinden.', 8);
-   let y = 133;
-   columns.forEach(d => { wrap(dateLabel(d.date) + ': ' + (d.time || 'Zeit nach Absprache') + ' · ' + (d.place || order.area), 118).forEach(t => { text(30, y, t, 8); y -= 10; }); });
-   wrap(order.supplierNote || '', 118).slice(0, 3).forEach(t => { if (t) { text(30, y, t, 8); y -= 10; } });
+   text(30, 150, '* Gesamtmenge aller Liefertermine. Preise netto, Preisstand bitte bestätigen.', 8);
+   const details=columns.flatMap(d=>wrap(dateLabel(d.date)+': '+(d.time||'Zeit nach Absprache')+' · '+(d.place||order.area),118));
+   const notes=wrap(order.supplierNote||'',118);const lines=[...details,...notes.filter(Boolean)];
+   if(lines.length<=8){let y=133;lines.forEach(t=>{text(30,y,t,8);y-=10;});}
+   else text(30,133,'Ausführliche Lieferorte und Mitteilung auf der Hinweis-Seite zu diesen Lieferterminen.',8);
    const total = orderTotal(order); text(30, 32, total === null ? 'Warenwert: Preise oder Mengen noch offen.' : 'Warenwert gesamt netto: ' + total.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' EUR · ohne Pfand und Lieferkosten', 9, true);
-   text(690, 32, 'Seite ' + (pages.length + 1), 8); pages.push(stream);
+   text(690, 32, 'Seite ' + (pages.length + 1), 8); pages.push(stream);if(lines.length>8&&li===chunks.length-1){stream='0 0 0 rg\n';text(30,555,'Lieferhinweise · '+supplier.name,14,true);text(30,532,'Bestellung '+order.id,8);lines.forEach((t,i)=>text(30,505-i*12,t,9));text(30,32,'Schelmenzunft Staufen · '+order.area,9);text(690,32,'Seite '+(pages.length+1),8);pages.push(stream);}
   }
  }
  const objects: string[] = ['', '<< /Type /Catalog /Pages 2 0 R >>', '', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'];

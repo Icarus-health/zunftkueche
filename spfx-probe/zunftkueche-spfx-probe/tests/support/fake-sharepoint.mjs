@@ -1,9 +1,30 @@
 const reply=(status,body={})=>({status,ok:status>=200&&status<300,json:async()=>body});
 export class Server {
- lists=new Map();attachments=new Map();descriptions=new Map();keyUnique=true;richText=false;failHeader=false;dropAfterCommit=false;failPage=false;
+ lists=new Map();attachments=new Map();inboxFolders=new Set();inboxFiles=new Map();descriptions=new Map();keyUnique=true;richText=false;failHeader=false;dropAfterCommit=false;failPage=false;
  constructor(){for(const n of ['Saisons','Artikel','Lieferanten','Lieferangebote','Bestellungen','Bestellpositionen','Bestandsmeldungen'])this.lists.set('ZK_V1_'+n,[]);}
  request=async(url,options)=>{
   const u=new URL(url), name=decodeURIComponent(u.pathname).match(/getbytitle\('([^']+)'\)/)?.[1],rows=this.lists.get(name),body=typeof options.body==='string'?JSON.parse(options.body):{};
+  const decodedPath=decodeURIComponent(u.pathname);
+  const folder=decodedPath.match(/GetFolderByServerRelativePath\(decodedUrl='((?:[^']|'')*)'\)/)?.[1].replace(/''/g,"'");
+  const inboxFile=decodedPath.match(/GetFileByServerRelativePath\(decodedUrl='((?:[^']|'')*)'\)/)?.[1].replace(/''/g,"'");
+  if(folder){
+   if(!this.inboxFolders.has(folder))return reply(404);
+   if(!decodedPath.endsWith('/Files'))return reply(200,{Exists:true});
+   const items=[...this.inboxFiles].filter(([path])=>path.slice(0,path.lastIndexOf('/'))===folder).map(([,file])=>file.metadata);
+   const offset=Number(u.searchParams.get('offset')||0),next=new URL(u);next.searchParams.set('offset',String(offset+2));
+   return reply(200,{value:items.slice(offset,offset+2),...(items.length>offset+2?{'odata.nextLink':next.href}:{})});
+  }
+  if(inboxFile){
+   const file=this.inboxFiles.get(inboxFile);
+   if(!file)return reply(404);
+   return decodedPath.endsWith('/$value')?{...reply(200),arrayBuffer:async()=>new Uint8Array(file.bytes).buffer}:reply(200,file.metadata);
+  }
+  if(u.pathname.endsWith('/_api/web/folders')&&options.method==='POST'){
+   const path=body.ServerRelativeUrl,parent=path.slice(0,path.lastIndexOf('/'));
+   if(!this.inboxFolders.has(parent))return reply(404);
+   if(this.inboxFolders.has(path))return reply(409);
+   this.inboxFolders.add(path);return reply(201);
+  }
   if(u.pathname.endsWith('/_api/web/lists')&&options.method==='POST'){this.lists.set(body.Title,[]);this.descriptions.set(body.Title,body.Description);return reply(201);}
   if(!rows)return reply(404);
   if(!u.pathname.includes('/items'))return reply(200,{Description:this.descriptions.get(name)||'[ZK-V1]',value:[{InternalName:'ZKKey',FieldTypeKind:2,Indexed:true,EnforceUniqueValues:this.keyUnique},{InternalName:'ZKData',FieldTypeKind:3,SchemaXml:'<Field Type="Note" RichText="'+(this.richText?'TRUE':'FALSE')+'" />'},...(name.includes('Journal')?['ZKScope','ZKKind','ZKRef','ZKHash'].map(InternalName=>({InternalName,FieldTypeKind:2,Indexed:true,EnforceUniqueValues:['ZKRef','ZKHash'].includes(InternalName)})):[])]});

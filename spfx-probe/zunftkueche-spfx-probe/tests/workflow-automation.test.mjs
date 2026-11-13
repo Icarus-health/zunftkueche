@@ -1,0 +1,31 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {workspace,stored,order,line,offer} from './support/kitchen-data.mjs';import {recipe,base,slot} from './support/ww-data.mjs';
+import {planOrders, procurementSuggestions} from '../src/kitchen/ww/plan-procurement.ts';
+import {orderDeadlines} from '../src/kitchen/workflow-tasks.ts';
+import {invoicePriceProposals} from '../src/kitchen/ww/invoice-prices.ts';
+const plan={...base('plan','plan'),name:'30 Portionen',area:'Küche',date:'2027-02-12',lines:[{recipeId:'r1',portions:150}],note:''};
+function stockState(){const s=workspace();s.ww={ready:true,records:[stored(recipe)]};s.orders=[stored({...order,deliveryDate:'2027-02-12',lines:[{...line,quantity:6}]})];s.counts=[stored({id:'count',seasonId:'s2027',area:'Küche',articleId:'water',articleName:'Mineralwasser',quantity:14,unit:'Flasche',countedAt:'2027-02-12T08:00:00Z',countedBy:'Test',note:'',reorder:false})];return s;}
+test('procurement proposes 14 counted plus 16 incoming for 30 bottles, without changing an order',()=>{const s=stockState(),before=JSON.stringify(s);const [p]=procurementSuggestions(plan,s,new Date('2027-02-12T09:00:00Z'));assert.equal(p.stockUse,14);assert.equal(p.incomingUse,16);assert.equal(p.additional,0);assert.equal(JSON.stringify(s),before);});
+test('old counts and overdue deliveries are excluded from automatic proposal',()=>{const s=stockState();s.counts[0].value.countedAt='2027-02-01T08:00:00Z';s.orders[0].value.deliveryDate='2027-02-11';const[p]=procurementSuggestions(plan,s,new Date('2027-02-12T09:00:00Z'));assert.equal(p.stockUse,0);assert.equal(p.incomingUse,0);assert.equal(p.additional,30);assert.ok(p.reasons.length);});
+test('proposal excludes reservations for other plans and rounds the remaining amount into packs',()=>{const s=stockState();s.orders=[];s.ww.records.push(stored({...base('allocation','alloc'),area:'Küche',entries:[{planId:'other',articleId:'water',date:plan.date,stockUse:10,incomingUse:0}]}));const[p]=procurementSuggestions(plan,s,new Date('2027-02-12T09:00:00Z'));assert.equal(p.stockUse,4);assert.equal(p.additional,26);assert.equal(p.packs,3);});
+test('a Saturday count after Berlin midnight replaces Friday allocations but preserves Saturday reservations', () => {
+    const s = stockState();
+    const saturday = { ...plan, date: '2027-02-13' };
+    const now = new Date('2027-02-12T23:20:00Z');
+    s.counts[0].value.countedAt = '2027-02-12T23:15:00Z';
+    s.orders[0].value.deliveryDate = saturday.date;
+    s.orders[0].value.lines[0].quantity = 1;
+    const friday = { planId: 'friday', articleId: 'water', date: '2027-02-12', stockUse: 10, incomingUse: 12 };
+    const ledger = { ...base('allocation', 'alloc'), area: 'Küche', entries: [friday] };
+    s.ww.records.push(stored(ledger));
+    const [proposal] = procurementSuggestions(saturday, s, now);
+    assert.deepEqual([proposal.stockUse, proposal.incomingUse, proposal.additional, proposal.packs], [14, 12, 4, 1]);
+    const [draft] = planOrders(saturday, { ...slot, date: saturday.date }, s, [proposal]);
+    assert.equal(draft.lines[0].quantity, 1);
+    ledger.entries.push({ ...friday, planId: 'other-saturday', date: saturday.date, stockUse: 3, incomingUse: 0 });
+    const [reserved] = procurementSuggestions(saturday, s, now);
+    assert.deepEqual([reserved.stockUse, reserved.incomingUse, reserved.additional], [11, 12, 7]);
+});
+test('cutoff uses calendar lead days, a structured time and explicit per-delivery override',()=>{const s=workspace();s.orders[0].value.status='Entwurf';s.orders[0].value.deliveryDate='2027-02-03';s.ww={ready:true,records:[stored({...base('rule','rule','global'),supplierId:'sup',weekdays:[3],leadDays:2,cutoff:'Telefon',cutoffTime:'11:30',deadlineOverrides:{'2027-02-03':'2027-01-29T10:00'},minNet:null,feeNet:null,note:''})]};const d=orderDeadlines(s,'s2027','Küche');assert.equal(d[0].deadline,'2027-01-29T10:00');assert.equal(d[0].overridden,true);delete s.ww.records[0].value.deadlineOverrides;assert.equal(orderDeadlines(s,'s2027','Küche')[0].deadline,'2027-02-01T11:30');s.orders[0].value.status='Bestellt';assert.deepEqual(orderDeadlines(s,'s2027','Küche'),[]);});
+test('invoice prices propose a new pack price only for a uniquely matched exact pack with consistent line total',()=>{const s=workspace();const b={...base('bill','bill'),supplierId:'sup',date:'2027-02-12',confirmed:true,orderIds:['order'],adjustmentNet:0,lines:[{id:'l',articleId:'water',name:'Mineralwasser',quantity:2,unit:'Kiste',unitNet:10,totalNet:20,taxRate:19}]};assert.equal(invoicePriceProposals(b,s)[0].newPrice,10);b.lines.push({...b.lines[0],id:'pfand',name:'Pfand',unitNet:3,totalNet:6});assert.equal(invoicePriceProposals(b,s).length,1);b.adjustmentNet=-5;assert.equal(invoicePriceProposals(b,s).length,0);b.adjustmentNet=0;b.lines[0].unit='Flasche';assert.equal(invoicePriceProposals(b,s).length,0);});
+test('invoice cannot suggest a pack price after the current offer pack size changed',()=>{const s=workspace();s.offers[0].value.packSize=24;const b={...base('bill','bill'),supplierId:'sup',date:'2027-02-12',confirmed:true,orderIds:['order'],adjustmentNet:0,lines:[{id:'l',articleId:'water',name:'Mineralwasser',quantity:2,unit:'Kiste',unitNet:10,totalNet:20,taxRate:19}]};assert.deepEqual(invoicePriceProposals(b,s),[]);});

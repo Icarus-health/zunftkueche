@@ -10,3 +10,15 @@ test('refunds preserve negative revenue and formula-derived fields demand explic
 test('canonical identity survives file rename row order and duplicate headers do not choose wrong columns',async()=>{const key=fn(identity,'canonicalImportKey');const rows=[{externalId:'1',productId:'r1',name:'A',quantity:1,date:'2027-02-01',status:'active',amount:2},{externalId:'2',productId:'r1',name:'A',quantity:2,date:'2027-02-02',status:'active',amount:4}];assert.equal(await key(profile,context,rows),await key(profile,context,[...rows].reverse()));assert.notEqual(await key(profile,context,rows),await key(profile,{...context,sourceId:'other'},rows));});
 test('aggregate overlap is blocked even when the byte hash differs',()=>{const check=fn(identity,'checkImportOverlap');assert.equal(check(context,[{...context,periodStart:'2027-02-02',periodEnd:'2027-02-02'}]).length,1);assert.equal(check(context,[{...context,periodStart:'2027-02-08',periodEnd:'2027-02-09'}]).length,0);});
 test('an explicitly cancelled negative row stays excluded instead of turning into a refund',()=>{const grid={name:'CSV',rows:[['Artikel','Menge','Status','Betrag'],['A','-2','cancelled','-10']].map(r=>r.map(text=>({text})))};const profile={id:'p',name:'Test',purpose:'sales',separator:';',decimalSeparator:',',dateFormat:'iso',basis:'gross',columnMap:{productCode:0,quantity:1,status:2,amount:3},activeStatuses:['active'],cancelledStatuses:['cancelled'],refundStatuses:['refund']};const context={sourceId:'p',seasonId:'s2027',area:'Küche',locationId:'standard',periodStart:'2027-02-01',periodEnd:'2027-02-01',currency:'EUR'};const result=p.previewSystemImport(grid,0,profile,context,[{sourceId:'p',externalCode:'A',targetProductId:'r1',unit:'',factor:1}]);assert.equal(result.rows[0].status,'cancelled');assert.equal(result.quantity,0);assert.equal(result.amount,0);});
+test('payment totals need no article, keep an undated period total and normalize only refunds',async()=>{
+ const payment={...profile,purpose:'payments',basis:'unknown',columnMap:{paymentMethod:0,amount:1,status:2}};
+ const result=p.previewSystemImport(grid([['Zahlart','Betrag','Status'],['Bar','120',''],['Karte','25','erstattet'],['Karte','-5',''],['Bar','99','storniert']]),0,payment,context,[]);
+ assert.deepEqual(result.errors,[]);
+ assert.deepEqual(result.rows.map(r=>[r.paymentMethod,r.date,r.amount,r.status]),[['Bar',null,120,'active'],['Karte',null,-25,'refund'],['Karte',null,-5,'refund'],['Bar',null,99,'cancelled']]);
+ assert.equal(result.rows.some(r=>'quantity'in r||'productId'in r),false);
+ assert.equal(result.amount,90);
+ const changed=result.rows.map(r=>({...r,paymentMethod:'Anders'}));
+ assert.notEqual(await identity.canonicalImportKey(payment,context,result.rows),await identity.canonicalImportKey(payment,context,changed));
+ const invalid=p.previewSystemImport(grid([['Zahlart','Betrag','Status'],['Bar','-7','verkauft']]),0,payment,context,[]);
+ assert.match(invalid.errors.join(' '),/Negativen Betrag/);
+});

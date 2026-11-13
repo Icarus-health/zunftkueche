@@ -11,7 +11,7 @@ test('uncertain count saves freeze fields and retry the identical timestamp and 
  const workspace=state(),attempts=[];let fail=true;const store={testMode:false,load:async()=>workspace,saveMaster:async(kind,value)=>{attempts.push(structuredClone(value));if(fail){fail=false;throw new Error('Verbindung unterbrochen');}workspace.counts=[stored(value)];}};
  const {view,root}=setup(store);await view.start();await view.action('count-new','');const form=root.querySelector('form');form.querySelector('[name=articleId]').value='article';form.querySelector('[name=quantity]').value='2';await view.save(form);
  assert.equal(root.querySelector('[name=quantity]').disabled,true);assert.ok(root.querySelector('[data-action=save-retry]'));
- await new Promise(resolve=>setTimeout(resolve,5));await view.action('save-retry','');assert.deepEqual(attempts[0],attempts[1]);assert.equal(workspace.counts.length,1);assert.match(root.textContent,/2 Flasche/);
+ await new Promise(resolve=>setTimeout(resolve,5));await view.action('save-retry','');assert.deepEqual(attempts[0],attempts[1]);assert.equal(workspace.counts.length,1);await view.action('nav','stock');assert.match(root.textContent,/2 Flasche/);
 });
 test('a failed import retains its row identities and cannot restart preview against stale masters',async()=>{
  const workspace=state(),ids=[];let calls=0;const store={testMode:false,load:async()=>workspace,saveMaster:async(kind,value)=>{ids.push(value.id);if(++calls===2)throw new Error('Verbindung unterbrochen');workspace.articles.push(stored(value));}};
