@@ -1,10 +1,30 @@
 node_modules/
 dist/
 .superpowers/
-import/*.json
+import/
+**/import/
+**/Rechnungen/
+**/rechnungen/
+**/Sicherungen/
+**/sicherungen/
+**/backups/
+**/Backups/
+*.zip
+*.pdf
+*.xlsx
+*.xls
+*.pem
+*.p12
+*.pfx
+*.key
+*.sppkg
 .env*
 *.local
 .local-state/
+**/.local-state/
+# Private working notes contain invoice and customer details.
+docs/superpowers/plans/2026-11-04-fasnet-ablauf.md
+docs/superpowers/plans/2026-11-04-zunftblau.md
 qa/
 .DS_Store
 
