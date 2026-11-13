@@ -45,11 +45,11 @@ test('the count list names its filter and states the size of the whole list',asy
  const s=state(),root=document.getElementById('app');
  const view=new KitchenView(root,{testMode:false,load:async()=>s},'TEST Person');
  await view.start();await view.action('inventory-new','');
- const filter=root.querySelector('[name=inventoryFilter]');
- assert.deepEqual([...filter.options].map(o=>o.textContent),['In dieser Saison bestellt','Alle Artikel der Saison']);
+ const choices=[...root.querySelectorAll('[name=inventoryFilter]')];
+ assert.deepEqual(choices.map(o=>o.closest('label').textContent),['In dieser Saison bestellt','Alle Artikel der Saison']);
  const progress=()=>root.querySelector('[data-count-progress]').textContent;
  assert.equal(progress(),'0 von 1 angezeigten Artikeln gezählt · Zählliste gesamt: 2 Artikel');
- filter.value='all';filter.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+ choices[1].checked=true;choices[1].dispatchEvent(new dom.window.Event('change',{bubbles:true}));
  assert.equal(progress(),'0 von 2 Artikeln gezählt');
  assert.equal(root.querySelectorAll('.count-line').length,2,'the list holds the same two articles as the overview');
 });

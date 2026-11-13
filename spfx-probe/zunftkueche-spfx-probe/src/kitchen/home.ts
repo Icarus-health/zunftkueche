@@ -22,13 +22,20 @@ export function dashboard(state:Workspace,season:Season|undefined,area:Area,toda
   ['Abendabschluss',inventory?'Gespeicherte Zählung fortsetzen':countStatus,season.archived?'stock':inventory?.value.id||'',season.archived?'nav':inventory?'inventory-edit':state.inventoriesReady===false?'inventory-setup':'inventory-new',season.archived?'Ansehen':inventory?'Fortsetzen':'Starten']
  ];
  const symbols=['cart','truck','count'];
- const rows=steps.map(([title,description,id,action,label],index)=>'<div class="workflow-start"><div class="home-workflow-name">'+icon(symbols[index])+'<h2>'+title+'</h2></div><p>'+h(description)+'</p>'+button(action,label,id,index===0)+'</div>').join('');
- const notices:string[]=[];
- if(drafts.length)notices.push('<div class="calm-notice"><span>'+drafts.length+' '+(drafts.length===1?'Bestellentwurf':'Bestellentwürfe')+' vorbereiten und prüfen</span>'+button('dashboard-orders','Entwürfe prüfen','current-drafts')+'</div>');
- if(needs.length)notices.push('<div class="calm-notice"><span>'+needs.length+' Artikel zum Nachbestellen · '+h(needs.slice(0,2).map(c=>c.articleName+(c.note?' – '+c.note:'')).join(', '))+'</span>'+button('reorder-list','Nachbestellbedarf prüfen')+'</div>');
- for(const d of orderDeadlines(state,season.id,area).slice(0,3))notices.push('<div class="calm-notice"><span>'+h(d.order.supplierName)+' · Bestellschluss '+h(d.deadline.replace('T',' · '))+'</span>'+button('order-open','Prüfen',d.order.id)+'</div>');
- const preparation=!season.archived&&state.ww?.ready?button('ww-open','Karte und Bedarf','recipes',true):'';
- return '<div class="page-heading calm-home-heading"><div><h1>Übersicht</h1><p>'+h(area+' / '+season.name)+' <span class="overview-date">'+h(date)+'</span></p></div>'+preparation+'</div><section class="workflow-starts" aria-label="Küchenabläufe">'+rows+'</section>'+(season.archived?'<p class="calm-hint">Diese Saison ist archiviert.</p>':'')+'<section class="calm-notices"><h2>Offene Punkte</h2>'+(notices.join('')||'<p class="muted">Zurzeit stehen keine weiteren Aufgaben an.</p>')+'</section>';
+ const preparation=!season.archived&&state.ww?.ready?'<div class="workflow-start"><div class="home-workflow-name">'+icon('calendar')+'<h2>Karte und Bedarf</h2></div><p>Rezepte, Preise und Planung</p>'+button('ww-open','Öffnen','recipes')+'</div>':'';
+ const rows=preparation+steps.map(([title,description,id,action,label],index)=>'<div class="workflow-start"><div class="home-workflow-name">'+icon(symbols[index])+'<h2>'+title+'</h2></div><p>'+h(description)+'</p>'+button(action,label,id)+'</div>').join('');
+ /* Offene Punkte. Genau einer davon wird als nächster Schritt hervorgehoben: zuerst Fälliges von heute, dann Bestellschluss, dann Entwürfe, dann Nachbestellbedarf. */
+ type Task={text:string;action:string;id:string;label:string};
+ const tasks:Task[]=[];
+ if(drafts.length)tasks.push({text:drafts.length+' '+(drafts.length===1?'Bestellentwurf':'Bestellentwürfe')+' vorbereiten und prüfen',action:'dashboard-orders',id:'current-drafts',label:'Entwürfe prüfen'});
+ if(needs.length)tasks.push({text:needs.length+' Artikel zum Nachbestellen · '+needs.slice(0,2).map(c=>c.articleName+(c.note?' – '+c.note:'')).join(', '),action:'reorder-list',id:'',label:'Nachbestellbedarf prüfen'});
+ const deadlines:Task[]=orderDeadlines(state,season.id,area).slice(0,3).map(d=>({text:d.order.supplierName+' · Bestellschluss '+d.deadline.replace('T',' · '),action:'order-open',id:d.order.id,label:'Prüfen'}));
+ tasks.push(...deadlines);
+ const today_:Task|undefined=due.length?{text:due.length+' '+(due.length===1?'offener Liefertermin':'offene Liefertermine')+' für heute oder früher',action:'delivery-list',id:'',label:'Warenannahme öffnen'}:inventory?{text:'Gespeicherte Zählung fortsetzen',action:'inventory-edit',id:inventory.value.id,label:'Zählung fortsetzen'}:undefined;
+ const next=season.archived?undefined:today_||deadlines[0]||tasks[0];
+ const notices=tasks.filter(task=>task!==next).map(task=>'<div class="calm-notice"><span>'+h(task.text)+'</span>'+button(task.action,task.label,task.id)+'</div>');
+ const nextStep=next?'<section class="next-step" aria-label="Nächster Schritt"><p class="next-step-label">Nächster Schritt</p><h2>'+h(next.text)+'</h2>'+button(next.action,next.label,next.id,true)+'</section>':'';
+ return '<div class="page-heading calm-home-heading"><div><h1>Übersicht</h1><p>'+h(area+' / '+season.name)+' <span class="overview-date">'+h(date)+'</span></p></div>'+nextStep+'</div><section class="workflow-starts" aria-label="Küchenabläufe">'+rows+'</section>'+(season.archived?'<p class="calm-hint">Diese Saison ist archiviert.</p>':'')+'<section class="calm-notices"><h2>'+(next?'Weitere offene Punkte':'Offene Punkte')+'</h2>'+(notices.join('')||'<p class="muted">Zurzeit stehen keine weiteren Aufgaben an.</p>')+'</section>';
 }
 
 export function deliveryRound(state:Workspace,season:Season|undefined,area:Area):string{
