@@ -1,0 +1,5 @@
+# Zunftblau
+
+Die helle Oberfläche übernimmt die Spalten, Zeilen und klaren Mengenangaben einer Lieferantenliste. Weiß #FFFFFF bildet die Arbeitsfläche, #F2F4F9 die Navigation, #202538 die Schrift, #303B78 die Aktionen, #E8ECF7 ausgewählte Zeilen und #D9DFEB die Trennlinien. Segoe UI bleibt die lokale Schrift. Haupttitel haben 34–36 px, die Zeilen 14–16 px und die Bedienelemente mindestens 44 px Höhe. Die Originalmarke und die vorhandenen Fluent-Symbole stehen anstelle der Entwurfsplatzhalter.
+
+Desktop-Übersicht als drei Arbeitszeilen mit Status und Aktion. Bestellungen und Artikel als offene Tabellen mit hellblauen Spaltenköpfen. Lieferantenangebote klappen innerhalb der jeweiligen Zeile auf. Mobile Warenannahme zeigt Mengen und Eingabefeld paarweise. Bedienung, Statusbedeutung und Daten bleiben fachlich erhalten. Beispieldaten aus den Bildern werden durch die vorhandenen Daten ersetzt. Die Auswahl für Bereich und Saison bleibt auf allen Desktop-Seiten links oberhalb der Navigation, wie im Bestellentwurf.
