@@ -57,7 +57,7 @@ test('assessment and note sit behind the article name and open on their own when
 });
 
 test('progress text and bar share one calculation',()=>{
- assert.equal(page(countProgress(3,17,20)).textContent,'3 von 17 angezeigten Artikeln gezählt · Zählliste gesamt: 20 Artikel');
+ assert.equal(page(countProgress(3,17,20)).textContent,'3 von 17 angezeigten Artikeln gezählt · Gesamt: 20 Artikel');
  assert.equal(page(countProgress(3,20,20)).textContent,'3 von 20 Artikeln gezählt');
  assert.equal(countShare(3,17),18);assert.equal(countShare(0,0),0);assert.equal(countShare(5,5),100);
 });

@@ -659,3 +659,38 @@
   :global(.settings-links) a{min-height:44px;}
  }
 }
+
+/* 1.19.0: Bestellung ansehen. Liefertage als Umschalter wie im Bestellblatt, am Telefon passt die Tabelle in die Breite. */
+.kitchen {
+ :global(.panel)>:global(.segmented){overflow-x:auto;grid-auto-columns:minmax(58px,1fr);margin-top:14px;}
+ :global(.delivery-day){display:block;}
+ :global(.delivery-day)>span{display:block;font-weight:650;}
+ :global(.delivery-plan) td{font-variant-numeric:tabular-nums;}
+ @media(max-width:600px){
+  :global(.delivery-plan){width:100%;min-width:0;font-size:13px;}
+  :global(.delivery-plan) th,:global(.delivery-plan) td,:global(.delivery-plan) thead th:not(:first-child),:global(.delivery-plan) th:last-child,:global(.delivery-plan) td:last-child{min-width:0;max-width:none;padding:10px 6px;}
+  :global(.delivery-plan) th:first-child{min-width:96px;padding-left:10px;overflow-wrap:anywhere;-webkit-hyphens:auto;hyphens:auto;}
+  :global(.delivery-plan) :global(.no-code){display:none;}
+  :global(.supplier-matrix-scroll):has(:global(.delivery-plan)){scrollbar-gutter:auto;}
+  :global(.delivery-plan) :global(.delivery-day)>small{display:none;}
+  :global(.delivery-plan) td{text-align:right;white-space:nowrap;}
+  :global(.delivery-plan) td small{display:block;white-space:normal;}
+  :global(.delivery-plan) thead th:not(:first-child){text-align:right;}
+ }
+}
+
+/* 1.19.0: Abendabschluss am Desktop. Lesbare Spaltenbreite, damit Artikelname und Mengenfelder zusammenbleiben. */
+.kitchen {
+ @media(min-width:761px){
+  :global(.inventory-form){max-width:680px;}
+ }
+ @media(min-width:1100px){
+  :global(.inventory-form) :global(.calm-toolbar){grid-template-columns:max-content minmax(0,1fr);}
+  :global(.inventory-form) :global(.segmented) span{white-space:nowrap;}
+ }
+ /* Sehr schmale Telefone: beide Schaltflächen der Aktionszeile bleiben in einer Reihe. */
+ @media(max-width:340px){
+  :global(.calm-actions){gap:8px;}
+  :global(.calm-actions) button{padding-inline:8px;}
+ }
+}

@@ -48,7 +48,7 @@ test('the count list names its filter and states the size of the whole list',asy
  const choices=[...root.querySelectorAll('[name=inventoryFilter]')];
  assert.deepEqual(choices.map(o=>o.closest('label').textContent),['In dieser Saison bestellt','Alle Artikel der Saison']);
  const progress=()=>root.querySelector('[data-count-progress]').textContent;
- assert.equal(progress(),'0 von 1 angezeigten Artikeln gezählt · Zählliste gesamt: 2 Artikel');
+ assert.equal(progress(),'0 von 1 angezeigten Artikeln gezählt · Gesamt: 2 Artikel');
  choices[1].checked=true;choices[1].dispatchEvent(new dom.window.Event('change',{bubbles:true}));
  assert.equal(progress(),'0 von 2 Artikeln gezählt');
  assert.equal(root.querySelectorAll('.count-line').length,2,'the list holds the same two articles as the overview');

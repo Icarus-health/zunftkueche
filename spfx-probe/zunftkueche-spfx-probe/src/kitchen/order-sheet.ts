@@ -9,7 +9,7 @@ import {button,field,select,note,check,segmented,h,n,money} from './markup.ts';
 import {dayLabel} from './ww/common.ts';
 import {orderTotal} from './domain.ts';
 
-function deliveryTitle(d:Delivery,index:number):string{return d.date?dayLabel(d.date):'Termin '+(index+1)+(d.time?' · '+d.time:'')+' (Datum offen)';}
+export function deliveryTitle(d:Delivery,index:number):string{return d.date?dayLabel(d.date):'Termin '+(index+1)+(d.time?' · '+d.time:'')+' (Datum offen)';}
 const weekdayShort:Record<string,string>={montag:'Mo',dienstag:'Di',mittwoch:'Mi',donnerstag:'Do',freitag:'Fr',samstag:'Sa',sonnabend:'Sa',sonntag:'So'};
 /** Kurze Beschriftung je Liefertermin für Umschalter und Spaltenkopf, zum Beispiel „Mi“, „Fr 17 Uhr“ oder „Fr 12.2.“. */
 export function deliveryShortLabels(dates:Delivery[]):string[]{

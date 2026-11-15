@@ -19,10 +19,10 @@ export function dashboard(state:Workspace,season:Season|undefined,area:Area,toda
  const steps=[
   ['Bestellrunde',state.suppliers.filter(s=>s.value.active).length+' Lieferanten',season.archived?'orders':'',season.archived?'nav':'order-round',season.archived?'Ansehen':'Vorbereiten'],
   ['Warenannahme',due.length?due.length+' offene Liefertermine für heute oder früher':pending.length?pending.length+' '+(pending.length===1?'Bestellung':'Bestellungen')+' mit offener Lieferung':'Heute keine offenen Lieferungen', '', 'delivery-list','Ansehen'],
-  ['Abendabschluss',inventory?'Gespeicherte Zählung fortsetzen':countStatus,season.archived?'stock':inventory?.value.id||'',season.archived?'nav':inventory?'inventory-edit':state.inventoriesReady===false?'inventory-setup':'inventory-new',season.archived?'Ansehen':inventory?'Fortsetzen':'Starten']
+  ['Abendabschluss',inventory?'Begonnen, noch nicht abgeschlossen':countStatus,season.archived?'stock':inventory?.value.id||'',season.archived?'nav':inventory?'inventory-edit':state.inventoriesReady===false?'inventory-setup':'inventory-new',season.archived?'Ansehen':inventory?'Fortsetzen':'Starten']
  ];
  const symbols=['cart','truck','count'];
- const preparation=!season.archived&&state.ww?.ready?'<div class="workflow-start"><div class="home-workflow-name">'+icon('calendar')+'<h2>Karte und Bedarf</h2></div><p>Rezepte, Preise und Planung</p>'+button('ww-open','Öffnen','recipes')+'</div>':'';
+ const preparation=!season.archived&&state.ww?.ready?'<div class="workflow-start"><div class="home-workflow-name">'+icon('calendar')+'<h2>Speisen &amp; Getränke</h2></div><p>Rezepte, Preise und Planung</p>'+button('ww-open','Öffnen','recipes')+'</div>':'';
  const rows=preparation+steps.map(([title,description,id,action,label],index)=>'<div class="workflow-start"><div class="home-workflow-name">'+icon(symbols[index])+'<h2>'+title+'</h2></div><p>'+h(description)+'</p>'+button(action,label,id)+'</div>').join('');
  /* Offene Punkte. Genau einer davon wird als nächster Schritt hervorgehoben: zuerst Fälliges von heute, dann Bestellschluss, dann Entwürfe, dann Nachbestellbedarf. */
  type Task={text:string;action:string;id:string;label:string};
@@ -31,7 +31,7 @@ export function dashboard(state:Workspace,season:Season|undefined,area:Area,toda
  if(needs.length)tasks.push({text:needs.length+' Artikel zum Nachbestellen · '+needs.slice(0,2).map(c=>c.articleName+(c.note?' – '+c.note:'')).join(', '),action:'reorder-list',id:'',label:'Nachbestellbedarf prüfen'});
  const deadlines:Task[]=orderDeadlines(state,season.id,area).slice(0,3).map(d=>({text:d.order.supplierName+' · Bestellschluss '+d.deadline.replace('T',' · '),action:'order-open',id:d.order.id,label:'Prüfen'}));
  tasks.push(...deadlines);
- const today_:Task|undefined=due.length?{text:due.length+' '+(due.length===1?'offener Liefertermin':'offene Liefertermine')+' für heute oder früher',action:'delivery-list',id:'',label:'Warenannahme öffnen'}:inventory?{text:'Gespeicherte Zählung fortsetzen',action:'inventory-edit',id:inventory.value.id,label:'Zählung fortsetzen'}:undefined;
+ const today_:Task|undefined=due.length?{text:due.length+' '+(due.length===1?'offener Liefertermin':'offene Liefertermine')+' für heute oder früher',action:'delivery-list',id:'',label:'Warenannahme öffnen'}:inventory?{text:'Abendabschluss begonnen, noch nicht abgeschlossen',action:'inventory-edit',id:inventory.value.id,label:'Abendabschluss fortsetzen'}:undefined;
  const next=season.archived?undefined:today_||deadlines[0]||tasks[0];
  const notices=tasks.filter(task=>task!==next).map(task=>'<div class="calm-notice"><span>'+h(task.text)+'</span>'+button(task.action,task.label,task.id)+'</div>');
  const nextStep=next?'<section class="next-step" aria-label="Nächster Schritt"><p class="next-step-label">Nächster Schritt</p><h2>'+h(next.text)+'</h2>'+button(next.action,next.label,next.id,true)+'</section>':'';

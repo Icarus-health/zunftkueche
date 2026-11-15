@@ -32,11 +32,11 @@ export function countQuantity(packs: number | null, loose: number | null, packSi
 }
 export function validateInventory(value: InventorySession): void {
  const v=record(value);key(v.id);key(v.seasonId);if(v.area!=='Küche'&&v.area!=='Zunftscheuer')throw new Error('Bereich bitte prüfen.');time(v.createdAt);text(v.countedBy,'Erfassende Person',200);
- if(v.status!=='Entwurf'&&v.status!=='Abgeschlossen')throw new Error('Zählstatus bitte prüfen.');if(v.status==='Entwurf'&&v.completedAt!==null)throw new Error('Der Zählentwurf darf nicht abgeschlossen sein.');if(v.status==='Abgeschlossen')time(v.completedAt);
+ if(v.status!=='Entwurf'&&v.status!=='Abgeschlossen')throw new Error('Zählstatus bitte prüfen.');if(v.status==='Entwurf'&&v.completedAt!==null)throw new Error('Der Entwurf darf nicht abgeschlossen sein.');if(v.status==='Abgeschlossen')time(v.completedAt);
  if(!Array.isArray(v.lines)||!v.lines.length||v.lines.length>300)throw new Error('Bitte zwischen einem und 300 Artikeln zählen.');const seen=new Set<string>();let counted=0;
  for(const raw of value.lines){const l=record(raw);key(l.articleId);if(seen.has(String(l.articleId)))throw new Error('Doppelter Artikel in der Zählung.');seen.add(String(l.articleId));text(l.articleName,'Artikelname',160);text(l.unit,'Einheit',40);text(l.packName,'Gebinde',40);text(l.note,'Hinweis',1000,true);if(l.countedAt!==undefined||l.countedBy!==undefined){time(l.countedAt);text(l.countedBy,'Zählende Person',200);}if(!['ok','reorder','surplus'].includes(String(l.assessment)))throw new Error('Einschätzung bitte prüfen.');if(countQuantity(l.packs as number|null,l.loose as number|null,l.packSize as number)!==null)counted++;}
  if(v.status==='Abgeschlossen'&&!counted)throw new Error('Bitte mindestens eine Menge zählen.');
- if(JSON.stringify(value).length>58000)throw new Error('Die Zählliste ist zu groß. Bitte Hinweise kürzen oder weniger Artikel gemeinsam erfassen.');
+ if(JSON.stringify(value).length>58000)throw new Error('Der Abendabschluss ist zu groß. Bitte Hinweise kürzen oder weniger Artikel gemeinsam erfassen.');
 }
 export function observedCounts(state: Workspace): Count[] {
  const counts=state.counts.map(c=>c.value);

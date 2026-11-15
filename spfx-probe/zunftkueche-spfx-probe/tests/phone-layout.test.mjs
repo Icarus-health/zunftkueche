@@ -37,14 +37,15 @@ test('the overview highlights exactly one next step and no other button is prima
  assert.equal(card.querySelector('button').dataset.action,'dashboard-orders');
  assert.equal(root.querySelectorAll('button.primary').length,1);
  assert.equal(root.querySelector('.calm-notices').textContent.includes('Bestellentwürfe'),false,'the highlighted task is not repeated below');
- assert.deepEqual([...root.querySelectorAll('.workflow-start h2')].map(x=>x.textContent),['Karte und Bedarf','Bestellrunde','Warenannahme','Abendabschluss']);
+ assert.deepEqual([...root.querySelectorAll('.workflow-start h2')].map(x=>x.textContent),['Speisen & Getränke','Bestellrunde','Warenannahme','Abendabschluss']);
  assert.equal(root.querySelector('.workflow-start button[data-action=ww-open]').dataset.id,'recipes');
 });
 
 test('work that is due today comes before drafts: saved count first',()=>{
  const s=workspace();s.orders=[stored(draft('a'))];s.inventories=[stored({...inventory,status:'Entwurf'})];
  const root=page(dashboard(s,season,'Küche','2027-02-01'));
- assert.equal(root.querySelector('.next-step h2').textContent,'Gespeicherte Zählung fortsetzen');
+ assert.equal(root.querySelector('.next-step h2').textContent,'Abendabschluss begonnen, noch nicht abgeschlossen');
+ assert.equal(root.querySelector('.next-step button').textContent,'Abendabschluss fortsetzen');
  assert.equal(root.querySelector('.next-step button').dataset.action,'inventory-edit');
  assert.match(root.querySelector('.calm-notices').textContent,/1 Bestellentwurf vorbereiten und prüfen/,'the draft stays listed as a further open point');
 });

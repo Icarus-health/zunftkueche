@@ -87,13 +87,13 @@ export class SharePointStore {
   const [seasons,suppliers,articles,offers,headers,positions,counts]=await Promise.all([this.rows<EntityMap['seasons']>('seasons'),this.rows<EntityMap['suppliers']>('suppliers'),this.rows<EntityMap['articles']>('articles'),this.rows<EntityMap['offers']>('offers'),this.rows<Header>('orders'),this.rows<Position>('positions'),this.rows<EntityMap['counts']>('counts')]);
   for(const [kind,records] of [['seasons',seasons],['suppliers',suppliers],['articles',articles],['offers',offers],['counts',counts]] as const)for(const row of records)validateEntity(kind,row.value);
   const check=await this.request(this.list('inventories')+'?$select=Description',{method:'GET',headers:{Accept:'application/json;odata=nometadata','odata-version':''}});
-  if(check.status!==404&&!check.ok)throw new Error(`Zähllisten nicht lesbar (${check.status}). Bitte Verbindung und Rechte prüfen.`);
+  if(check.status!==404&&!check.ok)throw new Error(`Abendabschluss nicht lesbar (${check.status}). Bitte Verbindung und Rechte prüfen.`);
   if(check.ok){const meta=await check.json() as {Description?:string};if(!meta.Description?.includes('[ZK-V1]'))throw new Error('Eine gleichnamige fremde Liste wird nicht verwendet.');}
   const inventories=check.status===404?[]:await this.rows<InventorySession>('inventories');for(const row of inventories)validateInventory(row.value);
   return {seasons,suppliers,articles,offers,orders:headers.map(h=>this.hydrate(h,positions)),counts,inventories,inventoriesReady:check.status!==404};
  }
  public async saveMaster<K extends MasterKind>(kind: K,value: EntityMap[K],previous: Stored<EntityMap[K]> | undefined,operationId: string): Promise<Stored<EntityMap[K]>> {
-  validateEntity(kind,value);if(kind==='counts'&&previous)throw new Error('Bestandsmeldungen bleiben erhalten. Bitte eine neue Zählung erfassen.');
+  validateEntity(kind,value);if(kind==='counts'&&previous)throw new Error('Bestandsmeldungen bleiben erhalten. Bitte einen neuen Abendabschluss starten.');
   const committed=await this.one<EntityMap[K]>(kind,value.id);
   if(committed?.operationId===operationId)return this.put(kind,value,previous,operationId);
   const state=await this.load();
@@ -159,7 +159,7 @@ export class SharePointStore {
  public async saveInventory(value: InventorySession,previous: Stored<InventorySession> | undefined,operationId: string): Promise<Stored<InventorySession>> {
   validateInventory(value);const current=await this.one<InventorySession>('inventories',value.id);
   if(current?.operationId===operationId)return this.put('inventories',value,previous,operationId);
-  if(current?.value.status==='Abgeschlossen')throw new Error('Abgeschlossene Zählungen bleiben erhalten. Bitte eine neue Zählung beginnen.');
+  if(current?.value.status==='Abgeschlossen')throw new Error('Abgeschlossene Abendabschlüsse bleiben erhalten. Bitte einen neuen Abendabschluss starten.');
   if(previous&&current?.etag!==previous.etag)throw conflict();
   const state=await this.load();if(!state.seasons.some(s=>s.value.id===value.seasonId&&!s.value.archived))throw new Error('Bitte eine aktive Saison wählen. Das Archiv bleibt erhalten.');
   if(current&&(current.value.seasonId!==value.seasonId||current.value.area!==value.area||current.value.createdAt!==value.createdAt))throw new Error('Der Zählbereich und Beginn bleiben erhalten.');
