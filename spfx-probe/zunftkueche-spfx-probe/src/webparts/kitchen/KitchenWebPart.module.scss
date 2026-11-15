@@ -635,3 +635,27 @@
   :global(.app-layout.task-mode)>:global(.sidebar) nav,:global(.app-layout.task-mode) :global(.sidebar-head){display:none;}
  }
 }
+
+/* 1.19.0: Nachprüfung mit den Regelwerken für Barrierefreiheit und Web-Oberflächen (WCAG 2.2 AA, Web Interface Guidelines). */
+.kitchen {
+ :global(.app-layout){touch-action:manipulation;}
+ h1,h2{text-wrap:balance;}
+ /* Tastaturfokus darf nicht hinter der festen Leiste unten oder der festen Aktionszeile verschwinden (WCAG 2.4.11). */
+ :global(.app-layout) :is(a,button,input,select,textarea,summary,[tabindex]){scroll-margin:12px 0 calc(var(--tabbar,0px) + var(--action-bar,0px) + 16px);}
+ form:has(:global(.calm-actions)),form:has(:global(.sticky-actions)){--action-bar:88px;}
+ /* Formulartitel ist die Hauptüberschrift der Seite, Profilabschnitte folgen direkt darunter. Aussehen wie bisher. */
+ :global(.form-title){font-size:19px;line-height:1.3;font-weight:650;letter-spacing:0;}
+ :global(.profile-content) h2{font-size:17px;line-height:1.4;font-weight:700;letter-spacing:0;}
+ /* Gleicher Fokusrahmen wie überall sonst, lesbarer Platzhalter, erkennbare Feldlinie im Bestellblatt (WCAG 1.4.3, 1.4.11, 2.4.7). */
+ :global(.count-field):focus-within{outline:2px solid var(--action);outline-offset:1px;box-shadow:none;}
+ :global(.count-field) input::placeholder{color:#6b7087;}
+ :global(.calm-sheet) input{border-bottom-color:#8a8fa8;}
+ :global(.settings-links) a{display:inline-flex;align-items:center;min-height:24px;}
+ @media(max-width:760px){
+  :global(.app-layout){min-height:100dvh;}
+  /* Unter 16 px vergrößert iOS die Seite beim Antippen eines Feldes. Gilt als Untergrenze für jedes Feld, deshalb mit Vorrang. */
+  :global(.app-layout) input:not([type=checkbox]):not([type=radio]):not([type=file]),:global(.app-layout) select,:global(.app-layout) textarea{font-size:16px!important;}
+  :global(.sidebar-head) select{min-height:44px;}
+  :global(.settings-links) a{min-height:44px;}
+ }
+}
