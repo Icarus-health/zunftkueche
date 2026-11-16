@@ -199,7 +199,7 @@ export function procurementReservation(plan: Plan, allocations: Allocation[], s:
       incomingUse: a.incomingUse
     });
   return {
-    id: current?.id || 'allocation:' + plan.scope + ':' + (plan.area === 'Küche' ? 'kitchen' : 'bar'),
+    id: current?.id || 'allocation:' + plan.scope + ':' + (plan.area === 'Küche' ? 'kitchen' : plan.area === 'Marktplatz' ? 'market' : 'bar'),
     kind: 'allocation',
     scope: plan.scope,
     area: plan.area,
@@ -338,6 +338,16 @@ export function mergePlanOrders(
   }
   return result;
 }
+/** Bei mehreren Liefergebinden das zuletzt bestellte vorschlagen. Ohne frühere Bestellung bleibt die Wahl offen. */
+export function preferredOffer<T extends { id: string }>(articleId: string, candidates: T[], s: Workspace): T | undefined {
+  const used = s.orders
+    .map(row => row.value)
+    .filter(order => order.status !== 'Storniert' && order.status !== 'Entwurf')
+    .sort((a, b) => (b.recordedAt || '').localeCompare(a.recordedAt || ''))
+    .flatMap(order => order.lines)
+    .find(line => line.articleId === articleId && candidates.some(offer => offer.id === line.offerId));
+  return used ? candidates.find(offer => offer.id === used.offerId) : undefined;
+}
 export function planProcurementForm(plan: Plan, s: Workspace, mode: ProcurementMode = 'planning'): string {
   const suggestions = procurementSuggestions(plan, s);
   const rows = procurementRows(plan, s);
@@ -361,7 +371,7 @@ export function planProcurementForm(plan: Plan, s: Workspace, mode: ProcurementM
       const incomingUse = mode === 'planning' ? (old?.incomingUse ?? 0) : (proposal?.incomingUse ?? 0);
       const candidates = offers.filter(offer => offer.articleId === row.articleId);
       candidates.forEach(offer => supplierIds.add(offer.supplierId));
-      const selectedOffer = candidates.length === 1 ? candidates[0] : undefined;
+      const selectedOffer = candidates.length === 1 ? candidates[0] : preferredOffer(row.articleId, candidates, s);
       const rest = Math.max(0, round(row.required - stockUse - incomingUse));
       const result =
         'Zusätzlich benötigt: ' +

@@ -1,5 +1,6 @@
 /* eslint-disable @rushstack/no-new-null -- Null preserves unknown amounts/prices during JSON persistence. */
 import type { Area, Catalog, MasterKind, Order, Season } from './model';
+import { isArea } from './model.ts';
 import { validateSchedule } from './supplier-orders.ts';
 import { validateDeliveryNotes, validateStoredReceipts } from './operations.ts';
 
@@ -42,7 +43,7 @@ function date(value: unknown): void {
     throw new Error('Datum bitte prüfen.');
 }
 function area(value: unknown): void {
-  if (value !== 'Küche' && value !== 'Zunftscheuer') throw new Error('Bereich bitte wählen.');
+  if (!isArea(value)) throw new Error('Bereich bitte wählen.');
 }
 function method(value: unknown): void {
   if (!methods.includes(String(value))) throw new Error('Bestellweg bitte wählen.');

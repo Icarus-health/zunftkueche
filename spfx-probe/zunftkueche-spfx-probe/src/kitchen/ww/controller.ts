@@ -4,7 +4,7 @@ import { fieldNumber, inputNumber } from '../field-errors.ts';
 import { ingredientForm, readIngredient } from '../ingredient-form.ts';
 import type { IngredientDraft } from '../ingredient-form';
 import type { Article, Offer } from '../model';
-import { articleAvailable } from '../model.ts';
+import { AREAS, articleAvailable } from '../model.ts';
 import { recipeDemand } from './domain.ts';
 import { money } from '../markup.ts';
 import { withSchedule, scheduledOrder } from '../supplier-orders.ts';
@@ -1023,10 +1023,15 @@ export class WwController {
       this.p.redraw();
       return;
     }
-    if (action === 'ww-new') {
+    if (action === 'ww-new' || action === 'ww-transfer') {
       if (!this.p.canLeave()) return;
-      const kind = id as WwDocument['kind'];
+      const kind = (action === 'ww-transfer' ? 'movement' : id) as WwDocument['kind'];
       const draft = this.create(kind);
+      /* Übergabe: Ware geht aus dem aktuellen Bereich in einen anderen, z. B. von der Küche zum Marktplatz. */
+      if (action === 'ww-transfer' && draft.kind === 'movement') {
+        draft.type = 'transfer';
+        draft.toArea = AREAS.find(area => area !== draft.area) ?? draft.area;
+      }
       // The main view only shows workflow forms while a workflow screen is active.
       // A button on another page (e.g. Bestand) therefore has to select the matching screen first.
       if (!this.screen) {
@@ -1496,6 +1501,7 @@ export class WwController {
         mode: 'split',
         kitchen: fieldNumber(form, 'costKitchen', { signed: true }) ?? 0,
         scheuer: fieldNumber(form, 'costScheuer', { signed: true }) ?? 0,
+        market: fieldNumber(form, 'costMarket', { signed: true }) ?? 0,
         other: fieldNumber(form, 'costOther', { signed: true }) ?? 0
       };
     const state = this.p.state();

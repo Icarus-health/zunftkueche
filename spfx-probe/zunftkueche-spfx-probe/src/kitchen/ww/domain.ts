@@ -13,7 +13,7 @@ import type {
   Template,
   WwDocument
 } from './model';
-import { articleAvailable } from '../model.ts';
+import { articleAvailable, isArea } from '../model.ts';
 import { validInboxSource } from './inbox.ts';
 import { documents, importPurposes, billLineRoles } from './model.ts';
 import { latestCounts } from '../operations.ts';
@@ -47,7 +47,7 @@ export function text(value: unknown, label: string, max = 1000, optional = false
     throw new Error(label + ' bitte prüfen.');
 }
 const area = (v: unknown): void => {
-  if (v !== 'Küche' && v !== 'Zunftscheuer') throw new Error('Bereich bitte prüfen.');
+  if (!isArea(v)) throw new Error('Bereich bitte prüfen.');
 };
 function list(value: unknown, max = 200): void {
   if (!Array.isArray(value) || value.length > max)
@@ -322,7 +322,7 @@ function validateBillRelations(v: BillRelations): void {
 export function validateBillCostAssignment(value: BillCostAssignment | null | undefined, gross?: number | null): void {
   if (value === undefined || value === null || value.mode === 'open') return;
   if (value.mode !== 'split') throw new Error('Kostenstelle bitte prüfen.');
-  const shares = [value.kitchen, value.scheuer, value.other];
+  const shares = [value.kitchen, value.scheuer, value.market ?? 0, value.other];
   for (const share of shares) {
     amount(share, false, true);
     if (cents(share) !== share) throw new Error('Kostenanteile bitte centgenau eintragen.');

@@ -1,5 +1,12 @@
 /* eslint-disable @rushstack/no-new-null -- Null is the persisted, explicit unknown value in the approved data model. */
-export type Area = 'Küche' | 'Zunftscheuer';
+/** Einsatzbereiche einer Saison. Neue Bereiche nur hier ergänzen, alle Prüfungen lesen diese Liste. */
+export const AREAS = ['Küche', 'Zunftscheuer', 'Marktplatz'] as const;
+export type Area = (typeof AREAS)[number];
+export function isArea(value: unknown): value is Area {
+  return (AREAS as readonly unknown[]).includes(value);
+}
+/** Auswahlliste für Bereichsfelder. */
+export const areaOptions = (): Array<[Area, Area]> => AREAS.map(area => [area, area]);
 export type Method = 'Telefon' | 'E-Mail' | 'Onlineshop' | 'Abholung';
 export interface Season {
   id: string;

@@ -1,6 +1,7 @@
 /* eslint-disable @rushstack/no-new-null -- Blank counts remain explicitly unknown. */
 import { deliveryRemaining } from './supplier-orders.ts';
 import type { Count, InventorySession, Order, Receipt, Workspace } from './model';
+import { isArea } from './model.ts';
 
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Vorgang ist ungültig.');
@@ -128,7 +129,7 @@ export function validateInventory(value: InventorySession): void {
   const v = record(value);
   key(v.id);
   key(v.seasonId);
-  if (v.area !== 'Küche' && v.area !== 'Zunftscheuer') throw new Error('Bereich bitte prüfen.');
+  if (!isArea(v.area)) throw new Error('Bereich bitte prüfen.');
   time(v.createdAt);
   text(v.countedBy, 'Erfassende Person', 200);
   if (v.status !== 'Entwurf' && v.status !== 'Abgeschlossen') throw new Error('Zählstatus bitte prüfen.');

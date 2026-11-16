@@ -68,7 +68,11 @@ export function supplierMail(order: Order, supplier: Supplier): SupplierMail {
   return { to, subject, body, href: prefilledBody ? fullLink : subjectLink, prefilledBody };
 }
 
-export function orderMailView(order: Order, supplier: Supplier): string {
+/**
+ * Versand vorbereiten. Kann das Gerät Dateien teilen (iPhone, iPad, Android), öffnet „Mit PDF teilen“ das Teilen-Menü
+ * mit angehängter PDF und dem Bestelltext. Sonst speichert derselbe Knopf die PDF und öffnet das E-Mail-Programm.
+ */
+export function orderMailView(order: Order, supplier: Supplier, shareFiles = false): string {
   const mail = supplierMail(order, supplier);
   const fields =
     '<div class="formgrid"><label>Empfänger<input readonly value="' +
@@ -77,15 +81,19 @@ export function orderMailView(order: Order, supplier: Supplier): string {
     '<label>Betreff<input readonly value="' +
     h(mail.subject) +
     '"></label></div>';
-  const help = !mail.to
-    ? 'Adresse im Lieferantenprofil ergänzen oder im E-Mail-Programm eintragen. Text kopieren und PDF anhängen.'
-    : mail.prefilledBody
-      ? 'PDF herunterladen und im E-Mail-Programm anhängen.'
-      : 'Bestelltext kopieren, E-Mail mit Betreff öffnen, Text einfügen und PDF anhängen.';
+  const help = shareFiles
+    ? 'Teilen öffnet E-Mail oder einen Messenger mit angehängter PDF. Empfänger dort eintragen' +
+      (mail.to ? ': ' + mail.to + '.' : '.')
+    : !mail.to
+      ? 'Adresse im Lieferantenprofil ergänzen oder im E-Mail-Programm eintragen. Bestelltext kopieren und PDF anhängen.'
+      : mail.prefilledBody
+        ? 'Der Knopf speichert die PDF und öffnet die E-Mail mit Text. PDF dort anhängen.'
+        : 'Der Knopf speichert die PDF und öffnet die E-Mail mit Betreff. Bestelltext kopieren, einfügen und PDF anhängen.';
+  const primary = shareFiles ? 'Mit PDF teilen' : mail.href ? 'PDF speichern und E-Mail öffnen' : 'PDF für Versand';
   return (
     '<section class="panel order-mail" data-order-mail><div class="calm-heading"><div>' +
     button('order-mail-back', 'Zurück') +
-    '<h1 tabindex="-1">Bestellmail vorbereiten</h1></div></div>' +
+    '<h1 tabindex="-1">Bestellung versenden</h1></div></div>' +
     '<p class="calm-subtitle">' +
     h(order.supplierName) +
     '</p>' +
@@ -95,16 +103,18 @@ export function orderMailView(order: Order, supplier: Supplier): string {
     '</textarea></label>' +
     '<p class="muted">' +
     h(help) +
-    '</p><div class="calm-actions">' +
-    button('order-dispatch-pdf', 'PDF für Versand', '', true) +
-    button('order-mail-copy', 'Text kopieren') +
+    '</p><div class="mail-more">' +
+    button('order-dispatch-pdf', 'Nur PDF speichern') +
+    button('order-mail-copy', 'Bestelltext kopieren') +
     (mail.href
       ? '<a class="mail-compose" href="' +
         h(mail.href) +
         '">' +
-        (mail.prefilledBody ? 'E-Mail öffnen' : 'E-Mail mit Betreff öffnen') +
+        (mail.prefilledBody ? 'Nur E-Mail öffnen' : 'Nur E-Mail mit Betreff öffnen') +
         '</a>'
       : '') +
+    '</div><div class="calm-actions">' +
+    button('order-share', primary, '', true) +
     '</div></section>'
   );
 }

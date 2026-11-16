@@ -127,6 +127,8 @@ export type BillCostAssignment =
       mode: 'split';
       kitchen: number;
       scheuer: number;
+      /** Fehlt bei Belegen vor 1.21; dann 0. */
+      market?: number;
       other: number;
     };
 export interface BillRelations {

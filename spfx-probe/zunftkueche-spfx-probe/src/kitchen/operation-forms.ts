@@ -177,7 +177,7 @@ export function inventoryForm(
       return `<section class="count-group" data-count-group>${titled ? '<h2>' + h(group || 'Ohne Kategorie') + ' <span data-group-count>' + lines.length + '</span></h2>' : ''}<div class="count-rows">${lines.map(line).join('')}</div></section>`;
     })
     .join('');
-  return `<form data-form="inventory" class="panel inventory-form calm-workflow"><div class="calm-heading"><div>${button('cancel', 'Schließen')}<h1>Abendabschluss</h1></div></div><div class="inventory-entry"><div class="count-status"><p class="count-progress" data-count-progress>${countProgress(counted, session.lines.length, session.lines.length)}</p><div class="count-bar" aria-hidden="true"><i data-count-bar style="width:${countShare(counted, session.lines.length)}%"></i></div><p class="calm-hint">Artikel antippen und Menge eintragen. Leeres Feld = noch nicht gezählt. 0 = nichts vorhanden.</p></div><div class="calm-toolbar">${
+  return `<form data-form="inventory" class="panel inventory-form calm-workflow"><div class="calm-heading"><div>${button('cancel', 'Schließen')}<h1>Abendabschluss</h1></div></div><div class="inventory-entry"><div class="count-status"><p class="count-progress" data-count-progress>${countProgress(counted, session.lines.length, session.lines.length)}</p><div class="count-bar" aria-hidden="true"><i data-count-bar style="width:${countShare(counted, session.lines.length)}%"></i></div><p class="calm-hint">Artikel antippen und Menge eintragen. Leeres Feld = noch nicht gezählt. 0 = nichts vorhanden.</p><button type="button" class="text-button count-sheet" data-action="count-sheet" data-id="">Liste zum Ausdrucken (PDF)</button></div><div class="calm-toolbar">${
     relevantIds.length
       ? segmented(
           'inventoryFilter',

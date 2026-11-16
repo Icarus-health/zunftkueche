@@ -3,55 +3,13 @@ import type { Order, Supplier } from './model';
 import { orderTotal, validateOrder } from './domain.ts';
 import { withSchedule, validateSchedule, validDate } from './supplier-orders.ts';
 
-// PDF 1.4, standard embedded viewer fonts, WinAnsi text. No network or paid service.
+import { pdfDocument, pdfLiteral as literal, wrap } from './pdf-document.ts';
+
+// PDF 1.4 über den gemeinsamen Baukasten in pdf-document.ts.
 const num = (v: number | null): string =>
   v === null ? 'offen' : v.toLocaleString('de-DE', { maximumFractionDigits: 4 });
-const bytes = (s: string): Uint8Array =>
-  Uint8Array.from(
-    [...s].map(c =>
-      c === '€'
-        ? 128
-        : c === '–'
-          ? 150
-          : c === '—'
-            ? 151
-            : c === '·'
-              ? 183
-              : c.charCodeAt(0) < 256
-                ? c.charCodeAt(0)
-                : 63
-    )
-  );
-const literal = (s: string): string =>
-  s
-    .replace(/[\r\n\t]/g, ' ')
-    .replace(/\\/g, '\\\\')
-    .replace(/\(/g, '\\(')
-    .replace(/\)/g, '\\)');
 const dateLabel = (s: string | null): string =>
   s && validDate(s) ? s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(0, 4) : 'Termin offen';
-function wrap(text: string, size: number): string[] {
-  const lines: string[] = [];
-  let current = '';
-  for (const word of text.replace(/\s+/g, ' ').split(' ')) {
-    if ((current + ' ' + word).trim().length > size && current) {
-      lines.push(current);
-      current = '';
-    }
-    let rest = word;
-    while (rest.length > size) {
-      if (current) {
-        lines.push(current);
-        current = '';
-      }
-      lines.push(rest.slice(0, size));
-      rest = rest.slice(size);
-    }
-    current = (current + ' ' + rest).trim();
-  }
-  if (current) lines.push(current);
-  return lines.length ? lines : [''];
-}
 export function supplierPdf(
   source: Order,
   supplier: Supplier,
@@ -174,36 +132,5 @@ export function supplierPdf(
       }
     }
   }
-  const objects: string[] = [
-    '',
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    '',
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'
-  ];
-  const kids: number[] = [];
-  for (const content of pages) {
-    const id = objects.length;
-    kids.push(id);
-    objects.push(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${id + 1} 0 R >>`
-    );
-    objects.push(`<< /Length ${bytes(content).length} >>\nstream\n${content}endstream`);
-  }
-  objects[2] = `<< /Type /Pages /Count ${kids.length} /Kids [${kids.map(n => n + ' 0 R').join(' ')}] >>`;
-  let pdf = '%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n';
-  const offsets = [0];
-  for (let i = 1; i < objects.length; i++) {
-    offsets.push(bytes(pdf).length);
-    pdf += `${i} 0 obj\n${objects[i]}\nendobj\n`;
-  }
-  const xref = bytes(pdf).length;
-  pdf +=
-    `xref\n0 ${objects.length}\n0000000000 65535 f \n` +
-    offsets
-      .slice(1)
-      .map(n => String(n).padStart(10, '0') + ' 00000 n \n')
-      .join('') +
-    `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
-  return bytes(pdf);
+  return pdfDocument(pages);
 }

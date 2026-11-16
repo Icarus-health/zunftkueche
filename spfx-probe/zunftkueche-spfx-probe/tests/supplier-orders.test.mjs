@@ -93,7 +93,11 @@ test('a long supplier order still opens a mail with recipient and subject and ke
     assert.match(message.body, /Mineralwasser Gebinde für den Zunftabend 12/);
     assert.match(message.body, /07\.02\.2027/);
     const rendered = orderMailView(source, supplier);
-    assert.match(rendered, /E-Mail mit Betreff öffnen/);
+    assert.match(rendered, /Nur E-Mail mit Betreff öffnen/);
     assert.match(rendered, /Bestelltext kopieren/);
+    assert.match(rendered, /PDF speichern und E-Mail öffnen/);
     assert.match(rendered, /PDF anhängen/);
+    const shared = orderMailView(source, supplier, true);
+    assert.match(shared, /data-action="order-share"[^>]*class="primary">Mit PDF teilen/);
+    assert.match(shared, /Empfänger dort eintragen: bestellung@example\.invalid/);
 });

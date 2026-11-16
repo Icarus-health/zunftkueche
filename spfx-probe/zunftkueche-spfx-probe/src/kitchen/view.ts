@@ -12,7 +12,7 @@ import type { IngredientDraft } from './ingredient-form';
 import { articleAvailable } from './model.ts';
 import { scheduledOrder, withSchedule, copyScheduledOrder, deliveryRemaining } from './supplier-orders.ts';
 import { supplierPdf } from './supplier-pdf.ts';
-import { orderMailView, supplierOrderText } from './order-mail.ts';
+import { orderMailView, supplierMail, supplierOrderText } from './order-mail.ts';
 import { deliveryMatrix, deliverySummary, supplierTools, orderGuidance, priceReview } from './supplier-forms.ts';
 import { WwController } from './ww/controller.ts';
 import { nextUsePlans } from './ww/operations-view.ts';
@@ -35,7 +35,10 @@ import type {
   Supplier,
   Workspace
 } from './model';
-import { catalog } from './model.ts';
+import { catalog, isArea } from './model.ts';
+import { exportFasnetRows } from './fasnet-report.ts';
+import { saveFile } from './save-file.ts';
+import { countSheetPdf } from './count-sheet-pdf.ts';
 import { parseDecimal, validateEntity, validateOrder, orderTotal } from './domain.ts';
 import { SharePointStore } from './sharepoint.ts';
 import { columns, previewMasters } from './csv.ts';
@@ -127,6 +130,17 @@ export class KitchenView {
     if (!this.guard) return;
     this.guard = false;
     this.stepBack();
+  };
+  /** Verbindung zurück: Wer ungespeicherte Eingaben hat, bekommt den Hinweis, jetzt zu speichern. */
+  private readonly online = (): void => {
+    if (!this.dirty) return;
+    this.error = '';
+    this.info = 'Verbindung wieder da. Bitte jetzt speichern.';
+    this.paintStatus();
+  };
+  private readonly offline = (): void => {
+    this.info = 'Keine Verbindung. Weiterzählen geht, gespeichert wird, sobald wieder Netz da ist.';
+    this.paintStatus();
   };
   private readonly keydown = (event: Event): void => {
     if ((event as KeyboardEvent).key === 'Escape' && (this.closeContext(true) || this.closeMenu(true)))
@@ -426,12 +440,14 @@ export class KitchenView {
   ) {
     this.local = new LocalState(root, store.storageScope || root.ownerDocument.baseURI, user);
     const choice = this.local.read<ContextChoice>('context');
-    if (choice && ['Küche', 'Zunftscheuer'].includes(choice.area)) {
+    if (choice && isArea(choice.area)) {
       this.area = choice.area;
       this.seasonId = choice.seasonId;
     }
     root.ownerDocument.defaultView?.addEventListener('beforeunload', this.beforeUnload);
     root.ownerDocument.defaultView?.addEventListener('popstate', this.popstate);
+    root.ownerDocument.defaultView?.addEventListener('online', this.online);
+    root.ownerDocument.defaultView?.addEventListener('offline', this.offline);
     root.addEventListener('click', this.click);
     root.addEventListener('keydown', this.keydown);
     root.addEventListener('submit', this.submit);
@@ -492,6 +508,8 @@ export class KitchenView {
     this.wwUI.clear();
     this.root.ownerDocument.defaultView?.removeEventListener('beforeunload', this.beforeUnload);
     this.root.ownerDocument.defaultView?.removeEventListener('popstate', this.popstate);
+    this.root.ownerDocument.defaultView?.removeEventListener('online', this.online);
+    this.root.ownerDocument.defaultView?.removeEventListener('offline', this.offline);
     this.root.removeEventListener('keydown', this.keydown);
     this.root.removeEventListener('click', this.click);
     this.root.removeEventListener('submit', this.submit);
@@ -609,6 +627,7 @@ export class KitchenView {
   private async run(work: () => Promise<unknown>, success: string, after?: () => void, mutation = true): Promise<void> {
     if (this.busy) return;
     if (mutation) this.pendingSave = { work, success, after };
+    let keepLocal = false;
     this.error = '';
     this.info = 'Wird mit SharePoint abgeglichen …';
     this.paintStatus();
@@ -639,12 +658,24 @@ export class KitchenView {
     } catch (error) {
       this.error = message(error);
       this.needsSetup = this.error.includes('noch nicht eingerichtet');
+      /* Ohne Netz bleibt die Eingabe offen: weiterarbeiten, die Eingaben liegen gesichert auf dem Gerät. */
+      if (mutation && this.withoutConnection(error)) {
+        this.pendingSave = undefined;
+        this.dirty = true;
+        keepLocal = true;
+        this.error =
+          'Keine Verbindung. Noch nichts gespeichert. Die Eingaben sind auf diesem Gerät gesichert, ihr könnt weiterarbeiten und später erneut speichern.';
+      }
       this.paintStatus(true);
       if (!this.state) this.render();
     } finally {
       this.lock(false);
+      if (keepLocal) this.rememberDraft();
       if (this.pendingSave) this.showRecovery();
     }
+  }
+  private withoutConnection(error: unknown): boolean {
+    return this.root.ownerDocument.defaultView?.navigator.onLine === false || error instanceof TypeError;
   }
   private showRecovery(): void {
     this.root.querySelector('[data-recovery]')?.remove();
@@ -695,7 +726,7 @@ export class KitchenView {
         Object.fromEntries(s.articles.map(a => [a.value.id, a.value.category || '']))
       );
     else if (this.editing) body = masterForm(this.editing, s);
-    else if (this.mailOrder) body = orderMailView(this.mailOrder, this.supplierFor(this.mailOrder));
+    else if (this.mailOrder) body = orderMailView(this.mailOrder, this.supplierFor(this.mailOrder), this.canShareFiles());
     else if (this.draft) body = this.orderReview ? orderReview(this.draft, s) : orderForm(this.draft, s);
     else if (this.copySource) body = copyForm(this.copySource.value, s, this.season());
     else if (this.importKind) body = this.importForm();
@@ -1027,7 +1058,7 @@ export class KitchenView {
     ${article.active ? button('offer-new', 'Lieferangebot hinzufügen', article.id) : ''}</div></div></details>`;
       })
       .join('');
-    return `<div class="page-heading"><div><h1>Artikel</h1><p>Gemeinsame Stammdaten für Küche und Zunftscheuer.</p></div><div class="actions">${button('import', 'CSV importieren', 'articles')}${button('article-new', 'Artikel anlegen', '', true)}</div></div><div class="toolbar">${searchField(this.query, 'Artikel oder Lieferanten suchen')}</div><section class="article-list" aria-label="Artikelliste"><div class="article-list-head"><span>Artikel</span><span>Kategorie</span><span>Einheit</span><span>Lieferangebote</span></div>${rows || empty('Noch keine Artikel angelegt.')}</section><p data-filter-empty hidden>Keine passenden Artikel.</p>`;
+    return `<div class="page-heading"><div><h1>Artikel</h1><p>Gemeinsame Stammdaten für alle Bereiche.</p></div><div class="actions">${button('import', 'CSV importieren', 'articles')}${button('article-new', 'Artikel anlegen', '', true)}</div></div><div class="toolbar">${searchField(this.query, 'Artikel oder Lieferanten suchen')}</div><section class="article-list" aria-label="Artikelliste"><div class="article-list-head"><span>Artikel</span><span>Kategorie</span><span>Einheit</span><span>Lieferangebote</span></div>${rows || empty('Noch keine Artikel angelegt.')}</section><p data-filter-empty hidden>Keine passenden Artikel.</p>`;
   }
   private suppliers(): string {
     const s = this.state!;
@@ -1110,7 +1141,7 @@ export class KitchenView {
       o.seasonId === this.seasonId &&
       o.area === this.area &&
       ['Bestellt', 'Abgeschlossen'].includes(o.status);
-    return `<section class="panel"><div class="row"><div><h1>${h(o.supplierName)}</h1><p>${h(o.occasion || 'Bestellung')}</p></div>${button('cancel', 'Zurück')}</div><div class="detail-meta">${badge(o.status, o.status === 'Entwurf' ? 'warning' : 'neutral')}${badge(deliveryState(o), deliveryState(o) === 'Vollständig geliefert' ? 'success' : 'neutral')}<span>${h(o.method)} · Liefertermin ${h(o.deliveryDate || 'noch offen')}</span></div>${o.recordedAt ? `<p class="muted">Bestellung dokumentiert am ${h(stamp(o.recordedAt))} · ${h(o.recordedBy)}</p>` : ''}${o.sourceYear ? `<p class="muted">Übernommen aus Saison ${o.sourceYear}. Die Ausgangsbestellung bleibt erhalten.</p>` : ''}${o.deliveries ? deliverySummary(o) + deliveryMatrix(o, false) : ''}<div class="detail-lines" ${o.deliveries ? 'hidden' : ''}>${o.lines.map(l => `<div class="detail-line"><div><strong>${h(l.articleName)}</strong><small>${h(l.code)} · 1 ${h(l.packName)} = ${n(l.packSize)} ${h(l.unit)}</small>${received ? `<small>Geliefert ${n(receivedQuantity(o, l.id))} ${h(l.packName)} · offen ${n(Math.max(0, (l.quantity || 0) - receivedQuantity(o, l.id)))} ${h(l.packName)}</small>` : ''}</div><strong>${l.quantity === null ? 'Menge offen' : n(l.quantity) + ' ' + h(l.packName)}</strong><span>${l.quantity === null ? '' : n(l.quantity * l.packSize) + ' ' + h(l.unit)}</span><span>${money(l.priceNet)} netto / ${h(l.packName)}</span></div>`).join('')}</div><p class="total">${total === null ? 'Gesamtsumme offen · Preise oder Mengen fehlen' : 'Warenwert netto: ' + money(total) + ' · ohne Pfand'}</p>${o.note ? `<p>${h(o.note)}</p>` : ''}<div class="actions">${this.writable() && o.status === 'Bestellt' && !o.deliveries && deliveryState(o) !== 'Vollständig geliefert' ? button('receipt-new', 'Lieferung prüfen', o.id, true) : ''}${button('order-pdf', 'PDF herunterladen', o.id)}${this.writable() && o.status === 'Entwurf' ? button('order-mail', 'Bestellmail vorbereiten', o.id) : ''}${button('order-bill', 'Rechnung zuordnen', o.id)}${this.writable() && o.status === 'Entwurf' ? button('order-edit', 'Entwurf bearbeiten', o.id, true) : ''}${o.deliveries ? o.deliveries.map(d => '<div class="delivery-summary"><strong>' + h(d.date || 'Datum offen') + '</strong><span>' + h(d.place) + ' · ' + h(d.time) + '</span>' + (this.writable() && o.status === 'Bestellt' ? button('receipt-new', 'Lieferung prüfen', o.id + '|' + d.id) : '') + '</div>').join('') : button('order-text', 'Bestelltext anzeigen', o.id)}${this.writable() && o.status === 'Bestellt' ? button('order-follow', 'Nachbestellung anlegen', o.id) + button('order-close', 'Vorgang abschließen', o.id) : ''}</div><div data-order-text class="ordertext" hidden></div>${o.deliveryNotes?.length ? `<details class="receipt-history" open><summary>Ausgefallene Lieferungen (${o.deliveryNotes.length})</summary>${o.deliveryNotes.map(x => `<div><strong>Keine Lieferung · ${h(stamp(x.recordedAt))}</strong><p>${h(x.recordedBy)} · ${h(o.deliveries?.find(d => d.id === x.deliveryId)?.date || 'Termin offen')}</p><p>${h(x.note)}</p></div>`).join('')}</details>` : ''}${
+    return `<section class="panel"><div class="row"><div><h1>${h(o.supplierName)}</h1><p>${h(o.occasion || 'Bestellung')}</p></div>${button('cancel', 'Zurück')}</div><div class="detail-meta">${badge(o.status, o.status === 'Entwurf' ? 'warning' : 'neutral')}${badge(deliveryState(o), deliveryState(o) === 'Vollständig geliefert' ? 'success' : 'neutral')}<span>${h(o.method)} · Liefertermin ${h(o.deliveryDate || 'noch offen')}</span></div>${o.recordedAt ? `<p class="muted">Bestellung dokumentiert am ${h(stamp(o.recordedAt))} · ${h(o.recordedBy)}</p>` : ''}${o.sourceYear ? `<p class="muted">Übernommen aus Saison ${o.sourceYear}. Die Ausgangsbestellung bleibt erhalten.</p>` : ''}${o.deliveries ? deliverySummary(o) + deliveryMatrix(o, false) : ''}<div class="detail-lines" ${o.deliveries ? 'hidden' : ''}>${o.lines.map(l => `<div class="detail-line"><div><strong>${h(l.articleName)}</strong><small>${h(l.code)} · 1 ${h(l.packName)} = ${n(l.packSize)} ${h(l.unit)}</small>${received ? `<small>Geliefert ${n(receivedQuantity(o, l.id))} ${h(l.packName)} · offen ${n(Math.max(0, (l.quantity || 0) - receivedQuantity(o, l.id)))} ${h(l.packName)}</small>` : ''}</div><strong>${l.quantity === null ? 'Menge offen' : n(l.quantity) + ' ' + h(l.packName)}</strong><span>${l.quantity === null ? '' : n(l.quantity * l.packSize) + ' ' + h(l.unit)}</span><span>${money(l.priceNet)} netto / ${h(l.packName)}</span></div>`).join('')}</div><p class="total">${total === null ? 'Gesamtsumme offen · Preise oder Mengen fehlen' : 'Warenwert netto: ' + money(total) + ' · ohne Pfand'}</p>${o.note ? `<p>${h(o.note)}</p>` : ''}<div class="actions">${this.writable() && o.status === 'Bestellt' && !o.deliveries && deliveryState(o) !== 'Vollständig geliefert' ? button('receipt-new', 'Lieferung prüfen', o.id, true) : ''}${button('order-pdf', 'PDF herunterladen', o.id)}${this.writable() && o.status === 'Entwurf' ? button('order-mail', 'Bestellung versenden', o.id) : ''}${button('order-bill', 'Rechnung zuordnen', o.id)}${this.writable() && o.status === 'Entwurf' ? button('order-edit', 'Entwurf bearbeiten', o.id, true) : ''}${o.deliveries ? o.deliveries.map(d => '<div class="delivery-summary"><strong>' + h(d.date || 'Datum offen') + '</strong><span>' + h(d.place) + ' · ' + h(d.time) + '</span>' + (this.writable() && o.status === 'Bestellt' ? button('receipt-new', 'Lieferung prüfen', o.id + '|' + d.id) : '') + '</div>').join('') : button('order-text', 'Bestelltext anzeigen', o.id)}${this.writable() && o.status === 'Bestellt' ? button('order-follow', 'Nachbestellung anlegen', o.id) + button('order-close', 'Vorgang abschließen', o.id) : ''}</div><div data-order-text class="ordertext" hidden></div>${o.deliveryNotes?.length ? `<details class="receipt-history" open><summary>Ausgefallene Lieferungen (${o.deliveryNotes.length})</summary>${o.deliveryNotes.map(x => `<div><strong>Keine Lieferung · ${h(stamp(x.recordedAt))}</strong><p>${h(x.recordedBy)} · ${h(o.deliveries?.find(d => d.id === x.deliveryId)?.date || 'Termin offen')}</p><p>${h(x.note)}</p></div>`).join('')}</details>` : ''}${
       received
         ? `<details class="receipt-history"><summary>Lieferhistorie (${o.receipts!.length})</summary>${o
             .receipts!.map(
@@ -1220,6 +1251,37 @@ export class KitchenView {
     }
     if (action === 'count-next') {
       this.countNext(id);
+      return;
+    }
+    if (action === 'count-sheet' && this.inventory && this.state) {
+      const articles = this.state.articles.map(a => a.value);
+      saveFile(
+        'Abendabschluss-Papier-' + this.area + '-' + (this.season()?.name || '').replace(/[^\p{L}\p{N}]+/gu, '-') + '.pdf',
+        new Blob(
+          [
+            new Uint8Array(
+              countSheetPdf(this.inventory, {
+                area: this.area,
+                seasonName: this.season()?.name || '',
+                places: Object.fromEntries(articles.map(a => [a.id, a.storagePlace || ''])),
+                categories: Object.fromEntries(articles.map(a => [a.id, a.category || '']))
+              })
+            ).buffer
+          ],
+          { type: 'application/pdf' }
+        ),
+        this.root.ownerDocument
+      );
+      return;
+    }
+    if (action === 'fasnet-export') {
+      const season = this.season();
+      if (!season || !this.state) return;
+      saveFile(
+        'Zunftkueche-' + season.name.replace(/[^\p{L}\p{N}]+/gu, '-') + '-gesamt.csv',
+        new Blob([exportFasnetRows(this.state, season.id)], { type: 'text/csv;charset=utf-8' }),
+        this.root.ownerDocument
+      );
       return;
     }
     if (action === 'draft-resume') {
@@ -1863,6 +1925,10 @@ export class KitchenView {
       this.downloadPdf(this.mailOrder, true);
       return;
     }
+    if (action === 'order-share' && this.mailOrder) {
+      await this.shareOrder(this.mailOrder);
+      return;
+    }
     if (action === 'order-mail-copy' && this.mailOrder) {
       const field = this.root.querySelector<HTMLTextAreaElement>('[name=orderMailBody]');
       if (!field) return;
@@ -2280,17 +2346,50 @@ export class KitchenView {
     if (!supplier) throw new Error('Bitte Lieferanten wählen.');
     return supplier;
   }
+  private pdfName(order: Order): string {
+    return ('Bestellung-' + order.supplierName + '-' + this.season()?.year + '.pdf').replace(/[^a-zA-Z0-9äöüÄÖÜß._-]/g, '-');
+  }
   private downloadPdf(order: Order, forDispatch = false): void {
-    const bytes = supplierPdf(order, this.supplierFor(order), undefined, forDispatch),
-      url = URL.createObjectURL(new Blob([new Uint8Array(bytes).buffer], { type: 'application/pdf' })),
-      a = document.createElement('a');
-    a.href = url;
-    a.download = ('Bestellung-' + order.supplierName + '-' + this.season()?.year + '.pdf').replace(
-      /[^a-zA-Z0-9äöüÄÖÜß._-]/g,
-      '-'
-    );
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const bytes = supplierPdf(order, this.supplierFor(order), undefined, forDispatch);
+    saveFile(this.pdfName(order), new Blob([new Uint8Array(bytes).buffer], { type: 'application/pdf' }), this.root.ownerDocument);
+  }
+  /** Teilen mit Dateien gibt es auf Telefonen und Tablets, in den meisten Desktop-Browsern nicht. */
+  private canShareFiles(): boolean {
+    const nav = this.root.ownerDocument.defaultView?.navigator;
+    try {
+      return !!nav?.canShare && nav.canShare({ files: [new File(['%PDF'], 'probe.pdf', { type: 'application/pdf' })] });
+    } catch {
+      return false;
+    }
+  }
+  /** Mit PDF teilen, sonst PDF speichern und das E-Mail-Programm öffnen. Abbrechen im Teilen-Menü ist kein Fehler. */
+  private async shareOrder(order: Order): Promise<void> {
+    const supplier = this.supplierFor(order),
+      mail = supplierMail(order, supplier),
+      bytes = supplierPdf(order, supplier, undefined, true);
+    const nav = this.root.ownerDocument.defaultView?.navigator;
+    if (this.canShareFiles() && nav?.share) {
+      const file = new File([new Uint8Array(bytes).buffer], this.pdfName(order), { type: 'application/pdf' });
+      try {
+        await nav.share({ files: [file], title: mail.subject, text: mail.body });
+        this.info = 'Teilen geöffnet. Nach dem Senden die Bestellung als bestellt dokumentieren.';
+      } catch (error) {
+        if ((error as { name?: string }).name !== 'AbortError') throw error;
+        this.info = 'Teilen abgebrochen. Nichts wurde gesendet.';
+      }
+      this.paintStatus();
+      return;
+    }
+    saveFile(this.pdfName(order), new Blob([new Uint8Array(bytes).buffer], { type: 'application/pdf' }), this.root.ownerDocument);
+    if (mail.href) {
+      const link = this.root.ownerDocument.createElement('a');
+      link.href = mail.href;
+      link.click();
+    }
+    this.info = mail.href
+      ? 'PDF gespeichert, E-Mail geöffnet. PDF anhängen und senden, danach als bestellt dokumentieren.'
+      : 'PDF gespeichert. Lieferant hat keine E-Mail-Adresse, bitte im E-Mail-Programm eintragen.';
+    this.paintStatus();
   }
 
   private async saveOrder(form: HTMLFormElement, record: boolean, confirmed = false): Promise<void> {

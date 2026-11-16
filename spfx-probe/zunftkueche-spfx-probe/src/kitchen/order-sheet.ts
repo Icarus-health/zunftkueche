@@ -228,5 +228,5 @@ export function orderReview(source: Order, state: Workspace): string {
     'reviewAll',
     'Mengen und Gebinde geprüft',
     order.lines.every(l => l.reviewed)
-  )}<div class="calm-actions"><button type="submit">Entwurf speichern</button>${button('order-preview-pdf', 'PDF herunterladen')}${button('order-preview-mail', 'Bestellmail vorbereiten', '', true)}</div><details class="calm-disclosure"><summary>Bestellung bereits aufgegeben?</summary><p>Nach der Abgabe beim Lieferanten dokumentieren.</p>${button('order-record', 'Als bestellt dokumentieren')}</details></form>`;
+  )}<div class="calm-actions"><button type="submit">Entwurf speichern</button>${button('order-preview-pdf', 'PDF herunterladen')}${button('order-preview-mail', 'Bestellung versenden', '', true)}</div><details class="calm-disclosure"><summary>Bestellung bereits aufgegeben?</summary><p>Nach der Abgabe beim Lieferanten dokumentieren.</p>${button('order-record', 'Als bestellt dokumentieren')}</details></form>`;
 }

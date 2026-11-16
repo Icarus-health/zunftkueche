@@ -374,7 +374,7 @@ function scanHints(
   }
   const labels = new Set<string>();
   for (const match of text.matchAll(
-    /^[ \t]*(?:(?:Kostenstelle|Bereich|Einsatzort)[ \t]*:[ \t]*|Lieferung[ \t]+(?:Zunftabend[ \t]+)?)(Hallenbar|Bar|Küche|Zunftscheuer|Scheuer)[ \t]*:?[ \t]*$/gim
+    /^[ \t]*(?:(?:Kostenstelle|Bereich|Einsatzort)[ \t]*:[ \t]*|Lieferung[ \t]+(?:Zunftabend[ \t]+)?)(Hallenbar|Bar|Küche|Zunftscheuer|Scheuer|Marktplatz|Markt)[ \t]*:?[ \t]*$/gim
   )) {
     const label = match[1].toLowerCase();
     labels.add(
@@ -382,8 +382,10 @@ function scanHints(
         ? 'Küche'
         : ['scheuer', 'zunftscheuer'].includes(label)
           ? 'Zunftscheuer'
-          : label === 'bar'
-            ? 'Bar'
+          : ['markt', 'marktplatz'].includes(label)
+            ? 'Marktplatz'
+            : label === 'bar'
+              ? 'Bar'
             : 'Hallenbar'
     );
   }

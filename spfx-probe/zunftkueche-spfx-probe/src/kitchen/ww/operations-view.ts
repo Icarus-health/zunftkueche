@@ -1,5 +1,5 @@
 import type { Area, Workspace } from '../model';
-import { articleAvailable } from '../model.ts';
+import { areaOptions, articleAvailable } from '../model.ts';
 import type { EquipmentItem, Movement, Plan, Recipe } from './model';
 import { documents } from './model.ts';
 import { planDemand, recipeDemand, stockProjection } from './domain.ts';
@@ -133,7 +133,7 @@ export function operationForm(d: Recipe | Plan | EquipmentItem | Movement, s: Wo
           ['return', 'Retoure an Lieferant'],
           ['waste', 'Verlust / Verderb'],
           ['internal', 'Eigenverbrauch'],
-          ['transfer', 'Umlagerung'],
+          ['transfer', 'Übergabe in anderen Bereich oder Lager'],
           ['opening', 'Anfangsbestand setzen'],
           ['count', 'Korrektur durch Zählung']
         ],
@@ -148,15 +148,14 @@ export function operationForm(d: Recipe | Plan | EquipmentItem | Movement, s: Wo
         'datetime-local',
         'step="0.001"'
       ) +
-      '<details class="ww-full"><summary>Lager und Übergabe (nur bei Bedarf)</summary>' +
+      '<details class="ww-full"' +
+      (d.type === 'transfer' ? ' open' : '') +
+      '><summary>Lager und Übergabe (nur bei Bedarf)</summary>' +
       field('place', 'Ausgangslager (leer = Standardlager)', d.place) +
       select(
         'toArea',
-        'Zielbereich (nur Umlagerung)',
-        [
-          ['Küche', 'Küche'],
-          ['Zunftscheuer', 'Zunftscheuer']
-        ],
+        'Zielbereich (nur Übergabe)',
+        areaOptions(),
         d.toArea || d.area
       ) +
       field('toPlace', 'Ziellager (leer = Standardlager)', d.toPlace) +

@@ -1,5 +1,6 @@
 import type { HttpRequest, HttpResponse } from '../sharepoint';
 import type { Order, Stored } from '../model';
+import { isArea } from '../model.ts';
 import type { Bill, BillRelations, DeliverySlip, SystemImport, WwDocument, WwState } from './model';
 import { immutableKinds, withOriginal, importPurposes } from './model.ts';
 import { key, validDate, validateDocument, validateBillCostAssignment } from './domain.ts';
@@ -167,7 +168,7 @@ export class WwStore {
         validDate(e.to);
         if (
           !/^[a-f0-9]{64}$/.test(e.canonicalKey) ||
-          !['Küche', 'Zunftscheuer'].includes(e.area) ||
+          !isArea(e.area) ||
           !importPurposes.some(purpose => purpose === e.purpose) ||
           e.from > e.to ||
           ids.has(e.id)

@@ -5799,3 +5799,125 @@
     padding: 16px;
   }
 }
+
+/* 1.21.0: Auswertung der ganzen Saison über alle Bereiche. */
+.kitchen {
+  :global(.fasnet-report) {
+    display: grid;
+    gap: 16px;
+    margin: 0 0 32px;
+  }
+  :global(.figure-card) {
+    display: grid;
+    gap: 8px;
+    padding: 16px;
+    border-radius: 16px;
+    background: var(--surface);
+  }
+  :global(.figure-card) h2 {
+    font-size: 22px;
+  }
+  :global(.figure-card) h3 {
+    font-size: 17px;
+    font-weight: 700;
+  }
+  :global(.figure-card) > p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--dim);
+  }
+  :global(.figure-card) > button {
+    justify-self: start;
+    min-height: 44px;
+    border: 0;
+    background: var(--tint);
+    color: var(--action-hover);
+    font-weight: 700;
+  }
+  :global(.figure-areas) {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+    gap: 12px;
+  }
+  :global(.figure-list) {
+    display: grid;
+    margin: 0;
+  }
+  :global(.figure-row) {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+  }
+  :global(.figure-row) + :global(.figure-row) {
+    border-top: 1px solid var(--line);
+  }
+  :global(.figure-row) dt {
+    font-size: 15px;
+    color: var(--dim);
+  }
+  :global(.figure-row) dd {
+    display: grid;
+    justify-items: end;
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  :global(.figure-row) dd small {
+    font-size: 12px;
+    font-weight: 400;
+  }
+  :global(.figure-card.total) :global(.figure-row) dd {
+    font-size: 20px;
+  }
+  :global(.figure-hint) {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  :global(.area-detail-title) {
+    margin: 8px 0 12px;
+    font-size: 22px;
+  }
+}
+
+/* 1.21.0: Bestellung versenden. Ein Hauptknopf unten, die einzelnen Wege als ruhige Textknöpfe darüber. */
+.kitchen {
+  :global(.mail-more) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 20px;
+    margin: 8px 0 16px;
+  }
+  :global(.mail-more) > button,
+  :global(.mail-more) > a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--action);
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  :global(.count-sheet) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-top: 4px;
+    padding: 0;
+    font-size: 15px;
+    font-weight: 600;
+  }
+}
+.kitchen {
+  /* Überschriften bekommen nach einem Seitenwechsel den Fokus für Screenreader, ohne sichtbaren Rahmen. */
+  h1[tabindex='-1']:focus {
+    outline: none;
+  }
+}

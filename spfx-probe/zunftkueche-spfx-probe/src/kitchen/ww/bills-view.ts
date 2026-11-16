@@ -89,6 +89,7 @@ function billCostFields(bill: Bill): string {
     '><p>Die Anteile müssen zusammen dem Bruttobetrag entsprechen.</p><div class="formgrid">' +
     field('costKitchen', 'Küche brutto', n(split?.kitchen), false, 'text', 'inputmode="decimal"') +
     field('costScheuer', 'Zunftscheuer brutto', n(split?.scheuer), false, 'text', 'inputmode="decimal"') +
+    field('costMarket', 'Marktplatz brutto', n(split?.market ?? 0), false, 'text', 'inputmode="decimal"') +
     field('costOther', 'Andere Bereiche brutto', n(split?.other), false, 'text', 'inputmode="decimal"') +
     '</div></div></details>'
   );
@@ -233,6 +234,8 @@ export function billDetail(row: Stored<Bill>, s: Workspace): string {
           money(cost.kitchen) +
           ' · Zunftscheuer ' +
           money(cost.scheuer) +
+          ' · Marktplatz ' +
+          money(cost.market ?? 0) +
           ' · Andere Bereiche ' +
           money(cost.other) +
           '</p>'

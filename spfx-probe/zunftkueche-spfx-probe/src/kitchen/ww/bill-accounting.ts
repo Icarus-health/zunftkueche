@@ -46,7 +46,11 @@ export function returnMovements(bill: Bill, workspace: Workspace): ReturnType<ty
 export function billGrossForArea(bill: Bill, area: Area): number | undefined {
   if (bill.costAssignment?.mode === 'open') return undefined;
   if (bill.costAssignment?.mode === 'split')
-    return area === 'Küche' ? bill.costAssignment.kitchen : bill.costAssignment.scheuer;
+    return area === 'Küche'
+      ? bill.costAssignment.kitchen
+      : area === 'Marktplatz'
+        ? (bill.costAssignment.market ?? 0)
+        : bill.costAssignment.scheuer;
   return bill.area === area ? (bill.gross ?? undefined) : undefined;
 }
 
