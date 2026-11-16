@@ -30,9 +30,9 @@ import { masterForm, orderForm, copyForm } from './forms.ts';
 import type { Editing } from './forms';
 import { h,n,money,select,note,button,panel,empty } from './markup.ts';
 import { countQuantity,deliveryState,receivedQuantity,validateInventory,validateReceipt,latestCounts } from './operations.ts';
-import { sidebar,dashboard,stockOverview,reportsOverview,searchField,badge,stamp,displayDate } from './workspace.ts';
+import { sidebar,contextSwitch,dashboard,stockOverview,reportsOverview,searchField,badge,stamp,displayDate } from './workspace.ts';
 import type { WorkspaceView } from './workspace';
-import { receiptForm,inventoryForm,deliverySlipsView,assessmentLabel,countProgress,countShare } from './operation-forms.ts';
+import { receiptForm,inventoryForm,deliverySlipsView,assessmentLabel,countProgress,countShare,receiptProgress } from './operation-forms.ts';
 
 import { slipExtension, slipFileLimit } from './delivery-slip.ts';
 import type { SlipFile } from './delivery-slip';
@@ -60,7 +60,7 @@ export class KitchenView {
   if(!this.guard)return;
   this.guard=false;this.stepBack();
  };
- private readonly keydown=(event:Event):void=>{if((event as KeyboardEvent).key==='Escape'&&this.closeMenu(true))event.preventDefault();};
+ private readonly keydown=(event:Event):void=>{if((event as KeyboardEvent).key==='Escape'&&(this.closeContext(true)||this.closeMenu(true)))event.preventDefault();};
  private readonly beforeUnload=(event:BeforeUnloadEvent):void=>{if(this.dirty){this.rememberDraft();event.preventDefault();event.returnValue='';}};
  private rememberDraft():void{
   if(!this.dirty||this.busy)return;const form=this.root.querySelector<HTMLFormElement>('form[data-form]');if(!form)return;
@@ -120,9 +120,9 @@ export class KitchenView {
  private trigger?:HTMLElement;
  /** Identifies the page currently shown, so a new page starts at the top while redraws of the same page keep their place. */
  private shownPage?:string;
- private readonly click=(event:Event):void=>{this.viaKeyboard=(event as MouseEvent).detail===0;if(!(event.target instanceof Element&&event.target.closest('.sidebar nav')))this.closeMenu();const target=event.target instanceof Element?event.target.closest<HTMLButtonElement>('button[data-action]'):undefined;if(target&&!this.busy){this.trigger=target;this.action(target.dataset.action!,target.dataset.id||'',target).catch(e=>this.showError(e));}};
+ private readonly click=(event:Event):void=>{this.viaKeyboard=(event as MouseEvent).detail===0;if(!(event.target instanceof Element&&event.target.closest('.sidebar nav')))this.closeMenu();if(!(event.target instanceof Element&&event.target.closest('.context-switch')))this.closeContext();const target=event.target instanceof Element?event.target.closest<HTMLButtonElement>('button[data-action]'):undefined;if(target&&!this.busy){this.trigger=target;this.action(target.dataset.action!,target.dataset.id||'',target).catch(e=>this.showError(e));}};
  private readonly submit=(event:Event):void=>{if(!(event.target instanceof HTMLFormElement))return;event.preventDefault();if(!this.busy){this.trigger=(event as SubmitEvent).submitter||event.target.querySelector<HTMLElement>('button[type=submit]')||undefined;this.save(event.target).catch(e=>this.showError(e));}};
- private readonly input=(event:Event):void=>{if(!(event.target instanceof Element))return;this.trigger=undefined;const target=event.target as HTMLInputElement;target.dataset.userEdited='true';if(target.dataset.fieldErrorId){clearFieldError(target);this.error='';}if(target.name==='inventoryFilter'||target.name==='deliveryView'||target.name==='receiptDelivery')return;if(target.name==='sheetSearch'){const q=target.value.toLocaleLowerCase('de-DE').trim();let visible=0;for(const row of Array.from(this.root.querySelectorAll<HTMLElement>('[data-sheet-row]'))){row.hidden=!(row.dataset.search||'').toLocaleLowerCase('de-DE').includes(q);if(!row.hidden)visible++;}const empty=this.root.querySelector<HTMLElement>('[data-sheet-empty]');if(empty)empty.hidden=visible>0;return;}if(target.name==='workspaceSearch'){this.query=target.value;this.filterRows();return;}if(target.closest('form')){this.dirty=true;this.info='Ungespeicherte Eingaben.';this.paintStatus();if(this.draft)this.updateOrderTotals();this.wwUI.updateCosts();if(this.inventory){const id=target.name.replace(/^(packs|loose)_/,'');if(id!==target.name)this.countEdits.set(id,new Date().toISOString());this.updateCountTotals();}this.rememberDraft();}};
+ private readonly input=(event:Event):void=>{if(!(event.target instanceof Element))return;this.trigger=undefined;const target=event.target as HTMLInputElement;target.dataset.userEdited='true';if(target.dataset.fieldErrorId){clearFieldError(target);this.error='';}if(target.name==='inventoryFilter'||target.name==='deliveryView'||target.name==='receiptDelivery')return;if(target.name==='sheetSearch'){const q=target.value.toLocaleLowerCase('de-DE').trim();let visible=0;for(const row of Array.from(this.root.querySelectorAll<HTMLElement>('[data-sheet-row]'))){row.hidden=!(row.dataset.search||'').toLocaleLowerCase('de-DE').includes(q);if(!row.hidden)visible++;}const empty=this.root.querySelector<HTMLElement>('[data-sheet-empty]');if(empty)empty.hidden=visible>0;return;}if(target.name==='workspaceSearch'){this.query=target.value;this.filterRows();return;}if(target.closest('form')){this.dirty=true;this.info='Ungespeicherte Eingaben.';this.paintStatus();if(this.draft)this.updateOrderTotals();this.wwUI.updateCosts();if(this.inventory){const id=target.name.replace(/^(packs|loose)_/,'');if(id!==target.name)this.countEdits.set(id,new Date().toISOString());this.updateCountTotals();}if(this.receiving)this.updateReceiptProgress();this.rememberDraft();}};
  private readonly change=(event:Event):void=>{const origin=event.target;if(!(origin instanceof HTMLSelectElement)&&!(origin instanceof Element&&origin.matches('input[type=radio]')))return;const target=origin as HTMLSelectElement;this.trigger=target;try{
   if(target.name==='seasonContext'||target.name==='areaContext'){if(!this.canLeave()){target.value=target.name==='seasonContext'?this.seasonId:this.area;return;}this.clearEditor();if(target.name==='seasonContext')this.seasonId=target.value;else this.area=target.value as Area;this.rememberContext();if(this.store.ww){this.run(async()=>{},'',undefined,false).catch(e=>this.showError(e));}else this.render();}
   if(target.name==='receiptDelivery'&&this.receiving){if(this.dirty){target.value=this.receiving.deliveryId||'';throw new Error('Bitte die aktuelle Lieferannahme abschließen oder abbrechen, bevor ihr den Termin wechselt.');}this.receiving.deliveryId=target.value;this.render();}
@@ -135,7 +135,7 @@ export class KitchenView {
   if(target.name==='sourceSeason'){this.sourceSeason=target.value;this.render();}
   if(target.name==='orderStatus'){this.statusFilter=target.value;this.filterRows();}
   if(target.name==='inventoryFilter')this.filterRows();
-  if(target.name.startsWith('assessment_')){const badge=target.closest('.count-extra')?.querySelector<HTMLElement>('[data-count-badge]');if(badge){badge.textContent=assessmentLabel(target.value);badge.hidden=!badge.textContent;}}
+  if(target.name.startsWith('assessment_')){const badge=target.closest('.count-line')?.querySelector<HTMLElement>('[data-count-badge]');if(badge){badge.textContent=assessmentLabel(target.value);badge.hidden=!badge.textContent;}}
   if(target.name==='deliveryView')this.applyDeliveryView();
   if(target.name==='supplierId'&&this.draft&&!this.draft.lines.length){this.draft=this.readOrder(target.closest('form')!);const supplier=this.state!.suppliers.find(s=>s.value.id===target.value)?.value;if(supplier){this.draft.supplierId=supplier.id;this.draft.supplierName=supplier.name;this.draft.method=supplier.method;}this.render();}
  this.wwUI.updateCosts();if(target.closest('form')&&!['receiptDelivery','inventoryFilter','deliveryView','sourceSeason','orderStatus'].includes(target.name)){this.dirty=true;this.rememberDraft();}}catch(e){this.showError(e);}};
@@ -207,11 +207,11 @@ export class KitchenView {
   else body=this.orders();
 
   const page=this.pageKey(),samePage=page===this.shownPage,opened=samePage?this.openSections():undefined,focus=this.focusKey()||this.focusMemo;
-  this.root.innerHTML=`<div class="app-layout">${sidebar(s,season,this.area,this.seasonId,this.view)}<div class="workspace-main">${this.store.testMode?'<p class="test-banner">Abnahme mit künstlichen Daten · vom Vereinsbestand getrennt</p>':''}<p data-status class="status" aria-live="polite"></p><main tabindex="-1"><p class="work-context">${h(this.area)} · ${h(season?.name||'Keine Saison gewählt')}</p>${season?.archived?'<p class="archive">Archiv: Bestellungen und Bestandsmeldungen dieser Saison sind schreibgeschützt.</p>':''}${this.recovery?'<section class="resume"><h2>Unterbrochene Eingaben fortsetzen</h2><p>'+h(this.recovery.context.area)+' · '+h(this.state?.seasons.find(x=>x.value.id===this.recovery!.context.seasonId)?.value.name||'Saison nicht mehr verfügbar')+' · '+h(stamp(this.recovery.at))+' · nur auf diesem Gerät gespeichert</p><div class="actions">'+button('draft-resume','Entwurf fortsetzen','',true)+button('draft-download','Eingaben herunterladen')+button('draft-discard','Entwurf verwerfen')+'</div></section>':''}${body}</main><footer>Angemeldet: ${h(this.user.split(' · ')[0])} · Speicherung in SharePoint${this.store.testMode?' · Testdaten':''}</footer></div></div>`;this.root.querySelector('.app-layout')?.classList.toggle('task-mode',!!this.root.querySelector('main form.calm-workflow .calm-heading button'));const dayViews=Array.from(this.root.querySelectorAll<HTMLInputElement>('input[name=deliveryView]'));if(dayViews.length>1&&this.root.ownerDocument.defaultView?.matchMedia?.('(max-width:600px)').matches)dayViews[1].checked=true;this.applyDeliveryView();if(opened)this.reopenSections(opened);this.paintStatus();this.filterRows();if(!samePage){const first=this.shownPage===undefined||this.shownPage==='setup';this.shownPage=page;if(!first)this.scrollToTop();}if(this.importStarted){for(const el of Array.from(this.root.querySelectorAll<HTMLInputElement|HTMLButtonElement|HTMLTextAreaElement>('input[type=file],textarea,[data-action=import-preview]')))el.disabled=true;}
+  this.root.innerHTML=`<div class="app-layout">${sidebar(season,this.view)}<div class="workspace-main">${this.store.testMode?'<p class="test-banner">Abnahme mit künstlichen Daten · vom Vereinsbestand getrennt</p>':''}<p data-status class="status" aria-live="polite"></p><main tabindex="-1">${contextSwitch(s,season,this.area,this.seasonId)}${season?.archived?'<p class="archive">Archiv: Bestellungen und Bestandsmeldungen dieser Saison sind schreibgeschützt.</p>':''}${this.recovery?'<section class="resume"><h2>Unterbrochene Eingaben fortsetzen</h2><p>'+h(this.recovery.context.area)+' · '+h(this.state?.seasons.find(x=>x.value.id===this.recovery!.context.seasonId)?.value.name||'Saison nicht mehr verfügbar')+' · '+h(stamp(this.recovery.at))+' · nur auf diesem Gerät gespeichert</p><div class="actions">'+button('draft-resume','Entwurf fortsetzen','',true)+button('draft-download','Eingaben herunterladen')+button('draft-discard','Entwurf verwerfen')+'</div></section>':''}${body}</main><footer>Angemeldet: ${h(this.user.split(' · ')[0])} · Speicherung in SharePoint${this.store.testMode?' · Testdaten':''}</footer></div></div>`;this.root.querySelector('.app-layout')?.classList.toggle('task-mode',!!this.root.querySelector('main form.calm-workflow .calm-heading button'));this.placeContextSwitch();const phone=!!this.root.ownerDocument.defaultView?.matchMedia?.('(max-width:600px)').matches,dayViews=Array.from(this.root.querySelectorAll<HTMLInputElement>('input[name=deliveryView]')),dayList=this.root.querySelector<HTMLSelectElement>('select[name=deliveryView]');if(phone&&dayViews.length>1)dayViews[1].checked=true;if(phone&&dayList&&dayList.options.length>1)dayList.selectedIndex=1;this.applyDeliveryView();this.updateReceiptProgress();if(opened)this.reopenSections(opened);this.paintStatus();this.filterRows();if(!samePage){const first=this.shownPage===undefined||this.shownPage==='setup';this.shownPage=page;if(!first)this.scrollToTop();}if(this.importStarted){for(const el of Array.from(this.root.querySelectorAll<HTMLInputElement|HTMLButtonElement|HTMLTextAreaElement>('input[type=file],textarea,[data-action=import-preview]')))el.disabled=true;}
   this.restoreFocus(focus);this.syncHistory();
  }
  /** Anything deeper than the overview: an open task or list, or another area. */
- private deep():boolean{return !!this.state&&(!this.pageKey().startsWith('view:')||this.view!=='heute');}
+ private deep():boolean{return !!this.state&&(!this.pageKey().startsWith('view:')||this.view!=='heute'||!!this.root.querySelector('.sidebar[data-menu-open="true"]'));}
  /** Keeps exactly one own history entry while the app is deeper than the overview, and takes it back when the app returns there by itself. */
  private syncHistory():void{
   const history=this.root.ownerDocument.defaultView?.history;if(!history?.pushState)return;
@@ -223,6 +223,7 @@ export class KitchenView {
  }
  private stepBack():void{
   if(!this.state||this.busy){this.syncHistory();return;}
+  if(this.closeMenu(true))return;
   if(this.orderReview&&this.draft){this.action('order-edit-sheet','').catch(e=>this.showError(e));return;}
   const task=!this.pageKey().startsWith('view:');if(!task&&this.view==='heute')return;
   if(!this.canLeave()){this.syncHistory();return;}
@@ -246,9 +247,50 @@ export class KitchenView {
  }
  private closeMenu(focus=false):boolean{
   const bar=this.root.querySelector<HTMLElement>('.sidebar[data-menu-open="true"]');if(!bar)return false;
-  const more=bar.querySelector<HTMLElement>('[data-action="mobile-menu"]');bar.dataset.menuOpen='false';more?.setAttribute('aria-expanded','false');if(focus)more?.focus();return true;
+  const more=bar.querySelector<HTMLElement>('[data-action="mobile-menu"]');bar.dataset.menuOpen='false';more?.setAttribute('aria-expanded','false');if(focus)more?.focus();this.syncHistory();return true;
  }
- private applyDeliveryView():void{const selected=this.root.querySelector<HTMLInputElement>('input[name=deliveryView]:checked')?.value||'all';for(const column of Array.from(this.root.querySelectorAll<HTMLElement>('[data-delivery-column]')))column.hidden=selected!=='all'&&column.dataset.deliveryColumn!==selected;}
+ private closeContext(focus=false):boolean{
+  const sheet=this.root.querySelector<HTMLDetailsElement>('.context-switch[open]');if(!sheet)return false;
+  sheet.open=false;if(focus)sheet.querySelector<HTMLElement>('summary')?.focus();return true;
+ }
+ /** Die Kapsel für Bereich und Saison gehört in die Kopfzeile der Seite, neben die Überschrift. Seiten ohne Kopfzeile behalten sie oben rechts. */
+ private placeContextSwitch():void{
+  const main=this.root.querySelector<HTMLElement>('main');if(!main)return;
+  const sheet=Array.from(main.children).find(el=>el.classList.contains('context-switch')),head=Array.from(main.children).find(el=>el.classList.contains('page-heading'));
+  if(sheet&&head)head.append(sheet);
+ }
+ /** Plus und Minus neben einem Mengenfeld. Leer bleibt leer, bis jemand zählt: Minus auf leer ergibt 0, Plus ergibt 1. */
+ private countStep(id:string):void{
+  const [name,step]=id.split('|'),input=this.root.querySelector<HTMLInputElement>('form[data-form="inventory"] input[name="'+name.replace(/["\\]/g,'\\$&')+'"]');if(!input)return;
+  let current=0;try{current=parseDecimal(input.value)??0;}catch{current=0;}
+  input.value=n(Math.max(0,Math.round((current+Number(step))*10000)/10000));input.dispatchEvent(new Event('input',{bubbles:true}));
+ }
+ /** Schließt den offenen Artikel und öffnet den nächsten sichtbaren, zuerst einen noch nicht gezählten. */
+ private countNext(id:string):void{
+  const form=this.root.querySelector<HTMLFormElement>('form[data-form="inventory"]');if(!form)return;
+  const lines=Array.from(form.querySelectorAll<HTMLElement>('.count-line')).filter(line=>!line.hidden&&!line.closest<HTMLElement>('[data-count-group]')?.hidden);
+  const at=lines.findIndex(line=>line.querySelector('[data-count-total]')?.getAttribute('data-count-total')===id),after=[...lines.slice(at+1),...lines.slice(0,Math.max(at,0))];
+  const open=(line:HTMLElement):boolean=>line.querySelector<HTMLElement>('[data-count-total]')?.dataset.state==='open';
+  const next=after.find(open)||(at>=0&&at<lines.length-1?lines[at+1]:undefined);
+  for(const item of Array.from(form.querySelectorAll<HTMLDetailsElement>('details.count-item[open]')))item.open=false;
+  if(!next){form.querySelector<HTMLElement>('[data-action="inventory-finish"]')?.focus();return;}
+  const item=next.querySelector<HTMLDetailsElement>('details.count-item');if(item)item.open=true;
+  next.querySelector<HTMLElement>('.count-field input')?.focus();
+ }
+ /** Warenannahme: Fortschritt, Haken bei vollständiger Menge und Hinweis auf einen offenen Rest. */
+ private updateReceiptProgress():void{
+  const form=this.root.querySelector<HTMLFormElement>('form[data-form="receipt"]');if(!form)return;
+  const lines=Array.from(form.querySelectorAll<HTMLElement>('[data-receipt-line]'));let filled=0;
+  for(const line of lines){
+   const input=line.querySelector<HTMLInputElement>('input'),rest=line.querySelector<HTMLElement>('[data-receipt-rest]'),expected=Number(line.dataset.expected);
+   let value:number|null=null;try{value=parseDecimal(input?.value||'');}catch{value=null;}
+   const entered=value!==null&&value>0;if(entered)filled++;
+   line.dataset.state=!entered?'open':value!>=expected?'complete':'partial';
+   if(rest){rest.hidden=line.dataset.state!=='partial';rest.textContent=rest.hidden?'':n(Math.round((expected-value!)*10000)/10000)+' bleiben offen';}
+  }
+  const progress=form.querySelector('[data-receipt-progress]');if(progress)progress.textContent=receiptProgress(filled,lines.length);
+ }
+ private applyDeliveryView():void{const selected=this.root.querySelector<HTMLInputElement|HTMLSelectElement>('input[name=deliveryView]:checked,select[name=deliveryView]')?.value||'all';for(const column of Array.from(this.root.querySelectorAll<HTMLElement>('[data-delivery-column]')))column.hidden=selected!=='all'&&column.dataset.deliveryColumn!==selected;}
  /** Mirrors the order of render(): one key per page a person would call a different screen. */
  private pageKey():string{
   if(!this.state)return 'setup';
@@ -333,7 +375,9 @@ export class KitchenView {
  private importForm():string{const kind=this.importKind!;return `<form data-form="import" class="panel"><div class="row"><h1 class="form-title">${kind==='articles'?'Artikel':'Lieferanten'} importieren</h1>${button('cancel','Zurück')}</div><p>Neue Datensätze ergänzen. Vorhandene Namen werden zur Prüfung gemeldet.</p>${button('template','CSV-Vorlage herunterladen',kind)}<label>CSV-Datei<input type="file" name="csvFile" accept=".csv,text/csv,text/plain" /></label>${note('csvText','Oder CSV-Text einfügen',this.importText??columns[kind].join(';')+'\n')}<div class="actions">${button('import-preview','Vorschau prüfen','',true)}</div>${this.importErrors.length?`<div role="alert">${this.importErrors.map(e=>`<p>${h(e)}</p>`).join('')}</div>`:''}${this.importItems?`<h3>${this.importItems.length} Datensätze in der Vorschau</h3>${this.importItems.map(i=>`<div class="listrow"><span>${h(i.value.name)}</span><span>${i.done?'Gespeichert':'Neu'}</span></div>`).join('')}<div class="actions">${button('import-apply','Geprüfte Datensätze übernehmen','',true)}</div>`:''}</form>`;}
 
  private async action(action:string,id:string,target?:HTMLElement):Promise<void>{
-  if(action==='mobile-menu'){const bar=this.root.querySelector<HTMLElement>('.sidebar');if(bar){const open=bar.dataset.menuOpen!=='true';bar.dataset.menuOpen=String(open);target?.setAttribute('aria-expanded',String(open));if(open&&this.viaKeyboard)bar.querySelector<HTMLElement>('nav button[data-tab="more"]')?.focus();}return;}
+  if(action==='mobile-menu'){const bar=this.root.querySelector<HTMLElement>('.sidebar');if(bar){const open=bar.dataset.menuOpen!=='true';bar.dataset.menuOpen=String(open);target?.setAttribute('aria-expanded',String(open));if(open&&this.viaKeyboard)bar.querySelector<HTMLElement>('nav button[data-tab="more"]')?.focus();this.syncHistory();}return;}
+  if(action==='count-step'){this.countStep(id);return;}
+  if(action==='count-next'){this.countNext(id);return;}
   if(action==='draft-resume'){await this.resumeDraft();return;}
   if(action==='draft-discard'){this.local.remove('draft');this.recovery=undefined;this.render();return;}
   if(action==='draft-download'&&this.recovery){const url=URL.createObjectURL(new Blob([JSON.stringify(this.recovery,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='Zunftkueche-lokaler-Entwurf.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return;}
@@ -355,7 +399,7 @@ export class KitchenView {
   if(action==='nav'||action==='cancel'){if(action==='nav'&&!this.canLeave())return;this.clearEditor();if(action==='nav'){this.view=id as View;this.query='';this.statusFilter='';}this.render();this.root.querySelector<HTMLElement>('main')?.focus({preventScroll:true});return;}
   if(action==='receipt-new'){if(!this.writable())throw new Error('Bitte eine aktive Saison wählen.');const [orderId,deliveryId]=id.split('|');const previous=this.state.orders.find(o=>o.value.id===orderId);if(!previous||previous.value.status!=='Bestellt'||deliveryState(previous.value)==='Vollständig geliefert')throw new Error('Für diese Bestellung ist keine Lieferannahme offen.');if(!this.canLeave())return;this.clearEditor();this.view='orders';this.receiving={previous,id:uuid(),deliveryId:deliveryId||previous.value.deliveries?.[0]?.id};this.render();return;}
   if(action==='receipt-missing'){const form=this.root.querySelector<HTMLFormElement>('form[data-form=receipt]');const entry=this.receiving;if(!form||!entry)throw new Error('Bitte zuerst eine Lieferung öffnen.');if(form.querySelector<HTMLInputElement>('[name=deliverySlipFile]')?.files?.length)throw new Error('Bitte die ausgewählte Datei entfernen, bevor ihr eine ausgefallene Lieferung vermerkt.');const data=new FormData(form);if(entry.previous.value.lines.some(l=>parseDecimal(String(data.get('received_'+l.id)||''))!==null&&parseDecimal(String(data.get('received_'+l.id)||''))!==0))throw new Error('Es sind Liefermengen eingetragen. Bitte diese als Wareneingang bestätigen oder die Mengen entfernen.');const note=String(data.get('note')||'').trim();if(!note)throw new Error('Bitte einen kurzen Hinweis zur ausgefallenen Lieferung eingeben.');const date=new Date(String(data.get('receivedAt')));if(!Number.isFinite(date.getTime()))throw new Error('Bitte den Zeitpunkt prüfen.');const value:DeliveryNote={id:entry.id,...(entry.deliveryId?{deliveryId:entry.deliveryId}:{}),recordedAt:date.toISOString(),recordedBy:this.user,note};await this.run(()=>this.store.saveDeliveryNote(entry.previous,value,this.operationId),'Ausgefallene Lieferung vermerkt. Die Mengen bleiben offen.',()=>{this.selectedOrder=entry.previous.value.id;this.view='orders';});return;}
-  if(action==='receipt-all'){const form=this.root.querySelector<HTMLFormElement>('form[data-form=receipt]');if(form&&this.receiving){const o=this.receiving.previous.value;for(const l of o.lines){const input=form.querySelector<HTMLInputElement>('[name=received_'+l.id+']');if(input)input.value=n(o.deliveries?deliveryRemaining(o,l.id,this.receiving.deliveryId!):Math.max(0,(l.quantity||0)-receivedQuantity(o,l.id)));}this.dirty=true;this.rememberDraft();this.info='Mengen eingetragen. Bitte prüfen und bei Bedarf ändern; noch nicht gespeichert. '+this.info;this.paintStatus();}return;}
+  if(action==='receipt-all'){const form=this.root.querySelector<HTMLFormElement>('form[data-form=receipt]');if(form&&this.receiving){const o=this.receiving.previous.value;for(const l of o.lines){const input=form.querySelector<HTMLInputElement>('[name=received_'+l.id+']');if(input)input.value=n(o.deliveries?deliveryRemaining(o,l.id,this.receiving.deliveryId!):Math.max(0,(l.quantity||0)-receivedQuantity(o,l.id)));}this.dirty=true;this.rememberDraft();this.updateReceiptProgress();this.info='Mengen eingetragen. Bitte prüfen und bei Bedarf ändern; noch nicht gespeichert. '+this.info;this.paintStatus();}return;}
   if(action==='inventory-setup'){await this.run(()=>this.store.initialize(),'Abendabschluss eingerichtet und nachgelesen.');return;}
   if(action==='inventory-new'||action==='inventory-edit'){if(!this.writable())throw new Error('Bitte eine aktive Saison wählen.');if(this.state.inventoriesReady===false)throw new Error('Bitte zuerst im Bestand den Abendabschluss einrichten.');if(!this.canLeave())return;const old=this.state.inventories?.find(r=>r.value.id===id);if(action==='inventory-edit'&&(!old||old.value.status!=='Entwurf'||old.value.seasonId!==this.seasonId||old.value.area!==this.area))throw new Error('Entwurf nicht gefunden.');this.clearEditor();this.query='';this.view='stock';this.inventoryPrevious=old;this.inventory=old?structuredClone(old.value):{id:uuid(),seasonId:this.seasonId,area:this.area,status:'Entwurf',createdAt:new Date().toISOString(),completedAt:null,countedBy:this.user,lines:this.state.articles.filter(a=>articleAvailable(a.value,this.seasonId)).sort((a,b)=>(a.value.storagePlace||'').localeCompare(b.value.storagePlace||'','de')||a.value.name.localeCompare(b.value.name,'de')).map(({value:a})=>{const offer=this.state!.offers.find(o=>o.value.active&&o.value.articleId===a.id)?.value;return{articleId:a.id,articleName:a.name,unit:a.unit,packName:offer?.packName||a.unit,packSize:offer?.packSize||1,packs:null,loose:null,assessment:'ok',note:''};})};if(!this.inventory.lines.length){this.clearEditor();throw new Error('Bitte zuerst Artikel anlegen.');}this.render();return;}
   if(action==='inventory-review-back'){const form=this.root.querySelector<HTMLFormElement>('form[data-form=inventory]');if(form){delete form.dataset.review;form.querySelector('[data-inventory-review]')?.replaceChildren();}return;}
@@ -449,7 +493,7 @@ export class KitchenView {
   const rows=Array.from(this.root.querySelectorAll<HTMLElement>('[data-search]'));let shown=0;const planned=this.root.querySelector<HTMLInputElement>('input[name=inventoryFilter]:checked,select[name=inventoryFilter]')?.value==='planned';const query=this.query.trim().toLocaleLowerCase('de-DE');
   for(const row of rows){row.hidden=!(row.dataset.search||'').toLocaleLowerCase('de-DE').includes(query)||(this.view==='orders'&&row.dataset.orderStatus!==undefined&&!!this.statusFilter&&(this.statusFilter==='current-drafts'?(row.dataset.orderStatus!=='Entwurf'||row.dataset.orderCurrent!=='true'):this.statusFilter==='open-deliveries'?(row.dataset.orderOpen!=='true'||row.dataset.orderCurrent!=='true'):row.dataset.orderStatus!==this.statusFilter))||(planned&&row.dataset.relevant==='false');if(!row.hidden)shown++;}
   const emptyState=this.root.querySelector<HTMLElement>('[data-filter-empty]');if(emptyState)emptyState.hidden=!rows.length||shown>0;
-  for(const group of Array.from(this.root.querySelectorAll<HTMLElement>('[data-count-group]'))){const lines=group.querySelectorAll('.count-line:not([hidden])').length,count=group.querySelector('[data-group-count]');group.hidden=!lines;if(count)count.textContent=String(lines);}
+  for(const group of Array.from(this.root.querySelectorAll<HTMLElement>('[data-count-group]'))){const lines=group.querySelectorAll('.count-line:not([hidden]),.inventory-overview-row:not([hidden])').length,count=group.querySelector('[data-group-count]');group.hidden=!lines;if(count)count.textContent=String(lines);}
   if(this.inventory)this.updateCountTotals();
  }
  private readInventory(form:HTMLFormElement):InventorySession{
@@ -464,7 +508,7 @@ export class KitchenView {
  }
  private updateCountTotals():void{
   const form=this.root.querySelector<HTMLFormElement>('form[data-form="inventory"]');if(!form||!this.inventory)return;const data=new FormData(form);let counted=0;const visible=new Set(this.inventory.lines.filter(l=>form.querySelector('[data-count-total="'+l.articleId+'"]')?.closest<HTMLElement>('.count-line')?.hidden!==true).map(l=>l.articleId));
-  for(const l of this.inventory.lines){const el=form.querySelector<HTMLElement>('[data-count-total="'+l.articleId+'"]');try{const quantity=countQuantity(parseDecimal(String(data.get('packs_'+l.articleId)||'')),parseDecimal(String(data.get('loose_'+l.articleId)||'')),l.packSize);if(quantity!==null&&visible.has(l.articleId))counted++;if(el){el.textContent=quantity===null?'Noch nicht gezählt':n(quantity)+' '+l.unit;el.dataset.state=quantity===null?'open':'counted';}}catch{if(el){el.textContent='Menge bitte prüfen';el.dataset.state='error';}}}
+  for(const l of this.inventory.lines){const el=form.querySelector<HTMLElement>('[data-count-total="'+l.articleId+'"]');try{const quantity=countQuantity(parseDecimal(String(data.get('packs_'+l.articleId)||'')),parseDecimal(String(data.get('loose_'+l.articleId)||'')),l.packSize);if(quantity!==null&&visible.has(l.articleId))counted++;if(el){el.textContent=quantity===null?'offen':n(quantity)+' '+l.unit;el.dataset.state=quantity===null?'open':'counted';}}catch{if(el){el.textContent='Menge bitte prüfen';el.dataset.state='error';}}}
   const progress=form.querySelector('[data-count-progress]');if(progress)progress.innerHTML=countProgress(counted,visible.size,this.inventory.lines.length);const bar=form.querySelector<HTMLElement>('[data-count-bar]');if(bar)bar.style.width=countShare(counted,visible.size)+'%';const review=form.querySelector('[data-inventory-review]');if(review)review.replaceChildren();
  }
  private async readSlip(form:HTMLFormElement):Promise<SlipFile|undefined>{

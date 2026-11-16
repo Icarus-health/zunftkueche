@@ -38,17 +38,20 @@ test('each row carries name, pack information, total and both quantity fields wi
  assert.match(sausage.querySelector('.count-name small').textContent,/^Menge in Stk/);
 });
 
-test('uncounted rows say so for screen readers and keep the fields empty',()=>{
+test('uncounted rows say "offen" and keep the fields empty',()=>{
  const root=page(inventoryForm({...inventory,lines:[line('w','Wasser')]}));
  const total=root.querySelector('[data-count-total=w]');
- assert.equal(total.textContent,'Noch nicht gezählt');assert.equal(total.dataset.state,'open');
+ assert.equal(total.textContent,'offen');assert.equal(total.dataset.state,'open');
  assert.equal(root.querySelector('[name=packs_w]').value,'');assert.equal(root.querySelector('[name=loose_w]').value,'');
 });
 
-test('assessment and note sit behind the article name and open on their own when filled',()=>{
+test('each article opens on its own, assessment and note sit inside, a filled note stays visible',()=>{
  const root=page(inventoryForm({...inventory,lines:[line('w','Wasser'),line('c','Cola',{assessment:'reorder'}),line('s','Saft',{note:'angebrochen'})]}));
- const [w,c,s]=[...root.querySelectorAll('details.count-extra')];
- assert.equal(w.open,false);assert.equal(c.open,true);assert.equal(s.open,true);
+ const [w,c,s]=[...root.querySelectorAll('details.count-item')];
+ assert.equal(w.open,false);assert.equal(c.open,false);assert.equal(s.open,false);
+ assert.ok([w,c,s].every(d=>d.getAttribute('name')==='count-item'),'only one article is open at a time');
+ assert.equal(s.querySelector('details.count-note').open,true);assert.match(s.querySelector('summary .count-name small').textContent,/Hinweis: angebrochen/);
+ assert.equal(c.querySelector('[name=assessment_c]:checked').value,'reorder');
  assert.equal(w.querySelector('summary .count-name strong').textContent,'Wasser');
  assert.ok(w.querySelector('[name=assessment_w]'));assert.ok(w.querySelector('[name=countnote_w]'));
  assert.equal(c.querySelector('[data-count-badge]').textContent,'Nachbestellen');assert.equal(c.querySelector('[data-count-badge]').hidden,false);
@@ -87,11 +90,12 @@ test('switching the filter hides empty groups, updates their counts and the prog
 
 test('choosing an assessment updates the badge without touching the article name',async()=>{
  const {dom,root,view}=live();await view.start();await view.action('inventory-new','');
- const row=root.querySelector('[data-count-total=water]').closest('.count-line'),choice=row.querySelector('[name=assessment_water]');
- choice.value='surplus';fire(dom,choice,'change');
+ const row=root.querySelector('[data-count-total=water]').closest('.count-line'),pick=v=>{const r=row.querySelector('[name=assessment_water][value='+v+']');r.checked=true;fire(dom,r,'change');};
+ assert.deepEqual([...row.querySelectorAll('[name=assessment_water]')].map(r=>r.closest('label').textContent),['Passt','Nachbestellen','Überhang'],'three-part switch instead of a list');
+ pick('surplus');
  assert.equal(row.querySelector('[data-count-badge]').textContent,'Überhang');assert.equal(row.querySelector('[data-count-badge]').hidden,false);
  assert.equal(row.querySelector('.count-name strong').textContent,'Mineralwasser');
- choice.value='ok';fire(dom,choice,'change');
+ pick('ok');
  assert.equal(row.querySelector('[data-count-badge]').hidden,true);
 });
 

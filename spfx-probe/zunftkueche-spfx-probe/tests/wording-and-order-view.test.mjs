@@ -32,10 +32,10 @@ test('the evening count has one name: "Abendabschluss" on the overview, in the s
 
 test('the overview calls the recipes area by the name the navigation uses',()=>{
  const s=workspace();s.ww={ready:true,records:[]};
- const home=page(dashboard(s,season,'Küche','2027-02-01')),nav=page(sidebar(s,season,'Küche',season.id,'heute'));
- const names=[...home.querySelectorAll('.workflow-start h2')].map(x=>x.textContent);
- assert.equal(names[0],'Speisen & Getränke');
- assert.equal(nav.querySelector('button[data-id=planning] .nav-long').textContent,names[0]);
+ const home=page(dashboard(s,season,'Küche','2027-02-01')),nav=page(sidebar(season,'heute'));
+ const names=[...home.querySelectorAll('.workflow-start .tile-title')].map(x=>x.textContent);
+ assert.equal(names[3],'Speisen & Getränke');
+ assert.equal(nav.querySelector('button[data-id=planning] .nav-long').textContent,names[3]);
 });
 
 test('read-only order view: delivery days are a switch, headers are short, and choosing a day hides the others',async()=>{

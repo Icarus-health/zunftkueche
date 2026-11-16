@@ -2,7 +2,7 @@
   "extends": "@microsoft/spfx-web-build-rig/profiles/default/config/typescript.json",
 
   "staticAssetsToCopy": {
-    "fileExtensions": [".resx", ".jpg", ".png", ".webp", ".woff", ".eot", ".ttf", ".svg", ".gif", ".mjs", ".bin"],
+    "fileExtensions": [".resx", ".jpg", ".png", ".webp", ".woff", ".woff2", ".eot", ".ttf", ".svg", ".gif", ".mjs", ".bin"],
 
     "includeGlobs": ["webparts/*/loc/*.js"]
   }

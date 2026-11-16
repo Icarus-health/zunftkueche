@@ -12,7 +12,7 @@ const page=html=>new JSDOM('<div id="app">'+html+'</div>').window.document.getEl
 const draft=(id,extra={})=>({...structuredClone(order),id,status:'Entwurf',recordedBy:null,recordedAt:null,...extra});
 
 test('navigation marks four areas for the tab bar and keeps the rest behind "Mehr"',()=>{
- const root=page(sidebar(workspace(),season,'Küche',season.id,'heute'));
+ const root=page(sidebar(season,'heute'));
  const buttons=[...root.querySelectorAll('nav button[data-action=nav]')];
  assert.deepEqual(buttons.filter(b=>b.dataset.tab==='main').map(b=>b.dataset.id),['heute','orders','stock','planning']);
  assert.deepEqual(buttons.filter(b=>b.dataset.tab==='more').map(b=>b.dataset.id),['articles','suppliers','reports','management']);
@@ -25,8 +25,8 @@ test('navigation marks four areas for the tab bar and keeps the rest behind "Meh
 });
 
 test('"Mehr" is marked while one of its areas is open',()=>{
- for(const view of ['articles','suppliers','reports','management'])assert.ok(page(sidebar(workspace(),season,'Küche',season.id,view)).querySelector('.nav-more.is-current'),view);
- assert.equal(page(sidebar(workspace(),season,'Küche',season.id,'orders')).querySelector('.nav-more.is-current'),null);
+ for(const view of ['articles','suppliers','reports','management'])assert.ok(page(sidebar(season,view)).querySelector('.nav-more.is-current'),view);
+ assert.equal(page(sidebar(season,'orders')).querySelector('.nav-more.is-current'),null);
 });
 
 test('the overview highlights exactly one next step and no other button is primary',()=>{
@@ -37,8 +37,9 @@ test('the overview highlights exactly one next step and no other button is prima
  assert.equal(card.querySelector('button').dataset.action,'dashboard-orders');
  assert.equal(root.querySelectorAll('button.primary').length,1);
  assert.equal(root.querySelector('.calm-notices').textContent.includes('Bestellentwürfe'),false,'the highlighted task is not repeated below');
- assert.deepEqual([...root.querySelectorAll('.workflow-start h2')].map(x=>x.textContent),['Speisen & Getränke','Bestellrunde','Warenannahme','Abendabschluss']);
- assert.equal(root.querySelector('.workflow-start button[data-action=ww-open]').dataset.id,'recipes');
+ assert.deepEqual([...root.querySelectorAll('.workflow-start .tile-title')].map(x=>x.textContent),['Bestellrunde','Warenannahme','Abendabschluss','Speisen & Getränke']);
+ assert.equal(root.querySelector('button.workflow-start[data-action=ww-open]').dataset.id,'recipes','the whole tile is the button');
+ assert.equal(root.querySelector('button.workflow-start[data-action=order-round] .count-pill').textContent,'2 Entwürfe','the badge says what it counts for screen readers');
 });
 
 test('work that is due today comes before drafts: saved count first',()=>{
