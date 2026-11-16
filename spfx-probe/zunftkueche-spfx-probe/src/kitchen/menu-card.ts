@@ -158,17 +158,18 @@ function lineRow(l: MenuLine, index: number, count: number, numbered: boolean, p
     `<input class="menu-${name}" name="${name}_${h(l.id)}" value="${h(value)}" aria-label="${h(label + ': ' + (l.label || 'Eintrag'))}" ${extra} />`;
   return (
     `<div class="menu-line${numbered ? ' numbered' : ''}${producer ? ' producer' : ''}" data-menu-line="${h(l.id)}"><input type="hidden" name="section_${h(l.id)}" value="${h(l.section)}" /><input type="hidden" name="recipe_${h(l.id)}" value="${h(l.recipeId || '')}" />` +
+    `<span class="menu-grip" data-menu-drag="${h(l.id)}" title="Ziehen zum Verschieben" aria-hidden="true">${icon('grip')}</span>` +
     (numbered ? f('number', 'Nr.', l.number, 'maxlength="10" inputmode="numeric"') : '') +
     f('label', 'Bezeichnung', l.label, 'maxlength="160" required') +
     f('detail', 'Zusatz', l.detail, 'maxlength="160" placeholder="optional"') +
     f('size', 'Größe', l.size, 'maxlength="40"') +
     (producer ? f('producer', 'Weingut', l.producer, 'maxlength="80"') : '') +
     f('price', 'Preis in Euro', price(l.priceGross), 'inputmode="decimal" placeholder="offen"') +
-    `<div class="menu-line-actions">${iconButton('menu-up', 'Nach oben', l.id, 'up', index === 0)}${iconButton('menu-down', 'Nach unten', l.id, 'down', index === count - 1)}${iconButton('menu-remove', 'Entfernen', l.id, 'minus')}</div></div>`
+    `<div class="menu-line-actions">${iconButton('menu-up', 'Nach oben', l.id, 'up', index === 0)}${iconButton('menu-down', 'Nach unten', l.id, 'arrowdown', index === count - 1)}${iconButton('menu-remove', 'Entfernen', l.id, 'minus')}</div></div>`
   );
 }
 function columns(numbered: boolean, producer: boolean): string {
-  return `<div class="menu-cols${numbered ? ' numbered' : ''}${producer ? ' producer' : ''}" aria-hidden="true">${numbered ? '<span>Nr.</span>' : ''}<span>Bezeichnung</span><span>Zusatz (klein darunter)</span><span>Größe</span>${producer ? '<span>Weingut</span>' : ''}<span>Preis €</span><span></span></div>`;
+  return `<div class="menu-cols${numbered ? ' numbered' : ''}${producer ? ' producer' : ''}" aria-hidden="true"><span></span>${numbered ? '<span>Nr.</span>' : ''}<span>Bezeichnung</span><span>Zusatz (klein darunter)</span><span>Größe</span>${producer ? '<span>Weingut</span>' : ''}<span>Preis €</span><span></span></div>`;
 }
 /** Bearbeitungsseite der Karte. */
 export function menuEditor(card: MenuCard, state: Workspace, saved: boolean): string {
@@ -236,5 +237,13 @@ export function moveLine(lines: MenuLine[], id: string, step: -1 | 1): MenuLine[
     j = result.indexOf(target);
   [result[i], result[j]] = [result[j], result[i]];
   return result;
+}
+/** Neue Reihenfolge einer Rubrik nach Ziehen und Ablegen. Andere Rubriken bleiben unverändert, unbekannte Einträge rutschen ans Ende. */
+export function reorderSection(lines: MenuLine[], section: MenuSection, ids: string[]): MenuLine[] {
+  const order = new Map(ids.map((id, i) => [id, i]));
+  const rank = (l: MenuLine): number => order.get(l.id) ?? ids.length;
+  const same = lines.filter(l => l.section === section).sort((a, b) => rank(a) - rank(b));
+  let k = 0;
+  return lines.map(l => (l.section === section ? same[k++] : l));
 }
 export const formatPrice = price;

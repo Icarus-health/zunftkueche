@@ -5006,13 +5006,13 @@
   :global(.menu-cols),
   :global(.menu-line) {
     display: grid;
-    grid-template-columns: minmax(200px, 2.6fr) minmax(110px, 1.2fr) 76px 88px 140px;
+    grid-template-columns: 28px minmax(200px, 2.6fr) minmax(110px, 1.2fr) 76px 88px 140px;
     align-items: center;
     gap: 8px;
   }
   :global(.menu-cols.numbered.producer),
   :global(.menu-line.numbered.producer) {
-    grid-template-columns: 52px minmax(190px, 2.4fr) minmax(70px, 0.7fr) 72px minmax(160px, 1.4fr) 84px 140px;
+    grid-template-columns: 28px 52px minmax(180px, 2.4fr) minmax(70px, 0.7fr) 72px minmax(150px, 1.4fr) 84px 140px;
   }
   :global(.menu-cols) {
     padding: 0 0 4px;
@@ -5026,6 +5026,42 @@
   }
   :global(.menu-line) > input {
     min-width: 0;
+  }
+  :global(.menu-grip) {
+    display: grid;
+    place-items: center;
+    align-self: stretch;
+    min-height: 44px;
+    border-radius: 6px;
+    color: var(--dim);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+  :global(.menu-grip) :global(.zk-icon) {
+    width: 22px;
+    height: 22px;
+    stroke-width: 3;
+  }
+  :global(.menu-grip):hover {
+    background: var(--surface);
+    color: inherit;
+  }
+  :global(.menu-sorting) {
+    cursor: grabbing;
+    user-select: none;
+  }
+  :global(.menu-line.dragging) {
+    position: relative;
+    z-index: 2;
+    border-radius: 8px;
+    background: #e8f1fb;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+    outline: 2px solid #a6c9ec;
+  }
+  :global(.menu-line.dragging) :global(.menu-grip) {
+    cursor: grabbing;
+    color: inherit;
   }
   :global(.menu-line) :global(.menu-price) {
     text-align: right;
@@ -5069,14 +5105,44 @@
     }
     :global(.menu-line),
     :global(.menu-line.numbered.producer) {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 36px 1fr 1fr;
       padding: 10px 0;
     }
-    :global(.menu-line) :global(.menu-label),
-    :global(.menu-line) :global(.menu-detail),
-    :global(.menu-line) :global(.menu-producer),
+    :global(.menu-grip) {
+      grid-column: 1;
+      grid-row: 1 / span 5;
+    }
+    /* Feste Spalten: Nr. und Preis oben, Bezeichnung und Zusatz breit, Größe und Weingut nebeneinander, Knöpfe unten. */
+    :global(.menu-line) :global(.menu-number) {
+      order: 1;
+      grid-column: 2;
+    }
+    :global(.menu-line) :global(.menu-price) {
+      order: 2;
+      grid-column: 3;
+    }
+    :global(.menu-line:not(.numbered)) :global(.menu-price) {
+      grid-column: 2 / -1;
+    }
+    :global(.menu-line) :global(.menu-label) {
+      order: 3;
+      grid-column: 2 / -1;
+    }
+    :global(.menu-line) :global(.menu-detail) {
+      order: 4;
+      grid-column: 2 / -1;
+    }
+    :global(.menu-line) :global(.menu-size) {
+      order: 5;
+      grid-column: 2;
+    }
+    :global(.menu-line) :global(.menu-producer) {
+      order: 6;
+      grid-column: 3;
+    }
     :global(.menu-line-actions) {
-      grid-column: 1 / -1;
+      order: 7;
+      grid-column: 2 / -1;
     }
   }
 }

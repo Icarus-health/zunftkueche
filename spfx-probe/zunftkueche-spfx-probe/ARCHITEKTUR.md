@@ -1,4 +1,4 @@
-# Zunftküche: Aufbau des Codes (Stand 1.22.0)
+# Zunftküche: Aufbau des Codes (Stand 1.22.1)
 
 Für alle, die die App später pflegen. Kurz: Daten und Rechenregeln sind von der Oberfläche getrennt, jede Oberfläche hat ihr eigenes Modul, und für fast jede Regel gibt es einen Test.
 
@@ -16,7 +16,7 @@ Für alle, die die App später pflegen. Kurz: Daten und Rechenregeln sind von de
 | `src/kitchen/home.ts`, `workspace.ts`, `operation-forms.ts`, `order-sheet.ts`, `supplier-forms.ts` | Bildschirme als HTML-Bausteine (Übersicht, Bestand, Abendabschluss, Warenannahme, Bestellblatt). |
 | `src/kitchen/fasnet-report.ts` | Auswertung der ganzen Saison über alle Bereiche. |
 | `src/kitchen/order-overview.ts` | Gesamtbestellung: alle Lieferanten nach Liefertag, Prüfhinweise, Liefertermine der Entwürfe, Lieferplan als PDF. |
-| `src/kitchen/menu-card.ts`, `menu-export.ts`, `menu-header.ts` | Karte für den Zunftabend: Auswahl aus Rezepten, Word- und PDF-Ausgabe im Aufbau der Druckvorlage, Kopfbild mit Jahr. Bild und Schrift in `menu-assets/`. |
+| `src/kitchen/menu-card.ts`, `menu-export.ts`, `menu-header.ts`, `menu-drag.ts` | Karte für den Zunftabend: Auswahl aus Rezepten, Reihenfolge per Ziehen (Zeigerereignisse, auch Touch) oder Pfeilen, Word- und PDF-Ausgabe im Aufbau der Druckvorlage, Kopfbild mit Jahr. Bild und Schrift in `menu-assets/`. |
 | `src/kitchen/zip.ts` | ZIP ohne Kompression für die Word-Datei. |
 | `src/kitchen/pdf-document.ts` | Kleiner PDF-Baukasten mit Helvetica, schräg, JPEG-Bild und Zeichenbreiten. Genutzt für Bestellung, Abendabschluss auf Papier, Lieferplan und Karte. |
 | `src/kitchen/ww/` | Warenwirtschaft: Rezepte, Planung, Einkauf aus Planung, Rechnungen, Kassendaten, Bewegungen, Auswertung je Bereich. Eigener Controller mit Host-Schnittstelle. |

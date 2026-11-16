@@ -12,7 +12,8 @@ import {
   moveLine,
   numberLines,
   proposeFromRecipes,
-  readMenu
+  readMenu,
+  reorderSection
 } from '../menu-card.ts';
 import { menuDocx, menuPdf } from '../menu-export.ts';
 import { menuHeader } from '../menu-header.ts';
@@ -107,6 +108,15 @@ export async function menuAction(app: KitchenView, action: string, id: string): 
   app.dirty = true;
   app.render();
   return true;
+}
+/** Nach Ziehen und Ablegen: Eingaben übernehmen, Reihenfolge der Rubrik setzen, neu zeichnen. */
+export function menuReorder(app: KitchenView, section: string, ids: string[]): void {
+  const card = current(app);
+  if (!['wine', 'sparkling', 'drinks', 'food'].includes(section))
+    throw new Error('Rubrik nicht erkannt. Bitte Pfeile nutzen.');
+  app.menuDraft = { ...card, lines: reorderSection(card.lines, section as MenuSection, ids) };
+  app.dirty = true;
+  app.render();
 }
 export async function saveMenu(app: KitchenView, form: HTMLFormElement): Promise<void> {
   if (!app.menuDraft || !app.state) throw new Error('Karte bitte erneut öffnen.');

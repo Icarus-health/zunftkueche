@@ -1,6 +1,6 @@
 // 1.22.0 Karte: Auswahl, Reihenfolge, Speicherformat, Word und PDF im Aufbau der Vorlage.
 import {test} from 'node:test';import assert from 'node:assert/strict';
-import {card2025,emptyMenu,readMenu,moveLine,proposeFromRecipes,sectionFor,lineFromRecipe,numberLines,menuEditor} from '../src/kitchen/menu-card.ts';
+import {card2025,emptyMenu,readMenu,moveLine,proposeFromRecipes,sectionFor,lineFromRecipe,numberLines,menuEditor,reorderSection} from '../src/kitchen/menu-card.ts';
 import {menuDocx,menuPdf} from '../src/kitchen/menu-export.ts';
 import {validateDocument} from '../src/kitchen/ww/domain.ts';
 import {crc32} from '../src/kitchen/zip.ts';
@@ -67,4 +67,18 @@ test('PDF: eine Seite A4 mit allen Einträgen',()=>{
  const jpeg=new Uint8Array([0xff,0xd8,0xff,0xd9]);
  const withImage=new TextDecoder('latin1').decode(menuPdf(card,{bytes:jpeg,width:1200,height:292}));
  assert.match(withImage,/\/Subtype \/Image \/Width 1200 \/Height 292/);assert.match(withImage,/\/Kopf Do/);
+});
+test('Ziehen und Ablegen ordnet nur die eigene Rubrik neu',()=>{
+ const lines=card2025(uuid);
+ const wine=lines.filter(l=>l.section==='wine').map(l=>l.id);
+ const wanted=[wine[3],...wine.filter((_,i)=>i!==3)];
+ const out=reorderSection(lines,'wine',wanted);
+ assert.deepEqual(out.filter(l=>l.section==='wine').map(l=>l.id),wanted);
+ assert.deepEqual(out.filter(l=>l.section!=='wine'),lines.filter(l=>l.section!=='wine'));
+ assert.deepEqual(out.map(l=>l.section),lines.map(l=>l.section));
+ assert.equal(out.length,lines.length);
+ const partial=reorderSection(lines,'wine',[wine[2]]);
+ assert.deepEqual(partial.filter(l=>l.section==='wine').map(l=>l.id),[wine[2],...wine.filter((_,i)=>i!==2)]);
+ const html=menuEditor({...emptyMenu(season,'Test','2026-11-16T10:00:00Z'),lines},state,true);
+ assert.equal((html.match(/data-menu-drag=/g)||[]).length,29);
 });

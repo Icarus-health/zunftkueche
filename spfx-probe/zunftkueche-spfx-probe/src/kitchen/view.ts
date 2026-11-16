@@ -12,7 +12,8 @@ import { WwController } from './ww/controller.ts';
 import { orderRound } from './workflow-tasks.ts';
 import { orderOverview } from './order-overview.ts';
 import { overviewAction, saveOverview } from './actions/overview-actions.ts';
-import { menuAction, saveMenu } from './actions/menu-actions.ts';
+import { menuAction, menuReorder, saveMenu } from './actions/menu-actions.ts';
+import { startMenuDrag } from './menu-drag.ts';
 import { menuEditor } from './menu-card.ts';
 import type { MenuCard, WwDocument } from './ww/model';
 import type {
@@ -257,6 +258,16 @@ export class KitchenView {
       this.action(target.dataset.action!, target.dataset.id || '', target).catch(e => this.showError(e));
     }
   };
+  private readonly pointerdown = (event: PointerEvent): void => {
+    if (!this.menuDraft || this.busy) return;
+    startMenuDrag(event, (section, ids) => {
+      try {
+        menuReorder(this, section, ids);
+      } catch (e) {
+        this.showError(e);
+      }
+    });
+  };
   private readonly submit = (event: Event): void => {
     if (!(event.target instanceof HTMLFormElement)) return;
     event.preventDefault();
@@ -399,6 +410,7 @@ export class KitchenView {
     root.ownerDocument.defaultView?.addEventListener('online', this.online);
     root.ownerDocument.defaultView?.addEventListener('offline', this.offline);
     root.addEventListener('click', this.click);
+    root.addEventListener('pointerdown', this.pointerdown);
     root.addEventListener('keydown', this.keydown);
     root.addEventListener('submit', this.submit);
     root.addEventListener('input', this.input);
@@ -462,6 +474,7 @@ export class KitchenView {
     this.root.ownerDocument.defaultView?.removeEventListener('offline', this.offline);
     this.root.removeEventListener('keydown', this.keydown);
     this.root.removeEventListener('click', this.click);
+    this.root.removeEventListener('pointerdown', this.pointerdown);
     this.root.removeEventListener('submit', this.submit);
     this.root.removeEventListener('input', this.input);
     this.root.removeEventListener('change', this.change);

@@ -41,6 +41,10 @@ const shapes: Record<string, [string, string?]> = {
   chevron: ['<path d="m9 6 6 6-6 6"/>'],
   down: ['<path d="m6 9 6 6 6-6"/>'],
   up: ['<path d="M12 19V6"/><path d="m6 11 6-6 6 6"/>'],
+  arrowdown: ['<path d="M12 5v13"/><path d="m6 13 6 6 6-6"/>'],
+  grip: [
+    '<path d="M9 6h.01"/><path d="M15 6h.01"/><path d="M9 12h.01"/><path d="M15 12h.01"/><path d="M9 18h.01"/><path d="M15 18h.01"/>'
+  ],
   updown: ['<path d="m8 9 4-4 4 4"/><path d="m8 15 4 4 4-4"/>'],
   search: ['<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>'],
   check: ['<path d="m5 12.5 4.5 4.5L19 7.5"/>'],
