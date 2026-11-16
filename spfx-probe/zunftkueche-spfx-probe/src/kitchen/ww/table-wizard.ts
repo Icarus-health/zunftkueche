@@ -3,7 +3,7 @@ import type { Workspace, Area, Stored } from '../model';
 import type { Profile, PriceList, SystemImport, WwDocument, ImportField, PaymentRow, SystemRow } from './model';
 import type { ImportGrid, ImportContext, ImportPreview } from '../imports/model';
 import { documents, importPurposes, purposeLabels } from './model.ts';
-import { button, field, select, h, n, check, money } from '../markup.ts';
+import { button, field, select, h, n, check, money, dateDe, euro } from '../markup.ts';
 import { heading, today } from './common.ts';
 import { readCsv, decodeCsv } from '../imports/csv-reader.ts';
 import { listWorkbookSheets, readWorkbookSheet } from '../imports/xlsx-reader.ts';
@@ -29,18 +29,16 @@ const productFields: Array<[ImportField, string]> = [
   ['productName', 'Artikelbezeichnung'],
   ['quantity', 'Verkaufte / bestellte Menge'],
   ['unit', 'Einheit'],
-  ['date', 'Betriebstag / Verwendungstag'],
+  ['date', 'Datum des Verkaufs'],
   ['status', 'Status'],
   ['amount', 'Gesamtumsatz der Zeile'],
-  ['currency', 'Währung'],
   ['externalId', 'Externe Belegkennung']
 ];
 const paymentFields: Array<[ImportField, string]> = [
   ['amount', 'Zahlungsbetrag'],
   ['paymentMethod', 'Zahlart (optional)'],
-  ['date', 'Betriebstag (optional)'],
+  ['date', 'Datum (optional)'],
   ['status', 'Status (optional)'],
-  ['currency', 'Währung (optional)'],
   ['externalId', 'Externe Belegkennung (optional)']
 ];
 const paymentHeaders: Partial<Record<ImportField, string[]>> = {
@@ -50,6 +48,17 @@ const paymentHeaders: Partial<Record<ImportField, string[]>> = {
   status: ['status'],
   currency: ['währung'],
   externalId: ['belegkennung', 'transaktions-id']
+};
+/** Übliche Spaltenüberschriften einer Kassendatei. Passt genau eine Spalte, wird sie vorgeschlagen. */
+const productHeaders: Partial<Record<ImportField, string[]>> = {
+  productCode: ['artikel', 'artikelnummer', 'artikel-nr', 'artikelnr', 'code', 'plu', 'sku'],
+  productName: ['bezeichnung', 'artikelbezeichnung', 'artikelname', 'name', 'produkt'],
+  quantity: ['menge', 'anzahl', 'stück', 'stueck'],
+  unit: ['einheit'],
+  date: ['datum', 'tag', 'verkaufsdatum'],
+  status: ['status'],
+  amount: ['betrag', 'umsatz', 'summe', 'gesamt', 'gesamtbetrag', 'brutto'],
+  externalId: ['id', 'beleg', 'belegnummer', 'bon', 'bonnummer']
 };
 export class TableWizard {
   public mode: 'system' | 'prices';
@@ -199,7 +208,7 @@ export class TableWizard {
                 ['', 'Neuen Zeitraum übernehmen'],
                 ...documents(this.p.state().ww, 'system')
                   .filter(s => s.confirmed && s.area === this.p.area())
-                  .map(s => [s.id, s.name + ' · ' + s.from + ' bis ' + s.to] as [string, string])
+                  .map(s => [s.id, s.name + ' · ' + dateDe(s.from) + ' bis ' + dateDe(s.to)] as [string, string])
               ],
               ''
             )
@@ -249,10 +258,10 @@ export class TableWizard {
         if (index !== undefined && headers[index]?.text !== label) delete p.columnMap[id];
       }
       const picked = (id: ImportField): number | undefined => {
-        if (p.columnMap[id] !== undefined || !payment || this.previous || this.paymentColumnsReviewed)
-          return p.columnMap[id];
+        if (p.columnMap[id] !== undefined || this.previous || this.paymentColumnsReviewed) return p.columnMap[id];
+        const known = payment ? paymentHeaders : productHeaders;
         const matches = headers.flatMap((cell, index) =>
-          paymentHeaders[id]?.includes(cell.text.trim().toLocaleLowerCase('de-DE')) ? [index] : []
+          known[id]?.includes(cell.text.trim().toLocaleLowerCase('de-DE')) ? [index] : []
         );
         return matches.length === 1 && !Object.values(p.columnMap).includes(matches[0]) ? matches[0] : undefined;
       };
@@ -328,14 +337,16 @@ export class TableWizard {
       const hint = payment
         ? 'Vorgeschlagene Spalten prüfen. Ohne Datum gilt der Betrag für den gewählten Zeitraum.'
         : this.mode === 'system'
-          ? 'Bitte den gesamten Zeilenumsatz wählen. Ohne Datumsfeld nur einen Betriebstag importieren.'
+          ? 'Vorgeschlagene Spalten prüfen. Beim Umsatz bitte den Betrag der ganzen Zeile wählen. Ohne Datumsspalte nur einen Tag einlesen.'
           : 'Preise gelten je ausgewähltem Gebinde.';
       body =
         '<p class="ww-step">2 · Spalten zuordnen</p><p>' +
         h(this.fileName) +
         ' · ' +
-        Math.max(0, this.grid!.rows.length - this.header - 1) +
-        ' Datenzeilen</p>' +
+        (this.grid!.rows.length - this.header - 1 === 1
+          ? '1 Datenzeile'
+          : Math.max(0, this.grid!.rows.length - this.header - 1) + ' Datenzeilen') +
+        '</p>' +
         this.sample() +
         field('header', 'Nummer der Kopfzeile', String(this.header + 1), true, 'number', 'min="1"') +
         button('ww-header', 'Kopfzeile übernehmen') +
@@ -355,12 +366,12 @@ export class TableWizard {
           .map((code, i) => {
             const m = this.profile!.mappings.find(m => m.externalCode === code);
             const known = !!m && recipes.some(r => r.id === m.productId) && m.unit === this.externalUnit(code);
-            return `<details class="mapping-review" ${known ? '' : 'open'}><summary>${h(code)} · ${known ? 'Zuordnung übernommen – bei Bedarf ändern' : 'Neu oder abweichend – prüfen'}</summary><div class="ww-line" data-map="${i}">${select(
+            return `<details class="mapping-review" ${known ? '' : 'open'}><summary>${h(code)} · ${known ? 'Zuordnung übernommen – bei Bedarf ändern' : 'neu, bitte zuordnen'}</summary><div class="ww-line" data-map="${i}">${select(
               'productId',
               'Rezept / Verkaufsprodukt',
               [
                 ['', 'Bitte wählen'],
-                ...recipes.map(r => [r.id, r.name + ' · ' + r.at.slice(0, 10)] as [string, string])
+                ...recipes.map(r => [r.id, r.name + ' · Stand ' + dateDe(r.at)] as [string, string])
               ],
               m?.productId || ''
             )}${field('factor', 'Portionen je Exporteinheit', n(m?.factor ?? 1), true, 'text', 'inputmode="decimal"')}${field('unit', 'Einheit der Exportdatei', m?.unit || this.externalUnit(code))}</div></details>`;
@@ -378,11 +389,11 @@ export class TableWizard {
         const summary = payment
           ? v.errors.length
             ? 'Saldo offen'
-            : 'Saldo ' + n(v.amount) + ' ' + h(context.currency)
+            : 'Saldo ' + h(euro(v.amount))
           : 'Menge ' +
             n(v.quantity) +
             ' · Umsatz ' +
-            (v.amount === null ? 'offen' : n(v.amount) + ' ' + h(context.currency)) +
+            (v.amount === null ? 'offen' : h(euro(v.amount))) +
             ' · ' +
             (p.basis === 'unknown' ? 'Preisart unbekannt' : p.basis === 'gross' ? 'brutto' : 'netto');
         body =
@@ -393,15 +404,17 @@ export class TableWizard {
           '<p><strong>' +
           h(purposeLabels[p.purpose]) +
           '</strong> · ' +
-          h(context.periodStart) +
-          ' bis ' +
-          h(context.periodEnd) +
+          h(
+            context.periodStart === context.periodEnd
+              ? dateDe(context.periodStart)
+              : dateDe(context.periodStart) + ' bis ' + dateDe(context.periodEnd)
+          ) +
           ' · ' +
           h(this.p.area()) +
           '</p>' +
           '<p>' +
-          v.rows.length +
-          ' Zeilen · ' +
+          (v.rows.length === 1 ? '1 Zeile' : v.rows.length + ' Zeilen') +
+          ' · ' +
           summary +
           '</p>' +
           [...v.errors, ...v.warnings].map(e => '<p class="ww-alert">' + h(e) + '</p>').join('') +
@@ -414,7 +427,7 @@ export class TableWizard {
             .map(
               r =>
                 '<tr><td>' +
-                h(r.date ?? 'Gesamtzeitraum') +
+                h(r.date ? dateDe(r.date) : 'Gesamtzeitraum') +
                 '</td>' +
                 ('paymentMethod' in r
                   ? '<td>' + h(r.paymentMethod || 'Offen') + '</td>'
@@ -422,7 +435,7 @@ export class TableWizard {
                 '<td>' +
                 statusLabel[r.status] +
                 '</td><td>' +
-                (r.amount === null ? 'Offen' : n(r.amount)) +
+                (r.amount === null ? 'Offen' : h(euro(r.amount))) +
                 '</td></tr>'
             )
             .join('') +
@@ -634,8 +647,9 @@ export class TableWizard {
         if (this.priceColumns.code === undefined || this.priceColumns.priceNet === undefined)
           throw new Error('Artikelnummer und Nettopreis zuordnen.');
       }
+      // Ab hier gilt, was im Formular gewählt wurde. Vorschläge aus den Überschriften kommen nicht noch einmal.
+      this.paymentColumnsReviewed = true;
       if (this.mode === 'system' && p.purpose === 'payments') {
-        this.paymentColumnsReviewed = true;
         this.preview = previewSystemImport(this.grid!, this.header, p, this.context!, []);
         this.stage = 'review';
       } else this.stage = 'products';

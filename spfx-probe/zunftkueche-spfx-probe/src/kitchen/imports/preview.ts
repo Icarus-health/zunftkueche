@@ -86,7 +86,7 @@ export function previewSystemImport(
           ? null
           : dateValue(get('date'), profile, grid, context.periodStart);
       if (!payment && !dated && context.periodStart !== context.periodEnd)
-        throw new Error('Ohne Datumszeile bitte genau einen Betriebstag wählen.');
+        throw new Error('Ohne Datumsspalte bitte genau einen Tag als Zeitraum wählen.');
       if (date !== null && (date < context.periodStart || date > context.periodEnd))
         throw new Error('Datum liegt außerhalb des gewählten Zeitraums.');
       const currency = get('currency')?.text.trim();

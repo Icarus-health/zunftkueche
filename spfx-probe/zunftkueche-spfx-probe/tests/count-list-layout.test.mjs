@@ -30,8 +30,8 @@ test('each row carries name, pack information, total and both quantity fields wi
  assert.match(water.querySelector('.count-name small').textContent,/^Kiste · 12 Flasche/);
  const total=water.querySelector('[data-count-total=water]');
  assert.equal(total.textContent,'29 Flaschen');assert.equal(total.dataset.state,'counted');
- assert.equal(water.querySelector('[name=packs_water]').getAttribute('aria-label'),'Mineralwasser · volle Kiste');
- assert.equal(water.querySelector('[name=loose_water]').getAttribute('aria-label'),'Mineralwasser · Flasche einzeln');
+ assert.equal(water.querySelector('[name=packs_water]').getAttribute('aria-label'),'Mineralwasser · volle Kisten');
+ assert.equal(water.querySelector('[name=loose_water]').getAttribute('aria-label'),'Mineralwasser · Flaschen einzeln');
  assert.ok(sausage.classList.contains('count-single'));
  assert.equal(sausage.querySelector('[name=packs_b]').type,'hidden');
  assert.equal(sausage.querySelector('[name=loose_b]').value,'35');

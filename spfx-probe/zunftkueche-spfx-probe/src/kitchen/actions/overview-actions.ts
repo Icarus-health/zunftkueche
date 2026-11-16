@@ -40,8 +40,8 @@ export async function saveOverview(app: KitchenView, form: HTMLFormElement): Pro
         await app.store.saveOrder(change.order, change.previous, operationId + '-' + i);
     },
     changes.length === 1
-      ? 'Liefertermine einer Bestellung gespeichert.'
-      : 'Liefertermine von ' + changes.length + ' Bestellungen gespeichert.',
+      ? 'Liefertage einer Bestellung gespeichert.'
+      : 'Liefertage von ' + changes.length + ' Bestellungen gespeichert.',
     () => {
       app.view = 'orders';
       app.overviewPicker = true;

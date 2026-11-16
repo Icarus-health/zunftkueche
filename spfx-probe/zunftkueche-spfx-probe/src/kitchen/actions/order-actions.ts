@@ -504,9 +504,12 @@ export async function orderAction(
       old.value.area !== app.area
     )
       throw new Error('Bitte einen Bestellentwurf der aktiven Saison wählen.');
+    // Von der gespeicherten Bestellung aus gibt es kein Häkchen „geprüft“. Die Frage unten fragt deshalb beides ab:
+    // stimmen die Mengen, und ist bestellt. Das Ja bestätigt alle Positionen.
     const order = withSchedule({
       ...old.value,
       status: 'Bestellt',
+      lines: old.value.lines.map(line => ({ ...line, reviewed: true })),
       recordedBy: app.user,
       recordedAt: new Date().toISOString()
     });
@@ -518,7 +521,9 @@ export async function orderAction(
       box.setAttribute('data-order-confirm', '');
       box.setAttribute('aria-label', 'Als bestellt markieren');
       box.innerHTML =
-        orderedQuestion +
+        (old.value.lines.every(line => line.reviewed)
+          ? orderedQuestion
+          : '<p>Stimmen Mengen und Gebinde, und ist die Bestellung beim Lieferanten aufgegeben? Danach sind die Mengen fest. Änderungen gehen dann über eine Nachbestellung.</p>') +
         '<div class="actions">' +
         button('order-mark-confirm', 'Ja, ist bestellt', id, true) +
         button('order-record-back', 'Noch nicht') +

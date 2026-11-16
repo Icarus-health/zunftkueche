@@ -63,3 +63,16 @@ test('Tab Karte zeigt die Karte der Saison, auch nach Abbrechen, und ist keine S
  assert.ok(root.querySelector('form[data-form=menu]'),'Abbrechen lädt die gespeicherte Karte neu');
  await view.action('nav','orders');assert.equal(root.querySelector('main h1').textContent,'Bestellungen');
 });
+test('Gespeicherter Entwurf: „Als bestellt markieren“ fragt nach Mengen und Bestellung, ohne auf ein Häkchen zu verweisen',async()=>{
+ const {JSDOM}=await import('jsdom');const {KitchenView}=await import('../src/kitchen/view.ts');const {SharePointStore}=await import('../src/kitchen/sharepoint.ts');const {Server}=await import('./support/fake-sharepoint.mjs');
+ const d=await import('./support/kitchen-data.mjs');
+ const dom=new JSDOM('<div id="app"></div>',{url:'https://example.test'});for(const k of ['document','Element','HTMLInputElement','HTMLTextAreaElement','HTMLFormElement','HTMLSelectElement','FormData'])globalThis[k]=dom.window[k]||dom.window.document;
+ const root=document.getElementById('app'),store=new SharePointStore('https://example.sharepoint.com/sites/kitchen',new Server().request);
+ for(const [k,v] of [['seasons',d.season],['suppliers',d.supplier],['articles',d.article],['offers',d.offer]])await store.saveMaster(k,v,undefined,'seed-'+v.id);
+ await store.saveOrder({...d.order,status:'Entwurf',deliveryDate:'2027-02-05',lines:[{...d.line,reviewed:false}]},undefined,'seed-order');
+ const view=new KitchenView(root,store,'TEST · member@example.test');await view.start();
+ await view.action('order-open',d.order.id);await view.action('order-mark',d.order.id);
+ const box=root.querySelector('[data-order-confirm]');assert.ok(box,'die Frage erscheint');assert.match(box.textContent,/Stimmen Mengen und Gebinde, und ist die Bestellung beim Lieferanten aufgegeben\?/);
+ await view.action('order-mark-confirm',d.order.id);const saved=(await store.load()).orders[0].value;
+ assert.equal(saved.status,'Bestellt');assert.ok(saved.lines.every(l=>l.reviewed));
+});

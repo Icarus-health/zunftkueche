@@ -92,7 +92,7 @@ test('plus and minus change the visible value, start from empty and never go bel
  assert.equal(field.value,'0','zero means nothing there, not uncounted');
  assert.equal(root.querySelector('[data-count-total=water]').dataset.state,'counted');
  const minus=root.querySelector('[data-action=count-step][data-id="packs_water|-1"]');
- assert.equal(minus.getAttribute('aria-label'),'Mineralwasser · volle Kiste · eins weniger');
+ assert.equal(minus.getAttribute('aria-label'),'Mineralwasser · volle Kisten · eins weniger');
 });
 
 test('"Nächster Artikel" closes the open article and opens the next uncounted one',async()=>{

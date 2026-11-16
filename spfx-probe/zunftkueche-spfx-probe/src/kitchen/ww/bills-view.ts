@@ -387,7 +387,7 @@ export function billsOverview(s: Workspace, area: Area): string {
         .sort((a, b) => b.date.localeCompare(a.date))
         .map(
           b =>
-            `<div class="listrow"><div><h2>${h(s.suppliers.find(v => v.value.id === b.supplierId)?.value.name || 'Lieferant')} · ${h(b.number || b.name)}</h2><p>${h(b.number || 'Nummer offen')} · ${dayLabel(b.date)} · ${h(billTypeLabel(b))} · ${h(s.suppliers.find(r => r.value.id === b.supplierId)?.value.name)} · ${b.scanNumberReview?.status === 'open' ? 'Belegnummern prüfen' : b.needsSeparateFiles ? 'Einzelbelege erforderlich' : b.confirmed ? 'Bestätigt' : 'Entwurf'}${b.costAssignment?.mode === 'open' ? ' · Kostenstelle offen' : ''}</p><small>${b.lines.length} Positionen · ${b.orderIds.length} Bestellbezüge · ${b.attachment ? 'Original gespeichert' : 'Ohne gespeichertes Original'}</small></div><div class="actions"><strong>${money(b.gross)} brutto</strong>${button(b.confirmed ? 'ww-bill-view' : 'ww-edit', b.confirmed ? 'Ansehen' : 'Weiter prüfen', b.id)}</div></div>`
+            `<div class="listrow"><div><h2>${h(s.suppliers.find(v => v.value.id === b.supplierId)?.value.name || 'Lieferant')} · ${h(b.number || b.name)}</h2><p>${h(b.number || 'Nummer offen')} · ${dayLabel(b.date)} · ${h(billTypeLabel(b))} · ${h(s.suppliers.find(r => r.value.id === b.supplierId)?.value.name)} · ${b.scanNumberReview?.status === 'open' ? 'Belegnummern prüfen' : b.needsSeparateFiles ? 'Einzelbelege erforderlich' : b.confirmed ? 'Bestätigt' : 'Entwurf'}${b.costAssignment?.mode === 'open' ? ' · Kostenstelle offen' : ''}</p><small>${[b.lines.length ? count(b.lines.length, 'Position', 'Positionen') : 'nur Summen', b.orderIds.length ? count(b.orderIds.length, 'Bestellung zugeordnet', 'Bestellungen zugeordnet') : '', paymentNote(b), b.attachment ? 'Original gespeichert' : ''].filter(Boolean).join(' · ')}</small></div><div class="actions"><strong>${money(b.gross)} brutto</strong>${button(b.confirmed ? 'ww-bill-view' : 'ww-edit', b.confirmed ? 'Ansehen' : 'Weiter prüfen', b.id)}</div></div>`
         )
         .join('') || empty('Noch keine Rechnungen. Original als PDF hinzufügen oder Beleg manuell erfassen.')
     }</section>`
@@ -483,7 +483,7 @@ export function billDetail(row: Stored<Bill>, s: Workspace): string {
         .map(id => {
           const o = s.orders.find(r => r.value.id === id)?.value;
           return o
-            ? `<div class="listrow"><div><strong>${h(o.supplierName)} · ${h(o.occasion)}</strong><p>${o.lines.length} bestellte Positionen · ${(o.receipts || []).length} Wareneingänge</p><small>Gebinde auf Rechnung und Bestellung können abweichen. Mengen und Pfand am Original vergleichen.</small></div>${button('order-open', 'Bestellung prüfen', id)}</div>`
+            ? `<div class="listrow"><div><strong>${h(o.supplierName)} · ${h(o.occasion)}</strong><p>${count(o.lines.length, 'bestellte Position', 'bestellte Positionen')} · ${count((o.receipts || []).length, 'Wareneingang', 'Wareneingänge')}</p><small>Gebinde auf Rechnung und Bestellung können abweichen. Mengen und Pfand am Original vergleichen.</small></div>${button('order-open', 'Bestellung prüfen', id)}</div>`
             : '<p>Bestellbezug nicht geladen.</p>';
         })
         .join('') || '<p>Keine Bestellung zugeordnet.</p>'

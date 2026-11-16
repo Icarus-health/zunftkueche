@@ -1022,12 +1022,18 @@ export class KitchenView {
       this.rememberContext();
       await this.run(async () => {}, '', undefined, false);
     }
-    this.view = 'reports';
+    this.view = 'orders';
     await this.wwUI.action('ww-open', 'inbox');
   }
 
   async action(action: string, id: string, target?: HTMLElement): Promise<void> {
     if (await uiAction(this, action, id, target)) return;
+    // Eine Erfolgsmeldung gilt dem letzten Schritt. Mit dem nächsten Schritt verschwindet sie, sonst steht
+    // „Gespeichert.“ noch über Seiten, auf denen nichts gespeichert wurde.
+    if (this.info && !this.dirty && !this.pendingSave) {
+      this.info = '';
+      this.paintStatus();
+    }
     if (this.recovery) throw new Error('Bitte den unterbrochenen Entwurf fortsetzen oder ausdrücklich verwerfen.');
     if (action === 'cancel') {
       this.local.remove('draft');

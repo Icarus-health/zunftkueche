@@ -5,6 +5,7 @@ import { validateEntity } from '../domain.ts';
 import { columns, previewMasters } from '../csv.ts';
 import type { ImportKind } from '../csv';
 import { h, select, note, button, panel, empty, backLink } from '../markup.ts';
+import { count } from '../units.ts';
 import type { KitchenView } from '../view';
 import { uuid, message } from '../view-support.ts';
 import type { ImportItem } from '../view-support';
@@ -26,7 +27,7 @@ export function copyList(app: KitchenView): string {
         'Ausgangssaison',
         seasons.map(s => [s.value.id, s.value.name]),
         app.sourceSeason
-      )}</div>${rows.length ? rows.map(o => `<div class="listrow"><div><strong>${h(o.value.supplierName)}</strong><p>${h(o.value.occasion || 'Ohne Anlass')} · ${h(o.value.status)} · ${o.value.lines.length} Positionen</p></div>${button('copy-pick', 'Positionen auswählen', o.value.id)}</div>`).join('') : empty('Für diese Ausgangssaison und diesen Bereich sind noch keine übernehmbaren Bestellungen erfasst.')}`
+      )}</div>${rows.length ? rows.map(o => `<div class="listrow"><div><strong>${h(o.value.supplierName)}</strong><p>${h(o.value.occasion || 'Ohne Anlass')} · ${h(o.value.status)} · ${count(o.value.lines.length, 'Position', 'Positionen')}</p></div>${button('copy-pick', 'Positionen auswählen', o.value.id)}</div>`).join('') : empty('Für diese Ausgangssaison und diesen Bereich sind noch keine übernehmbaren Bestellungen erfasst.')}`
     )
   );
 }

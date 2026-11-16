@@ -4,8 +4,8 @@ import { icon } from '../icons.ts';
 import { supplierHint } from '../review-status.ts';
 import { documents } from '../ww/model.ts';
 import { effectiveOffer } from '../ww/domain.ts';
-import { h, n, money, euro, button, empty, moreMenu, suppliersTabs } from '../markup.ts';
-import { unitName } from '../units.ts';
+import { h, n, euro, button, empty, moreMenu, suppliersTabs } from '../markup.ts';
+import { unitName, packLabel } from '../units.ts';
 import { searchField, displayDate } from '../workspace.ts';
 import type { KitchenView } from '../view';
 import { uuid } from '../view-support.ts';
@@ -35,7 +35,7 @@ export function articles(app: KitchenView): string {
           const price = effectiveOffer(offer, priceLists, date);
           const amount = price.priceNet === null ? 'Preis offen' : euro(price.priceNet) + ' netto';
           return `<tr><td><strong>${h(supplier)}</strong>${offer.active ? '' : '<small>Inaktiv</small>'}</td>
-   <td>${h(unitName(offer.packName, 1))} à ${n(offer.packSize)} ${h(unitName(article.unit, offer.packSize))}</td>
+   <td>${h(packLabel(offer.packName, offer.packSize, article.unit, n(offer.packSize)))}</td>
    <td>${h(amount)}${price.priceDate ? '<small>Stand ' + h(displayDate(price.priceDate)) + '</small>' : ''}</td>
    <td><button type="button" data-action="offer-edit" data-id="${h(offer.id)}" aria-label="Gebinde und Preis bei ${h(supplier)} bearbeiten">Bearbeiten</button></td></tr>`;
         })
@@ -73,7 +73,7 @@ function priceList(app: KitchenView, supplierId: string): string {
       } catch {
         /* Gebinde seit der letzten Preisliste geändert: Preis am Artikel zeigen */
       }
-      return `<tr><th scope="row">${h(article?.name || 'Artikel')}</th><td>${h(unitName(offer.packName, 1))} à ${n(offer.packSize)} ${h(unitName(article?.unit || '', offer.packSize))}</td><td class="num">${current.priceNet === null ? '<span class="muted">offen</span>' : h(euro(current.priceNet))}</td><td>${current.priceNet !== null && current.priceDate ? h(displayDate(current.priceDate)) : ''}</td><td><button type="button" class="link-button" data-action="offer-edit" data-id="${h(offer.id)}" aria-label="${h(article?.name || 'Artikel')} bearbeiten">Bearbeiten</button></td></tr>`;
+      return `<tr><th scope="row">${h(article?.name || 'Artikel')}</th><td>${h(packLabel(offer.packName, offer.packSize, article?.unit || '', n(offer.packSize)))}</td><td class="num">${current.priceNet === null ? '<span class="muted">offen</span>' : h(euro(current.priceNet))}</td><td>${current.priceNet !== null && current.priceDate ? h(displayDate(current.priceDate)) : ''}</td><td><button type="button" class="link-button" data-action="offer-edit" data-id="${h(offer.id)}" aria-label="${h(article?.name || 'Artikel')} bearbeiten">Bearbeiten</button></td></tr>`;
     })
     .join('');
   return rows

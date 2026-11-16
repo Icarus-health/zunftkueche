@@ -1,4 +1,4 @@
-# Zunftküche: Aufbau des Codes (Stand 1.22.1)
+# Zunftküche: Aufbau des Codes (Stand 1.23.0)
 
 Für alle, die die App später pflegen. Kurz: Daten und Rechenregeln sind von der Oberfläche getrennt, jede Oberfläche hat ihr eigenes Modul, und für fast jede Regel gibt es einen Test.
 
@@ -15,13 +15,22 @@ Für alle, die die App später pflegen. Kurz: Daten und Rechenregeln sind von de
 | `src/kitchen/actions/` | Was beim Tippen auf eine Schaltfläche passiert, je Bereich eine Datei: `order-actions`, `overview-actions`, `menu-actions`, `receipt-actions`, `count-actions`, `master-actions`, `import-actions`, `ui-actions`. |
 | `src/kitchen/home.ts`, `workspace.ts`, `operation-forms.ts`, `order-sheet.ts`, `supplier-forms.ts` | Bildschirme als HTML-Bausteine (Übersicht, Bestand, Abendabschluss, Warenannahme, Bestellblatt). |
 | `src/kitchen/fasnet-report.ts` | Auswertung der ganzen Saison über alle Bereiche. |
-| `src/kitchen/order-overview.ts` | Gesamtbestellung: alle Lieferanten nach Liefertag, Prüfhinweise, Liefertermine der Entwürfe, Lieferplan als PDF. |
+| `src/kitchen/order-overview.ts` | Bestellungen nach Liefertag: alle Lieferanten, Prüfhinweise, Liefertage der Entwürfe, Lieferplan als PDF. |
+| `src/kitchen/markup.ts`, `units.ts` | Kleine Bausteine für alle Bildschirme: Felder, Knöpfe, Umschalter (`segments`), „Mehr“-Menü, Zurück-Link, Beträge (`euro`, `amount2`), Datum (`dateDe`), ausgeschriebene Einheiten (`unitName`). |
 | `src/kitchen/menu-card.ts`, `menu-export.ts`, `menu-header.ts`, `menu-drag.ts` | Preiskarte für den Zunftabend: Auswahl aus Rezepten, Reihenfolge per Ziehen (Zeigerereignisse, auch Touch) oder Pfeilen, Word- und PDF-Ausgabe im Aufbau der Druckvorlage, Kopfbild mit Jahr. Bild und Schrift in `menu-assets/`. |
 | `src/kitchen/zip.ts` | ZIP ohne Kompression für die Word-Datei. |
 | `src/kitchen/pdf-document.ts` | Kleiner PDF-Baukasten mit Helvetica, schräg, JPEG-Bild und Zeichenbreiten. Genutzt für Bestellung, Abendabschluss auf Papier, Lieferplan und Karte. |
 | `src/kitchen/ww/` | Warenwirtschaft: Rezepte, Planung, Einkauf aus Planung, Rechnungen, Kassendaten, Bewegungen, Auswertung je Bereich. Eigener Controller mit Host-Schnittstelle. |
-| `src/kitchen/imports/` | Lesen von PDF (auch Scans per Texterkennung), CSV und Excel. |
-| `tests/` | Rund 390 Tests mit Node und jsdom. `tests/preview-server.mjs` startet eine lokale Vorschau mit künstlichen Daten. |
+| `src/kitchen/ww/delivery-days.ts` | Einsatztage der Saison als Liefertage. Früher angelegte Liefertermine gelten weiter. |
+| `src/kitchen/ww/bill-suggest.ts`, `invoice-prices.ts` | Rechnung prüfen: Artikel je Zeile (auch aus früher bestätigten Rechnungen), Lieferant, Preise für die Preisliste. |
+| `src/kitchen/imports/` | Lesen von PDF (auch Scans per Texterkennung), CSV und Excel. `bill-proposal.ts` liest Kopf, Summen und Positionen einer Rechnung, `bill-hints.ts` Lieferant, Lieferdatum, Zahlungsziel, Skonto und Bereich. Alles sind Vorschläge: passt eine Summe nicht, bleibt das Feld leer. |
+| `tests/` | Rund 450 Tests mit Node und jsdom. `tests/preview-server.mjs` startet eine lokale Vorschau mit künstlichen Daten. |
+
+## Aufbau der Oberfläche seit 1.23
+
+Sieben Punkte in der Seitenleiste: Übersicht, Bestellungen, Lieferanten, Speisen & Getränke, Karte, Auswertung, Einstellungen. Unterseiten hängen als Umschalter an ihrem Punkt: Bestellungen (Nach Lieferant, Nach Liefertag, Rechnungen), Lieferanten (Lieferanten, Artikel), Speisen (Rezepte, Portionen), Auswertung (Zahlen, Bestand). Jede Seite hat einen Hauptknopf, Seltenes steht unter „Mehr“.
+
+Stammdaten: ein Preis je Artikel und Lieferant. Preisänderungen entstehen als Preisliste mit Datum (im Profil des Lieferanten unter „Preise ändern“ oder beim Bestätigen einer Rechnung). Alte Bestellungen behalten ihre Preise.
 
 ## Regeln, die den Code sauber halten
 

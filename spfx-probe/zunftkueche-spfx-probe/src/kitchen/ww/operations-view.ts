@@ -122,7 +122,12 @@ export function operationForm(d: Recipe | Plan | EquipmentItem | Movement, s: Wo
   if (d.kind === 'plan')
     body =
       field('name', 'Einsatz', d.name, true) +
-      field('date', 'Tag', d.date, true, 'date') +
+      field('date', 'Tag', d.date, true, 'date', 'list="plan-days"') +
+      '<datalist id="plan-days">' +
+      (s.seasons.find(row => row.value.id === d.scope)?.value.operatingDays || [])
+        .map(day => '<option value="' + h(day) + '"></option>')
+        .join('') +
+      '</datalist>' +
       `<div class="ww-lines plan-lines"><div class="plan-lines-head" aria-hidden="true"><span>Gericht oder Getränk</span><span>Portionen</span><span></span></div>${d.lines.map(l => operationLine('plan', s, l)).join('')}</div>` +
       button('ww-add', 'Gericht oder Getränk hinzufügen', 'plan') +
       `<details class="ww-full"${d.materials?.length ? ' open' : ''}><summary>Verbrauchsmaterial</summary>

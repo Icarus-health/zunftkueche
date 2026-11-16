@@ -39,3 +39,8 @@ export const quantityUnit = (quantity: number | null, unit: string): string => u
 export function count(quantity: number, one: string, many: string): string {
   return quantity + ' ' + (quantity === 1 ? one : many);
 }
+/** Gebinde zum Lesen: „Kiste à 12 Flaschen“. Ist das Gebinde die Einheit selbst, reicht „Stück“. */
+export function packLabel(packName: string, packSize: number, unit: string, size: string = String(packSize)): string {
+  const pack = unitName(packName, 1);
+  return packSize === 1 && pack === unitName(unit, 1) ? pack : pack + ' à ' + size + ' ' + unitName(unit, packSize);
+}
