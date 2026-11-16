@@ -4,10 +4,9 @@
 export function parseQuantity(raw: string): number | null {
   const value = raw.trim();
   if (!value) return null;
-  if (!/^\d+(,\d{1,4})?$/.test(value))
-    throw new Error("Menge bitte als positive Zahl mit Dezimalkomma eingeben.");
-  const quantity = Number(value.replace(",", "."));
+  if (!/^\d+(,\d{1,4})?$/.test(value)) throw new Error('Menge bitte als positive Zahl mit Dezimalkomma eingeben.');
+  const quantity = Number(value.replace(',', '.'));
   if (!Number.isFinite(quantity) || quantity > 10000000)
-    throw new Error("Menge liegt außerhalb des zulässigen Bereichs.");
+    throw new Error('Menge liegt außerhalb des zulässigen Bereichs.');
   return quantity;
 }

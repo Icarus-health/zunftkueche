@@ -28,7 +28,7 @@ test('symbols are drawn inline, without an icon font, and the navigation has a f
  assert.equal(svg.getAttribute('aria-hidden'),'true');
  assert.ok(svg.querySelector('.zk-line')&&svg.querySelector('.zk-solid'),'line and filled form');
  assert.equal(page(icon('check')).querySelector('.zk-solid'),null,'small symbols only need the line form');
- const css=readFileSync(new URL('../src/webparts/kitchen/KitchenWebPart.module.scss',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../src/webparts/kitchen/KitchenWebPart.module.scss',import.meta.url),'utf8').replace(/\s+/g,' ').replace(/\s*([{};:,>])\s*/g,'$1').replace(/\s*!important/g,'!important');
  assert.doesNotMatch(css,/ui-icons|Montserrat/,'old fonts are no longer bundled');
  assert.match(css,/font-family:ZKArchivo;src:url\('\.\/assets\/Archivo-latin\.woff2'\)/);
 });

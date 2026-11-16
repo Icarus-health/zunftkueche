@@ -95,7 +95,7 @@ test('fields do not offer the browser\'s own saved data, suggestion lists keep w
 });
 
 test('style sheet: focus is kept clear of the fixed bars, phone fields are 16 px, no blanket transition',()=>{
- const css=readFileSync(new URL('../src/webparts/kitchen/KitchenWebPart.module.scss',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../src/webparts/kitchen/KitchenWebPart.module.scss',import.meta.url),'utf8').replace(/\s+/g,' ').replace(/\s*([{};:,>])\s*/g,'$1').replace(/\s*!important/g,'!important');
  assert.match(css,/scroll-margin:12px 0 calc\(var\(--tabbar,0px\) \+ var\(--action-bar,0px\) \+ 16px\)/);
  assert.match(css,/form:has\(:global\(\.calm-actions\)\),form:has\(:global\(\.sticky-actions\)\)\{--action-bar:88px;\}/);
  assert.match(css,/:global\(\.app-layout\) select,:global\(\.app-layout\) textarea\{font-size:16px!important;\}/);
