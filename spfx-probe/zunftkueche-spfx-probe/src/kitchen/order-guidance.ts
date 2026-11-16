@@ -18,7 +18,7 @@ export function priceSuggestion(
     quotes: DeliveryQuote[] = []
   ): { price: null; note: string; quotes: DeliveryQuote[] } => ({ price: null, note, quotes });
   const offer = state.offers.find(row => row.value.id === line.offerId)?.value;
-  if (!offer || !offer.active) return none('Lieferangebot fehlt oder ist inaktiv.');
+  if (!offer || !offer.active) return none('Der Artikel ist bei diesem Lieferanten nicht mehr hinterlegt.');
   const relevant = (order.deliveries || []).filter(d => line.schedule?.[d.id] !== 0);
   if (!relevant.length || relevant.some(d => !d.date))
     return none('Für einen Preisvorschlag zuerst alle benötigten Lieferdaten und Mengen eintragen.');
@@ -37,10 +37,10 @@ export function priceSuggestion(
         )
         .sort((a, b) => a.validFrom.localeCompare(b.validFrom) || a.at.localeCompare(b.at) || a.id.localeCompare(b.id))
         .at(-1);
-      return { date, price: quoted.priceNet, source: source?.name || 'Lieferangebot', validFrom: quoted.priceDate };
+      return { date, price: quoted.priceNet, source: source?.name || 'Preis am Artikel', validFrom: quoted.priceDate };
     });
     if (quotes.some(q => q.price === null || !q.validFrom))
-      return none('Für mindestens einen Liefertag fehlt ein gültiger Preisstand.', quotes);
+      return none('Für mindestens einen Liefertag fehlt ein gültiger Preis.', quotes);
     if (quotes.some(q => q.price !== quotes[0].price))
       return none(
         'Für die Liefertage gelten unterschiedliche Preise. Bitte vor der Bestellung einzeln prüfen.',
@@ -52,6 +52,6 @@ export function priceSuggestion(
       quotes
     };
   } catch {
-    return none('Liefergebinde und Preisstand passen nicht zusammen. Bitte das Angebot prüfen.');
+    return none('Gebinde und Preis passen nicht zusammen. Bitte den Artikel beim Lieferanten prüfen.');
   }
 }

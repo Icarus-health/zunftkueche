@@ -262,7 +262,7 @@ export class SharePointStore {
                   : 1;
     const data = JSON.stringify({ schema, operationId, entity: value });
     if (data.length > 60000)
-      throw new Error('Der Vorgang ist zu groß für einen Datensatz. Bitte Administrator informieren.');
+      throw new Error('Der Eintrag ist zu groß für einen Datensatz. Bitte Administrator informieren.');
     await this.http(
       this.list(kind) + '/items' + (current ? '(' + current.itemId + ')' : ''),
       'POST',
@@ -385,7 +385,7 @@ export class SharePointStore {
           )
         )
           throw new Error(
-            'Gebinde und Artikel eines Lieferangebots mit bestätigtem Preisstand bleiben erhalten. Bitte ein neues Lieferangebot anlegen und das bisherige deaktivieren.'
+            'Für dieses Gebinde gibt es schon Preise, deshalb bleiben Artikel und Gebinde, wie sie sind. Bitte ein neues Gebinde anlegen und das bisherige auf nicht mehr bestellt setzen.'
           );
       }
       if (!state.articles.some(a => a.value.id === offer.articleId && a.value.active))

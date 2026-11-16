@@ -9,7 +9,9 @@ import { sameValue as same } from './equality.ts';
 import { slipExtension, slipFileName } from '../delivery-slip.ts';
 import type { SlipFile } from '../delivery-slip';
 const conflict = (): Error =>
-  new Error('Der Vorgang wurde inzwischen geändert. Bitte neu laden; fremde Änderungen bleiben erhalten.');
+  new Error(
+    'Der Eintrag wurde inzwischen von jemand anderem geändert. Bitte neu laden, die fremden Änderungen bleiben erhalten.'
+  );
 interface Index {
   id: string;
   kind: 'index';
@@ -60,7 +62,7 @@ export class WwStore {
     if (response.status === 412) throw conflict();
     if (response.status === 409)
       throw new Error(
-        'Datei oder Vorgang bereits vorhanden oder inzwischen gleichzeitig geändert. Bitte gespeicherten Stand laden.'
+        'Datei oder Eintrag bereits vorhanden oder inzwischen gleichzeitig geändert. Bitte gespeicherten Stand laden.'
       );
     if (!response.ok) throw new Error('SharePoint meldet ' + response.status + '. Bitte Verbindung und Rechte prüfen.');
     return response;
@@ -266,9 +268,9 @@ export class WwStore {
       return existing;
     }
     if (previous && existing?.etag !== previous.etag) throw conflict();
-    if (!previous && existing) throw new Error('Dieser Vorgang ist bereits vorhanden. Bitte neu laden.');
+    if (!previous && existing) throw new Error('Dieser Eintrag ist bereits vorhanden. Bitte neu laden.');
     const data = JSON.stringify({ schema: 1, operationId, entity: value });
-    if (data.length > 58000) throw new Error('Der Vorgang ist zu groß. Es wird nichts gespeichert.');
+    if (data.length > 58000) throw new Error('Der Eintrag ist zu groß. Es wird nichts gespeichert.');
     const { ref, hash } = this.references(value);
     if (ref.length > 240 || hash.length > 240) throw new Error('Die Belegkennung ist zu lang.');
     const metadata = {
@@ -288,7 +290,7 @@ export class WwStore {
     );
     const saved = await this.one(value.id);
     if (!saved || saved.operationId !== operationId || !same(saved.value, value))
-      throw new Error('Speicherung noch nicht durch Lesen bestätigt. Bitte denselben Vorgang erneut versuchen.');
+      throw new Error('Das Speichern ist noch nicht bestätigt. Bitte noch einmal speichern.');
     return saved;
   }
   public async save(
@@ -305,9 +307,7 @@ export class WwStore {
     if (current && current.value.scope !== value.scope)
       throw new Error('Saison und Gültigkeitsbereich bleiben erhalten.');
     if (current?.value.confirmed && immutableKinds.has(value.kind))
-      throw new Error(
-        'Bestätigte Vorgänge bleiben erhalten. Bitte eine neue Version oder einen Korrekturvorgang anlegen.'
-      );
+      throw new Error('Bestätigte Einträge bleiben erhalten. Bitte eine neue Version anlegen.');
     if (value.scope !== 'global' && (await this.archived(value.scope)))
       throw new Error('Das Archiv bleibt erhalten. Bitte eine aktive Saison wählen.');
     if (

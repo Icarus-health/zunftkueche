@@ -43,7 +43,7 @@ test('a base price dated after the requested date is not applied retroactively',
  const {effectiveOffer}=await import('../src/kitchen/ww/domain.ts');const s=workspace();const result=effectiveOffer({...s.offers[0].value,priceDate:'2028-01-01',priceNet:20},[],'2027-02-01');assert.equal(result.priceNet,null);assert.equal(result.priceDate,null);
 });
 test('order editor warns when supplier prices are missing or have an older price year',async()=>{
- const {supplierOrderForm}=await import('../src/kitchen/supplier-forms.ts');const s=workspace();s.offers[0].value={...s.offers[0].value,priceDate:'2025-01-01'};const html=orderReview({...order,seasonId:'s2027'},s);assert.match(html,/Preisstand.*prüfen/i);assert.match(html,/2025-01-01/);assert.match(html,/älterer Preisstand/i);
+ const {supplierOrderForm}=await import('../src/kitchen/supplier-forms.ts');const s=workspace();s.offers[0].value={...s.offers[0].value,priceDate:'2025-01-01'};const html=orderReview({...order,seasonId:'s2027'},s);assert.match(html,/Preise und Hinweise prüfen/);assert.match(html,/Stand 01\.01\.2025/);assert.match(html,/älterer Preis, bitte bestätigen/);
 });
 test('a price-check note stays visible without deselecting an otherwise available article',()=>{
  const s=workspace();s.offers[0].value={...s.offers[0].value,note:'Preis fehlt – bitte aktuelles Angebot prüfen.'};const source={...order,deliveries:[{id:'wed',date:null,time:'Mittwoch',place:'Küche'}],lines:[{...line,quantity:3,schedule:{wed:3}}]};
@@ -52,4 +52,4 @@ test('a price-check note stays visible without deselecting an otherwise availabl
 test('dashboard count totals exclude articles not planned for the chosen season',async()=>{
  const {dashboard}=await import('../src/kitchen/workspace.ts');const {season}=await import('./support/kitchen-data.mjs');const s=workspace();s.articles[0].value={...s.articles[0].value,unavailableSeasons:[season.id]};const html=dashboard(s,season,'Küche');assert.match(html,/0 von 0 Artikeln zuletzt gezählt/);
 });
-test('order editor explicitly compares draft price with supplier base price',async()=>{const {supplierOrderForm}=await import('../src/kitchen/supplier-forms.ts');const {workspace}=await import('./support/kitchen-data.mjs');const s=workspace();s.orders[0].value.status='Entwurf';s.offers[0].value.priceNet=11;const html=orderReview(s.orders[0].value,s);assert.match(html,/Grundpreis im Lieferangebot: 11,00/);assert.match(html,/Preis in diesem Entwurf: 8,50/);});
+test('order editor explicitly compares draft price with supplier base price',async()=>{const {supplierOrderForm}=await import('../src/kitchen/supplier-forms.ts');const {workspace}=await import('./support/kitchen-data.mjs');const s=workspace();s.orders[0].value.status='Entwurf';s.offers[0].value.priceNet=11;const html=orderReview(s.orders[0].value,s);assert.match(html,/Preis am Artikel: 11,00/);assert.match(html,/Preis in diesem Entwurf: 8,50/);});

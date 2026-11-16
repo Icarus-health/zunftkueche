@@ -52,10 +52,10 @@ export function validateReceipt(order: Order, receipt: Receipt): void {
   text(r.receivedBy, 'Erfassende Person', 200);
   text(r.note, 'Hinweis', 1000, true);
   if (order.status !== 'Bestellt')
-    throw new Error('Lieferungen nur zu tatsächlich aufgegebenen, bestellten Vorgängen erfassen.');
+    throw new Error('Lieferungen lassen sich nur zu Bestellungen erfassen, die als bestellt markiert sind.');
   if ((order.receipts || []).length >= 100)
     throw new Error(
-      'Für eine Bestellung sind höchstens 100 Lieferannahmen möglich. Bitte einen neuen Vorgang anlegen.'
+      'Für eine Bestellung sind höchstens 100 Lieferannahmen möglich. Bitte eine neue Bestellung anlegen.'
     );
   if ((order.receipts || []).some(x => x.id === receipt.id)) throw new Error('Doppelte Lieferannahme.');
   if (!Array.isArray(r.lines) || !r.lines.length || r.lines.length > 200)

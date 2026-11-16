@@ -56,9 +56,9 @@ test('read-only order view: delivery days are a switch, headers are short, and c
  assert.deepEqual([...root.querySelectorAll('tbody td[data-delivery-column]')].map(c=>c.hidden),[true,false]);
 });
 
-test('an article without a supplier number keeps its text; the filler can be hidden on the phone',()=>{
+test('an article without a supplier number shows pack and unit only, no filler text',()=>{
  const o=draft('order',{deliveries:[{id:'wed',date:null,time:'Mittwoch',place:'Küche'}]});o.lines=o.lines.map(l=>({...l,code:'',schedule:{wed:1}}));
  const small=page(deliveryMatrix(o,false)).querySelector('tbody th small');
- assert.match(small.textContent,/^Ohne Artikelnummer · /);
- assert.equal(small.querySelector('.no-code').textContent,'Ohne Artikelnummer · ');
+ assert.equal(small.textContent,'Kiste à 12 Flaschen');
+ assert.equal(small.querySelector('.no-code'),null);
 });

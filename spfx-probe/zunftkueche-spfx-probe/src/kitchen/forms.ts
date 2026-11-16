@@ -2,6 +2,7 @@ import type { Article, Count, Master, MasterKind, Offer, Season, Supplier, Works
 import { METHODS } from './model.ts';
 import { documents } from './ww/model.ts';
 import { h, n, field, select, check, note, button } from './markup.ts';
+import { unitName } from './units.ts';
 export interface Editing {
   kind: MasterKind;
   id: string;
@@ -138,7 +139,7 @@ export function masterForm(edit: Editing, state: Workspace): string {
       field('packName', 'Gebinde, z. B. Kiste oder Sack', o.packName, true) +
       field(
         'packSize',
-        `Anzahl ${article?.unit || 'Einheiten'} je Gebinde`,
+        `Anzahl ${unitName(article?.unit || '') || 'Einheiten'} je Gebinde`,
         n(o.packSize),
         true,
         'text',
@@ -171,7 +172,7 @@ export function masterForm(edit: Editing, state: Workspace): string {
           ['', 'Bitte wählen'],
           ...state.articles
             .filter(a => a.value.active)
-            .map(a => [a.value.id, a.value.name + ' · ' + a.value.unit] as [string, string])
+            .map(a => [a.value.id, a.value.name + ' · ' + unitName(a.value.unit, 1)] as [string, string])
         ],
         c.articleId,
         'required'

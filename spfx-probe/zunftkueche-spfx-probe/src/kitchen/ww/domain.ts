@@ -88,7 +88,7 @@ export function validateDocument(v: WwDocument): void {
   } else if (v.kind === 'slot') {
     text(v.name, 'Terminname', 160);
     validDate(v.date);
-    text(v.time, 'Zeitfenster', 80, true);
+    text(v.time, 'Uhrzeit', 80, true);
     text(v.place, 'Ort', 160, true);
   } else if (v.kind === 'rule') {
     if (v.cutoffTime !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(v.cutoffTime)))
@@ -142,7 +142,7 @@ export function validateDocument(v: WwDocument): void {
     text(v.name, 'Rezeptname', 160);
     text(v.category, 'Kategorie', 80, true);
     amount(v.yield);
-    if (v.yield <= 0) throw new Error('Ausbeute muss größer als null sein.');
+    if (v.yield <= 0) throw new Error('Die Portionenzahl muss größer als null sein.');
     amount(v.salePriceGross, true);
     list(v.ingredients);
     if (v.confirmed && !v.ingredients.length) throw new Error('Bestätigte Zutaten fehlen.');
@@ -326,7 +326,7 @@ export function validateDocument(v: WwDocument): void {
     }
   } else throw new Error('Unbekannte Vorgangsart.');
   if (JSON.stringify(v).length > 56000)
-    throw new Error('Der Vorgang ist zu groß. Bitte weniger Positionen gemeinsam übernehmen; es wird nichts gekürzt.');
+    throw new Error('Der Eintrag ist zu groß. Bitte weniger Positionen gemeinsam übernehmen, es wird nichts gekürzt.');
 }
 function validateBillRelations(v: BillRelations): void {
   validateBillCostAssignment(v.costAssignment);
@@ -473,7 +473,7 @@ export function effectiveOffer(offer: Offer, lists: PriceList[], date: string): 
   const line = source?.lines.find(l => l.offerId === offer.id);
   if (line && line.offerSignature !== offerIdentity(offer))
     throw new Error(
-      'Gebinde oder Lieferartikel wurde seit dem bestätigten Preisstand geändert. Bitte einen neuen passenden Preisstand prüfen.'
+      'Das Gebinde wurde geändert, seit der Preis eingetragen wurde. Bitte den Preis unter Lieferanten bei „Preise ändern“ neu eintragen.'
     );
   return line
     ? { ...offer, priceNet: line.priceNet, deposit: line.deposit, priceDate: source!.validFrom }
@@ -503,7 +503,7 @@ export function templateOrders(template: Template, slots: Slot[], state: Workspa
       .map((l, i) => {
         const raw = state.offers.find(o => o.value.id === l.offerId && o.value.active)?.value;
         if (!raw || raw.supplierId !== supplier.id)
-          throw new Error('Lieferangebot fehlt oder passt nicht zum Lieferanten.');
+          throw new Error('Der Artikel fehlt beim Lieferanten oder passt nicht dazu.');
         const article = state.articles.find(a => a.value.id === raw.articleId && a.value.active)?.value;
         if (!article) throw new Error('Artikel fehlt.');
         const offer = effectiveOffer(raw, prices, slot.date);

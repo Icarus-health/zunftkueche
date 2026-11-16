@@ -18,6 +18,11 @@ export function amount2(value: number | null | undefined): string {
         value
       );
 }
+/** Datum zum Lesen: 05.02.2027. Gespeichert und in Datumsfeldern bleibt es JJJJ-MM-TT. */
+export function dateDe(value: string | null | undefined): string {
+  const text = value || '';
+  return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10).split('-').reverse().join('.') : text;
+}
 /** Geldbetrag zum Lesen: immer zwei Nachkommastellen, z. B. 12,50 €. */
 export function euro(value: number | null | undefined): string {
   return value === null || value === undefined

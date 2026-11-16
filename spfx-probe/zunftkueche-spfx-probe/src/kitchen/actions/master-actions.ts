@@ -35,7 +35,7 @@ export function articles(app: KitchenView): string {
           const price = effectiveOffer(offer, priceLists, date);
           const amount = price.priceNet === null ? 'Preis offen' : euro(price.priceNet) + ' netto';
           return `<tr><td><strong>${h(supplier)}</strong>${offer.active ? '' : '<small>Inaktiv</small>'}</td>
-   <td>${h(offer.packName)} à ${n(offer.packSize)} ${h(article.unit)}</td>
+   <td>${h(unitName(offer.packName, 1))} à ${n(offer.packSize)} ${h(unitName(article.unit, offer.packSize))}</td>
    <td>${h(amount)}${price.priceDate ? '<small>Stand ' + h(displayDate(price.priceDate)) + '</small>' : ''}</td>
    <td><button type="button" data-action="offer-edit" data-id="${h(offer.id)}" aria-label="Gebinde und Preis bei ${h(supplier)} bearbeiten">Bearbeiten</button></td></tr>`;
         })
@@ -47,7 +47,7 @@ export function articles(app: KitchenView): string {
         : '<p class="muted">Noch bei keinem Lieferanten hinterlegt.</p>';
       return `<details class="article-list-row" data-search="${h(keywords)}"><summary><span class="article-name">${icon('chevron')}
   <span><strong>${h(article.name)}</strong>${article.active ? '' : ' <small>Inaktiv</small>'}</span></span>
-  <span>${h(article.category || 'Ohne Kategorie')}</span><span>${h(article.unit)}</span>
+  <span>${h(article.category || 'Ohne Kategorie')}</span><span>${h(unitName(article.unit, 1))}</span>
   <span>${offers.length ? offers.length + ' ' + (offers.length === 1 ? 'Lieferant' : 'Lieferanten') : 'Kein Lieferant'}<span class="sr-only"> ansehen</span></span></summary>
   <div class="article-detail">${comparison}<div class="actions">${button('article-edit', 'Artikel bearbeiten', article.id)}
   ${article.active ? button('offer-new', 'Weiteren Lieferanten hinzufügen', article.id) : ''}</div></div></details>`;
@@ -73,7 +73,7 @@ function priceList(app: KitchenView, supplierId: string): string {
       } catch {
         /* Gebinde seit der letzten Preisliste geändert: Preis am Artikel zeigen */
       }
-      return `<tr><th scope="row">${h(article?.name || 'Artikel')}</th><td>${h(offer.packName)} à ${n(offer.packSize)} ${h(unitName(article?.unit || '', offer.packSize))}</td><td class="num">${current.priceNet === null ? '<span class="muted">offen</span>' : h(euro(current.priceNet))}</td><td>${current.priceNet !== null && current.priceDate ? h(displayDate(current.priceDate)) : ''}</td><td><button type="button" class="link-button" data-action="offer-edit" data-id="${h(offer.id)}" aria-label="${h(article?.name || 'Artikel')} bearbeiten">Bearbeiten</button></td></tr>`;
+      return `<tr><th scope="row">${h(article?.name || 'Artikel')}</th><td>${h(unitName(offer.packName, 1))} à ${n(offer.packSize)} ${h(unitName(article?.unit || '', offer.packSize))}</td><td class="num">${current.priceNet === null ? '<span class="muted">offen</span>' : h(euro(current.priceNet))}</td><td>${current.priceNet !== null && current.priceDate ? h(displayDate(current.priceDate)) : ''}</td><td><button type="button" class="link-button" data-action="offer-edit" data-id="${h(offer.id)}" aria-label="${h(article?.name || 'Artikel')} bearbeiten">Bearbeiten</button></td></tr>`;
     })
     .join('');
   return rows

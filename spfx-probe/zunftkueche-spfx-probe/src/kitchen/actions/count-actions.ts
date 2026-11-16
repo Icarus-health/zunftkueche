@@ -6,6 +6,7 @@ import { nextUsePlans } from '../ww/operations-view.ts';
 import type { InventorySession } from '../model';
 import { parseDecimal } from '../domain.ts';
 import { h, n, button } from '../markup.ts';
+import { unitName } from '../units.ts';
 import { countQuantity, validateInventory, latestCounts } from '../operations.ts';
 import { countProgress, countShare } from '../operation-forms.ts';
 import type { KitchenView } from '../view';
@@ -60,7 +61,7 @@ export async function inventoryAction(
 ): Promise<boolean> {
   if (!app.state) throw new Error('Bitte zuerst den Arbeitsbereich einrichten.');
   if (action === 'inventory-setup') {
-    await app.run(() => app.store.initialize(), 'Abendabschluss eingerichtet und nachgelesen.');
+    await app.run(() => app.store.initialize(), 'Abendabschluss eingerichtet.');
     return true;
   }
   if (action === 'inventory-new' || action === 'inventory-edit') {
@@ -237,7 +238,7 @@ export async function saveInventory(
           '</strong> · ' +
           n(countQuantity(l.packs, l.loose, l.packSize)) +
           ' ' +
-          h(l.unit) +
+          h(unitName(l.unit)) +
           ' · ' +
           (l.assessment === 'reorder' ? 'Nachbestellen' : l.assessment === 'surplus' ? 'Überhang' : 'Übergabe') +
           (l.note ? ' · ' + h(l.note) : '') +
@@ -270,7 +271,7 @@ export async function saveInventory(
                 ' → jetzt ' +
                 n(countQuantity(l.packs, l.loose, l.packSize)) +
                 ' ' +
-                h(l.unit) +
+                h(unitName(l.unit)) +
                 '</li>'
             )
             .join('') +
@@ -287,7 +288,7 @@ export async function saveInventory(
   await app.run(
     () => app.store.saveInventory(value, previous, app.operationId),
     finish
-      ? 'Abendabschluss abgeschlossen und nachgelesen.'
+      ? 'Abendabschluss abgeschlossen.'
       : 'Entwurf gespeichert. Ihr könnt den Abendabschluss im Bestand fortsetzen.',
     () => {
       app.view = 'stock';

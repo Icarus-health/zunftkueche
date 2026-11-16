@@ -7,6 +7,7 @@ import { documents } from './model.ts';
 import { berlinDay, planDemand, stockProjection, round, stableId, templateOrders } from './domain.ts';
 import { receivedQuantity } from '../operations.ts';
 import { button, select, field, h, n } from '../markup.ts';
+import { unitName } from '../units.ts';
 import { heading, confirmationActions, dayLabel, today } from './common.ts';
 import { deliverySlots, isDaySlot } from './delivery-days.ts';
 export interface ProcurementRow {
@@ -158,7 +159,7 @@ export function planOrders(plan: Plan, slot: Slot, s: Workspace, allocations: Al
     const offer = s.offers.find(
       o => o.value.id === a.offerId && o.value.articleId === r.articleId && o.value.active
     )?.value;
-    if (!offer) throw new Error('Passendes Lieferangebot auswählen.');
+    if (!offer) throw new Error('Bitte bei jedem Artikel Lieferant und Gebinde wählen.');
     const lines = groups.get(offer.supplierId) || [];
     lines.push({ offerId: offer.id, quantity: Math.ceil(required / offer.packSize) });
     groups.set(offer.supplierId, lines);
@@ -320,7 +321,7 @@ export function mergePlanOrders(
         order.lines.push(line);
       }
       if (line.packSize !== add.packSize || line.unit !== add.unit)
-        throw new Error('Liefergebinde hat sich geändert. Bitte den Entwurf prüfen.');
+        throw new Error('Das Gebinde hat sich geändert. Bitte den Entwurf prüfen.');
       if (line.schedule![date.id] === null)
         throw new Error('Bestehende Menge ist noch offen. Bitte zuerst die manuelle Menge in der Bestellung klären.');
       line.schedule![date.id] = round((line.schedule![date.id] || 0) + (add.quantity || 0));
@@ -396,14 +397,16 @@ export function planProcurementForm(plan: Plan, s: Workspace, mode: ProcurementM
         'Zusätzlich benötigt: ' +
         n(rest) +
         ' ' +
-        row.unit +
-        (rest && selectedOffer
-          ? ' · ' +
+        unitName(row.unit, rest) +
+        (rest && selectedOffer && selectedOffer.packSize !== 1
+          ? ' · das sind ' +
             Math.ceil(rest / selectedOffer.packSize) +
-            ' Gebinde à ' +
+            ' ' +
+            unitName(selectedOffer.packName, Math.ceil(rest / selectedOffer.packSize)) +
+            ' à ' +
             n(selectedOffer.packSize) +
             ' ' +
-            row.unit
+            unitName(row.unit, selectedOffer.packSize)
           : '');
       const issues = [...row.issues, ...(proposal?.reasons || [])];
       const uncertain =
@@ -420,7 +423,7 @@ export function planProcurementForm(plan: Plan, s: Workspace, mode: ProcurementM
         '<p>Bedarf: ' +
         n(row.required) +
         ' ' +
-        h(row.unit) +
+        h(unitName(row.unit)) +
         '<br>Angerechnet: <span data-stock-use>' +
         n(stockUse) +
         '</span> aus Bestand · <span data-incoming-use>' +
@@ -432,7 +435,7 @@ export function planProcurementForm(plan: Plan, s: Workspace, mode: ProcurementM
         '</strong></p>' +
         select(
           'offerId',
-          'Liefergebinde',
+          'Lieferant und Gebinde',
           [
             ['', 'Gebinde wählen'],
             ...candidates.map(
@@ -441,11 +444,8 @@ export function planProcurementForm(plan: Plan, s: Workspace, mode: ProcurementM
                   offer.id,
                   (s.suppliers.find(row => row.value.id === offer.supplierId)?.value.name || '') +
                     ' · ' +
-                    offer.packName +
-                    ' à ' +
-                    n(offer.packSize) +
-                    ' ' +
-                    row.unit
+                    unitName(offer.packName, 1) +
+                    (offer.packSize !== 1 ? ' à ' + n(offer.packSize) + ' ' + unitName(row.unit, offer.packSize) : '')
                 ] as [string, string]
             )
           ],
@@ -461,7 +461,7 @@ export function planProcurementForm(plan: Plan, s: Workspace, mode: ProcurementM
         '</div><p class="muted">Noch anrechenbar: ' +
         n(row.available ?? 0) +
         ' ' +
-        h(row.unit) +
+        h(unitName(row.unit)) +
         '</p></details></section>'
       );
     })

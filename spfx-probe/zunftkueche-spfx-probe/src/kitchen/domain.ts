@@ -110,7 +110,7 @@ export function validateEntity(kind: MasterKind, value: unknown): void {
       throw new Error('Prüfstatus bitte auswählen.');
     if (v.reviewDate) date(v.reviewDate);
     if (v.reviewStatus === 'geprueft' && !v.reviewDate) throw new Error('Bitte das Prüfdatum angeben.');
-    if (v.reviewReason !== undefined) text(v.reviewReason, 'Prüfvermerk', true, 1000);
+    if (v.reviewReason !== undefined) text(v.reviewReason, 'Hinweis zum Lieferanten', true, 1000);
     text(v.name, 'Lieferant', false, 160);
     text(v.phone, 'Telefon', true, 100);
     text(v.email, 'E-Mail', true, 200);
@@ -237,7 +237,7 @@ export function validateOrder(order: Order, state?: Catalog, forDispatch = false
       const offer = state.offers.find(
         o => o.id === l.offerId && o.articleId === l.articleId && o.supplierId === order.supplierId && o.active
       );
-      if (!offer) throw new Error('Lieferangebot passt nicht zum Artikel oder Lieferanten.');
+      if (!offer) throw new Error('Gebinde passt nicht zum Artikel oder Lieferanten.');
       if (
         article.unit !== l.unit ||
         offer.packSize !== l.packSize ||
@@ -295,7 +295,7 @@ export function copyOrder(
         o => o.id === l.offerId && o.active && o.articleId === l.articleId && o.supplierId === source.supplierId
       );
       if (!article || !offer)
-        throw new Error(`Artikel oder Lieferangebot für ${l.articleName} fehlt oder ist inaktiv.`);
+        throw new Error(`${l.articleName} ist nicht mehr aktiv oder beim Lieferanten nicht mehr hinterlegt.`);
       return {
         ...l,
         articleName: article.name,

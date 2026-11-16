@@ -60,6 +60,7 @@ import { relatedBills, returnMovements, billTypeLabel, linkedBill } from './bill
 import { billProposal } from '../imports/bill-proposal.ts';
 import { billArea, billTerms } from '../imports/bill-hints.ts';
 import { guessSupplier, withArticles } from './bill-suggest.ts';
+import { unitName } from '../units.ts';
 import { supportedInboxFile } from './inbox.ts';
 import { sha256 } from '../imports/identity.ts';
 import { inboxView } from './inbox-view.ts';
@@ -434,8 +435,13 @@ export class WwController {
           remaining.toLocaleString('de-DE') +
           (remaining
             ? offer
-              ? ' · ' + Math.ceil(remaining / offer.packSize) + ' Gebinde'
-              : ' · Liefergebinde auswählen'
+              ? offer.packSize !== 1
+                ? ' · das sind ' +
+                  Math.ceil(remaining / offer.packSize) +
+                  ' ' +
+                  unitName(offer.packName, Math.ceil(remaining / offer.packSize))
+                : ''
+              : ' · Gebinde auswählen'
             : '');
       } catch {
         total.textContent = 'Anrechnung bitte prüfen.';
@@ -580,7 +586,7 @@ export class WwController {
                 await this.p.store.saveSystemWithOriginal(doc, file.bytes, file.extension, operationId);
               else await this.p.store.save(doc, undefined, operationId);
             },
-            'Geprüfte Datei übernommen und nachgelesen.',
+            'Geprüfte Datei übernommen.',
             () => {
               this.inboxPage = inbox;
               this.screen = inbox ? 'inbox' : doc.kind === 'prices' ? 'prices' : 'systems';
@@ -681,7 +687,7 @@ export class WwController {
       if (matching?.value.kind === 'system') {
         if (matching.value.fileHash !== original.hash || !matching.value.originalExtension)
           throw new Error(
-            'Das Original passt nicht zum unvollständigen Import. Bitte den gespeicherten Vorgang prüfen.'
+            'Das Original passt nicht zum unvollständigen Import. Bitte den gespeicherten Import prüfen.'
           );
         this.inboxPending = { value: matching.value, original };
         this.p.redraw();
@@ -885,7 +891,7 @@ export class WwController {
             value.originalExtension!,
             operationId
           ),
-        'Geprüfte Datei übernommen und nachgelesen.',
+        'Geprüfte Datei übernommen.',
         () => {
           this.inboxPage = inbox;
           this.screen = 'inbox';
@@ -1095,7 +1101,7 @@ export class WwController {
         operationId = this.operationId;
       await this.p.mutate(
         () => this.p.store.saveSystemWithOriginal(value, bytes, value.originalExtension!, operationId),
-        'Original ergänzt; Import abgeschlossen und nachgelesen.',
+        'Original ergänzt; Import abgeschlossen.',
         () => {
           this.screen = 'systems';
         }
@@ -1106,7 +1112,7 @@ export class WwController {
       const operationId = this.operationId;
       await this.p.mutate(
         () => this.p.store.resumeImport(id, operationId),
-        'Import abgeschlossen und nachgelesen.',
+        'Import abgeschlossen.',
         () => {
           this.screen = 'systems';
         }
@@ -1197,7 +1203,7 @@ export class WwController {
       // A button on another page (e.g. Bestand) therefore has to select the matching screen first.
       if (!this.screen) {
         const home = formScreens[kind];
-        if (!home) throw new Error('Diesen Vorgang bitte über die Navigation öffnen.');
+        if (!home) throw new Error('Bitte über das Menü öffnen.');
         this.screen = home;
         this.openedFromOverview = true;
       }
@@ -1210,7 +1216,7 @@ export class WwController {
     if (action === 'ww-edit') {
       if (!this.p.canLeave()) return;
       const previous = this.p.state().ww?.records.find(r => r.value.id === id);
-      if (!previous) throw new Error('Vorgang nicht gefunden.');
+      if (!previous) throw new Error('Eintrag nicht gefunden.');
       this.previous = previous;
       this.draft = structuredClone(previous.value);
       if (this.draft.confirmed && this.draft.kind === 'recipe') {
@@ -1343,7 +1349,7 @@ export class WwController {
     if (action === 'ww-use') {
       if (!this.p.canLeave()) return;
       this.useTemplate = documents(this.p.state().ww, 'template').find(d => d.id === id);
-      if (!this.useTemplate) throw new Error('Ordersatz nicht gefunden.');
+      if (!this.useTemplate) throw new Error('Vorlage nicht gefunden.');
       this.p.redraw();
       return;
     }
@@ -1469,7 +1475,7 @@ export class WwController {
       const operationId = this.operationId;
       await this.p.mutate(
         () => this.p.orders([one], operationId),
-        'Gemeinsame Lieferantenbestellung angelegt und nachgelesen.',
+        'Gemeinsame Lieferantenbestellung angelegt.',
         () => {
           this.screen = 'templates';
         }

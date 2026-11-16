@@ -13,6 +13,7 @@ import { catalog } from '../model.ts';
 import { saveFile } from '../save-file.ts';
 import { validateOrder, orderTotal } from '../domain.ts';
 import { h, n, money, select, button, empty, ordersTabs, moreMenu, backLink } from '../markup.ts';
+import { unitName } from '../units.ts';
 import { orderOverview } from '../order-overview.ts';
 import { articleAvailable } from '../model.ts';
 import { deliveryState, receivedQuantity, latestCounts } from '../operations.ts';
@@ -87,7 +88,7 @@ export function orderDetail(app: KitchenView, row?: Stored<Order>): string {
     o.seasonId === app.seasonId &&
     o.area === app.area &&
     ['Bestellt', 'Abgeschlossen'].includes(o.status);
-  return `<section class="panel">${backLink('cancel', 'Bestellungen')}<div class="row"><div><h1>${h(o.supplierName)}</h1><p>${h(o.occasion || 'Bestellung')}</p></div></div><div class="detail-meta">${badge(o.status, o.status === 'Entwurf' ? 'warning' : 'neutral')}${badge(deliveryState(o), deliveryState(o) === 'Vollständig geliefert' ? 'success' : 'neutral')}<span>${h(o.method)} · ${h(o.deliveryDate ? 'erste Lieferung ' + displayDate(o.deliveryDate) : 'Liefertag noch offen')}</span></div>${o.recordedAt ? `<p class="muted">Bestellung dokumentiert am ${h(stamp(o.recordedAt))} · ${h(o.recordedBy)}</p>` : ''}${o.sourceYear ? `<p class="muted">Übernommen aus Saison ${o.sourceYear}. Die Ausgangsbestellung bleibt erhalten.</p>` : ''}${o.deliveries ? deliverySummary(o) + deliveryMatrix(o, false) : ''}<div class="detail-lines" ${o.deliveries ? 'hidden' : ''}>${o.lines.map(l => `<div class="detail-line"><div><strong>${h(l.articleName)}</strong><small>${h(l.code)} · 1 ${h(l.packName)} = ${n(l.packSize)} ${h(l.unit)}</small>${received ? `<small>Geliefert ${n(receivedQuantity(o, l.id))} ${h(l.packName)} · offen ${n(Math.max(0, (l.quantity || 0) - receivedQuantity(o, l.id)))} ${h(l.packName)}</small>` : ''}</div><strong>${l.quantity === null ? 'Menge offen' : n(l.quantity) + ' ' + h(l.packName)}</strong><span>${l.quantity === null ? '' : n(l.quantity * l.packSize) + ' ' + h(l.unit)}</span><span>${money(l.priceNet)} netto / ${h(l.packName)}</span></div>`).join('')}</div><p class="total">${total === null ? 'Gesamtsumme offen · Preise oder Mengen fehlen' : 'Warenwert netto: ' + money(total) + ' · ohne Pfand'}</p>${o.note ? `<p>${h(o.note)}</p>` : ''}<div class="actions">${app.writable() && o.status === 'Bestellt' && !o.deliveries && deliveryState(o) !== 'Vollständig geliefert' ? button('receipt-new', 'Lieferung prüfen', o.id, true) : ''}${app.writable() && o.status === 'Entwurf' ? button('order-edit', 'Entwurf bearbeiten', o.id) + button('order-mail', 'PDF und E-Mail-Text', o.id) + button('order-mark', 'Als bestellt markieren', o.id, true) : button('order-pdf', 'PDF herunterladen', o.id) + (o.status === 'Entwurf' ? '' : button('order-bill', 'Rechnung zuordnen', o.id))}${o.deliveries ? o.deliveries.map(d => '<div class="delivery-summary"><strong>' + h(d.date ? dayLabel(d.date) : 'Datum offen') + '</strong><span>' + h([d.time, d.place].filter(Boolean).join(' · ')) + '</span>' + (app.writable() && o.status === 'Bestellt' ? button('receipt-new', 'Lieferung prüfen', o.id + '|' + d.id) : '') + '</div>').join('') : button('order-text', 'Bestelltext anzeigen', o.id)}${app.writable() && o.status === 'Bestellt' ? button('order-follow', 'Nachbestellung anlegen', o.id) + button('order-close', 'Vorgang abschließen', o.id) : ''}</div><div data-order-text class="ordertext" hidden></div>${o.deliveryNotes?.length ? `<details class="receipt-history" open><summary>Ausgefallene Lieferungen (${o.deliveryNotes.length})</summary>${o.deliveryNotes.map(x => `<div><strong>Keine Lieferung · ${h(stamp(x.recordedAt))}</strong><p>${h(x.recordedBy)} · ${h(displayDate(o.deliveries?.find(d => d.id === x.deliveryId)?.date || '') || 'Termin offen')}</p><p>${h(x.note)}</p></div>`).join('')}</details>` : ''}${
+  return `<section class="panel">${backLink('cancel', 'Bestellungen')}<div class="row"><div><h1>${h(o.supplierName)}</h1><p>${h(o.occasion || 'Bestellung')}</p></div></div><div class="detail-meta">${badge(o.status, o.status === 'Entwurf' ? 'warning' : 'neutral')}${badge(deliveryState(o), deliveryState(o) === 'Vollständig geliefert' ? 'success' : 'neutral')}<span>${h(o.method)} · ${h(o.deliveryDate ? 'erste Lieferung ' + displayDate(o.deliveryDate) : 'Liefertag noch offen')}</span></div>${o.recordedAt ? `<p class="muted">Bestellung dokumentiert am ${h(stamp(o.recordedAt))} · ${h(o.recordedBy)}</p>` : ''}${o.sourceYear ? `<p class="muted">Übernommen aus Saison ${o.sourceYear}. Die Ausgangsbestellung bleibt erhalten.</p>` : ''}${o.deliveries ? deliverySummary(o) + deliveryMatrix(o, false) : ''}<div class="detail-lines" ${o.deliveries ? 'hidden' : ''}>${o.lines.map(l => `<div class="detail-line"><div><strong>${h(l.articleName)}</strong><small>${h(l.code)} · 1 ${h(unitName(l.packName, 1))} = ${n(l.packSize)} ${h(unitName(l.unit, l.packSize))}</small>${received ? `<small>Geliefert ${n(receivedQuantity(o, l.id))} ${h(unitName(l.packName, receivedQuantity(o, l.id)))} · offen ${n(Math.max(0, (l.quantity || 0) - receivedQuantity(o, l.id)))} ${h(unitName(l.packName, Math.max(0, (l.quantity || 0) - receivedQuantity(o, l.id))))}</small>` : ''}</div><strong>${l.quantity === null ? 'Menge offen' : n(l.quantity) + ' ' + h(unitName(l.packName, l.quantity))}</strong><span>${l.quantity === null ? '' : n(l.quantity * l.packSize) + ' ' + h(unitName(l.unit, l.quantity * l.packSize))}</span><span>${money(l.priceNet)} netto / ${h(unitName(l.packName, 1))}</span></div>`).join('')}</div><p class="total">${total === null ? 'Gesamtsumme offen · Preise oder Mengen fehlen' : 'Warenwert netto: ' + money(total) + ' · ohne Pfand'}</p>${o.note ? `<p>${h(o.note)}</p>` : ''}<div class="actions">${app.writable() && o.status === 'Bestellt' && !o.deliveries && deliveryState(o) !== 'Vollständig geliefert' ? button('receipt-new', 'Lieferung prüfen', o.id, true) : ''}${app.writable() && o.status === 'Entwurf' ? button('order-edit', 'Entwurf bearbeiten', o.id) + button('order-mail', 'PDF und E-Mail-Text', o.id) + button('order-mark', 'Als bestellt markieren', o.id, true) : button('order-pdf', 'PDF herunterladen', o.id) + (o.status === 'Entwurf' ? '' : button('order-bill', 'Rechnung zuordnen', o.id))}${o.deliveries ? o.deliveries.map(d => '<div class="delivery-summary"><strong>' + h(d.date ? dayLabel(d.date) : 'Datum offen') + '</strong><span>' + h([d.time, d.place].filter(Boolean).join(' · ')) + '</span>' + (app.writable() && o.status === 'Bestellt' ? button('receipt-new', 'Lieferung prüfen', o.id + '|' + d.id) : '') + '</div>').join('') : button('order-text', 'Bestelltext anzeigen', o.id)}${app.writable() && o.status === 'Bestellt' ? button('order-follow', 'Nachbestellung anlegen', o.id) + button('order-close', 'Vorgang abschließen', o.id) : ''}</div><div data-order-text class="ordertext" hidden></div>${o.deliveryNotes?.length ? `<details class="receipt-history" open><summary>Ausgefallene Lieferungen (${o.deliveryNotes.length})</summary>${o.deliveryNotes.map(x => `<div><strong>Keine Lieferung · ${h(stamp(x.recordedAt))}</strong><p>${h(x.recordedBy)} · ${h(displayDate(o.deliveries?.find(d => d.id === x.deliveryId)?.date || '') || 'Termin offen')}</p><p>${h(x.note)}</p></div>`).join('')}</details>` : ''}${
     received
       ? `<details class="receipt-history"><summary>Lieferhistorie (${o.receipts!.length})</summary>${o
           .receipts!.map(
@@ -95,7 +96,7 @@ export function orderDetail(app: KitchenView, row?: Stored<Order>): string {
               `<div><strong>${h(stamp(r.receivedAt))}</strong><p>${h(r.receivedBy)}</p>${r.lines
                 .map(l => {
                   const original = o.lines.find(x => x.id === l.lineId)!;
-                  return `<p>${h(original.articleName)} · ${n(l.quantity)} ${h(original.packName)}</p>`;
+                  return `<p>${h(original.articleName)} · ${n(l.quantity)} ${h(unitName(original.packName, l.quantity))}</p>`;
                 })
                 .join('')}${r.note ? `<p>${h(r.note)}</p>` : ''}</div>`
           )
@@ -118,7 +119,7 @@ export function reorderList(app: KitchenView): string {
           '</h2><p>Zuletzt gezählt: ' +
           n(c.quantity) +
           ' ' +
-          h(c.unit) +
+          h(unitName(c.unit)) +
           ' · ' +
           h(stamp(c.countedAt)) +
           (c.note ? ' · ' + h(c.note) : '') +
@@ -148,7 +149,7 @@ export function reorderList(app: KitchenView): string {
                     : button('order-reorder', supplier.name + ' · Bestellung vorbereiten', o.value.id);
                 })
                 .join('')
-            : '<p>Kein aktives Lieferangebot hinterlegt.</p>') +
+            : '<p>Bei diesem Lieferanten ist noch kein Artikel hinterlegt.</p>') +
           '</section>'
         );
       })
@@ -279,11 +280,11 @@ export async function orderAction(
       ),
       offer = app.state.offers.find(x => x.value.id === offerId && x.value.active);
     if (!target || !offer || target.value.supplierId !== offer.value.supplierId)
-      throw new Error('Bestellung oder Lieferangebot wurde geändert. Bitte neu laden.');
+      throw new Error('Bestellung oder Artikel wurde geändert. Bitte neu laden.');
     await app.action('order-edit', orderId);
     if (!app.draft!.lines.some(l => l.offerId === offerId)) {
       const chooser = app.root.querySelector<HTMLSelectElement>('[name=addOffer]');
-      if (!chooser) throw new Error('Lieferangebot nicht verfügbar.');
+      if (!chooser) throw new Error('Dieser Artikel ist beim Lieferanten nicht mehr verfügbar.');
       chooser.value = offerId;
       if (chooser.value !== offerId) throw new Error('Artikel ist in dieser Saison nicht verfügbar.');
       await app.action('line-add', '');
@@ -298,7 +299,7 @@ export async function orderAction(
   }
   if (action === 'order-reorder') {
     const offer = app.state.offers.find(o => o.value.id === id)?.value;
-    if (!offer) throw new Error('Lieferangebot fehlt.');
+    if (!offer) throw new Error('Der Artikel fehlt beim Lieferanten.');
     await app.action('order-new', '');
     app.draft!.supplierId = offer.supplierId;
     const supplier = app.state.suppliers.find(s => s.value.id === offer.supplierId)!.value;
@@ -592,7 +593,7 @@ export async function orderAction(
     if (action === 'line-remove') app.draft.lines = app.draft.lines.filter(l => l.id !== id);
     else {
       const offer = app.state.offers.find(o => o.value.id === String(data.get('addOffer')))?.value;
-      if (!offer) throw new Error('Bitte ein Lieferangebot wählen.');
+      if (!offer) throw new Error('Bitte einen Artikel wählen.');
       if (app.draft.lines.some(l => l.offerId === offer.id))
         throw new Error('Dieser Artikel ist bereits enthalten. Bitte die vorhandene Menge ändern.');
       const article = app.state.articles.find(a => a.value.id === offer.articleId)!.value;
@@ -646,14 +647,14 @@ export async function orderAction(
       const box = document.createElement('section');
       box.className = 'warning';
       box.innerHTML =
-        '<p>Es sind noch Liefermengen offen. Soll der Vorgang trotzdem abgeschlossen werden? Die fehlenden Mengen werden nicht als geliefert gebucht.</p>' +
+        '<p>Es sind noch Liefermengen offen. Soll die Bestellung trotzdem abgeschlossen werden? Die fehlenden Mengen werden nicht als geliefert gebucht.</p>' +
         button('order-close-confirm', 'Trotz Fehlmengen abschließen', id);
       app.root.querySelector('main')!.append(box);
       return true;
     }
     await app.run(
       () => app.store.saveOrder({ ...old.value, status: 'Abgeschlossen' }, old, app.operationId),
-      'Abschluss dokumentiert und nachgelesen.'
+      'Abschluss dokumentiert.'
     );
     return true;
   }

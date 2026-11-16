@@ -94,7 +94,7 @@ export function supplierPdf(
         rowY -= rowHeight;
         stream += `.85 .85 .89 RG 30 ${rowY + 9} m 812 ${rowY + 9} l S\n`;
       });
-      text(30, 150, '* Gesamtmenge aller Liefertermine. Preise netto, Preisstand bitte bestätigen.', 8);
+      text(30, 150, '* Gesamtmenge aller Liefertermine. Preise netto, bitte bestätigen.', 8);
       const details = columns.flatMap(d =>
         wrap(dateLabel(d.date) + ': ' + (d.time || 'Zeit nach Absprache') + ' · ' + (d.place || order.area), 118)
       );

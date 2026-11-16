@@ -338,13 +338,13 @@ export function operationOverview(page: string, s: Workspace, area: Area, season
         'Rechnerischer Bestand ab letzter Zählung · ' + (place || 'Standardlager'),
         button('ww-new', 'Bewegung buchen', 'movement', true)
       ) +
-      `<p class="ww-alert">Offen bedeutet: Es fehlt ein verlässlicher Anfangsbestand oder eine zeitliche Zuordnung. Abweichungen durch erneutes Zählen klären.</p><section class="panel">${rows.map(r => `<div class="listrow"><div><strong>${h(r.name)}</strong><small>${r.countedAt ? 'Zählgrundlage: ' + h(new Date(r.countedAt).toLocaleString('de-DE')) : 'Noch keine Zählgrundlage'}${r.issues.length ? ' · ' + h(r.issues.join(' ')) : ''}</small></div><strong>${r.quantity === null ? 'Offen' : n(r.quantity) + ' ' + h(r.unit)}</strong></div>`).join('')}</section><h2>Buchungsjournal</h2><section class="panel">${
+      `<p class="ww-alert">Offen bedeutet: Es fehlt ein verlässlicher Anfangsbestand oder eine zeitliche Zuordnung. Abweichungen durch erneutes Zählen klären.</p><section class="panel">${rows.map(r => `<div class="listrow"><div><strong>${h(r.name)}</strong><small>${r.countedAt ? 'Zählgrundlage: ' + h(new Date(r.countedAt).toLocaleString('de-DE')) : 'Noch keine Zählgrundlage'}${r.issues.length ? ' · ' + h(r.issues.join(' ')) : ''}</small></div><strong>${r.quantity === null ? 'Offen' : n(r.quantity) + ' ' + h(unitName(r.unit, r.quantity))}</strong></div>`).join('')}</section><h2>Buchungsjournal</h2><section class="panel">${
         documents(s.ww, 'movement')
           .filter(d => d.area === area || d.toArea === area)
           .sort((a, b) => b.at.localeCompare(a.at))
           .map(
             d =>
-              `<div class="listrow"><div><strong>${h(s.articles.find(a => a.value.id === d.articleId)?.value.name || d.articleId)}</strong><p>${h({ incoming: 'Wareneingang', return: 'Retoure', waste: 'Verlust / Verderb', internal: 'Eigenverbrauch', transfer: 'Umlagerung', opening: 'Anfangsbestand', count: 'Zählkorrektur' }[d.type])} · ${n(d.quantity)} ${h(d.unit)} · ${h(d.place || 'Standardlager')}${d.type === 'transfer' ? ' → ' + h(d.toArea) + ' / ' + h(d.toPlace || 'Standardlager') : ''}</p><small>${h(new Date(d.at).toLocaleString('de-DE'))} · ${h(d.by)} · ${h(d.note)}</small></div></div>`
+              `<div class="listrow"><div><strong>${h(s.articles.find(a => a.value.id === d.articleId)?.value.name || d.articleId)}</strong><p>${h({ incoming: 'Wareneingang', return: 'Retoure', waste: 'Verlust / Verderb', internal: 'Eigenverbrauch', transfer: 'Umlagerung', opening: 'Anfangsbestand', count: 'Zählkorrektur' }[d.type])} · ${n(d.quantity)} ${h(unitName(d.unit, d.quantity))} · ${h(d.place || 'Standardlager')}${d.type === 'transfer' ? ' → ' + h(d.toArea) + ' / ' + h(d.toPlace || 'Standardlager') : ''}</p><small>${h(new Date(d.at).toLocaleString('de-DE'))} · ${h(d.by)} · ${h(d.note)}</small></div></div>`
           )
           .join('') ||
         empty('Noch keine zusätzlichen Bewegungen. Wareneingänge aus Bestellungen werden automatisch berücksichtigt.')

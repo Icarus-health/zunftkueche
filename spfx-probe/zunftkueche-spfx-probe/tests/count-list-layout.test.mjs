@@ -29,13 +29,13 @@ test('each row carries name, pack information, total and both quantity fields wi
  assert.equal(water.querySelector('.count-name strong').textContent,'Mineralwasser');
  assert.match(water.querySelector('.count-name small').textContent,/^Kiste · 12 Flasche/);
  const total=water.querySelector('[data-count-total=water]');
- assert.equal(total.textContent,'29 Flasche');assert.equal(total.dataset.state,'counted');
+ assert.equal(total.textContent,'29 Flaschen');assert.equal(total.dataset.state,'counted');
  assert.equal(water.querySelector('[name=packs_water]').getAttribute('aria-label'),'Mineralwasser · volle Kiste');
  assert.equal(water.querySelector('[name=loose_water]').getAttribute('aria-label'),'Mineralwasser · Flasche einzeln');
  assert.ok(sausage.classList.contains('count-single'));
  assert.equal(sausage.querySelector('[name=packs_b]').type,'hidden');
  assert.equal(sausage.querySelector('[name=loose_b]').value,'35');
- assert.match(sausage.querySelector('.count-name small').textContent,/^Menge in Stk/);
+ assert.match(sausage.querySelector('.count-name small').textContent,/^Menge in Stück/);
 });
 
 test('uncounted rows say "offen" and keep the fields empty',()=>{

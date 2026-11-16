@@ -144,7 +144,7 @@ function priceTable(doc: PriceList, s: Workspace): string {
       const article = s.articles.find(a => a.value.id === offer?.articleId)?.value;
       if (!offer || !article) return '';
       const label = article.name + ', ' + offer.packName;
-      return `<tr data-line><th scope="row">${h(article.name)}<input type="hidden" name="offerId" value="${h(offer.id)}"></th><td>${h(offer.packName)} à ${n(offer.packSize)} ${h(unitName(article.unit, offer.packSize))}</td><td><input name="priceNet" inputmode="decimal" value="${h(amount2(line.priceNet))}" aria-label="Preis netto für ${h(label)}"></td><td><input name="deposit" inputmode="decimal" value="${h(amount2(line.deposit))}" aria-label="Pfand für ${h(label)}"></td></tr>`;
+      return `<tr data-line><th scope="row">${h(article.name)}<input type="hidden" name="offerId" value="${h(offer.id)}"></th><td>${h(unitName(offer.packName, 1))} à ${n(offer.packSize)} ${h(unitName(article.unit, offer.packSize))}</td><td><input name="priceNet" inputmode="decimal" value="${h(amount2(line.priceNet))}" aria-label="Preis netto für ${h(label)}"></td><td><input name="deposit" inputmode="decimal" value="${h(amount2(line.deposit))}" aria-label="Pfand für ${h(label)}"></td></tr>`;
     })
     .join('');
   return (
@@ -169,7 +169,7 @@ export function procurementForm(doc: Slot | Rule | Template | PriceList, s: Work
     body =
       field('name', 'Bezeichnung', doc.name, true) +
       field('date', 'Lieferdatum', doc.date, true, 'date') +
-      field('time', 'Zeitfenster', doc.time) +
+      field('time', 'Uhrzeit', doc.time) +
       field('place', 'Liefer- oder Abholort', doc.place, false, 'text', 'list="delivery-places"') +
       '<datalist id="delivery-places">' +
       (s.seasons.find(x => x.value.id === doc.scope)?.value.deliveryPlaces || [])
@@ -183,14 +183,16 @@ export function procurementForm(doc: Slot | Rule | Template | PriceList, s: Work
       field('leadDays', 'Vorlauf in Tagen', String(doc.leadDays), true, 'number', 'min="0" max="365"') +
       field('cutoffTime', 'Bestellschluss (Uhrzeit)', doc.cutoffTime || '', false, 'time') +
       field('cutoff', 'Bestellschluss / Absprache', doc.cutoff) +
+      '<details class="form-more"><summary>Ausnahmen für einzelne Liefertage</summary>' +
       note(
         'deadlineOverrides',
-        'Ausnahmen (je Zeile Lieferdatum=Bestellschluss, z. B. 2027-02-05=2027-02-03T10:00)',
+        'Je Zeile: Liefertag = Bestellschluss, im Format Jahr-Monat-Tag = Jahr-Monat-TagTStunde:Minute',
         Object.entries(doc.deadlineOverrides || {})
           .map(([d, t]) => d + '=' + t)
           .join('\n')
       ) +
-      '<p>Vorlauf in Kalendertagen. Feiertage und Sonderabsprachen ausdrücklich als Ausnahme eintragen.</p>' +
+      '</details>' +
+      '<p>Vorlauf in Kalendertagen. Feiertage und Sonderabsprachen als Ausnahme eintragen.</p>' +
       field('minNet', 'Mindestbestellwert netto', n(doc.minNet), false, 'text', 'inputmode="decimal"') +
       field('feeNet', 'Lieferkosten netto', n(doc.feeNet), false, 'text', 'inputmode="decimal"') +
       note('note', 'Hinweise', doc.note);

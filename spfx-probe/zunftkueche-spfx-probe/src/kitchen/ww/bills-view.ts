@@ -6,7 +6,7 @@ import { reconcileBill } from './reconciliation.ts';
 import { documents, billLineLabels, billLineRoles } from './model.ts';
 import { button, field, select, h, n, money, euro, amount2, note, check, empty, backLink } from '../markup.ts';
 import { areaOptions } from '../model.ts';
-import { count } from '../units.ts';
+import { count, unitName } from '../units.ts';
 import { paymentNote } from './bill-suggest.ts';
 import { businessTabs, heading, confirmationActions, dayLabel } from './common.ts';
 export function billLine(s: Workspace, l?: BillLine): string {
@@ -264,7 +264,7 @@ export function billForm(
             '<li><strong>' +
             h(s.articles.find(a => a.value.id === p.offer.articleId)?.value.name || p.name) +
             '</strong> · ' +
-            h(p.offer.packName) +
+            h(unitName(p.offer.packName, 1)) +
             ': ' +
             h(euro(p.newPrice)) +
             ' netto <span class="muted">(' +
@@ -426,16 +426,16 @@ export function billDetail(row: Stored<Bill>, s: Workspace): string {
   return (
     backLink('ww-cancel', 'Rechnungen') +
     heading(b.name, b.number + ' · ' + dayLabel(b.date)) +
-    `<section class="panel"><h2>${h(billTypeLabel(b))}</h2><p>Netto ${b.net === null ? 'offen' : money(b.net)} · Steuer ${b.tax === null ? 'offen' : money(b.tax)} · Brutto ${money(b.gross)}</p><div class="ww-preview"><table><thead><tr><th>Position</th><th>Art</th><th>Menge</th><th>Einzelpreis netto</th><th>Zeile netto</th></tr></thead><tbody>${b.lines.map(l => `<tr><td>${h(l.name)}</td><td>${h(l.role ? billLineLabels[l.role] : 'Offen')}</td><td>${n(l.quantity)} ${h(l.unit)}</td><td>${money(l.unitNet)}</td><td>${money(l.totalNet)}</td></tr>`).join('')}</tbody></table></div><p>${h(b.note)}</p>${b.scanNumberReview?.status === 'reviewed' ? `<p class="ww-source">Einzelbeleg geprüft von ${h(b.scanNumberReview.by)} am ${h(new Date(b.scanNumberReview.at).toLocaleString('de-DE'))}. ${h(b.scanNumberReview.reason)}</p>` : ''}<p class="ww-source">Geprüft: ${h(b.by)} · ${h(new Date(b.at).toLocaleString('de-DE'))}</p>${b.attachment ? button('ww-bill-original', 'PDF-Original herunterladen', b.id) : ''}</section>${
+    `<section class="panel"><h2>${h(billTypeLabel(b))}</h2><p>Netto ${b.net === null ? 'offen' : money(b.net)} · Steuer ${b.tax === null ? 'offen' : money(b.tax)} · Brutto ${money(b.gross)}</p><div class="ww-preview"><table><thead><tr><th>Position</th><th>Art</th><th>Menge</th><th>Einzelpreis netto</th><th>Zeile netto</th></tr></thead><tbody>${b.lines.map(l => `<tr><td>${h(l.name)}</td><td>${h(l.role ? billLineLabels[l.role] : 'Offen')}</td><td>${n(l.quantity)} ${h(unitName(l.unit, l.quantity))}</td><td>${money(l.unitNet)}</td><td>${money(l.totalNet)}</td></tr>`).join('')}</tbody></table></div><p>${h(b.note)}</p>${b.scanNumberReview?.status === 'reviewed' ? `<p class="ww-source">Einzelbeleg geprüft von ${h(b.scanNumberReview.by)} am ${h(new Date(b.scanNumberReview.at).toLocaleString('de-DE'))}. ${h(b.scanNumberReview.reason)}</p>` : ''}<p class="ww-source">Geprüft: ${h(b.by)} · ${h(new Date(b.at).toLocaleString('de-DE'))}</p>${b.attachment ? button('ww-bill-original', 'PDF-Original herunterladen', b.id) : ''}</section>${
       invoicePriceProposals(b, s).length
-        ? '<section class="panel"><h2>Preisänderungen prüfen</h2><p>Nettopreis je eindeutig zugeordnetem Liefergebinde. Keine Änderung an alten Bestellungen. Rabatt, Pfand, Fracht oder unklare Einheiten werden nicht übernommen.</p>' +
+        ? '<section class="panel"><h2>Preisänderungen prüfen</h2><p>Nettopreis je Gebinde. Alte Bestellungen bleiben unverändert. Rabatt, Pfand, Fracht oder unklare Einheiten werden nicht übernommen.</p>' +
           invoicePriceProposals(b, s)
             .map(
               p =>
                 '<p><strong>' +
                 h(p.name) +
                 '</strong> · ' +
-                h(p.offer.packName) +
+                h(unitName(p.offer.packName, 1)) +
                 ' à ' +
                 n(p.offer.packSize) +
                 ' · bisher ' +
@@ -447,7 +447,7 @@ export function billDetail(row: Stored<Bill>, s: Workspace): string {
                 '</p>'
             )
             .join('') +
-          button('ww-bill-prices', 'Als neuen Preisstand vorbereiten', b.id) +
+          button('ww-bill-prices', 'Preise übernehmen', b.id) +
           '</section>'
         : ''
     }<section class="panel"><h2>${b.billType === 'credit' ? 'Zuordnungen' : 'Abgleich mit Bestellungen'}</h2>${button('ww-bill-link', 'Zuordnung ergänzen', b.id)}${costText}${
@@ -471,19 +471,19 @@ export function billDetail(row: Stored<Bill>, s: Workspace): string {
                 ' · ' +
                 n(row.quantity) +
                 ' ' +
-                h(row.unit) +
+                h(unitName(row.unit)) +
                 ' · ' +
                 dayLabel(row.at.slice(0, 10)) +
                 '</p>'
             )
             .join('') || '<p>Zuordnung zu einer erfassten Rückgabe offen.</p>')
         : ''
-    }${latest ? '<p class="muted">Zuordnung ergänzt: ' + h(latest.reason) + ' · ' + h(latest.by) + '</p>' : ''}${comparison.length ? `<p>Vergleich in Artikel-Basiseinheiten. Offene oder abweichende Einheiten bleiben zur Prüfung offen. Preisabweichung = Rechnungszeile netto minus Bestellpreis für die Rechnungsmenge, ohne Pfand.</p><div class="ww-preview"><table><thead><tr><th>Artikel</th><th>Bestellt</th><th>Angenommen</th><th>Berechnet</th><th>Mengendifferenz</th><th>Preisabweichung netto</th></tr></thead><tbody>${comparison.map(r => `<tr><td>${h(r.name)}<small>${h(r.issue)}</small></td><td>${r.ordered === null ? 'Offen' : n(r.ordered) + ' ' + h(r.unit)}</td><td>${r.received === null ? 'Offen' : n(r.received)}</td><td>${r.invoiced === null ? 'Offen' : n(r.invoiced)}</td><td>${r.quantityDifference === null ? 'Offen' : n(r.quantityDifference)}</td><td>${r.priceDifference === null ? 'Offen' : money(r.priceDifference)}</td></tr>`).join('')}</tbody></table></div>` : ''}${
+    }${latest ? '<p class="muted">Zuordnung ergänzt: ' + h(latest.reason) + ' · ' + h(latest.by) + '</p>' : ''}${comparison.length ? `<p>Vergleich in Artikel-Basiseinheiten. Offene oder abweichende Einheiten bleiben zur Prüfung offen. Preisabweichung = Rechnungszeile netto minus Bestellpreis für die Rechnungsmenge, ohne Pfand.</p><div class="ww-preview"><table><thead><tr><th>Artikel</th><th>Bestellt</th><th>Angenommen</th><th>Berechnet</th><th>Mengendifferenz</th><th>Preisabweichung netto</th></tr></thead><tbody>${comparison.map(r => `<tr><td>${h(r.name)}<small>${h(r.issue)}</small></td><td>${r.ordered === null ? 'Offen' : n(r.ordered) + ' ' + h(unitName(r.unit, r.ordered))}</td><td>${r.received === null ? 'Offen' : n(r.received)}</td><td>${r.invoiced === null ? 'Offen' : n(r.invoiced)}</td><td>${r.quantityDifference === null ? 'Offen' : n(r.quantityDifference)}</td><td>${r.priceDifference === null ? 'Offen' : money(r.priceDifference)}</td></tr>`).join('')}</tbody></table></div>` : ''}${
       b.orderIds
         .map(id => {
           const o = s.orders.find(r => r.value.id === id)?.value;
           return o
-            ? `<div class="listrow"><div><strong>${h(o.supplierName)} · ${h(o.occasion)}</strong><p>${o.lines.length} bestellte Positionen · ${(o.receipts || []).length} Wareneingänge</p><small>Rechnungs- und Liefergebinde können abweichen. Mengen und Pfand am Original vergleichen.</small></div>${button('order-open', 'Bestellung prüfen', id)}</div>`
+            ? `<div class="listrow"><div><strong>${h(o.supplierName)} · ${h(o.occasion)}</strong><p>${o.lines.length} bestellte Positionen · ${(o.receipts || []).length} Wareneingänge</p><small>Gebinde auf Rechnung und Bestellung können abweichen. Mengen und Pfand am Original vergleichen.</small></div>${button('order-open', 'Bestellung prüfen', id)}</div>`
             : '<p>Bestellbezug nicht geladen.</p>';
         })
         .join('') || '<p>Keine Bestellung zugeordnet.</p>'

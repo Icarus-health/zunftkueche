@@ -151,7 +151,7 @@ export async function applyImport(app: KitchenView): Promise<void> {
     if (app.store.ww && app.seasonId) app.state.ww = await app.store.ww.load(app.seasonId);
     app.clearEditor();
     app.error = '';
-    app.info = items.length + ' Datensätze importiert und durch Lesen bestätigt.';
+    app.info = items.length + ' Datensätze importiert.';
     app.render();
   } catch (e) {
     app.error =

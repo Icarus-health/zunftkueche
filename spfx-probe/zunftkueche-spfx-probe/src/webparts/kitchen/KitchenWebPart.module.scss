@@ -5749,3 +5749,25 @@
     }
   }
 }
+/* 1.23.0 Paket F: Feinschliff */
+.kitchen {
+  :global(.draft-hint) {
+    align-self: center;
+    color: var(--dim);
+    font-size: 13px;
+    font-weight: 400;
+  }
+}
+.kitchen {
+  /* Mengenfelder der Bestellung: die allgemeine Mindestbreite für Tabellenfelder schob die letzte Spalte aus dem Bild. */
+  :global(.calm-sheet) td input {
+    min-width: 0;
+    width: 76px;
+    box-sizing: border-box;
+  }
+  :global(.sheet-meta) :global(.badge) {
+    width: auto;
+    padding: 2px 10px;
+    border-radius: 999px;
+  }
+}

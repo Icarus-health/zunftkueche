@@ -147,9 +147,9 @@ export class KitchenView {
       lineCount: form.querySelectorAll('[data-line]').length,
       data
     });
-    this.info = saved
-      ? 'Auf diesem Gerät gesichert · im Team noch nicht gespeichert.'
-      : 'Eingaben noch nicht gesichert. Bitte vor dem Schließen speichern.';
+    // Kein Balken über der Seite: ein leiser Hinweis neben „Speichern“ reicht, solange nichts schiefgeht.
+    this.hint = saved ? 'Entwurf auf diesem Gerät gesichert' : 'Noch nicht gespeichert';
+    this.info = '';
     this.paintStatus();
   }
   private rememberContext(): void {
@@ -175,7 +175,7 @@ export class KitchenView {
       (d.editing?.id && this.state![d.editing.kind].find(r => r.value.id === d.editing!.id)?.etag !== d.masterEtag)
     )
       throw new Error(
-        'Der gespeicherte Vorgang wurde inzwischen geändert. Der lokale Entwurf wird nicht darübergeschrieben. Bitte Eingaben herunterladen und den aktuellen Stand neu öffnen.'
+        'Der gespeicherte Eintrag wurde inzwischen geändert. Der lokale Entwurf wird nicht darübergeschrieben. Bitte Eingaben herunterladen und den aktuellen Stand neu öffnen.'
       );
     this.clearEditor();
     this.view = d.view;
@@ -243,6 +243,8 @@ export class KitchenView {
   importStarted = false;
   private pendingSave?: { work: () => Promise<unknown>; success: string; after?: () => void };
   dirty = false;
+  /** Kurzer Hinweis neben „Speichern“, solange Eingaben offen sind. */
+  hint = '';
   private busy = false;
   operationId = uuid();
   info = '';
@@ -313,7 +315,8 @@ export class KitchenView {
     }
     if (target.closest('form')) {
       this.dirty = true;
-      this.info = 'Ungespeicherte Eingaben.';
+      this.hint = 'Noch nicht gespeichert';
+      this.info = '';
       this.paintStatus();
       if (this.draft) updateOrderTotals(this);
       this.wwUI.updateCosts();
@@ -456,7 +459,7 @@ export class KitchenView {
             await this.store.saveMaster('articles', article, undefined, operationId + '-article');
             await this.store.saveMaster('offers', offer, undefined, operationId + '-offer');
           },
-          'Zutat und Liefergebinde angelegt.',
+          'Zutat mit Gebinde angelegt.',
           after
         ),
       supplier: async (supplier, operationId, after) => {
@@ -554,7 +557,21 @@ export class KitchenView {
       status.setAttribute('role', this.error ? 'alert' : 'status');
       status.setAttribute('data-error', String(!!this.error));
     }
+    this.paintHint();
     this.paintInlineError(status, fresh);
+  }
+  /** Leiser Hinweis neben dem Speichern-Knopf des offenen Formulars: Eingaben sind noch nicht im Team gespeichert. */
+  private paintHint(): void {
+    for (const old of Array.from(this.root.querySelectorAll('[data-draft-hint]'))) old.remove();
+    if (!this.dirty || !this.hint) return;
+    const submits = this.root.querySelectorAll<HTMLElement>('main form button[type=submit]');
+    const submit = submits[submits.length - 1];
+    if (!submit) return;
+    const note = submit.ownerDocument.createElement('small');
+    note.className = 'draft-hint';
+    note.setAttribute('data-draft-hint', '');
+    note.textContent = this.hint;
+    (submit.closest('.actions') || submit.parentElement)?.append(note);
   }
   /** The status line sits at the top of the page. On long pages it is scrolled away, so an error is repeated beside the control that caused it. */
   private paintInlineError(status: HTMLElement | null, fresh: boolean): void {
@@ -675,8 +692,8 @@ export class KitchenView {
     box.className = 'panel warning';
     box.setAttribute('data-recovery', '');
     box.innerHTML =
-      '<h2>Gespeicherten Stand prüfen</h2><p>Die Eingaben bleiben bis zur Klärung gesperrt. Ihr könnt denselben Vorgang sicher erneut versuchen oder den aktuellen Stand laden und die Eingabemaske schließen.</p><div class="actions">' +
-      button('save-retry', 'Denselben Vorgang erneut versuchen', '', true) +
+      '<h2>Gespeicherten Stand prüfen</h2><p>Die Eingaben bleiben bis zur Klärung gesperrt. Ihr könnt das Speichern sicher noch einmal versuchen oder den aktuellen Stand laden und die Eingabemaske schließen.</p><div class="actions">' +
+      button('save-retry', 'Noch einmal speichern', '', true) +
       button('save-reconcile', 'Stand laden und Eingaben schließen') +
       '</div>';
     this.root.querySelector('main')!.prepend(box);
@@ -1150,7 +1167,7 @@ export class KitchenView {
           await this.store.saveMaster('articles', article, undefined, operationId + '-article');
           await this.store.saveMaster('offers', offer, undefined, operationId + '-offer');
         },
-        'Artikel und Liefergebinde angelegt.',
+        'Artikel mit Gebinde angelegt.',
         () => {
           this.draft = draft;
           this.previous = previous;
@@ -1310,7 +1327,7 @@ export class KitchenView {
             this.state!.seasons.find(s => s.value.id === editing.id),
             this.operationId
           ),
-        'Saison gespeichert und nachgelesen.',
+        'Saison gespeichert.',
         () => {
           this.seasonId = value.id;
         }
@@ -1364,7 +1381,7 @@ export class KitchenView {
           );
           if (created) await this.store.saveMaster('offers', created, undefined, operationId + '-offer');
         },
-        created ? 'Artikel mit Gebinde und Preis angelegt.' : 'Artikel gespeichert und nachgelesen.'
+        created ? 'Artikel mit Gebinde und Preis angelegt.' : 'Artikel gespeichert.'
       );
       return;
     }
@@ -1392,7 +1409,7 @@ export class KitchenView {
             this.state!.suppliers.find(s => s.value.id === editing.id),
             this.operationId
           ),
-        'Lieferant gespeichert und nachgelesen.',
+        'Lieferant gespeichert.',
         resumeOrder
       );
       return;
@@ -1426,7 +1443,7 @@ export class KitchenView {
             o.value.active
         )
       )
-        throw new Error('Ein solches Lieferangebot ist bereits vorhanden. Bitte das vorhandene Angebot bearbeiten.');
+        throw new Error('Dieses Gebinde gibt es bei dem Lieferanten schon. Bitte den vorhandenen Eintrag bearbeiten.');
       await this.run(
         () =>
           this.store.saveMaster(
@@ -1435,7 +1452,7 @@ export class KitchenView {
             this.state!.offers.find(o => o.value.id === editing.id),
             this.operationId
           ),
-        'Lieferangebot gespeichert und nachgelesen.'
+        'Gebinde und Preis gespeichert.'
       );
       return;
     }
@@ -1461,7 +1478,7 @@ export class KitchenView {
       };
       await this.run(
         () => this.store.saveMaster('counts', value, undefined, this.operationId),
-        'Bestandsmeldung gespeichert und nachgelesen.'
+        'Bestandsmeldung gespeichert.'
       );
     }
   }

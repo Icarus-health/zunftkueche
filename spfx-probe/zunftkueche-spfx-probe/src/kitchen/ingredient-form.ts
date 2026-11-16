@@ -7,7 +7,7 @@ export interface IngredientDraft {
   supplierId: string;
 }
 export function ingredientForm(draft: IngredientDraft, state: Workspace, recipe = false): string {
-  return `<form data-form="${recipe ? 'ww-ingredient' : 'ingredient'}" class="panel"><h1>Neuen Artikel mit Liefergebinde anlegen</h1><p>Danach geht es direkt mit euren bisherigen Eingaben weiter.</p><div class="formgrid">${field('name', 'Artikelname', '', true)}${field('unit', 'Einheit, z. B. kg, l oder Stück', '', true)}${select(
+  return `<form data-form="${recipe ? 'ww-ingredient' : 'ingredient'}" class="panel"><h1>Neuen Artikel anlegen</h1><p>Danach geht es direkt mit euren bisherigen Eingaben weiter.</p><div class="formgrid">${field('name', 'Artikelname', '', true)}${field('unit', 'Einheit, z. B. kg, l oder Stück', '', true)}${select(
     'supplierId',
     'Lieferant',
     state.suppliers.filter(s => s.value.active).map(s => [s.value.id, s.value.name]),

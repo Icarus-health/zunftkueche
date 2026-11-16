@@ -114,9 +114,49 @@ export class TableWizard {
   public pageKey(): string {
     return this.mode + ':' + this.stage;
   }
+  /**
+   * Zeitraum der Kassendatei als Vorschlag: aus den Datumsangaben einer CSV-Datei, sonst aus dem Dateinamen,
+   * sonst die Einsatztage der Saison. Die Felder bleiben änderbar.
+   */
+  private proposedPeriod(): { from: string; to: string; source: string } {
+    const season = this.p.state().seasons.find(row => row.value.id === this.p.season())?.value;
+    const real = (y: string, m: string, d: string): string => {
+      const value = y + '-' + m.padStart(2, '0') + '-' + d.padStart(2, '0');
+      const time = Date.parse(value + 'T12:00:00Z');
+      const fits = !season || Math.abs(Number(y) - season.year) <= 1;
+      return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value && fits ? value : '';
+    };
+    const scan = (text: string): string[] =>
+      [
+        ...[...text.matchAll(/(?<!\d)(\d{1,2})\.(\d{1,2})\.(\d{4})(?!\d)/g)].map(m => real(m[3], m[2], m[1])),
+        ...[...text.matchAll(/(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)/g)].map(m => real(m[1], m[2], m[3]))
+      ]
+        .filter(Boolean)
+        .sort();
+    const name = this.original?.name || '';
+    let days: string[] = [];
+    let source = '';
+    if (this.original && /\.csv$/i.test(name)) {
+      days = scan(new TextDecoder().decode(this.original.bytes.slice(0, 500000)));
+      if (days.length) source = 'aus den Datumsangaben der Datei';
+    }
+    if (!days.length && name) {
+      days = scan(name);
+      if (days.length) source = 'aus dem Dateinamen';
+    }
+    if (!days.length && season?.operatingDays?.length) {
+      days = [...season.operatingDays].sort();
+      source = 'aus den Einsatztagen der Saison';
+    }
+    if (!days.length)
+      return this.original ? { from: '', to: '', source: '' } : { from: today(), to: today(), source: '' };
+    return { from: days[0], to: days[days.length - 1], source };
+  }
   public render(): string {
     let body = '';
-    const title = this.mode === 'prices' ? 'Preisliste einlesen' : 'Kassen- und Bestellsystem importieren';
+    const title = this.mode === 'prices' ? 'Preisliste einlesen' : 'Kassendaten einlesen';
+    const period =
+      this.stage === 'file' && this.mode === 'system' ? this.proposedPeriod() : { from: '', to: '', source: '' };
     if (this.stage === 'file')
       body = `<p class="ww-step">1 · Datei und Herkunft</p><p>Excel (.xlsx) oder CSV. Die Datei wird auf diesem Gerät gelesen. Danach werden Spalten und Artikel geprüft.</p><div class="formgrid">${
         this.original
@@ -135,7 +175,7 @@ export class TableWizard {
               ],
               ''
             ) +
-            field('name', 'Name der Quelle / des Systems', this.original ? 'Kasse' : '', true) +
+            field('name', 'Name der Kasse oder des Systems', 'Kasse', true) +
             select(
               'purpose',
               'Welche Daten enthält die Datei?',
@@ -146,12 +186,15 @@ export class TableWizard {
               ],
               'sales'
             ) +
-            field('from', 'Zeitraum von', this.original ? '' : today(), true, 'date') +
-            field('to', 'Zeitraum bis', this.original ? '' : today(), true, 'date') +
-            field('currency', 'Währung', 'EUR', true) +
+            field('from', 'Zeitraum von', period.from, true, 'date') +
+            field('to', 'Zeitraum bis', period.to, true, 'date') +
+            (period.source
+              ? '<p class="muted ww-full">Zeitraum ' + h(period.source) + ' vorgeschlagen. Bitte kurz prüfen.</p>'
+              : '') +
+            '<input type="hidden" name="currency" value="EUR">' +
             select(
               'replacesId',
-              'Korrektur eines früheren Imports (optional)',
+              'Ersetzt einen früheren Import (optional)',
               [
                 ['', 'Neuen Zeitraum übernehmen'],
                 ...documents(this.p.state().ww, 'system')
@@ -160,7 +203,7 @@ export class TableWizard {
               ],
               ''
             )
-          : field('name', 'Name des Preisstands', '', true) +
+          : field('name', 'Name der Preisliste', '', true) +
             select(
               'supplierId',
               'Lieferant',
@@ -277,8 +320,8 @@ export class TableWizard {
       } else {
         const priceFields: Array<[string, string]> = [
           ['code', 'Artikelnummer des Lieferanten'],
-          ['priceNet', 'Nettopreis je Liefergebinde'],
-          ['deposit', 'Pfand je Liefergebinde']
+          ['priceNet', 'Preis netto je Gebinde'],
+          ['deposit', 'Pfand je Gebinde']
         ];
         mapping = priceFields.map(column).join('') + decimal;
       }
@@ -286,7 +329,7 @@ export class TableWizard {
         ? 'Vorgeschlagene Spalten prüfen. Ohne Datum gilt der Betrag für den gewählten Zeitraum.'
         : this.mode === 'system'
           ? 'Bitte den gesamten Zeilenumsatz wählen. Ohne Datumsfeld nur einen Betriebstag importieren.'
-          : 'Preise gelten je ausgewähltem Liefergebinde.';
+          : 'Preise gelten je ausgewähltem Gebinde.';
       body =
         '<p class="ww-step">2 · Spalten zuordnen</p><p>' +
         h(this.fileName) +
@@ -414,8 +457,8 @@ export class TableWizard {
   private priceReview(final: boolean): string {
     const offers = this.p.state().offers.filter(o => o.value.active && o.value.supplierId === this.supplierId);
     if (final)
-      return `<p class="ww-step">4 · Preisstand bestätigen</p><p>${h(this.priceDoc!.name)} · ab ${h(this.validFrom)} · ${this.priceDoc!.lines.length} Artikel. Frühere Bestellungen behalten ihre Preise.</p><div class="ww-preview"><table><thead><tr><th>Lieferartikel</th><th>Netto / Gebinde</th><th>Pfand / Gebinde</th></tr></thead><tbody>${this.priceDoc!.lines.map(l => `<tr><td>${h(offers.find(o => o.value.id === l.offerId)?.value.code)} · ${h(this.p.state().articles.find(a => a.value.id === offers.find(o => o.value.id === l.offerId)?.value.articleId)?.value.name)}</td><td>${money(l.priceNet)}</td><td>${money(l.deposit)}</td></tr>`).join('')}</tbody></table></div>${check('reviewed', 'Gebinde, Nettopreise, Pfand und Gültigkeit am Original geprüft.', false)}${button('ww-table-confirm', 'Preisstand übernehmen', '', true)}`;
-    return `<p class="ww-step">3 · Lieferartikel und Preise</p><p>Häkchen wählen die zu übernehmenden Zeilen. Jeder Preis gilt je bestehendem Liefergebinde. Nicht passende Artikel zuerst in der Verwaltung anlegen.</p><div class="ww-preview"><table><thead><tr><th>Übernehmen</th><th>Original</th><th>Lieferartikel</th><th>Netto</th><th>Pfand</th></tr></thead><tbody>${this.grid!.rows.slice(
+      return `<p class="ww-step">4 · Preise bestätigen</p><p>${h(this.priceDoc!.name)} · ab ${h(this.validFrom)} · ${this.priceDoc!.lines.length} Artikel. Frühere Bestellungen behalten ihre Preise.</p><div class="ww-preview"><table><thead><tr><th>Lieferartikel</th><th>Netto / Gebinde</th><th>Pfand / Gebinde</th></tr></thead><tbody>${this.priceDoc!.lines.map(l => `<tr><td>${h(offers.find(o => o.value.id === l.offerId)?.value.code)} · ${h(this.p.state().articles.find(a => a.value.id === offers.find(o => o.value.id === l.offerId)?.value.articleId)?.value.name)}</td><td>${money(l.priceNet)}</td><td>${money(l.deposit)}</td></tr>`).join('')}</tbody></table></div>${check('reviewed', 'Gebinde, Nettopreise, Pfand und Gültigkeit am Original geprüft.', false)}${button('ww-table-confirm', 'Preise übernehmen', '', true)}`;
+    return `<p class="ww-step">3 · Lieferartikel und Preise</p><p>Häkchen wählen die zu übernehmenden Zeilen. Jeder Preis gilt je bestehendem Gebinde. Nicht passende Artikel zuerst in der Verwaltung anlegen.</p><div class="ww-preview"><table><thead><tr><th>Übernehmen</th><th>Original</th><th>Lieferartikel</th><th>Netto</th><th>Pfand</th></tr></thead><tbody>${this.grid!.rows.slice(
       this.header + 1
     )
       .filter(r => r.some(c => c.text.trim()))

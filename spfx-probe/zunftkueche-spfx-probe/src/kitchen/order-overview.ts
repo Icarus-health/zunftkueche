@@ -5,6 +5,7 @@ import type { Area, Delivery, Order, Season, Stored, Workspace } from './model';
 import { documents } from './ww/model.ts';
 import { withSchedule, scheduledOrder } from './supplier-orders.ts';
 import { button, empty, h, n } from './markup.ts';
+import { unitName } from './units.ts';
 import { PdfPage, pdfDocument, wrap } from './pdf-document.ts';
 
 export interface OverviewLine {
@@ -196,8 +197,10 @@ const quantity = (l: OverviewLine): string =>
     ? 'Menge offen'
     : n(l.quantity) +
       ' ' +
-      l.packName +
-      (l.packSize !== 1 ? ' (' + n(l.quantity * l.packSize) + ' ' + l.unit + ')' : '');
+      unitName(l.packName, l.quantity) +
+      (l.packSize !== 1
+        ? ' (' + n(l.quantity * l.packSize) + ' ' + unitName(l.unit, l.quantity * l.packSize) + ')'
+        : '');
 const statusTone = (s: Order['status']): string =>
   s === 'Entwurf' ? 'warning' : s === 'Bestellt' ? 'success' : 'info';
 

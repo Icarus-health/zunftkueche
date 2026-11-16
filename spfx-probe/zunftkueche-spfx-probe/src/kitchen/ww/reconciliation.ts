@@ -45,8 +45,7 @@ export function reconcileBill(b: Bill, s: Workspace): ReconciliationRow[] {
       if (factor === null)
         return {
           ...empty,
-          issue:
-            'Rechnungseinheit stimmt nicht eindeutig mit einem Liefergebinde überein. Umrechnung am Original prüfen.'
+          issue: 'Rechnungseinheit stimmt nicht eindeutig mit einem Gebinde überein. Umrechnung am Original prüfen.'
         };
       const invoiced = l.quantity === null ? null : round(l.quantity * factor),
         ordered = lines.some(x => x.line.quantity === null)

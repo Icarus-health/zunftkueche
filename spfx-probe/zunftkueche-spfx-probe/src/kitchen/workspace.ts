@@ -3,6 +3,7 @@ import { APP_VERSION } from './release.ts';
 import type { Area, Season, Workspace } from './model';
 import { areaOptions, articleAvailable } from './model.ts';
 import { button, empty, h, money, moreMenu, n, reportsTabs, select } from './markup.ts';
+import { unitName } from './units.ts';
 import { deliveryState, latestCounts, receivedQuantity, countQuantity } from './operations.ts';
 import { orderTotal } from './domain.ts';
 import { stockProjection } from './ww/domain.ts';
@@ -113,7 +114,7 @@ export function stockOverview(state: Workspace, season: Season | undefined, area
           : '<span class="stock-status success">' + icon('check') + 'Gezählt</span>';
   const row = (a: (typeof articles)[number]): string => {
     const c = counts.find(x => x.articleId === a.id);
-    return `<div class="inventory-overview-row" data-search="${h(a.name + ' ' + a.category)}"><div><strong>${h(a.name)}</strong>${status(c)}${c?.note ? '<small>' + h(c.note) + '</small>' : ''}</div>${c ? `<div class="stock-value"><strong>${n(c.quantity)} ${h(c.unit)}</strong>${projection.find(p => p.articleId === a.id)?.quantity !== null ? '<small>Rechnerisch seitdem: ' + n(projection.find(p => p.articleId === a.id)?.quantity ?? null) + ' ' + h(c.unit) + '</small>' : ''}<small>${h(stamp(c.countedAt))}</small></div>` : ''}</div>`;
+    return `<div class="inventory-overview-row" data-search="${h(a.name + ' ' + a.category)}"><div><strong>${h(a.name)}</strong>${status(c)}${c?.note ? '<small>' + h(c.note) + '</small>' : ''}</div>${c ? `<div class="stock-value"><strong>${n(c.quantity)} ${h(unitName(c.unit, c.quantity))}</strong>${projection.find(p => p.articleId === a.id)?.quantity !== null ? '<small>Rechnerisch seitdem: ' + n(projection.find(p => p.articleId === a.id)?.quantity ?? null) + ' ' + h(unitName(c.unit, projection.find(p => p.articleId === a.id)?.quantity ?? null)) + '</small>' : ''}<small>${h(stamp(c.countedAt))}</small></div>` : ''}</div>`;
   };
   const list = groups
     .map(
@@ -137,7 +138,7 @@ export function planningOverview(state: Workspace, season: Season | undefined, a
   const previous = state.orders.filter(
     r => r.value.seasonId !== season?.id && r.value.area === area && r.value.status !== 'Storniert'
   );
-  return `<div class="page-heading"><div><h1>Planung</h1><p>Bewährte Bestellungen als Ausgangspunkt für die neue Saison.</p></div>${season && !season.archived && previous.length ? button('copy-list', 'Aus Vorjahr übernehmen', '', true) : ''}</div><section class="plain-section"><h2>Vorjahresübernahme</h2><p>Wählt eine frühere Bestellung aus und prüft die Mengen. Termine, Bestellstatus und Lieferungen werden zurückgesetzt. Alte Preise bleiben als Vergleich sichtbar.</p><p>${previous.length} frühere Bestellungen im Bereich ${h(area)} verfügbar.</p>${!previous.length ? empty('Nach der ersten Saison können Bestellungen hier erneut verwendet werden.') : ''}</section><section class="plain-section"><h2>Vorbereitung prüfen</h2><p>${state.articles.filter(a => a.value.active && !state.offers.some(o => o.value.active && o.value.articleId === a.value.id)).length} aktive Artikel ohne Lieferangebot.</p><p>${state.offers.filter(o => o.value.active && o.value.priceNet === null).length} Lieferangebote mit offenem Preis.</p>${button('nav', 'Artikel und Angebote prüfen', 'articles')}</section>`;
+  return `<div class="page-heading"><div><h1>Planung</h1><p>Bewährte Bestellungen als Ausgangspunkt für die neue Saison.</p></div>${season && !season.archived && previous.length ? button('copy-list', 'Aus Vorjahr übernehmen', '', true) : ''}</div><section class="plain-section"><h2>Vorjahresübernahme</h2><p>Wählt eine frühere Bestellung aus und prüft die Mengen. Termine, Bestellstatus und Lieferungen werden zurückgesetzt. Alte Preise bleiben als Vergleich sichtbar.</p><p>${previous.length} frühere Bestellungen im Bereich ${h(area)} verfügbar.</p>${!previous.length ? empty('Nach der ersten Saison können Bestellungen hier erneut verwendet werden.') : ''}</section><section class="plain-section"><h2>Vorbereitung prüfen</h2><p>${state.articles.filter(a => a.value.active && !state.offers.some(o => o.value.active && o.value.articleId === a.value.id)).length} aktive Artikel ohne Lieferant.</p><p>${state.offers.filter(o => o.value.active && o.value.priceNet === null).length} Artikel mit offenem Preis.</p>${button('nav', 'Artikel und Angebote prüfen', 'articles')}</section>`;
 }
 export function reportsOverview(state: Workspace, season: Season | undefined, area: Area): string {
   const orders = state.orders
