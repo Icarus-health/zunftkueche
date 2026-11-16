@@ -228,19 +228,28 @@ function netTableLines(text: string): BillLine[] {
     const head = row.match(
       /^[ \t]*(\d{1,3})[ \t]+(-?[\d.]+,\d{2})[ \t]+([A-Za-zÄÖÜäöü.]+)[ \t]+([A-Za-z0-9_-]+)[ \t]+(.+)$/
     );
+    let amounts = row.match(/^[ \t]*(-?[\d.]+,\d{2})[ \t]+([\d.]+,\d{2})[ \t]+(-?[\d.]+,\d{2})[ \t]*$/);
     if (head) {
       const quantity = parse(head[2]);
+      // Kurze Positionen stehen mit ihren Beträgen in einer Zeile.
+      const inline = head[5].match(/^(.+?)[ \t]+(-?[\d.]+,\d{2})[ \t]+([\d.]+,\d{2})[ \t]+(-?[\d.]+,\d{2})[ \t]*$/);
       current =
         quantity !== null && quantity !== 0
-          ? { index: Number(head[1]), quantity, unit: head[3], name: head[5].trim().slice(0, 240) }
+          ? {
+              index: Number(head[1]),
+              quantity,
+              unit: head[3],
+              name: (inline ? inline[1] : head[5]).trim().slice(0, 240)
+            }
           : undefined;
-      continue;
+      if (!inline) continue;
+      amounts = inline;
     }
-    const amounts = row.match(/^[ \t]*(-?[\d.]+,\d{2})[ \t]+([\d.]+,\d{2})[ \t]+(-?[\d.]+,\d{2})[ \t]*$/);
     if (!current || !amounts) continue;
-    const unitNet = parse(amounts[1]),
-      taxRate = parse(amounts[2]),
-      totalNet = parse(amounts[3]);
+    const offset = amounts.length === 5 ? 1 : 0;
+    const unitNet = parse(amounts[1 + offset]),
+      taxRate = parse(amounts[2 + offset]),
+      totalNet = parse(amounts[3 + offset]);
     if (
       unitNet !== null &&
       taxRate !== null &&
@@ -304,7 +313,7 @@ function discountTableLines(text: string): BillLine[] {
       discount >= 0 &&
       discount <= 100 &&
       totalNet !== null &&
-      close(quantity * unit * (1 - discount / 100), totalNet) &&
+      Math.abs(quantity * unit * (1 - discount / 100) - totalNet) <= 0.006 * quantity + 0.021 &&
       current.name
     )
       lines.push({
@@ -320,6 +329,61 @@ function discountTableLines(text: string): BillLine[] {
     current = undefined;
   }
   return lines;
+}
+// Bäckerei-Layout: Bezeichnung, Menge, Einheit, Preis, Rabatt %, rabattierter Einzelpreis, Gesamt.
+// Netto- oder Bruttopreise werden über die Belegsummen bestimmt; passt keine, bleiben die Beträge leer.
+function bakeryLines(text: string, net: number | null, gross: number | null): BillLine[] {
+  const rows = text.split(/\r?\n/),
+    start = rows.findIndex(r => /Art\.[ \t]*Nr\.[ \t]+Bezeichnung/i.test(r));
+  if (start < 0 || !/Rabatt/i.test(text)) return [];
+  const found: Array<{ name: string; quantity: number; unit: string; unitPrice: number; total: number }> = [];
+  for (const row of rows.slice(start + 1)) {
+    if (/^[ \t]*(?:Summe|Netto)[ \t]*:/i.test(row)) break;
+    const m = row.match(
+      /^[ \t]*(?:\d{1,6}[ \t]+)?(.+?)[ \t]+(\d+(?:,\d+)?)[ \t]+([A-Za-zÄÖÜäöüß.]+)[ \t]+([\d.]+,\d{2})[ \t]+(\d{1,3}(?:,\d{1,2})?)[ \t]+([\d.]+,\d{2})[ \t]+([\d.]+,\d{2})(?:[ \t]+\d{1,6})?[ \t]*$/
+    );
+    if (!m) continue;
+    const [quantity, price, discount, unitPrice, total] = [m[2], m[4], m[5], m[6], m[7]].map(parse);
+    if (
+      quantity === null ||
+      quantity <= 0 ||
+      price === null ||
+      discount === null ||
+      discount > 100 ||
+      unitPrice === null ||
+      total === null ||
+      Math.abs(price * (1 - discount / 100) - unitPrice) > 0.006 ||
+      !close(quantity * unitPrice, total)
+    )
+      continue;
+    found.push({ name: m[1].trim().slice(0, 240), quantity, unit: m[3], unitPrice, total });
+  }
+  const sum = found.reduce((s, l) => s + l.total, 0);
+  const isNet = net !== null && close(sum, net);
+  if (!found.length || (!isNet && !(gross !== null && close(sum, gross)))) return [];
+  return found.map((l, i) => ({
+    id: 'bakery-' + (i + 1),
+    articleId: null,
+    name: l.name,
+    quantity: l.quantity,
+    unit: l.unit,
+    unitNet: isNet ? l.unitPrice : null,
+    totalNet: isNet ? l.total : null,
+    taxRate: null
+  }));
+}
+// Summenzeile „Netto: … x % MwSt: … Brutto: …“ (ein Steuersatz).
+function inlineTotals(text: string): Pick<BillProposal, 'net' | 'tax' | 'gross'> | undefined {
+  const rows = [
+    ...text.matchAll(
+      /^[ \t]*Netto[ \t]*:[ \t]*(-?[\d.]+,\d{2})[ \t]+(\d{1,3}(?:,\d{1,2})?)[ \t]*%[ \t]*MwSt\.?[ \t]*:[ \t]*(-?[\d.]+,\d{2})[ \t]+Brutto[ \t]*:[ \t]*(-?[\d.]+,\d{2})[ \t]*$/gim
+    )
+  ];
+  if (rows.length !== 1) return undefined;
+  const [net, rate, tax, gross] = rows[0].slice(1).map(parse);
+  if (net === null || rate === null || tax === null || gross === null || rate > 100) return undefined;
+  if (!close(net + tax, gross) || Math.abs((net * rate) / 100 - tax) > 0.02) return undefined;
+  return { net, tax, gross };
 }
 function marketLines(text: string): BillLine[] {
   const rows = text.split(/\r?\n/),
@@ -389,6 +453,10 @@ function scanHints(
               : 'Hallenbar'
     );
   }
+  // Texterkennung schneidet Nummern gelegentlich ab (455 statt 455923). Solche Bruchstücke zählen nicht als eigene Nummer.
+  if (usedOcr)
+    for (const id of [...identifiers])
+      if ([...identifiers].some(o => o !== id && o.startsWith(id))) identifiers.delete(id);
   return {
     ...(identifiers.size > 1 || documentKinds.size > 1 ? { needsSeparateFiles: true as const } : {}),
     ...(usedOcr && identifiers.size > 1 && documentKinds.size < 2 && finalTotalPages < 2
@@ -403,12 +471,20 @@ export function billProposal(text: string, { usedOcr = false } = {}): BillPropos
   const only = (values: string[]): string => (new Set(values).size === 1 ? values[0] : '');
   const unique = (pattern: RegExp): string => only([...text.matchAll(pattern)].map(m => m[1].trim()));
   const headers = [...text.matchAll(documentHeaders)];
-  const number = only(headers.map(match => documentNumber(match[2])));
+  const numbers = headers.map(match => documentNumber(match[2]));
+  // Beschriftungen und Werte als getrennte Blöcke (z. B. Shop-Rechnungen): Nummer und Datum stehen darunter.
+  const block = text.match(
+    /^[ \t]*Rechnungsnummer[ \t]*:[ \t]*\r?\n[ \t]*Rechnungsdatum[ \t]*:[ \t]*\r?\n[ \t]*([A-Z0-9][A-Z0-9_.\/-]*)[ \t]*\r?\n[ \t]*(\d{1,2}\.\d{1,2}\.\d{4})[ \t]*$/im
+  );
+  const number =
+    only(usedOcr ? numbers.filter(n => !numbers.some(o => o !== n && o.startsWith(n))) : numbers) ||
+    (!numbers.length && block ? block[1] : '');
   const dateLabels =
     /(?:\bRechnungsdatum|\bBelegdatum|^[ \t]*(?:Proforma-Lieferschein[ \t]+)?Datum)[ \t]*:?\s*(\d{1,2}\.\d{1,2}\.\d{4})/gim;
   const rawDate = only([
       ...headers.flatMap(match => (match[3] ? [match[3]] : [])),
-      ...[...text.matchAll(dateLabels)].map(match => match[1])
+      ...[...text.matchAll(dateLabels)].map(match => match[1]),
+      ...(block ? [block[2]] : [])
     ]),
     parts = rawDate.split('.');
   const date = rawDate ? parts[2] + '-' + parts[1].padStart(2, '0') + '-' + parts[0].padStart(2, '0') : '';
@@ -483,6 +559,8 @@ export function billProposal(text: string, { usedOcr = false } = {}): BillPropos
       gross = totalGross;
     }
   }
+  const inline = net === null && gross === null && tax === null ? inlineTotals(text) : undefined;
+  if (inline) ({ net, tax, gross } = inline);
   const namedGross = parse(unique(/Rechnungssumme[ \t]*:?[ \t]*(-?[\d.]+,\d{2})/gi));
   const total = explicitGross ?? namedGross;
   if (
@@ -503,14 +581,18 @@ export function billProposal(text: string, { usedOcr = false } = {}): BillPropos
     net,
     tax,
     gross,
-    lines: [...grossTableLines(text), ...netTableLines(text), ...discountTableLines(text), ...marketLines(text)].map(
-      line => {
-        if (/\b(?:pfand|leergut)\b/i.test(line.name)) return { ...line, role: 'deposit' };
-        if (/\b(?:rabatt|skonto)\b/i.test(line.name)) return { ...line, role: 'discount' };
-        if ((line.totalNet ?? 0) < 0 && /\b(?:retoure|rückgabe)\b/i.test(line.name)) return { ...line, role: 'return' };
-        if ((line.totalNet ?? 0) < 0) return { ...line, role: 'open' };
-        return line;
-      }
-    )
+    lines: [
+      ...grossTableLines(text),
+      ...netTableLines(text),
+      ...discountTableLines(text),
+      ...marketLines(text),
+      ...bakeryLines(text, net, gross)
+    ].map(line => {
+      if (/\b(?:pfand|leergut)\b/i.test(line.name)) return { ...line, role: 'deposit' };
+      if (/\b(?:rabatt|skonto)\b/i.test(line.name)) return { ...line, role: 'discount' };
+      if ((line.totalNet ?? 0) < 0 && /\b(?:retoure|rückgabe)\b/i.test(line.name)) return { ...line, role: 'return' };
+      if ((line.totalNet ?? 0) < 0) return { ...line, role: 'open' };
+      return line;
+    })
   };
 }

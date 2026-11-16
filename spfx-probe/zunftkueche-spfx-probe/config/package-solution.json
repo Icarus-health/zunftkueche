@@ -3,7 +3,7 @@
   "solution": {
     "name": "zunftkueche-spfx-probe-client-side-solution",
     "id": "a0223437-c175-4fbb-9443-e37836f2a50a",
-    "version": "1.21.0.0",
+    "version": "1.21.1.0",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": true,
     "isDomainIsolated": false,
@@ -30,7 +30,7 @@
         "title": "zunftkueche-spfx-probe Feature",
         "description": "The feature that activates elements of the zunftkueche-spfx-probe solution.",
         "id": "801ef34c-a438-4abd-8644-8a4e006e2566",
-        "version": "1.21.0.0"
+        "version": "1.21.1.0"
       }
     ]
   },
