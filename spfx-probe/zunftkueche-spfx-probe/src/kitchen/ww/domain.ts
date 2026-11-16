@@ -544,7 +544,7 @@ export function recipeDemand(
   validateDocument(recipe);
   amount(portions);
   const issues: string[] = [];
-  if (!recipe.confirmed) issues.push('Rezeptur ist noch nicht bestätigt.');
+  /* Ungeprüfte Rezepte rechnen mit. Ob sie geprüft sind, zeigt die Liste; blockiert wird deshalb nichts. */
   const rows = recipe.ingredients.flatMap(l => {
     const article = state.articles.find(a => a.value.id === l.articleId && a.value.active)?.value;
     if (!article) {
@@ -580,19 +580,31 @@ export function recipeDemand(
         : cents(rows.reduce((n, r) => n + r.costNet!, 0))
   };
 }
-export function planDemand(plan: Plan, state: Workspace): { rows: Omit<DemandRow, 'costNet'>[]; issues: string[] } {
+export function planDemand(
+  plan: Plan,
+  state: Workspace
+): { rows: Omit<DemandRow, 'costNet'>[]; issues: string[]; notes: string[] } {
   validateDocument(plan);
   const recipes = documents(state.ww, 'recipe');
   const prices = documents(state.ww, 'prices');
-  const issues: string[] = [];
+  const issues: string[] = [],
+    unchecked: string[] = [],
+    empty: string[] = [];
   const sum = new Map<string, Omit<DemandRow, 'costNet'>>();
   const add = ({ articleId, name, unit, quantity }: Omit<DemandRow, 'costNet'>): void => {
     sum.set(articleId, { articleId, name, unit, quantity: round((sum.get(articleId)?.quantity ?? 0) + quantity) });
   };
   for (const line of plan.lines) {
     const recipe = recipes.find(r => r.id === line.recipeId);
-    if (!recipe?.confirmed) {
-      issues.push('Bestätigte Rezeptversion fehlt.');
+    if (!recipe) {
+      issues.push(
+        'Ein Gericht aus diesem Plan gibt es nicht mehr. Bitte „Portionen ändern“ öffnen und das Gericht neu wählen.'
+      );
+      continue;
+    }
+    if (!recipe.confirmed) unchecked.push(recipe.name);
+    if (!recipe.ingredients.length) {
+      empty.push(recipe.name);
       continue;
     }
     const demand = recipeDemand(recipe, line.portions, state, prices, plan.date);
@@ -611,7 +623,18 @@ export function planDemand(plan: Plan, state: Workspace): { rows: Omit<DemandRow
     }
     add({ ...line, name: article.name });
   }
-  return { rows: [...sum.values()], issues };
+  /* Hinweise blockieren nichts: Der Bedarf rechnet mit dem aktuellen Stand der Rezepte. */
+  const notes = [
+    ...(unchecked.length
+      ? [
+          (unchecked.length === 1 ? 'Rezept noch ungeprüft: ' : unchecked.length + ' Rezepte noch ungeprüft: ') +
+            [...new Set(unchecked)].join(', ') +
+            '. Der Bedarf rechnet mit den eingetragenen Mengen.'
+        ]
+      : []),
+    ...(empty.length ? ['Ohne Zutaten, zählt nicht zum Bedarf: ' + [...new Set(empty)].join(', ') + '.'] : [])
+  ];
+  return { rows: [...sum.values()], issues: [...new Set(issues)], notes };
 }
 
 export function activeImports(imports: SystemImport[]): SystemImport[] {

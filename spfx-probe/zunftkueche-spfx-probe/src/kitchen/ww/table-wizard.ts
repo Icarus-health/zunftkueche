@@ -390,7 +390,7 @@ export class TableWizard {
           button('ww-products-back', payment ? 'Spalten ändern' : 'Zuordnungen ändern');
       } else body = this.priceReview(true);
     }
-    return `<form data-wizard class="panel">${heading(title, this.original ? '' : 'Herstellerunabhängig · nachvollziehbar · ohne Zusatzdienst')}${body}<div class="actions">${button('ww-cancel', this.original ? 'Zurück zum Dateieingang' : 'Import abbrechen')}</div></form>`;
+    return `<form data-wizard class="panel">${heading(title, this.original ? '' : 'Herstellerunabhängig · nachvollziehbar · ohne Zusatzdienst')}${body}<div class="actions">${button('ww-cancel', this.original ? 'Zurück' : 'Import abbrechen')}</div></form>`;
   }
   private externalCodes(): string[] {
     const map = this.profile!.columnMap;

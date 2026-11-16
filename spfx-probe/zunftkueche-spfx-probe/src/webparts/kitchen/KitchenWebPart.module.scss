@@ -5424,3 +5424,53 @@
     margin: 0;
   }
 }
+.kitchen {
+  /* 1.23.0 Plan als kompakte Tabelle: eine Kopfzeile, Beschriftung je Zeile nur für Screenreader. */
+  :global(.plan-lines-head),
+  :global(.plan-lines) :global(.ww-line) {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(90px, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+  }
+  :global(.plan-lines-head) {
+    padding: 0 0 6px;
+    color: var(--dim);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  :global(.plan-lines) :global(.ww-line) {
+    padding: 5px 0;
+  }
+  :global(.plan-lines) :global(.ww-line) label {
+    margin: 0;
+    font-size: 0;
+  }
+  :global(.plan-lines) :global(.ww-line) label select,
+  :global(.plan-lines) :global(.ww-line) label input {
+    font-size: 16px;
+  }
+  :global(.plan-lines) :global(.ww-line) button {
+    min-height: 44px;
+  }
+  :global(.ww-note) {
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--tint);
+    color: var(--ink);
+  }
+  :global(.sticky-actions) > :global(.check) {
+    margin: 0 auto 0 0;
+  }
+  :global(.listrow) small {
+    color: var(--dim);
+    font-weight: 400;
+  }
+}
+.kitchen {
+  /* Die feste Speichern-Leiste darf das letzte Auswahlfeld nicht verdecken. */
+  :global(.menu-editor) {
+    padding-bottom: 96px;
+  }
+}

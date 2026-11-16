@@ -167,7 +167,7 @@ test('the inbox identifies a renamed invoice from an archived season before open
     await view.action('ww-open', 'inbox');
     assert.ok(root.querySelector('[data-action=ww-inbox-file]'));
     await view.action('ww-inbox-file', 'bill|' + fileId);
-    assert.equal(root.querySelector('h1').textContent, 'Dateieingang');
+    assert.equal(root.querySelector('h1').textContent, 'Rechnungen');
     assert.match(root.textContent, /Doppelte Datei · Original-2026\.pdf · Fasnet 2026/);
     assert.equal(root.querySelector('form[data-form=ww-bill], [data-action=ww-inbox-file]'), null);
     assert.deepEqual((await store.ww.load(season.id)).records, []);

@@ -5,7 +5,9 @@ import { documents } from './model.ts';
 import { planDemand, recipeDemand, stockProjection } from './domain.ts';
 import type { StockRow } from './domain';
 import { backLink, button, field, h, n, money, moreMenu, note, planningTabs, select, empty, check } from '../markup.ts';
-import { count } from '../units.ts';
+import { count, unitName } from '../units.ts';
+
+const price2 = (value: number): string => value.toFixed(2).replace('.', ',');
 import { heading, confirmationActions, dayLabel, today } from './common.ts';
 import { planAlreadyOrdered } from './plan-procurement.ts';
 
@@ -39,13 +41,27 @@ export function preparedOrdersView(s: Workspace, ids: string[]): string {
     '</section>'
   );
 }
+/** Zutaten zuerst, Verbrauchsmaterial und Ausstattung am Ende der Liste. */
+function ingredientChoices(s: Workspace): Array<{ id: string; name: string; unit: string }> {
+  const rank = (category: string): number => (/verbrauch|ausstattung/i.test(category || '') ? 1 : 0);
+  return s.articles
+    .filter(r => r.value.active)
+    .map(r => r.value)
+    .sort((a, b) => rank(a.category) - rank(b.category) || a.name.localeCompare(b.name, 'de'));
+}
 export function operationLine(
   kind: 'recipe' | 'plan',
   s: Workspace,
   line?: Recipe['ingredients'][number] | Plan['lines'][number]
 ): string {
-  const recipes = documents(s.ww, 'recipe').filter(r => r.confirmed);
-  return `<div class="ww-line" data-line>${kind === 'recipe' ? select('articleId', 'Zutat', [['', 'Zutat auswählen'], ...s.articles.filter(r => r.value.active).map(r => [r.value.id, r.value.name + ' · ' + r.value.unit] as [string, string])], line && 'articleId' in line ? line.articleId : '', 'required') + field('quantity', 'Zutatenmenge (Einheit bei der Zutat)', line && 'quantity' in line ? n(line.quantity) : '', true, 'text', 'inputmode="decimal"') : select('recipeId', 'Gericht / Getränk', [['', 'Gericht auswählen'], ...recipes.map(r => [r.id, r.name] as [string, string])], line && 'recipeId' in line ? line.recipeId : '', 'required') + field('portions', 'Portionen / Stück', line && 'portions' in line ? n(line.portions) : '', true, 'text', 'inputmode="decimal"')}${button('ww-remove', 'Entfernen')}</div>`;
+  /* Aktueller Stand je Rezept, auch ungeprüft. Eine ältere Fassung bleibt wählbar, solange der Plan sie nutzt. */
+  const all = documents(s.ww, 'recipe').sort((a, b) => b.at.localeCompare(a.at)),
+    current = line && 'recipeId' in line ? all.find(r => r.id === line.recipeId) : undefined,
+    recipes = [
+      ...all.filter((r, i) => all.findIndex(x => x.familyId === r.familyId) === i && r.id !== current?.id),
+      ...(current ? [current] : [])
+    ].sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  return `<div class="ww-line" data-line>${kind === 'recipe' ? select('articleId', 'Zutat', [['', 'Zutat auswählen'], ...ingredientChoices(s).map(a => [a.id, a.name + ' · ' + unitName(a.unit, 1)] as [string, string])], line && 'articleId' in line ? line.articleId : '', 'required') + field('quantity', 'Menge', line && 'quantity' in line ? n(line.quantity) : '', true, 'text', 'inputmode="decimal"') : select('recipeId', 'Gericht oder Getränk', [['', 'Bitte wählen'], ...recipes.map(r => [r.id, r.name + (r.confirmed ? '' : ' (ungeprüft)')] as [string, string])], line && 'recipeId' in line ? line.recipeId : '', 'required') + field('portions', 'Portionen', line && 'portions' in line ? n(line.portions) : '', true, 'text', 'inputmode="decimal"')}${button('ww-remove', 'Entfernen')}</div>`;
 }
 export function materialLine(s: Workspace, season: string, line?: NonNullable<Plan['materials']>[number]): string {
   const articles = s.articles.map(r => r.value).filter(a => articleAvailable(a, season) || a.id === line?.articleId);
@@ -76,28 +92,39 @@ export function operationForm(d: Recipe | Plan | EquipmentItem | Movement, s: Wo
   let body = '';
   if (d.kind === 'recipe')
     body =
-      field('name', 'Rezept / Verkaufsprodukt', d.name, true) +
-      field('category', 'Kategorie', d.category) +
-      field('yield', 'Rezept für wie viele Portionen / Stück?', n(d.yield), true, 'text', 'inputmode="decimal"') +
+      field('name', 'Name auf der Karte', d.name, true) +
+      select(
+        'category',
+        'Kategorie',
+        [
+          ...(['Speise', 'Getränk', 'Intern'].includes(d.category) || !d.category
+            ? []
+            : [[d.category, d.category] as [string, string]]),
+          ['Speise', 'Speise'],
+          ['Getränk', 'Getränk'],
+          ['Intern', 'Intern, nicht auf der Karte']
+        ],
+        d.category || 'Speise'
+      ) +
+      field('yield', 'Das Rezept ergibt wie viele Portionen?', n(d.yield), true, 'text', 'inputmode="decimal"') +
       field(
         'salePriceGross',
-        'Verkaufspreis brutto je Portion / Stück',
-        n(d.salePriceGross),
+        'Verkaufspreis je Portion in € (brutto)',
+        d.salePriceGross === null ? '' : price2(d.salePriceGross),
         false,
         'text',
         'inputmode="decimal"'
       ) +
-      `<p class="ww-full">Zutatenmengen gelten für die gesamte Ausbeute. Die Einheit steht jeweils bei der gewählten Zutat (z. B. kg, l, Flasche).</p><div class="ww-lines">${d.ingredients.map(l => operationLine('recipe', s, l)).join('')}</div>` +
+      `<p class="ww-full">Die Mengen der Zutaten gelten für alle Portionen des Rezepts zusammen.</p><div class="ww-lines">${d.ingredients.map(l => operationLine('recipe', s, l)).join('')}</div>` +
       button('ww-add', 'Zutat hinzufügen', 'recipe') +
-      button('ww-ingredient', 'Neue Zutat mit Liefergebinde anlegen') +
-      '<div class="recipe-cost" data-recipe-cost>Zutaten und Mengen ergänzen – der Wareneinsatz wird hier sofort berechnet.</div>' +
-      check('confirmed', 'Rezept geprüft und freigeben (bleibt als Version erhalten)', d.confirmed);
+      button('ww-ingredient', 'Neue Zutat anlegen') +
+      '<div class="recipe-cost" data-recipe-cost>Mit Zutaten und Mengen erscheint hier der Wareneinsatz.</div>';
   if (d.kind === 'plan')
     body =
       field('name', 'Einsatz', d.name, true) +
-      field('date', 'Verwendungstag', d.date, true, 'date') +
-      `<div class="ww-lines">${d.lines.map(l => operationLine('plan', s, l)).join('')}</div>` +
-      button('ww-add', 'Gericht / Getränk hinzufügen', 'plan') +
+      field('date', 'Tag', d.date, true, 'date') +
+      `<div class="ww-lines plan-lines"><div class="plan-lines-head" aria-hidden="true"><span>Gericht oder Getränk</span><span>Portionen</span><span></span></div>${d.lines.map(l => operationLine('plan', s, l)).join('')}</div>` +
+      button('ww-add', 'Gericht oder Getränk hinzufügen', 'plan') +
       `<details class="ww-full"${d.materials?.length ? ' open' : ''}><summary>Verbrauchsmaterial</summary>
                 <div class="ww-materials">${(d.materials ?? []).map(l => materialLine(s, d.scope, l)).join('')}</div>
                 ${button('ww-add-material', 'Material hinzufügen')}</details>` +
@@ -158,7 +185,12 @@ export function operationForm(d: Recipe | Plan | EquipmentItem | Movement, s: Wo
       '</details>' +
       note('note', 'Grund / Belegverweis', d.note) +
       `<p class="ww-full ww-alert">Bereits über eine Bestellung angenommene Ware hier nicht erneut als Eingang buchen. Eine Buchung ist nach der Bestätigung unveränderlich; Fehler mit einer Gegenbuchung korrigieren.</p>`;
-  return `<form data-form="ww-${d.kind}" class="panel ww-editor">${heading(d.kind === 'recipe' ? 'Rezept / Verkaufsprodukt' : d.kind === 'plan' ? 'Einsatz planen' : d.kind === 'equipment' ? 'Arbeitsmittel' : 'Verbrauch oder Übergabe erfassen', '')}<div class="formgrid">${body}</div>${confirmationActions(d.kind === 'movement' ? 'Buchung bestätigen' : 'Speichern')}</form>`;
+  /* Rezept: Das Häkchen steht in der festen Leiste neben Speichern, damit es niemand übersieht. */
+  const actions =
+    d.kind === 'recipe'
+      ? `<div class="actions sticky-actions">${check('confirmed', 'Mengen geprüft', d.confirmed)}<button type="submit" class="primary">Speichern</button>${button('ww-cancel', 'Abbrechen')}</div>`
+      : confirmationActions(d.kind === 'movement' ? 'Buchung bestätigen' : 'Speichern');
+  return `<form data-form="ww-${d.kind}" class="panel ww-editor">${heading(d.kind === 'recipe' ? d.name || 'Neues Rezept' : d.kind === 'plan' ? d.name || 'Einsatz planen' : d.kind === 'equipment' ? 'Arbeitsmittel' : 'Verbrauch oder Übergabe erfassen', d.kind === 'recipe' ? 'Gericht oder Getränk mit Zutaten und Verkaufspreis' : d.kind === 'plan' ? 'Portionen je Gericht und Getränk' : '')}<div class="formgrid">${body}</div>${actions}</form>`;
 }
 export function operationOverview(page: string, s: Workspace, area: Area, season: string, place = ''): string {
   if (page === 'next-use')
@@ -332,7 +364,9 @@ export function seasonStockRows(s: Workspace, rows: StockRow[], season: string):
   );
 }
 export function demandView(plan: Plan, s: Workspace): string {
-  const { rows, issues } = planDemand(plan, s);
+  const { rows, issues, notes } = planDemand(plan, s);
+  const whole = (quantity: number, unit: string): number =>
+    /^(kg|g|l|ml)$/i.test(unit.trim()) ? quantity : Math.ceil(quantity - 1e-9);
   const action = planAlreadyOrdered(plan, s)
     ? plan.date >= today()
       ? button('ww-next-plan', 'Nachbestellung prüfen', plan.id, true)
@@ -342,9 +376,13 @@ export function demandView(plan: Plan, s: Workspace): string {
     backLink('ww-cancel', 'Portionen') +
     heading('Bedarf', plan.name + ' · ' + dayLabel(plan.date)) +
     issues.map(i => `<p class="ww-alert">${h(i)}</p>`).join('') +
+    notes.map(i => `<p class="ww-note">${h(i)}</p>`).join('') +
     '<section class="panel">' +
     (rows
-      .map(r => `<div class="listrow"><strong>${h(r.name)}</strong><span>${n(r.quantity)} ${h(r.unit)}</span></div>`)
+      .map(r => {
+        const q = whole(r.quantity, r.unit);
+        return `<div class="listrow"><strong>${h(r.name)}</strong><span>${n(q)} ${h(unitName(r.unit, q))}${q !== r.quantity ? '<small> · rechnerisch ' + n(r.quantity) + '</small>' : ''}</span></div>`;
+      })
       .join('') || empty('Noch kein Bedarf erfasst.')) +
     '</section>' +
     (issues.length ? '' : '<div class="actions">' + action + '</div>')

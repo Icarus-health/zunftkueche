@@ -31,7 +31,7 @@ export function inboxView(view: InboxView, state: Workspace, stateArea?: string,
   const refresh = view.busy ? '' : button('ww-inbox-refresh', 'Dateiliste aktualisieren');
   const top =
     only === 'bill'
-      ? `<div class="page-heading"><div><h1>Bestellungen</h1><p>${h(view.season.name)} · ${h(stateArea || '')}</p></div><div class="actions">${moreMenu([refresh, button('ww-open', 'Bestätigte Rechnungen', 'bills')])}</div></div>${ordersTabs('bills')}`
+      ? `<div class="page-heading"><div><h1>Rechnungen</h1><p>${h(view.season.name)} · ${h(stateArea || '')}</p></div><div class="actions">${moreMenu([refresh, button('ww-open', 'Bestätigte Rechnungen', 'bills')])}</div></div>${ordersTabs('bills')}`
       : `${backLink('nav', 'Auswertung', 'reports')}<div class="page-heading"><div><h1>Kassendateien</h1><p>${h(view.season.name)}</p></div><div class="actions">${refresh}</div></div>`;
   return (
     top +

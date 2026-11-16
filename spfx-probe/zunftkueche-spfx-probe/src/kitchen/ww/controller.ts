@@ -344,16 +344,20 @@ export class WwController {
     try {
       const r = this.readRecipe(form, this.draft),
         d = recipeDemand({ ...r, confirmed: true }, 1, this.p.state(), documents(this.p.state().ww, 'prices'));
-      box.textContent =
-        'Wareneinsatz netto je Portion: ' +
-        money(d.costNet) +
-        ' · gesamtes Rezept: ' +
-        money(
-          recipeDemand({ ...r, confirmed: true }, r.yield, this.p.state(), documents(this.p.state().ww, 'prices'))
-            .costNet
-        ) +
-        ' · Verkauf brutto: ' +
-        money(r.salePriceGross);
+      const missing = d.rows.filter(row => row.costNet === null).map(row => row.name);
+      box.textContent = !r.ingredients.length
+        ? 'Noch keine Zutat. Mit Zutaten erscheint hier der Wareneinsatz.'
+        : missing.length
+          ? 'Wareneinsatz noch offen. Preis fehlt bei: ' + missing.join(', ') + '. Preise pflegt ihr unter Lieferanten.'
+          : 'Wareneinsatz netto je Portion: ' +
+            money(d.costNet) +
+            ' · gesamtes Rezept: ' +
+            money(
+              recipeDemand({ ...r, confirmed: true }, r.yield, this.p.state(), documents(this.p.state().ww, 'prices'))
+                .costNet
+            ) +
+            ' · Verkauf brutto: ' +
+            money(r.salePriceGross);
     } catch {
       box.textContent = 'Zutatenmengen und Portionen ergänzen, um den Wareneinsatz zu sehen.';
     }
@@ -1400,8 +1404,8 @@ export class WwController {
       doc.note = get('note');
       doc.lines = Array.from(form.querySelectorAll<HTMLElement>('[data-line]')).map(row => {
         const recipeId = row.querySelector<HTMLSelectElement>('[name=recipeId]')!.value;
-        if (!documents(this.p.state().ww, 'recipe').some(r => r.id === recipeId && r.confirmed))
-          throw new Error('Bestätigtes Rezept auswählen.');
+        if (!documents(this.p.state().ww, 'recipe').some(r => r.id === recipeId))
+          throw new Error('In einer Zeile fehlt das Gericht. Bitte auswählen oder die Zeile entfernen.');
         return { recipeId, portions: parseDecimal(row.querySelector<HTMLInputElement>('[name=portions]')!.value)! };
       });
       const savedMaterials = doc.materials ?? [];
