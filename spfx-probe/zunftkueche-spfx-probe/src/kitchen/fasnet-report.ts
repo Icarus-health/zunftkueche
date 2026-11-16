@@ -49,7 +49,9 @@ export function fasnetFigures(state: Workspace, seasonId: string): FasnetFigures
   const areas = AREAS.map((area): AreaFigures => {
     const orders = state.orders
       .map(r => r.value)
-      .filter(o => o.seasonId === seasonId && o.area === area && (o.status === 'Bestellt' || o.status === 'Abgeschlossen'));
+      .filter(
+        o => o.seasonId === seasonId && o.area === area && (o.status === 'Bestellt' || o.status === 'Abgeschlossen')
+      );
     const priced = orders.filter(o => orderTotal(o) !== null);
     const relevant = bills.filter(b => billGrossForArea(b, area) !== undefined);
     const { sales, other } = salesFor(state, seasonId, area);
@@ -90,13 +92,27 @@ function figureRow(label: string, value: string, note = ''): string {
 function figures(row: Omit<AreaFigures, 'area'>, unassigned?: number, total = false): string {
   return (
     '<dl class="figure-list">' +
-    figureRow('Verkäufe brutto', money(row.sales), row.salesOtherBasis ? row.salesOtherBasis + ' Posten mit anderer Preisart nicht enthalten' : '') +
-    figureRow('Einkauf laut Rechnungen brutto', money(row.purchase), unassigned ? 'davon ohne Bereich: ' + money(unassigned) : '') +
-    figureRow('Verkäufe minus Einkauf', money(cents(row.sales - row.purchase)), total ? 'vorläufig, beides brutto' : '') +
+    figureRow(
+      'Verkäufe brutto',
+      money(row.sales),
+      row.salesOtherBasis ? row.salesOtherBasis + ' Posten mit anderer Preisart nicht enthalten' : ''
+    ) +
+    figureRow(
+      'Einkauf laut Rechnungen brutto',
+      money(row.purchase),
+      unassigned ? 'davon ohne Bereich: ' + money(unassigned) : ''
+    ) +
+    figureRow(
+      'Verkäufe minus Einkauf',
+      money(cents(row.sales - row.purchase)),
+      total ? 'vorläufig, beides brutto' : ''
+    ) +
     figureRow(
       'Bestellwert netto',
       money(row.orderValue),
-      row.orders + (row.orders === 1 ? ' Bestellung' : ' Bestellungen') + (row.ordersWithoutPrice ? ', ' + row.ordersWithoutPrice + ' ohne vollständige Preise' : '')
+      row.orders +
+        (row.orders === 1 ? ' Bestellung' : ' Bestellungen') +
+        (row.ordersWithoutPrice ? ', ' + row.ordersWithoutPrice + ' ohne vollständige Preise' : '')
     ) +
     figureRow('Abendabschlüsse', String(row.closings)) +
     '</dl>'

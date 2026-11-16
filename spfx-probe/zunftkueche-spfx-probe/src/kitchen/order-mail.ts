@@ -98,7 +98,7 @@ export function orderMailView(order: Order, supplier: Supplier, shareFiles = fal
     h(order.supplierName) +
     '</p>' +
     fields +
-    '<label>Bestelltext<textarea name="orderMailBody" readonly rows="12">' +
+    '<label>Bestelltext<textarea name="orderMailBody" readonly rows="12" tabindex="0">' +
     h(mail.body) +
     '</textarea></label>' +
     '<p class="muted">' +

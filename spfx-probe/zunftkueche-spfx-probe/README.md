@@ -1,3 +1,5 @@
+> **Aktueller Stand und Aufbau des Codes:** siehe [ARCHITEKTUR.md](ARCHITEKTUR.md). Die Beschreibung unten stammt aus Version 1.3.0 und ist in Teilen überholt.
+
 # Zunftküche 1.3.0 – Warenwirtschaft in Teams
 
 Stand 26.10.2026: In der bestehenden SPFx-App umgesetzt, lokal mit künstlichen Daten geprüft und als Update-Paket gebaut. **Diese Fassung ist noch nicht in SharePoint veröffentlicht oder in der echten Teams-Registerkarte abgenommen.** Keine echten Bestellungen, Rechnungen oder Kassenexporte wurden übernommen.

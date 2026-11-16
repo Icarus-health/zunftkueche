@@ -5,3 +5,4 @@ release
 sharepoint
 node_modules
 src/kitchen/imports/ocr-assets
+src/kitchen/release.ts

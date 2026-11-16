@@ -61,7 +61,8 @@ export function countSheetPdf(session: InventorySession, context: CountSheetCont
   for (const line of lines) {
     const name = wrap(line.articleName, 44),
       single = line.packSize === 1,
-      detail = (places[line.articleId] ? places[line.articleId] + ' · ' : '') +
+      detail =
+        (places[line.articleId] ? places[line.articleId] + ' · ' : '') +
         (single ? 'Menge in ' + line.unit : line.packName + ' · ' + num(line.packSize) + ' ' + line.unit),
       groupChange = groupOf(line.articleId) !== group,
       height = Math.max(34, name.length * 11 + 22) + (groupChange ? 22 : 0);

@@ -386,7 +386,7 @@ function scanHints(
             ? 'Marktplatz'
             : label === 'bar'
               ? 'Bar'
-            : 'Hallenbar'
+              : 'Hallenbar'
     );
   }
   return {

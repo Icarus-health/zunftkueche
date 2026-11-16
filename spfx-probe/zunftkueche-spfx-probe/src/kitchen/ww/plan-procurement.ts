@@ -199,7 +199,12 @@ export function procurementReservation(plan: Plan, allocations: Allocation[], s:
       incomingUse: a.incomingUse
     });
   return {
-    id: current?.id || 'allocation:' + plan.scope + ':' + (plan.area === 'Küche' ? 'kitchen' : plan.area === 'Marktplatz' ? 'market' : 'bar'),
+    id:
+      current?.id ||
+      'allocation:' +
+        plan.scope +
+        ':' +
+        (plan.area === 'Küche' ? 'kitchen' : plan.area === 'Marktplatz' ? 'market' : 'bar'),
     kind: 'allocation',
     scope: plan.scope,
     area: plan.area,
@@ -339,7 +344,11 @@ export function mergePlanOrders(
   return result;
 }
 /** Bei mehreren Liefergebinden das zuletzt bestellte vorschlagen. Ohne frühere Bestellung bleibt die Wahl offen. */
-export function preferredOffer<T extends { id: string }>(articleId: string, candidates: T[], s: Workspace): T | undefined {
+export function preferredOffer<T extends { id: string }>(
+  articleId: string,
+  candidates: T[],
+  s: Workspace
+): T | undefined {
   const used = s.orders
     .map(row => row.value)
     .filter(order => order.status !== 'Storniert' && order.status !== 'Entwurf')

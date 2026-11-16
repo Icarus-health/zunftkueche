@@ -152,12 +152,7 @@ export function operationForm(d: Recipe | Plan | EquipmentItem | Movement, s: Wo
       (d.type === 'transfer' ? ' open' : '') +
       '><summary>Lager und Übergabe (nur bei Bedarf)</summary>' +
       field('place', 'Ausgangslager (leer = Standardlager)', d.place) +
-      select(
-        'toArea',
-        'Zielbereich (nur Übergabe)',
-        areaOptions(),
-        d.toArea || d.area
-      ) +
+      select('toArea', 'Zielbereich (nur Übergabe)', areaOptions(), d.toArea || d.area) +
       field('toPlace', 'Ziellager (leer = Standardlager)', d.toPlace) +
       '</details>' +
       note('note', 'Grund / Belegverweis', d.note) +

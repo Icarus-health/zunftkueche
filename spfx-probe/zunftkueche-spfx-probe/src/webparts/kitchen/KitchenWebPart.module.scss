@@ -4798,3 +4798,14 @@
     outline: none;
   }
 }
+
+.kitchen {
+  /* Versand: Fokus bleibt über der Aktionszeile, Platzhalter in lesbarem Grau. */
+  :global(.order-mail) {
+    --action-bar: 88px;
+  }
+  :global(.order-mail) input::placeholder {
+    color: var(--dim);
+    opacity: 1;
+  }
+}
