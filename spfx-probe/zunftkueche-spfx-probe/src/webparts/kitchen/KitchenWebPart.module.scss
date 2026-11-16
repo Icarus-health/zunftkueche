@@ -737,7 +737,13 @@
  :global(.calm-notice):last-child{border-radius:0 0 16px 16px;}
  :global(.calm-notices)>h2+:global(.calm-notice):last-child{border-radius:16px;}
  :global(.calm-notice)>button{flex:none;min-height:44px;padding:0 16px;border:0;border-radius:12px;background:var(--tint);color:var(--action-hover);font-size:15px;font-weight:700;}
- @media(min-width:761px){
+ /* Breite Übersicht nur, wenn der Platz der App selbst reicht. In SharePoint ist die App schmaler als das Fenster. */
+ :global(.calm-home-heading)>:global(.home-brand){order:1;flex:1 1 auto;}
+ :global(.calm-home-heading)>:global(.context-switch){order:2;}
+ :global(.calm-home-heading)>div:nth-child(2){order:3;flex:1 1 100%;display:grid;gap:2px;margin-top:6px;}
+ :global(.calm-home-heading)>:global(.next-step){order:4;flex:1 1 100%;margin-top:8px;}
+ @media(min-width:761px){:global(.workspace-main){container-type:inline-size;}:global(.calm-home-heading)>:global(.home-brand)>span:last-child{display:none;}}
+ @container (min-width:900px){
   main:has(>:global(.calm-home-heading)){display:grid;grid-template-columns:minmax(300px,1fr) minmax(0,2fr);gap:24px 20px;align-items:stretch;}
   main:has(>:global(.calm-home-heading))>*{grid-column:1/-1;}
   :global(.calm-home-heading){display:contents;}
@@ -911,11 +917,8 @@
   :global(.context-sheet){position:fixed;left:8px;right:8px;top:auto;bottom:calc(var(--tabbar) + 8px);width:auto;padding:20px 16px;border-radius:20px;}
   :global(.page-heading)>button:global(.primary){min-height:50px;font-size:17px;}
   :global(.page-heading)>div>p{margin-bottom:4px;}
-  :global(.calm-home-heading)>:global(.home-brand){order:1;flex:1 1 auto;}
   :global(.home-brand) :global(.brand-mark){height:40px;}
-  :global(.calm-home-heading)>:global(.context-switch){order:2;}
-  :global(.calm-home-heading)>div:nth-child(2){order:3;flex:1 1 100%;display:grid;gap:2px;margin-top:6px;}
-  :global(.calm-home-heading)>:global(.next-step){order:4;flex:1 1 100%;margin-top:8px;padding:18px;}
+  :global(.calm-home-heading)>:global(.next-step){padding:18px;}
   :global(.next-step) h2{font-size:22px;}
   :global(.next-step) button:global(.primary){align-self:stretch;min-height:50px;margin-top:4px;font-size:17px;}
   :global(.workflow-starts){grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
@@ -928,8 +931,9 @@
   :global(.app-layout)>:global(.sidebar) nav button[aria-current='page'] :global(.zk-icon),:global(.app-layout)>:global(.sidebar) nav button:global(.nav-more.is-current) :global(.zk-icon),:global(.app-layout)>:global(.sidebar) nav button:global(.nav-more)[aria-expanded='true'] :global(.zk-icon){background:var(--tint);}
   :global(.app-layout)>:global(.sidebar) nav button:global(.nav-more) :global(.zk-line){stroke-width:3.6;}
   /* „Mehr“ ist eine eigene Seite mit Liste, kein aufklappendes Menü. Die Leiste bleibt unten stehen. */
-  :global(.app-layout)>:global(.sidebar)[data-menu-open='true'] nav{position:fixed;inset:0;z-index:25;grid-template-rows:auto repeat(5,auto) minmax(0,1fr) auto;align-content:stretch;padding:14px 0 0;border:0;background:var(--bg);overflow:auto;}
-  :global(.app-layout)>:global(.sidebar)[data-menu-open='true'] nav>button:not([data-tab='more']){grid-row:8;align-self:end;min-height:67px;padding:8px 2px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);border-radius:0;background:var(--surface);}
+  /* Im Seitenfluss statt über allem: in SharePoint liegt dessen eigene Kopfleiste sonst über dem Titel. */
+  :global(.app-layout)>:global(.sidebar)[data-menu-open='true'] nav{position:relative;inset:auto;z-index:auto;min-height:100dvh;grid-template-rows:auto repeat(5,auto) minmax(0,1fr) auto;align-content:stretch;padding:14px 0 0;border:0;background:var(--bg);overflow:visible;}
+  :global(.app-layout)>:global(.sidebar)[data-menu-open='true'] nav>button:not([data-tab='more']){position:sticky;bottom:0;z-index:2;grid-row:8;align-self:end;min-height:67px;padding:8px 2px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);border-radius:0;background:var(--surface);}
   :global(.app-layout)>:global(.sidebar)[data-menu-open='true'] nav button[data-tab='main'][aria-current='page']{color:var(--dim);font-weight:600;}
   :global(.app-layout)>:global(.sidebar)[data-menu-open='true'] nav button[data-tab='main'][aria-current='page'] :global(.zk-icon){background:transparent;}
   :global(.app-layout)>:global(.sidebar)[data-menu-open='true'] nav button[data-tab='main'][aria-current='page'] :global(.zk-dual) :global(.zk-line){display:inline;}
