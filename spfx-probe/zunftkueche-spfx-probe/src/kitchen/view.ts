@@ -1,118 +1,60 @@
 import { deliveryRound } from './home.ts';
-import { icon } from './icons.ts';
-import { readSheetOrder, orderReview } from './order-sheet.ts';
+import { orderReview } from './order-sheet.ts';
 import { LocalState, formFields, restoreFields } from './local-state.ts';
 import type { LocalDraft, ContextChoice } from './local-state';
-import { supplierNeedsReview } from './review-status.ts';
-import type { WwDraftSnapshot } from './ww/controller';
-import { clearFieldError, fieldNumber } from './field-errors.ts';
+import { clearFieldError } from './field-errors.ts';
 import { settingsView } from './settings-view.ts';
 import { ingredientForm, readIngredient } from './ingredient-form.ts';
 import type { IngredientDraft } from './ingredient-form';
-import { articleAvailable } from './model.ts';
-import { scheduledOrder, withSchedule, copyScheduledOrder, deliveryRemaining } from './supplier-orders.ts';
-import { supplierPdf } from './supplier-pdf.ts';
-import { orderMailView, supplierMail, supplierOrderText } from './order-mail.ts';
-import { deliveryMatrix, deliverySummary, supplierTools, orderGuidance, priceReview } from './supplier-forms.ts';
+import { withSchedule, copyScheduledOrder } from './supplier-orders.ts';
+import { orderMailView } from './order-mail.ts';
 import { WwController } from './ww/controller.ts';
-import { nextUsePlans } from './ww/operations-view.ts';
-import { documents } from './ww/model.ts';
-import { effectiveOffer } from './ww/domain.ts';
-import { priceSuggestion } from './order-guidance.ts';
 import { orderRound } from './workflow-tasks.ts';
 import type {
   Area,
   Article,
   Count,
-  DeliveryNote,
   InventorySession,
   Method,
   Offer,
   Order,
-  Receipt,
   Season,
   Stored,
   Supplier,
   Workspace
 } from './model';
-import { catalog, isArea } from './model.ts';
-import { exportFasnetRows } from './fasnet-report.ts';
-import { saveFile } from './save-file.ts';
-import { countSheetPdf } from './count-sheet-pdf.ts';
-import { parseDecimal, validateEntity, validateOrder, orderTotal } from './domain.ts';
+import { isArea } from './model.ts';
+import { parseDecimal } from './domain.ts';
 import { SharePointStore } from './sharepoint.ts';
-import { columns, previewMasters } from './csv.ts';
 import type { ImportKind } from './csv';
 import { masterForm, orderForm, copyForm } from './forms.ts';
 import type { Editing } from './forms';
-import { h, n, money, select, note, button, panel, empty } from './markup.ts';
+import { h, button, panel } from './markup.ts';
+import { sidebar, contextSwitch, dashboard, stockOverview, reportsOverview, stamp } from './workspace.ts';
+import { receiptForm, inventoryForm, assessmentLabel } from './operation-forms.ts';
+import { uuid, message, ownEntry } from './view-support.ts';
+import type { ImportItem, View, RecoveryData } from './view-support';
+import { uiAction } from './actions/ui-actions.ts';
+import { receiptAction, updateReceiptProgress, saveSlip, saveReceipt } from './actions/receipt-actions.ts';
+import { inventoryAction, updateCountTotals, saveInventory } from './actions/count-actions.ts';
+import { masterAction, articles, suppliers } from './actions/master-actions.ts';
 import {
-  countQuantity,
-  deliveryState,
-  receivedQuantity,
-  validateInventory,
-  validateReceipt,
-  latestCounts
-} from './operations.ts';
-import {
-  sidebar,
-  contextSwitch,
-  dashboard,
-  stockOverview,
-  reportsOverview,
-  searchField,
-  badge,
-  stamp,
-  displayDate
-} from './workspace.ts';
-import type { WorkspaceView } from './workspace';
-import {
-  receiptForm,
-  inventoryForm,
-  deliverySlipsView,
-  assessmentLabel,
-  countProgress,
-  countShare,
-  receiptProgress
-} from './operation-forms.ts';
+  orderAction,
+  orders,
+  orderDetail,
+  reorderList,
+  readOrder,
+  updateOrderTotals,
+  supplierFor,
+  canShareFiles,
+  saveOrder
+} from './actions/order-actions.ts';
+import { importAction, copyList, importForm, uniqueName } from './actions/import-actions.ts';
 
-import { slipExtension, slipFileLimit } from './delivery-slip.ts';
-import type { SlipFile } from './delivery-slip';
-import { sha256 } from './imports/identity.ts';
-
-type View = WorkspaceView;
-interface ImportItem {
-  kind: ImportKind;
-  value: Article | Supplier;
-  done: boolean;
-}
-const uuid = (): string => crypto.randomUUID();
-const message = (error: unknown): string =>
-  error instanceof Error ? error.message : 'Verbindung fehlgeschlagen. Bitte neu laden und gespeicherten Stand prüfen.';
-
-interface RecoveryData {
-  view: View;
-  orderReview?: boolean;
-  editing?: Editing;
-  draft?: Order;
-  previous?: Stored<Order>;
-  copySource?: Stored<Order>;
-  receiving?: { previous: Stored<Order>; id: string; deliveryId?: string };
-  inventory?: InventorySession;
-  inventoryPrevious?: Stored<InventorySession>;
-  quickIngredient?: IngredientDraft;
-  operationId: string;
-  ww?: WwDraftSnapshot;
-  masterEtag?: string;
-  countEdits: Array<[string, string]>;
-}
-function ownEntry(state: unknown): boolean {
-  return !!state && typeof state === 'object' && (state as { zunftkueche?: unknown }).zunftkueche === true;
-}
 export class KitchenView {
-  private readonly local: LocalState;
-  private recovery?: LocalDraft<RecoveryData>;
-  private viaKeyboard = false;
+  readonly local: LocalState;
+  recovery?: LocalDraft<RecoveryData>;
+  viaKeyboard = false;
   private focusMemo = '';
   /** One history entry of our own is on the stack while the app shows anything but the overview. */
   private guard = false;
@@ -153,7 +95,7 @@ export class KitchenView {
       event.returnValue = '';
     }
   };
-  private rememberDraft(): void {
+  rememberDraft(): void {
     if (!this.dirty || this.busy) return;
     const form = this.root.querySelector<HTMLFormElement>('form[data-form]');
     if (!form) return;
@@ -203,7 +145,7 @@ export class KitchenView {
   private rememberContext(): void {
     this.local.write('context', { area: this.area, seasonId: this.seasonId });
   }
-  private async resumeDraft(): Promise<void> {
+  async resumeDraft(): Promise<void> {
     const saved = this.recovery;
     if (!saved || saved.version !== 1 || saved.lineCount > 1000 || saved.lineCount < 0 || saved.fields.length > 25000)
       throw new Error('Entwurf ist nicht lesbar.');
@@ -247,49 +189,49 @@ export class KitchenView {
     const form = this.root.querySelector<HTMLFormElement>('form[data-form]');
     if (form && form.dataset.form === saved.form) restoreFields(form, saved.fields);
     this.applyDeliveryView();
-    this.updateCountTotals();
-    this.updateOrderTotals();
+    updateCountTotals(this);
+    updateOrderTotals(this);
     this.wwUI.updateCosts();
     this.info = 'Lokalen Entwurf wieder aufgenommen. Bitte prüfen und speichern. Dateien bei Bedarf erneut auswählen.';
     this.paintStatus();
     this.rememberContext();
   }
 
-  private state?: Workspace;
-  private readonly wwUI: WwController;
-  private view: View = 'heute';
-  private area: Area = 'Küche';
-  private seasonId = '';
-  private editing?: Editing;
-  private draft?: Order;
-  private orderReview = false;
-  private mailOrder?: Order;
-  private previous?: Stored<Order>;
-  private copySource?: Stored<Order>;
-  private selectedOrder = '';
-  private receiving?: { previous: Stored<Order>; id: string; deliveryId?: string };
-  private inventory?: InventorySession;
-  private inventoryPrevious?: Stored<InventorySession>;
-  private countEdits = new Map<string, string>();
-  private query = '';
-  private statusFilter = '';
-  private quickIngredient?: IngredientDraft;
-  private copyPicker = false;
-  private reorderPicker = false;
-  private roundPicker = false;
-  private deliveryPicker = false;
-  private sourceSeason = '';
-  private importKind?: ImportKind;
-  private importItems?: ImportItem[];
-  private importErrors: string[] = [];
-  private importText?: string;
-  private importStarted = false;
+  state?: Workspace;
+  readonly wwUI: WwController;
+  view: View = 'heute';
+  area: Area = 'Küche';
+  seasonId = '';
+  editing?: Editing;
+  draft?: Order;
+  orderReview = false;
+  mailOrder?: Order;
+  previous?: Stored<Order>;
+  copySource?: Stored<Order>;
+  selectedOrder = '';
+  receiving?: { previous: Stored<Order>; id: string; deliveryId?: string };
+  inventory?: InventorySession;
+  inventoryPrevious?: Stored<InventorySession>;
+  countEdits = new Map<string, string>();
+  query = '';
+  statusFilter = '';
+  quickIngredient?: IngredientDraft;
+  copyPicker = false;
+  reorderPicker = false;
+  roundPicker = false;
+  deliveryPicker = false;
+  sourceSeason = '';
+  importKind?: ImportKind;
+  importItems?: ImportItem[];
+  importErrors: string[] = [];
+  importText?: string;
+  importStarted = false;
   private pendingSave?: { work: () => Promise<unknown>; success: string; after?: () => void };
-  private dirty = false;
+  dirty = false;
   private busy = false;
-  private operationId = uuid();
-  private info = '';
-  private error = '';
+  operationId = uuid();
+  info = '';
+  error = '';
   private needsSetup = false;
   private locked: Array<[HTMLInputElement | HTMLSelectElement | HTMLButtonElement | HTMLTextAreaElement, boolean]> = [];
   /** Control that started the current action. Errors are repeated next to it when the page status line is out of sight. */
@@ -347,14 +289,14 @@ export class KitchenView {
       this.dirty = true;
       this.info = 'Ungespeicherte Eingaben.';
       this.paintStatus();
-      if (this.draft) this.updateOrderTotals();
+      if (this.draft) updateOrderTotals(this);
       this.wwUI.updateCosts();
       if (this.inventory) {
         const id = target.name.replace(/^(packs|loose)_/, '');
         if (id !== target.name) this.countEdits.set(id, new Date().toISOString());
-        this.updateCountTotals();
+        updateCountTotals(this);
       }
-      if (this.receiving) this.updateReceiptProgress();
+      if (this.receiving) updateReceiptProgress(this);
       this.rememberDraft();
     }
   };
@@ -412,7 +354,7 @@ export class KitchenView {
       }
       if (target.name === 'deliveryView') this.applyDeliveryView();
       if (target.name === 'supplierId' && this.draft && !this.draft.lines.length) {
-        this.draft = this.readOrder(target.closest('form')!);
+        this.draft = readOrder(this, target.closest('form')!);
         const supplier = this.state!.suppliers.find(s => s.value.id === target.value)?.value;
         if (supplier) {
           this.draft.supplierId = supplier.id;
@@ -434,9 +376,9 @@ export class KitchenView {
     }
   };
   public constructor(
-    private readonly root: HTMLElement,
-    private readonly store: SharePointStore,
-    private readonly user: string
+    public readonly root: HTMLElement,
+    public readonly store: SharePointStore,
+    public readonly user: string
   ) {
     this.local = new LocalState(root, store.storageScope || root.ownerDocument.baseURI, user);
     const choice = this.local.read<ContextChoice>('context');
@@ -516,18 +458,18 @@ export class KitchenView {
     this.root.removeEventListener('input', this.input);
     this.root.removeEventListener('change', this.change);
   }
-  private season(): Season | undefined {
+  season(): Season | undefined {
     return this.state?.seasons.find(s => s.value.id === this.seasonId)?.value;
   }
-  private writable(): boolean {
+  writable(): boolean {
     return !!this.season() && !this.season()!.archived;
   }
-  private canLeave(): boolean {
+  canLeave(): boolean {
     if (!this.dirty) return true;
     this.showError(new Error('Ungespeicherte Eingaben: bitte zuerst speichern oder ausdrücklich abbrechen.'));
     return false;
   }
-  private clearEditor(): void {
+  clearEditor(): void {
     this.wwUI?.clear();
     this.quickIngredient = undefined;
     this.editing = undefined;
@@ -561,7 +503,7 @@ export class KitchenView {
     this.paintStatus(true);
   }
   /** fresh: the message was raised just now, so it may move the page to become visible. Repaints of an older message never do. */
-  private paintStatus(fresh = false): void {
+  paintStatus(fresh = false): void {
     const status = this.root.querySelector<HTMLElement>('[data-status]');
     if (status) {
       status.textContent = this.error || this.info;
@@ -602,7 +544,7 @@ export class KitchenView {
     );
     return !!hit && (hit === element || element.contains(hit));
   }
-  private lock(value: boolean): void {
+  lock(value: boolean): void {
     this.busy = value;
     if (value) {
       this.focusMemo = this.focusKey();
@@ -624,7 +566,7 @@ export class KitchenView {
       this.restoreFocus(memo);
     }
   }
-  private async run(work: () => Promise<unknown>, success: string, after?: () => void, mutation = true): Promise<void> {
+  async run(work: () => Promise<unknown>, success: string, after?: () => void, mutation = true): Promise<void> {
     if (this.busy) return;
     if (mutation) this.pendingSave = { work, success, after };
     let keepLocal = false;
@@ -697,7 +639,7 @@ export class KitchenView {
     const status = this.root.querySelector<HTMLElement>('[data-status]');
     if (status && !this.topVisible(status)) status.scrollIntoView?.({ block: 'start' });
   }
-  private render(): void {
+  render(): void {
     const s = this.state;
     const season = this.season();
     let body = '';
@@ -726,23 +668,28 @@ export class KitchenView {
         Object.fromEntries(s.articles.map(a => [a.value.id, a.value.category || '']))
       );
     else if (this.editing) body = masterForm(this.editing, s);
-    else if (this.mailOrder) body = orderMailView(this.mailOrder, this.supplierFor(this.mailOrder), this.canShareFiles());
+    else if (this.mailOrder)
+      body = orderMailView(this.mailOrder, supplierFor(this, this.mailOrder), canShareFiles(this));
     else if (this.draft) body = this.orderReview ? orderReview(this.draft, s) : orderForm(this.draft, s);
     else if (this.copySource) body = copyForm(this.copySource.value, s, this.season());
-    else if (this.importKind) body = this.importForm();
-    else if (this.selectedOrder) body = this.orderDetail(s.orders.find(o => o.value.id === this.selectedOrder));
-    else if (this.copyPicker) body = this.copyList();
-    else if (this.reorderPicker) body = this.reorderList();
+    else if (this.importKind) body = importForm(this);
+    else if (this.selectedOrder)
+      body = orderDetail(
+        this,
+        s.orders.find(o => o.value.id === this.selectedOrder)
+      );
+    else if (this.copyPicker) body = copyList(this);
+    else if (this.reorderPicker) body = reorderList(this);
     else if (this.deliveryPicker) body = deliveryRound(s, season, this.area);
     else if (this.roundPicker) body = orderRound(s, season, this.area);
     else if (this.view === 'heute') body = this.home();
-    else if (this.view === 'articles') body = this.articles();
-    else if (this.view === 'suppliers') body = this.suppliers();
+    else if (this.view === 'articles') body = articles(this);
+    else if (this.view === 'suppliers') body = suppliers(this);
     else if (this.view === 'stock') body = stockOverview(s, season, this.area, this.query);
     else if (this.view === 'planning') body = this.wwUI.renderPlanning();
     else if (this.view === 'reports') body = reportsOverview(s, season, this.area);
     else if (this.view === 'management') body = settingsView(season, this.area);
-    else body = this.orders();
+    else body = orders(this);
 
     const page = this.pageKey(),
       samePage = page === this.shownPage,
@@ -759,7 +706,7 @@ export class KitchenView {
     if (phone && dayViews.length > 1) dayViews[1].checked = true;
     if (phone && dayList && dayList.options.length > 1) dayList.selectedIndex = 1;
     this.applyDeliveryView();
-    this.updateReceiptProgress();
+    updateReceiptProgress(this);
     if (opened) this.reopenSections(opened);
     this.paintStatus();
     this.filterRows();
@@ -789,7 +736,7 @@ export class KitchenView {
     );
   }
   /** Keeps exactly one own history entry while the app is deeper than the overview, and takes it back when the app returns there by itself. */
-  private syncHistory(): void {
+  syncHistory(): void {
     const history = this.root.ownerDocument.defaultView?.history;
     if (!history?.pushState) return;
     try {
@@ -889,73 +836,6 @@ export class KitchenView {
       head = Array.from(main.children).find(el => el.classList.contains('page-heading'));
     if (sheet && head) head.append(sheet);
   }
-  /** Plus und Minus neben einem Mengenfeld. Leer bleibt leer, bis jemand zählt: Minus auf leer ergibt 0, Plus ergibt 1. */
-  private countStep(id: string): void {
-    const [name, step] = id.split('|'),
-      input = this.root.querySelector<HTMLInputElement>(
-        'form[data-form="inventory"] input[name="' + name.replace(/["\\]/g, '\\$&') + '"]'
-      );
-    if (!input) return;
-    let current = 0;
-    try {
-      current = parseDecimal(input.value) ?? 0;
-    } catch {
-      current = 0;
-    }
-    input.value = n(Math.max(0, Math.round((current + Number(step)) * 10000) / 10000));
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-  /** Schließt den offenen Artikel und öffnet den nächsten sichtbaren, zuerst einen noch nicht gezählten. */
-  private countNext(id: string): void {
-    const form = this.root.querySelector<HTMLFormElement>('form[data-form="inventory"]');
-    if (!form) return;
-    const lines = Array.from(form.querySelectorAll<HTMLElement>('.count-line')).filter(
-      line => !line.hidden && !line.closest<HTMLElement>('[data-count-group]')?.hidden
-    );
-    const at = lines.findIndex(
-        line => line.querySelector('[data-count-total]')?.getAttribute('data-count-total') === id
-      ),
-      after = [...lines.slice(at + 1), ...lines.slice(0, Math.max(at, 0))];
-    const open = (line: HTMLElement): boolean =>
-      line.querySelector<HTMLElement>('[data-count-total]')?.dataset.state === 'open';
-    const next = after.find(open) || (at >= 0 && at < lines.length - 1 ? lines[at + 1] : undefined);
-    for (const item of Array.from(form.querySelectorAll<HTMLDetailsElement>('details.count-item[open]')))
-      item.open = false;
-    if (!next) {
-      form.querySelector<HTMLElement>('[data-action="inventory-finish"]')?.focus();
-      return;
-    }
-    const item = next.querySelector<HTMLDetailsElement>('details.count-item');
-    if (item) item.open = true;
-    next.querySelector<HTMLElement>('.count-field input')?.focus();
-  }
-  /** Warenannahme: Fortschritt, Haken bei vollständiger Menge und Hinweis auf einen offenen Rest. */
-  private updateReceiptProgress(): void {
-    const form = this.root.querySelector<HTMLFormElement>('form[data-form="receipt"]');
-    if (!form) return;
-    const lines = Array.from(form.querySelectorAll<HTMLElement>('[data-receipt-line]'));
-    let filled = 0;
-    for (const line of lines) {
-      const input = line.querySelector<HTMLInputElement>('input'),
-        rest = line.querySelector<HTMLElement>('[data-receipt-rest]'),
-        expected = Number(line.dataset.expected);
-      let value: number | null = null;
-      try {
-        value = parseDecimal(input?.value || '');
-      } catch {
-        value = null;
-      }
-      const entered = value !== null && value > 0;
-      if (entered) filled++;
-      line.dataset.state = !entered ? 'open' : value! >= expected ? 'complete' : 'partial';
-      if (rest) {
-        rest.hidden = line.dataset.state !== 'partial';
-        rest.textContent = rest.hidden ? '' : n(Math.round((expected - value!) * 10000) / 10000) + ' bleiben offen';
-      }
-    }
-    const progress = form.querySelector('[data-receipt-progress]');
-    if (progress) progress.textContent = receiptProgress(filled, lines.length);
-  }
   private applyDeliveryView(): void {
     const selected =
       this.root.querySelector<HTMLInputElement | HTMLSelectElement>(
@@ -1016,293 +896,9 @@ export class KitchenView {
   private home(): string {
     return dashboard(this.state!, this.season(), this.area);
   }
-  private articles(): string {
-    const state = this.state!;
-    const priceLists = documents(state.ww, 'prices');
-    const date =
-      documents(state.ww, 'slot')
-        .map(slot => slot.date)
-        .sort()[0] || new Date().toISOString().slice(0, 10);
-    const rows = state.articles
-      .map(({ value: article }) => {
-        const offers = state.offers.filter(row => row.value.articleId === article.id);
-        const supplierName = (id: string): string =>
-          state.suppliers.find(row => row.value.id === id)?.value.name || 'Lieferant fehlt';
-        const keywords = [
-          article.name,
-          article.category,
-          article.unit,
-          ...offers.map(({ value: offer }) => supplierName(offer.supplierId))
-        ].join(' ');
-        const offerRows = offers
-          .map(({ value: offer }) => {
-            const supplier = supplierName(offer.supplierId);
-            const price = effectiveOffer(offer, priceLists, date);
-            const amount = price.priceNet === null ? 'Preis offen' : money(price.priceNet) + ' netto';
-            return `<tr><td><strong>${h(supplier)}</strong>${offer.active ? '' : '<small>Inaktiv</small>'}</td>
-     <td>${h(offer.packName)} à ${n(offer.packSize)} ${h(article.unit)}</td>
-     <td>${h(amount)}${price.priceDate ? '<small>Stand ' + h(displayDate(price.priceDate)) + '</small>' : ''}</td>
-     <td><button type="button" data-action="offer-edit" data-id="${h(offer.id)}" aria-label="Angebot von ${h(supplier)} bearbeiten">Bearbeiten</button></td></tr>`;
-          })
-          .join('');
-        const comparison = offerRows
-          ? `<table class="article-offers" aria-label="Lieferangebote für ${h(article.name)}"><thead><tr><th scope="col">Lieferant</th>
-     <th scope="col">Gebinde</th><th scope="col">Preis je Gebinde</th><th scope="col"><span class="sr-only">Aktion</span></th></tr></thead>
-     <tbody>${offerRows}</tbody></table>`
-          : '<p class="muted">Noch kein Lieferangebot.</p>';
-        return `<details class="article-list-row" data-search="${h(keywords)}"><summary><span class="article-name">${icon('chevron')}
-    <span><strong>${h(article.name)}</strong>${article.active ? '' : ' <small>Inaktiv</small>'}</span></span>
-    <span>${h(article.category || 'Ohne Kategorie')}</span><span>${h(article.unit)}</span>
-    <span>${offers.length} ${offers.length === 1 ? 'Angebot' : 'Angebote'}<span class="sr-only">Angebote ansehen</span></span></summary>
-    <div class="article-detail">${comparison}<div class="actions">${button('article-edit', 'Artikel bearbeiten', article.id)}
-    ${article.active ? button('offer-new', 'Lieferangebot hinzufügen', article.id) : ''}</div></div></details>`;
-      })
-      .join('');
-    return `<div class="page-heading"><div><h1>Artikel</h1><p>Gemeinsame Stammdaten für alle Bereiche.</p></div><div class="actions">${button('import', 'CSV importieren', 'articles')}${button('article-new', 'Artikel anlegen', '', true)}</div></div><div class="toolbar">${searchField(this.query, 'Artikel oder Lieferanten suchen')}</div><section class="article-list" aria-label="Artikelliste"><div class="article-list-head"><span>Artikel</span><span>Kategorie</span><span>Einheit</span><span>Lieferangebote</span></div>${rows || empty('Noch keine Artikel angelegt.')}</section><p data-filter-empty hidden>Keine passenden Artikel.</p>`;
-  }
-  private suppliers(): string {
-    const s = this.state!;
-    return `<div class="page-heading"><div><h1>Lieferanten</h1><p>Kontakte und Absprachen an einem Ort.</p></div><div class="actions">${button('supplier-new', 'Lieferant anlegen', '', true)}${button('import', 'CSV importieren', 'suppliers')}</div></div><div class="toolbar">${searchField(this.query, 'Lieferanten suchen')}</div><section class="supplier-list">${
-      s.suppliers
-        .map(
-          ({ value: v }) =>
-            `<details class="supplier-profile" data-search="${h([v.name, v.contactPerson || '', v.address || '', v.phone, v.email].join(' '))}"><summary><span><strong>${h(v.name)}</strong><small>${v.active ? h(v.method) : 'Inaktiv'}${v.active && supplierNeedsReview(v) ? ' · Bestellweg / Angaben prüfen' : ''}</small></span><span>Profil öffnen</span></summary><div class="profile-content"><dl><div><dt>Ansprechpartner</dt><dd>${h(v.contactPerson || 'Nicht hinterlegt')}</dd></div><div><dt>Adresse</dt><dd>${h(v.address || 'Nicht hinterlegt')}</dd></div><div><dt>Telefon</dt><dd>${h(v.phone || 'Nicht hinterlegt')}</dd></div><div><dt>E-Mail</dt><dd>${h(v.email || 'Nicht hinterlegt')}</dd></div><div><dt>Bestellweg</dt><dd>${h(v.method)}</dd></div><div><dt>Kundennummer</dt><dd>${h(v.customerNumber || 'Nicht hinterlegt')}</dd></div></dl><p>Prüfstatus: ${h(v.reviewStatus === 'geprueft' ? 'Manuell geprüft' : v.reviewStatus === 'offen' ? 'Klärung erforderlich' : 'Noch nicht festgelegt')}${v.reviewDate ? ' · ' + h(displayDate(v.reviewDate)) : ''}${v.reviewReason ? ' · ' + h(v.reviewReason) : ''}</p><h2>Notizen und Absprachen</h2><p>${h(v.note || 'Keine Notizen hinterlegt.')}</p>${button('supplier-edit', 'Profil bearbeiten', v.id, true)}<h2>Artikel und Gebinde</h2>${
-              s.offers
-                .filter(o => o.value.supplierId === v.id && o.value.active)
-                .map(
-                  o =>
-                    '<div class="review-row"><div><strong>' +
-                    h(s.articles.find(a => a.value.id === o.value.articleId)?.value.name || 'Artikel') +
-                    '</strong><small>' +
-                    h(o.value.packName) +
-                    ' à ' +
-                    n(o.value.packSize) +
-                    ' · ' +
-                    money(
-                      effectiveOffer(o.value, documents(s.ww, 'prices'), new Date().toISOString().slice(0, 10)).priceNet
-                    ) +
-                    ' netto</small></div>' +
-                    button('offer-edit', 'Angebot bearbeiten', o.value.id) +
-                    '</div>'
-                )
-                .join('') || '<p>Noch keine Lieferangebote.</p>'
-            }<div class="actions">${button('supplier-prices', 'Preisstand ergänzen', v.id)}${button('supplier-rules', 'Lieferregeln', v.id)}</div><h2>Bestellungen dieser Saison</h2>${
-              s.orders
-                .filter(
-                  o => o.value.supplierId === v.id && o.value.seasonId === this.seasonId && o.value.area === this.area
-                )
-                .map(
-                  o =>
-                    '<div class="review-row"><span>' +
-                    h(o.value.occasion) +
-                    ' · ' +
-                    h(o.value.status) +
-                    '</span>' +
-                    button('order-open', 'Bestellung öffnen', o.value.id) +
-                    '</div>'
-                )
-                .join('') || '<p>Noch keine Bestellung.</p>'
-            }</div></details>`
-        )
-        .join('') || empty('Noch keine Lieferanten angelegt.')
-    }</section><p data-filter-empty hidden>Keine passenden Lieferanten.</p>`;
-  }
-  private orders(): string {
-    const rows = this.state!.orders.filter(o => o.value.seasonId === this.seasonId && o.value.area === this.area);
-    return (
-      `<div class="page-heading"><div><h1>Bestellungen</h1><p>${h(this.season()?.name || 'Bitte Saison wählen')} · ${h(this.area)}</p></div><div class="actions">${this.writable() ? button('copy-list', 'Aus Vorjahr übernehmen') + button('order-new', 'Neue Bestellung', '', true) : ''}</div></div><div class="toolbar order-list-tools">${searchField(this.query, 'Bestellungen suchen')}${select(
-        'orderStatus',
-        'Status',
-        [
-          ['', 'Alle Vorgänge'],
-          ['current-drafts', 'Aktuelle Entwürfe'],
-          ['open-deliveries', 'Offene Lieferungen'],
-          ['Entwurf', 'Alle Entwürfe'],
-          ['Bestellt', 'Bestellt'],
-          ['Abgeschlossen', 'Abgeschlossen'],
-          ['Storniert', 'Storniert']
-        ],
-        this.statusFilter
-      )}</div><section class="order-table"><div class="order-table-head"><span>Lieferant / Vorgang</span><span>Liefertermin</span><span>Status</span><span>Warenwert netto</span></div>${rows.map(({ value: o }) => `<div class="order-table-row" data-search="${h(o.supplierName + ' ' + o.occasion + ' ' + o.lines.map(l => l.articleName).join(' '))}" data-order-status="${h(o.status)}" data-order-current="${!/^historisch(?:e|er|es)?\b/i.test(o.occasion.trim())}" data-order-open="${o.status === 'Bestellt' && deliveryState(o) !== 'Vollständig geliefert'}"><div><button type="button" class="order-supplier" data-action="order-open" data-id="${h(o.id)}" aria-label="Bestellung von ${h(o.supplierName)} öffnen">${h(o.supplierName)}</button><small>${h(o.occasion || 'Ohne Anlass')} · ${o.lines.length} ${o.lines.length === 1 ? 'Position' : 'Positionen'}</small></div><span>${o.deliveries ? o.deliveries.length + (o.deliveries.length === 1 ? ' Liefertag · ' : ' Liefertage · ') + h(o.deliveryDate ? displayDate(o.deliveryDate) : 'Daten offen') : h(o.deliveryDate ? displayDate(o.deliveryDate) : 'Noch offen')}</span><span>${badge(o.receipts?.length ? deliveryState(o) : o.status, o.status === 'Entwurf' ? 'warning' : deliveryState(o) === 'Vollständig geliefert' ? 'success' : 'neutral')}</span><strong>${orderTotal(o) === null ? 'Preise offen' : money(orderTotal(o))}</strong></div>`).join('') || empty('Noch keine Bestellungen. Einen Entwurf anlegen oder aus einem Vorjahr übernehmen.')}</section><p data-filter-empty hidden>Keine passenden Bestellungen.</p>` +
-      supplierTools(this.state!)
-    );
-  }
-  private orderDetail(row?: Stored<Order>): string {
-    if (!row) return empty('Bestellung nicht gefunden. Bitte neu laden.');
-    const o = row.value,
-      total = orderTotal(o),
-      received = !!o.receipts?.length;
-    const slips = documents(this.state!.ww, 'deliverySlip').filter(
-      slip => slip.confirmed && slip.orderId === o.id && slip.scope === o.seasonId && slip.area === o.area
-    );
-    const canAttach =
-      !!this.state!.ww?.ready &&
-      this.writable() &&
-      o.seasonId === this.seasonId &&
-      o.area === this.area &&
-      ['Bestellt', 'Abgeschlossen'].includes(o.status);
-    return `<section class="panel"><div class="row"><div><h1>${h(o.supplierName)}</h1><p>${h(o.occasion || 'Bestellung')}</p></div>${button('cancel', 'Zurück')}</div><div class="detail-meta">${badge(o.status, o.status === 'Entwurf' ? 'warning' : 'neutral')}${badge(deliveryState(o), deliveryState(o) === 'Vollständig geliefert' ? 'success' : 'neutral')}<span>${h(o.method)} · Liefertermin ${h(o.deliveryDate || 'noch offen')}</span></div>${o.recordedAt ? `<p class="muted">Bestellung dokumentiert am ${h(stamp(o.recordedAt))} · ${h(o.recordedBy)}</p>` : ''}${o.sourceYear ? `<p class="muted">Übernommen aus Saison ${o.sourceYear}. Die Ausgangsbestellung bleibt erhalten.</p>` : ''}${o.deliveries ? deliverySummary(o) + deliveryMatrix(o, false) : ''}<div class="detail-lines" ${o.deliveries ? 'hidden' : ''}>${o.lines.map(l => `<div class="detail-line"><div><strong>${h(l.articleName)}</strong><small>${h(l.code)} · 1 ${h(l.packName)} = ${n(l.packSize)} ${h(l.unit)}</small>${received ? `<small>Geliefert ${n(receivedQuantity(o, l.id))} ${h(l.packName)} · offen ${n(Math.max(0, (l.quantity || 0) - receivedQuantity(o, l.id)))} ${h(l.packName)}</small>` : ''}</div><strong>${l.quantity === null ? 'Menge offen' : n(l.quantity) + ' ' + h(l.packName)}</strong><span>${l.quantity === null ? '' : n(l.quantity * l.packSize) + ' ' + h(l.unit)}</span><span>${money(l.priceNet)} netto / ${h(l.packName)}</span></div>`).join('')}</div><p class="total">${total === null ? 'Gesamtsumme offen · Preise oder Mengen fehlen' : 'Warenwert netto: ' + money(total) + ' · ohne Pfand'}</p>${o.note ? `<p>${h(o.note)}</p>` : ''}<div class="actions">${this.writable() && o.status === 'Bestellt' && !o.deliveries && deliveryState(o) !== 'Vollständig geliefert' ? button('receipt-new', 'Lieferung prüfen', o.id, true) : ''}${button('order-pdf', 'PDF herunterladen', o.id)}${this.writable() && o.status === 'Entwurf' ? button('order-mail', 'Bestellung versenden', o.id) : ''}${button('order-bill', 'Rechnung zuordnen', o.id)}${this.writable() && o.status === 'Entwurf' ? button('order-edit', 'Entwurf bearbeiten', o.id, true) : ''}${o.deliveries ? o.deliveries.map(d => '<div class="delivery-summary"><strong>' + h(d.date || 'Datum offen') + '</strong><span>' + h(d.place) + ' · ' + h(d.time) + '</span>' + (this.writable() && o.status === 'Bestellt' ? button('receipt-new', 'Lieferung prüfen', o.id + '|' + d.id) : '') + '</div>').join('') : button('order-text', 'Bestelltext anzeigen', o.id)}${this.writable() && o.status === 'Bestellt' ? button('order-follow', 'Nachbestellung anlegen', o.id) + button('order-close', 'Vorgang abschließen', o.id) : ''}</div><div data-order-text class="ordertext" hidden></div>${o.deliveryNotes?.length ? `<details class="receipt-history" open><summary>Ausgefallene Lieferungen (${o.deliveryNotes.length})</summary>${o.deliveryNotes.map(x => `<div><strong>Keine Lieferung · ${h(stamp(x.recordedAt))}</strong><p>${h(x.recordedBy)} · ${h(o.deliveries?.find(d => d.id === x.deliveryId)?.date || 'Termin offen')}</p><p>${h(x.note)}</p></div>`).join('')}</details>` : ''}${
-      received
-        ? `<details class="receipt-history"><summary>Lieferhistorie (${o.receipts!.length})</summary>${o
-            .receipts!.map(
-              r =>
-                `<div><strong>${h(stamp(r.receivedAt))}</strong><p>${h(r.receivedBy)}</p>${r.lines
-                  .map(l => {
-                    const original = o.lines.find(x => x.id === l.lineId)!;
-                    return `<p>${h(original.articleName)} · ${n(l.quantity)} ${h(original.packName)}</p>`;
-                  })
-                  .join('')}${r.note ? `<p>${h(r.note)}</p>` : ''}</div>`
-            )
-            .join('')}</details>`
-        : ''
-    }${deliverySlipsView(o, slips, canAttach)}</section>`;
-  }
-  private reorderList(): string {
-    const counts = latestCounts(this.state!, this.seasonId, this.area).filter(c => c.reorder);
-    return (
-      '<section class="panel"><div class="page-heading"><div><h1>Nachbestellbedarf prüfen</h1><p>Die letzte Zählung zeigt einen Hinweis, keine automatisch berechnete Bestellmenge. Bestand und Bedarf vor der Bestellung prüfen.</p></div>' +
-      button('cancel', 'Zurück') +
-      '</div>' +
-      (counts
-        .map(c => {
-          const offers = this.state!.offers.filter(o => o.value.articleId === c.articleId && o.value.active);
-          return (
-            '<section class="plain-section"><h2>' +
-            h(c.articleName) +
-            '</h2><p>Zuletzt gezählt: ' +
-            n(c.quantity) +
-            ' ' +
-            h(c.unit) +
-            ' · ' +
-            h(stamp(c.countedAt)) +
-            (c.note ? ' · ' + h(c.note) : '') +
-            '</p>' +
-            (offers.length
-              ? offers
-                  .map(o => {
-                    const supplier = this.state!.suppliers.find(x => x.value.id === o.value.supplierId)?.value;
-                    if (!supplier?.active) return '';
-                    const drafts = this.state!.orders.filter(
-                      r =>
-                        r.value.status === 'Entwurf' &&
-                        r.value.supplierId === o.value.supplierId &&
-                        r.value.seasonId === this.seasonId &&
-                        r.value.area === this.area
-                    );
-                    return drafts.length
-                      ? drafts
-                          .map(d =>
-                            button(
-                              'reorder-existing',
-                              'In ' + d.value.supplierName + ' · ' + d.value.occasion + ' vorbereiten',
-                              d.value.id + '|' + o.value.id
-                            )
-                          )
-                          .join('')
-                      : button('order-reorder', supplier.name + ' · Bestellung vorbereiten', o.value.id);
-                  })
-                  .join('')
-              : '<p>Kein aktives Lieferangebot hinterlegt.</p>') +
-            '</section>'
-          );
-        })
-        .join('') || empty('Aktuell wurde kein Nachbestellbedarf markiert.')) +
-      '</section>'
-    );
-  }
-  private copyList(): string {
-    const s = this.state!;
-    const seasons = s.seasons.filter(x => x.value.id !== this.seasonId);
-    if (!this.sourceSeason || !seasons.some(x => x.value.id === this.sourceSeason))
-      this.sourceSeason = [...seasons].sort((a, b) => b.value.year - a.value.year)[0]?.value.id || '';
-    const rows = s.orders.filter(
-      o => o.value.seasonId === this.sourceSeason && o.value.area === this.area && o.value.status !== 'Storniert'
-    );
-    return panel(
-      'Vorjahresbestellung wählen',
-      `<div class="row">${select(
-        'sourceSeason',
-        'Ausgangssaison',
-        seasons.map(s => [s.value.id, s.value.name]),
-        this.sourceSeason
-      )}${button('cancel', 'Zurück')}</div>${rows.length ? rows.map(o => `<div class="listrow"><div><strong>${h(o.value.supplierName)}</strong><p>${h(o.value.occasion || 'Ohne Anlass')} · ${h(o.value.status)} · ${o.value.lines.length} Positionen</p></div>${button('copy-pick', 'Positionen auswählen', o.value.id)}</div>`).join('') : empty('Für diese Ausgangssaison und diesen Bereich sind noch keine übernehmbaren Bestellungen erfasst.')}`
-    );
-  }
-  private importForm(): string {
-    const kind = this.importKind!;
-    return `<form data-form="import" class="panel"><div class="row"><h1 class="form-title">${kind === 'articles' ? 'Artikel' : 'Lieferanten'} importieren</h1>${button('cancel', 'Zurück')}</div><p>Neue Datensätze ergänzen. Vorhandene Namen werden zur Prüfung gemeldet.</p>${button('template', 'CSV-Vorlage herunterladen', kind)}<label>CSV-Datei<input type="file" name="csvFile" accept=".csv,text/csv,text/plain" /></label>${note('csvText', 'Oder CSV-Text einfügen', this.importText ?? columns[kind].join(';') + '\n')}<div class="actions">${button('import-preview', 'Vorschau prüfen', '', true)}</div>${this.importErrors.length ? `<div role="alert">${this.importErrors.map(e => `<p>${h(e)}</p>`).join('')}</div>` : ''}${this.importItems ? `<h3>${this.importItems.length} Datensätze in der Vorschau</h3>${this.importItems.map(i => `<div class="listrow"><span>${h(i.value.name)}</span><span>${i.done ? 'Gespeichert' : 'Neu'}</span></div>`).join('')}<div class="actions">${button('import-apply', 'Geprüfte Datensätze übernehmen', '', true)}</div>` : ''}</form>`;
-  }
 
-  private async action(action: string, id: string, target?: HTMLElement): Promise<void> {
-    if (action === 'mobile-menu') {
-      const bar = this.root.querySelector<HTMLElement>('.sidebar');
-      if (bar) {
-        const open = bar.dataset.menuOpen !== 'true';
-        bar.dataset.menuOpen = String(open);
-        target?.setAttribute('aria-expanded', String(open));
-        if (open && this.viaKeyboard) bar.querySelector<HTMLElement>('nav button[data-tab="more"]')?.focus();
-        this.syncHistory();
-      }
-      return;
-    }
-    if (action === 'count-step') {
-      this.countStep(id);
-      return;
-    }
-    if (action === 'count-next') {
-      this.countNext(id);
-      return;
-    }
-    if (action === 'count-sheet' && this.inventory && this.state) {
-      const articles = this.state.articles.map(a => a.value);
-      saveFile(
-        'Abendabschluss-Papier-' + this.area + '-' + (this.season()?.name || '').replace(/[^\p{L}\p{N}]+/gu, '-') + '.pdf',
-        new Blob(
-          [
-            new Uint8Array(
-              countSheetPdf(this.inventory, {
-                area: this.area,
-                seasonName: this.season()?.name || '',
-                places: Object.fromEntries(articles.map(a => [a.id, a.storagePlace || ''])),
-                categories: Object.fromEntries(articles.map(a => [a.id, a.category || '']))
-              })
-            ).buffer
-          ],
-          { type: 'application/pdf' }
-        ),
-        this.root.ownerDocument
-      );
-      return;
-    }
-    if (action === 'fasnet-export') {
-      const season = this.season();
-      if (!season || !this.state) return;
-      saveFile(
-        'Zunftkueche-' + season.name.replace(/[^\p{L}\p{N}]+/gu, '-') + '-gesamt.csv',
-        new Blob([exportFasnetRows(this.state, season.id)], { type: 'text/csv;charset=utf-8' }),
-        this.root.ownerDocument
-      );
-      return;
-    }
-    if (action === 'draft-resume') {
-      await this.resumeDraft();
-      return;
-    }
-    if (action === 'draft-discard') {
-      this.local.remove('draft');
-      this.recovery = undefined;
-      this.render();
-      return;
-    }
-    if (action === 'draft-download' && this.recovery) {
-      const url = URL.createObjectURL(new Blob([JSON.stringify(this.recovery, null, 2)], { type: 'application/json' })),
-        a = document.createElement('a');
-      a.href = url;
-      a.download = 'Zunftkueche-lokaler-Entwurf.json';
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      return;
-    }
+  async action(action: string, id: string, target?: HTMLElement): Promise<void> {
+    if (await uiAction(this, action, id, target)) return;
     if (this.recovery) throw new Error('Bitte den unterbrochenen Entwurf fortsetzen oder ausdrücklich verwerfen.');
     if (action === 'cancel') {
       this.local.remove('draft');
@@ -1386,684 +982,11 @@ export class KitchenView {
       this.root.querySelector<HTMLElement>('main')?.focus({ preventScroll: true });
       return;
     }
-    if (action === 'receipt-new') {
-      if (!this.writable()) throw new Error('Bitte eine aktive Saison wählen.');
-      const [orderId, deliveryId] = id.split('|');
-      const previous = this.state.orders.find(o => o.value.id === orderId);
-      if (
-        !previous ||
-        previous.value.status !== 'Bestellt' ||
-        deliveryState(previous.value) === 'Vollständig geliefert'
-      )
-        throw new Error('Für diese Bestellung ist keine Lieferannahme offen.');
-      if (!this.canLeave()) return;
-      this.clearEditor();
-      this.view = 'orders';
-      this.receiving = { previous, id: uuid(), deliveryId: deliveryId || previous.value.deliveries?.[0]?.id };
-      this.render();
-      return;
-    }
-    if (action === 'receipt-missing') {
-      const form = this.root.querySelector<HTMLFormElement>('form[data-form=receipt]');
-      const entry = this.receiving;
-      if (!form || !entry) throw new Error('Bitte zuerst eine Lieferung öffnen.');
-      if (form.querySelector<HTMLInputElement>('[name=deliverySlipFile]')?.files?.length)
-        throw new Error('Bitte die ausgewählte Datei entfernen, bevor ihr eine ausgefallene Lieferung vermerkt.');
-      const data = new FormData(form);
-      if (
-        entry.previous.value.lines.some(
-          l =>
-            parseDecimal(String(data.get('received_' + l.id) || '')) !== null &&
-            parseDecimal(String(data.get('received_' + l.id) || '')) !== 0
-        )
-      )
-        throw new Error(
-          'Es sind Liefermengen eingetragen. Bitte diese als Wareneingang bestätigen oder die Mengen entfernen.'
-        );
-      const note = String(data.get('note') || '').trim();
-      if (!note) throw new Error('Bitte einen kurzen Hinweis zur ausgefallenen Lieferung eingeben.');
-      const date = new Date(String(data.get('receivedAt')));
-      if (!Number.isFinite(date.getTime())) throw new Error('Bitte den Zeitpunkt prüfen.');
-      const value: DeliveryNote = {
-        id: entry.id,
-        ...(entry.deliveryId ? { deliveryId: entry.deliveryId } : {}),
-        recordedAt: date.toISOString(),
-        recordedBy: this.user,
-        note
-      };
-      await this.run(
-        () => this.store.saveDeliveryNote(entry.previous, value, this.operationId),
-        'Ausgefallene Lieferung vermerkt. Die Mengen bleiben offen.',
-        () => {
-          this.selectedOrder = entry.previous.value.id;
-          this.view = 'orders';
-        }
-      );
-      return;
-    }
-    if (action === 'receipt-all') {
-      const form = this.root.querySelector<HTMLFormElement>('form[data-form=receipt]');
-      if (form && this.receiving) {
-        const o = this.receiving.previous.value;
-        for (const l of o.lines) {
-          const input = form.querySelector<HTMLInputElement>('[name=received_' + l.id + ']');
-          if (input)
-            input.value = n(
-              o.deliveries
-                ? deliveryRemaining(o, l.id, this.receiving.deliveryId!)
-                : Math.max(0, (l.quantity || 0) - receivedQuantity(o, l.id))
-            );
-        }
-        this.dirty = true;
-        this.rememberDraft();
-        this.updateReceiptProgress();
-        this.info = 'Mengen eingetragen. Bitte prüfen und bei Bedarf ändern; noch nicht gespeichert. ' + this.info;
-        this.paintStatus();
-      }
-      return;
-    }
-    if (action === 'inventory-setup') {
-      await this.run(() => this.store.initialize(), 'Abendabschluss eingerichtet und nachgelesen.');
-      return;
-    }
-    if (action === 'inventory-new' || action === 'inventory-edit') {
-      if (!this.writable()) throw new Error('Bitte eine aktive Saison wählen.');
-      if (this.state.inventoriesReady === false)
-        throw new Error('Bitte zuerst im Bestand den Abendabschluss einrichten.');
-      if (!this.canLeave()) return;
-      const old = this.state.inventories?.find(r => r.value.id === id);
-      if (
-        action === 'inventory-edit' &&
-        (!old || old.value.status !== 'Entwurf' || old.value.seasonId !== this.seasonId || old.value.area !== this.area)
-      )
-        throw new Error('Entwurf nicht gefunden.');
-      this.clearEditor();
-      this.query = '';
-      this.view = 'stock';
-      this.inventoryPrevious = old;
-      this.inventory = old
-        ? structuredClone(old.value)
-        : {
-            id: uuid(),
-            seasonId: this.seasonId,
-            area: this.area,
-            status: 'Entwurf',
-            createdAt: new Date().toISOString(),
-            completedAt: null,
-            countedBy: this.user,
-            lines: this.state.articles
-              .filter(a => articleAvailable(a.value, this.seasonId))
-              .sort(
-                (a, b) =>
-                  (a.value.storagePlace || '').localeCompare(b.value.storagePlace || '', 'de') ||
-                  a.value.name.localeCompare(b.value.name, 'de')
-              )
-              .map(({ value: a }) => {
-                const offer = this.state!.offers.find(o => o.value.active && o.value.articleId === a.id)?.value;
-                return {
-                  articleId: a.id,
-                  articleName: a.name,
-                  unit: a.unit,
-                  packName: offer?.packName || a.unit,
-                  packSize: offer?.packSize || 1,
-                  packs: null,
-                  loose: null,
-                  assessment: 'ok',
-                  note: ''
-                };
-              })
-          };
-      if (!this.inventory.lines.length) {
-        this.clearEditor();
-        throw new Error('Bitte zuerst Artikel anlegen.');
-      }
-      this.render();
-      return;
-    }
-    if (action === 'inventory-review-back') {
-      const form = this.root.querySelector<HTMLFormElement>('form[data-form=inventory]');
-      if (form) {
-        delete form.dataset.review;
-        form.querySelector('[data-inventory-review]')?.replaceChildren();
-      }
-      return;
-    }
-    if (action === 'inventory-finish' || action === 'inventory-confirm') {
-      const form = this.root.querySelector<HTMLFormElement>('form[data-form="inventory"]');
-      if (form) await this.saveInventory(form, true, action === 'inventory-confirm');
-      return;
-    }
-    if (action === 'season-new' || action === 'season-edit') {
-      if (!this.canLeave()) return;
-      this.clearEditor();
-      const old = this.state.seasons.find(s => s.value.id === id)?.value;
-      const year = new Date().getFullYear() + 1;
-      this.editing = {
-        kind: 'seasons',
-        id: old?.id || '',
-        value: old ? structuredClone(old) : { id: uuid(), name: 'Fasnet ' + year, year, archived: false }
-      };
-      this.render();
-      return;
-    }
-    if (action === 'supplier-new' || action === 'supplier-edit') {
-      if (this.draft) {
-        this.draft = this.readOrder(this.root.querySelector<HTMLFormElement>('form[data-form=order]')!);
-      } else this.clearEditor();
-      const old = this.state.suppliers.find(s => s.value.id === id)?.value;
-      this.editing = {
-        kind: 'suppliers',
-        id: old?.id || '',
-        value: old
-          ? structuredClone(old)
-          : {
-              id: uuid(),
-              name: '',
-              phone: '',
-              email: '',
-              method: 'Telefon',
-              customerNumber: '',
-              note: '',
-              active: true
-            }
-      };
-      this.render();
-      return;
-    }
-    if (action === 'article-new' || action === 'article-edit') {
-      this.clearEditor();
-      const old = this.state.articles.find(a => a.value.id === id)?.value;
-      this.editing = {
-        kind: 'articles',
-        id: old?.id || '',
-        value: old ? structuredClone(old) : { id: uuid(), name: '', unit: '', category: '', active: true }
-      };
-      this.render();
-      return;
-    }
-    if (action === 'offer-new' || action === 'offer-edit') {
-      this.clearEditor();
-      const old = this.state.offers.find(o => o.value.id === id)?.value;
-      this.editing = {
-        kind: 'offers',
-        id: old?.id || '',
-        value: old
-          ? structuredClone(old)
-          : {
-              id: uuid(),
-              articleId: id,
-              supplierId: '',
-              code: '',
-              packName: '',
-              packSize: 1,
-              priceNet: null,
-              priceDate: null,
-              deposit: null,
-              note: '',
-              active: true
-            }
-      };
-      this.render();
-      return;
-    }
-    if (action === 'count-new') {
-      if (!this.writable()) throw new Error('Bitte eine aktive Saison wählen.');
-      this.clearEditor();
-      this.editing = {
-        kind: 'counts',
-        id: '',
-        value: {
-          id: uuid(),
-          seasonId: this.seasonId,
-          area: this.area,
-          articleId: '',
-          articleName: '',
-          unit: '',
-          quantity: 0,
-          countedAt: '',
-          countedBy: this.user,
-          note: '',
-          reorder: false
-        }
-      };
-      this.render();
-      return;
-    }
-    if (action === 'order-open') {
-      this.clearEditor();
-      this.view = 'orders';
-      this.selectedOrder = id;
-      this.render();
-      return;
-    }
-    if (action === 'order-dates') {
-      const options = this.root.querySelector<HTMLDetailsElement>('.sheet-options');
-      if (options) {
-        options.open = true;
-        options.querySelector<HTMLInputElement>('[name="date_' + id + '"]')?.focus();
-      }
-      return;
-    }
-    if (action === 'order-review' || action === 'order-edit-sheet') {
-      if (!this.draft) return;
-      this.draft = this.readOrder(this.root.querySelector<HTMLFormElement>('form[data-form=order]')!);
-      if (action === 'order-review') validateOrder(this.draft, catalog(this.state!));
-      this.orderReview = action === 'order-review';
-      this.render();
-      this.rememberDraft();
-      return;
-    }
-    if (action === 'order-ingredient') {
-      if (!this.draft) return;
-      this.draft = this.readOrder(this.root.querySelector<HTMLFormElement>('form[data-form=order]')!);
-      this.quickIngredient = { articleId: uuid(), offerId: uuid(), supplierId: this.draft.supplierId };
-      this.render();
-      return;
-    }
-    if (action === 'ingredient-cancel') {
-      this.quickIngredient = undefined;
-      this.render();
-      return;
-    }
-    if (action === 'delivery-list') {
-      if (!this.canLeave()) return;
-      this.clearEditor();
-      this.view = 'orders';
-      this.deliveryPicker = true;
-      this.render();
-      return;
-    }
-    if (action === 'supplier-orders') {
-      if (!this.canLeave()) return;
-      const supplier = this.state.suppliers.find(s => s.value.id === id)?.value;
-      if (!supplier) throw new Error('Lieferant nicht gefunden.');
-      this.clearEditor();
-      this.view = 'orders';
-      this.query = supplier.name;
-      this.statusFilter = '';
-      this.render();
-      return;
-    }
-    if (action === 'order-round') {
-      if (!this.canLeave()) return;
-      this.clearEditor();
-      this.view = 'orders';
-      this.roundPicker = true;
-      this.render();
-      return;
-    }
-    if (action === 'reorder-list') {
-      if (!this.canLeave()) return;
-      this.clearEditor();
-      this.view = 'stock';
-      this.reorderPicker = true;
-      this.render();
-      return;
-    }
-    if (action === 'reorder-existing') {
-      const [orderId, offerId] = id.split('|');
-      const target = this.state.orders.find(
-          x =>
-            x.value.id === orderId &&
-            x.value.status === 'Entwurf' &&
-            x.value.seasonId === this.seasonId &&
-            x.value.area === this.area
-        ),
-        offer = this.state.offers.find(x => x.value.id === offerId && x.value.active);
-      if (!target || !offer || target.value.supplierId !== offer.value.supplierId)
-        throw new Error('Bestellung oder Lieferangebot wurde geändert. Bitte neu laden.');
-      await this.action('order-edit', orderId);
-      if (!this.draft!.lines.some(l => l.offerId === offerId)) {
-        const chooser = this.root.querySelector<HTMLSelectElement>('[name=addOffer]');
-        if (!chooser) throw new Error('Lieferangebot nicht verfügbar.');
-        chooser.value = offerId;
-        if (chooser.value !== offerId) throw new Error('Artikel ist in dieser Saison nicht verfügbar.');
-        await this.action('line-add', '');
-        const added = this.draft!.lines.find(l => l.offerId === offerId)!;
-        added.schedule = Object.fromEntries(this.draft!.deliveries!.map(d => [d.id, null]));
-        added.quantity = null;
-        this.render();
-      }
-      this.info = 'Bitte Liefertermin und nachzubestellende Menge prüfen und Entwurf speichern.';
-      this.paintStatus();
-      return;
-    }
-    if (action === 'order-reorder') {
-      const offer = this.state.offers.find(o => o.value.id === id)?.value;
-      if (!offer) throw new Error('Lieferangebot fehlt.');
-      await this.action('order-new', '');
-      this.draft!.supplierId = offer.supplierId;
-      const supplier = this.state.suppliers.find(s => s.value.id === offer.supplierId)!.value;
-      this.draft!.supplierName = supplier.name;
-      this.draft!.method = supplier.method;
-      this.render();
-      this.root.querySelector<HTMLSelectElement>('[name=addOffer]')!.value = id;
-      await this.action('line-add', '');
-      const added = this.draft!.lines.find(l => l.offerId === id)!;
-      added.schedule = Object.fromEntries(this.draft!.deliveries!.map(d => [d.id, null]));
-      added.quantity = null;
-      this.render();
-      this.info = 'Bitte Liefertermin und nachzubestellende Menge prüfen und Entwurf speichern.';
-      this.paintStatus();
-      return;
-    }
-    if (action === 'order-new' || action === 'order-edit' || action === 'order-follow') {
-      if (!this.writable()) throw new Error('Bitte eine aktive Saison wählen.');
-      this.clearEditor();
-      const old = this.state.orders.find(o => o.value.id === id);
-      if (action === 'order-edit' && old?.value.status !== 'Entwurf')
-        throw new Error('Bestellte Positionen bleiben erhalten. Bitte Nachbestellung anlegen.');
-      this.previous = action === 'order-edit' ? old : undefined;
-      this.draft = old
-        ? structuredClone(old.value)
-        : {
-            id: uuid(),
-            seasonId: this.seasonId,
-            area: this.area,
-            supplierId: '',
-            supplierName: '',
-            status: 'Entwurf',
-            occasion: '',
-            deliveryDate: null,
-            method: 'Telefon',
-            note: '',
-            sourceId: null,
-            sourceYear: null,
-            recordedBy: null,
-            recordedAt: null,
-            lines: []
-          };
-      if (action === 'order-follow' && old) {
-        this.draft = {
-          ...this.draft,
-          id: uuid(),
-          status: 'Entwurf',
-          sourceId: old.value.id,
-          sourceYear: this.season()!.year,
-          occasion: ('Nachbestellung · ' + old.value.occasion).slice(0, 160),
-          deliveryDate: null,
-          recordedAt: null,
-          recordedBy: null,
-          lines: this.draft.lines.map(l => {
-            const clean = { ...l };
-            delete clean.sources;
-            return {
-              ...clean,
-              id: uuid(),
-              quantity: null,
-              reviewed: false,
-              ...(l.schedule ? { schedule: Object.fromEntries(Object.keys(l.schedule).map(k => [k, null])) } : {})
-            };
-          })
-        };
-      }
-      if (action === 'order-follow') {
-        delete this.draft.receipts;
-        delete this.draft.deliveryNotes;
-        delete this.draft.contributions;
-      }
-      this.draft = withSchedule(
-        this.draft,
-        action === 'order-new'
-          ? documents(this.state.ww, 'slot').map(d => ({ id: d.id, date: d.date, time: d.time, place: d.place }))
-          : undefined
-      );
-      if (action === 'order-new' && id) {
-        const chosen = this.state.suppliers.find(s => s.value.id === id && s.value.active)?.value;
-        if (!chosen) throw new Error('Lieferant nicht verfügbar. Bitte neu laden.');
-        this.draft.supplierId = chosen.id;
-        this.draft.supplierName = chosen.name;
-        this.draft.method = chosen.method;
-      }
-      this.draft.occasion ||= this.season()!.name;
-      this.render();
-      return;
-    }
-    if (action === 'delivery-add' || action === 'delivery-remove') {
-      if (!this.draft) return;
-      this.draft = this.readOrder(this.root.querySelector<HTMLFormElement>('form[data-form=order]')!);
-      if (action === 'delivery-add') {
-        if (this.draft.deliveries!.length >= 31) throw new Error('Höchstens 31 Liefertage je Bestellung.');
-        const d = { id: uuid(), date: null, time: '', place: this.area };
-        this.draft.deliveries!.push(d);
-        this.draft.lines.forEach(l => {
-          l.schedule![d.id] = 0;
-        });
-      } else {
-        if (this.draft.deliveries!.length === 1) throw new Error('Mindestens einen Liefertag behalten.');
-        if (this.draft.lines.some(l => (l.schedule![id] || 0) > 0))
-          throw new Error('Dieser Tag enthält Mengen. Bitte zuerst Mengen auf einen anderen Tag verteilen.');
-        this.draft.deliveries = this.draft.deliveries!.filter(d => d.id !== id);
-        this.draft.lines.forEach(l => {
-          delete l.schedule![id];
-        });
-      }
-      this.draft = scheduledOrder(this.draft);
-      this.dirty = true;
-      this.render();
-      return;
-    }
-    if (action === 'price-adopt' && this.draft) {
-      const form = this.root.querySelector<HTMLFormElement>('form[data-form=order]')!;
-      const current = this.readOrder(form),
-        line = current.lines.find(l => l.id === id);
-      if (!line) throw new Error('Artikel fehlt.');
-      const proposal = priceSuggestion(current, line, this.state!);
-      if (proposal.price === null) throw new Error(proposal.note);
-      const input = form.querySelector<HTMLInputElement>('[name="price_' + id + '"]');
-      if (!input) throw new Error('Preisfeld fehlt.');
-      input.value = n(proposal.price);
-      this.dirty = true;
-      this.info = 'Preisvorschlag im Entwurf übernommen. Bitte noch speichern und prüfen.';
-      this.paintStatus();
-      this.updateOrderTotals();
-      return;
-    }
-    if (action === 'slip-download') {
-      const row = this.state.ww?.records.find(r => r.value.id === id);
-      const slip = row?.value;
-      if (
-        !row ||
-        slip?.kind !== 'deliverySlip' ||
-        !slip.confirmed ||
-        slip.orderId !== this.selectedOrder ||
-        slip.scope !== this.seasonId ||
-        slip.area !== this.area
-      )
-        throw new Error('Lieferschein nicht gefunden. Bitte Bestellung erneut öffnen.');
-      const bytes = await this.store.ww.readOriginal(row);
-      if ((await sha256(bytes)) !== slip.fileHash)
-        throw new Error('Die gespeicherte Datei stimmt nicht mit dem Original überein.');
-      const url = URL.createObjectURL(new Blob([new Uint8Array(bytes).buffer], { type: 'application/octet-stream' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = slip.name;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      return;
-    }
-    if (action === 'order-pdf' || action === 'order-preview-pdf') {
-      const o =
-        action === 'order-preview-pdf'
-          ? this.readOrder(this.root.querySelector<HTMLFormElement>('form[data-form=order]')!)
-          : this.state.orders.find(o => o.value.id === id)!.value;
-      this.downloadPdf(o);
-      return;
-    }
-    if (action === 'order-mail' || action === 'order-preview-mail') {
-      const form =
-        action === 'order-preview-mail' ? this.root.querySelector<HTMLFormElement>('form[data-form=order]') : null;
-      const source = form ? this.readOrder(form) : this.state.orders.find(row => row.value.id === id)?.value;
-      if (
-        !source ||
-        source.status !== 'Entwurf' ||
-        !this.writable() ||
-        source.seasonId !== this.seasonId ||
-        source.area !== this.area
-      )
-        throw new Error('Bitte einen Bestellentwurf der aktiven Saison wählen.');
-      const order = withSchedule(source);
-      validateOrder(order, catalog(this.state), true);
-      if (form) {
-        this.draft = order;
-        this.rememberDraft();
-      }
-      this.mailOrder = order;
-      this.render();
-      this.root.querySelector<HTMLElement>('[data-order-mail] h1')?.focus();
-      return;
-    }
-    if (action === 'order-mail-back') {
-      this.mailOrder = undefined;
-      this.info = '';
-      this.error = '';
-      this.render();
-      this.root.querySelector<HTMLElement>('[data-action=order-preview-mail], [data-action=order-mail]')?.focus();
-      return;
-    }
-    if (action === 'order-dispatch-pdf' && this.mailOrder) {
-      this.downloadPdf(this.mailOrder, true);
-      return;
-    }
-    if (action === 'order-share' && this.mailOrder) {
-      await this.shareOrder(this.mailOrder);
-      return;
-    }
-    if (action === 'order-mail-copy' && this.mailOrder) {
-      const field = this.root.querySelector<HTMLTextAreaElement>('[name=orderMailBody]');
-      if (!field) return;
-      try {
-        const clipboard = this.root.ownerDocument.defaultView?.navigator.clipboard;
-        if (!clipboard) throw new Error('Zwischenablage nicht verfügbar.');
-        await clipboard.writeText(field.value);
-        this.info = 'Bestelltext kopiert.';
-      } catch {
-        field.focus();
-        field.select();
-        this.info = 'Bestelltext markiert. Bitte mit dem Kopierbefehl übernehmen.';
-      }
-      this.paintStatus();
-      return;
-    }
-    if (action === 'order-bill') {
-      this.wwUI.billForOrder(id);
-      this.render();
-      return;
-    }
-    if (action === 'order-slot' && this.draft) {
-      const slot = documents(this.state.ww, 'slot').find(s => s.id === id);
-      if (!slot) throw new Error('Liefertermin fehlt.');
-      this.draft = this.readOrder(this.root.querySelector<HTMLFormElement>('form[data-form=order]')!);
-      this.draft.deliveryDate = slot.date;
-      this.draft.note = [this.draft.note, slot.time, slot.place].filter(Boolean).join(' · ');
-      this.dirty = true;
-      this.render();
-      return;
-    }
-    if (action === 'line-add' || action === 'line-remove') {
-      if (!this.draft) return;
-      const form = this.root.querySelector<HTMLFormElement>('form[data-form="order"]')!;
-      const data = new FormData(form);
-      this.draft = this.readOrder(form);
-      if (action === 'line-remove') this.draft.lines = this.draft.lines.filter(l => l.id !== id);
-      else {
-        const offer = this.state.offers.find(o => o.value.id === String(data.get('addOffer')))?.value;
-        if (!offer) throw new Error('Bitte ein Lieferangebot wählen.');
-        if (this.draft.lines.some(l => l.offerId === offer.id))
-          throw new Error('Dieser Artikel ist bereits enthalten. Bitte die vorhandene Menge ändern.');
-        const article = this.state.articles.find(a => a.value.id === offer.articleId)!.value;
-        const quoted = effectiveOffer(
-          offer,
-          documents(this.state.ww, 'prices'),
-          this.draft.deliveryDate || new Date().toISOString().slice(0, 10)
-        );
-        this.draft.lines.push({
-          id: uuid(),
-          articleId: article.id,
-          offerId: offer.id,
-          articleName: article.name,
-          code: offer.code,
-          unit: article.unit,
-          packName: offer.packName,
-          packSize: offer.packSize,
-          quantity: null,
-          priceNet: quoted.priceNet,
-          priorPriceNet: null,
-          priceYear: null,
-          reviewed: false,
-          schedule: Object.fromEntries(this.draft.deliveries!.map(d => [d.id, 0]))
-        });
-      }
-      this.dirty = true;
-      this.render();
-      return;
-    }
-    if (action === 'order-record' || action === 'order-record-confirm') {
-      const form = this.root.querySelector<HTMLFormElement>('form[data-form="order"]');
-      if (form) await this.saveOrder(form, true, action === 'order-record-confirm');
-      return;
-    }
-    if (action === 'order-record-back') {
-      this.root.querySelector('[data-order-confirm]')?.remove();
-      return;
-    }
-    if (action === 'order-text') {
-      const order = this.state.orders.find(row => row.value.id === id)?.value;
-      const box = this.root.querySelector<HTMLElement>('[data-order-text]');
-      if (!order || !box) throw new Error('Bestellung fehlt.');
-      box.hidden = false;
-      box.textContent = supplierOrderText(order, this.supplierFor(order));
-      return;
-    }
-    if (action === 'order-close' || action === 'order-close-confirm') {
-      if (!this.writable()) throw new Error('Bitte eine aktive Saison wählen.');
-      const old = this.state.orders.find(o => o.value.id === id)!;
-      if (action === 'order-close' && deliveryState(old.value) !== 'Vollständig geliefert') {
-        const box = document.createElement('section');
-        box.className = 'warning';
-        box.innerHTML =
-          '<p>Es sind noch Liefermengen offen. Soll der Vorgang trotzdem abgeschlossen werden? Die fehlenden Mengen werden nicht als geliefert gebucht.</p>' +
-          button('order-close-confirm', 'Trotz Fehlmengen abschließen', id);
-        this.root.querySelector('main')!.append(box);
-        return;
-      }
-      await this.run(
-        () => this.store.saveOrder({ ...old.value, status: 'Abgeschlossen' }, old, this.operationId),
-        'Abschluss dokumentiert und nachgelesen.'
-      );
-      return;
-    }
-    if (action === 'copy-list') {
-      this.clearEditor();
-      this.copyPicker = true;
-      this.render();
-      return;
-    }
-    if (action === 'copy-pick') {
-      const old = this.state.orders.find(o => o.value.id === id);
-      this.clearEditor();
-      this.copySource = old;
-      this.render();
-      return;
-    }
-    if (action === 'import') {
-      this.clearEditor();
-      this.importKind = id as ImportKind;
-      this.render();
-      return;
-    }
-    if (action === 'template') {
-      this.download(columns[id as ImportKind].join(';') + '\r\n', 'Zunftkueche-' + id + '-Vorlage.csv');
-      return;
-    }
-    if (action === 'import-preview') {
-      await this.previewImport();
-      return;
-    }
-    if (action === 'import-apply') {
-      await this.applyImport();
-      return;
-    }
+    if (await receiptAction(this, action, id, target)) return;
+    if (await inventoryAction(this, action, id, target)) return;
+    if (await masterAction(this, action, id, target)) return;
+    if (await orderAction(this, action, id, target)) return;
+    if (await importAction(this, action, id, target)) return;
   }
   private filterRows(): void {
     const rows = Array.from(this.root.querySelectorAll<HTMLElement>('[data-search]'));
@@ -2094,343 +1017,16 @@ export class KitchenView {
       group.hidden = !lines;
       if (count) count.textContent = String(lines);
     }
-    if (this.inventory) this.updateCountTotals();
-  }
-  private readInventory(form: HTMLFormElement): InventorySession {
-    const data = new FormData(form),
-      session = this.inventory!;
-    return {
-      ...session,
-      lines: session.lines.map(l => {
-        const packs = fieldNumber(form, 'packs_' + l.articleId, { integer: true }),
-          loose = fieldNumber(form, 'loose_' + l.articleId);
-        const quantity = countQuantity(packs, loose, l.packSize),
-          old = countQuantity(l.packs, l.loose, l.packSize);
-        const renewed = this.countEdits.get(l.articleId) || (quantity !== old ? new Date().toISOString() : undefined);
-        const line = {
-          ...l,
-          note: String(data.get('countnote_' + l.articleId) || '').trim(),
-          packs,
-          loose,
-          assessment: String(data.get('assessment_' + l.articleId) || 'ok') as 'ok' | 'reorder' | 'surplus'
-        };
-        if (quantity === null) {
-          delete line.countedAt;
-          delete line.countedBy;
-        } else {
-          line.countedAt = renewed || l.countedAt || session.createdAt;
-          line.countedBy = renewed ? this.user : l.countedBy || session.countedBy;
-        }
-        return line;
-      })
-    };
-  }
-  private updateCountTotals(): void {
-    const form = this.root.querySelector<HTMLFormElement>('form[data-form="inventory"]');
-    if (!form || !this.inventory) return;
-    const data = new FormData(form);
-    let counted = 0;
-    const visible = new Set(
-      this.inventory.lines
-        .filter(
-          l =>
-            form.querySelector('[data-count-total="' + l.articleId + '"]')?.closest<HTMLElement>('.count-line')
-              ?.hidden !== true
-        )
-        .map(l => l.articleId)
-    );
-    for (const l of this.inventory.lines) {
-      const el = form.querySelector<HTMLElement>('[data-count-total="' + l.articleId + '"]');
-      try {
-        const quantity = countQuantity(
-          parseDecimal(String(data.get('packs_' + l.articleId) || '')),
-          parseDecimal(String(data.get('loose_' + l.articleId) || '')),
-          l.packSize
-        );
-        if (quantity !== null && visible.has(l.articleId)) counted++;
-        if (el) {
-          el.textContent = quantity === null ? 'offen' : n(quantity) + ' ' + l.unit;
-          el.dataset.state = quantity === null ? 'open' : 'counted';
-        }
-      } catch {
-        if (el) {
-          el.textContent = 'Menge bitte prüfen';
-          el.dataset.state = 'error';
-        }
-      }
-    }
-    const progress = form.querySelector('[data-count-progress]');
-    if (progress) progress.innerHTML = countProgress(counted, visible.size, this.inventory.lines.length);
-    const bar = form.querySelector<HTMLElement>('[data-count-bar]');
-    if (bar) bar.style.width = countShare(counted, visible.size) + '%';
-    const review = form.querySelector('[data-inventory-review]');
-    if (review) review.replaceChildren();
-  }
-  private async readSlip(form: HTMLFormElement): Promise<SlipFile | undefined> {
-    const file = form.querySelector<HTMLInputElement>('[name=deliverySlipFile]')?.files?.[0];
-    if (!file) return undefined;
-    if (file.size > slipFileLimit) throw new Error('Der Lieferschein darf höchstens 8 MB groß sein.');
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    slipExtension(bytes);
-    return { name: file.name, bytes };
-  }
-  private async saveSlip(form: HTMLFormElement): Promise<void> {
-    const order = this.state!.orders.find(row => row.value.id === this.selectedOrder)?.value;
-    if (!order || !this.writable() || order.seasonId !== this.seasonId || order.area !== this.area)
-      throw new Error('Bestellung bitte erneut öffnen.');
-    const deliveryId = String(new FormData(form).get('slipDelivery') || '') || undefined;
-    const file = await this.readSlip(form);
-    if (!file) throw new Error('Bitte zuerst eine Lieferscheindatei auswählen.');
-    await this.run(
-      () => this.store.saveDeliverySlip(order.id, deliveryId, file, this.user),
-      'Lieferschein gespeichert.',
-      () => {
-        this.selectedOrder = order.id;
-      }
-    );
-  }
-  private async saveReceipt(form: HTMLFormElement): Promise<void> {
-    const entry = this.receiving!,
-      data = new FormData(form);
-    const receipt: Receipt = {
-      ...(entry.deliveryId ? { deliveryId: entry.deliveryId } : {}),
-      id: entry.id,
-      receivedAt: new Date(String(data.get('receivedAt'))).toISOString(),
-      receivedBy: this.user,
-      note: [String(data.get('deviation') || ''), String(data.get('note') || '').trim()].filter(Boolean).join(' · '),
-      lines: entry.previous.value.lines.flatMap(l => {
-        const maximum = entry.previous.value.deliveries
-          ? deliveryRemaining(entry.previous.value, l.id, entry.deliveryId!)
-          : Math.max(0, (l.quantity || 0) - receivedQuantity(entry.previous.value, l.id));
-        const quantity = fieldNumber(form, 'received_' + l.id, { maximum });
-        return quantity !== null && quantity > 0 ? [{ lineId: l.id, quantity }] : [];
-      })
-    };
-    validateReceipt(entry.previous.value, receipt);
-    const operationId = this.operationId,
-      file = await this.readSlip(form);
-    await this.run(
-      async () => {
-        if (file) await this.store.saveDeliverySlip(entry.previous.value.id, entry.deliveryId, file, this.user);
-        await this.store.saveReceipt(entry.previous, receipt, operationId);
-      },
-      file ? 'Wareneingang und Lieferschein gespeichert.' : 'Wareneingang gespeichert.',
-      () => {
-        this.selectedOrder = entry.previous.value.id;
-        this.view = 'orders';
-      }
-    );
-  }
-  private async saveInventory(form: HTMLFormElement, finish: boolean, confirmed = false): Promise<void> {
-    const value = this.readInventory(form);
-    value.status = finish ? 'Abgeschlossen' : 'Entwurf';
-    value.completedAt = finish ? new Date().toISOString() : null;
-    value.countedBy = this.user;
-    validateInventory(value);
-    if (finish && !confirmed) {
-      const previous = latestCounts(this.state!, this.seasonId, this.area);
-      const changes = value.lines.filter(l => {
-        const old = previous.find(c => c.articleId === l.articleId),
-          q = countQuantity(l.packs, l.loose, l.packSize);
-        return old && q !== null && old.quantity > 0 && Math.abs(q - old.quantity) / old.quantity > 0.5;
-      });
-      const counted = value.lines.filter(l => countQuantity(l.packs, l.loose, l.packSize) !== null).length;
-      const open = value.lines.length - counted;
-      const review = form.querySelector('[data-inventory-review]')!;
-      form.dataset.review = 'true';
-      const marked = value.lines.filter(
-        l => countQuantity(l.packs, l.loose, l.packSize) !== null && (l.assessment !== 'ok' || !!l.note)
-      );
-      const notes = marked
-        .map(
-          l =>
-            '<li><strong>' +
-            h(l.articleName) +
-            '</strong> · ' +
-            n(countQuantity(l.packs, l.loose, l.packSize)) +
-            ' ' +
-            h(l.unit) +
-            ' · ' +
-            (l.assessment === 'reorder' ? 'Nachbestellen' : l.assessment === 'surplus' ? 'Überhang' : 'Übergabe') +
-            (l.note ? ' · ' + h(l.note) : '') +
-            '</li>'
-        )
-        .join('');
-      review.innerHTML =
-        '<section class="warning"><h2>Abendabschluss prüfen</h2><p>' +
-        counted +
-        ' Artikel gezählt. ' +
-        (open
-          ? open +
-            ' Artikel ' +
-            (open === 1 ? 'bleibt' : 'bleiben') +
-            ' ungeprüft. Leere Felder werden nicht als null übernommen.'
-          : 'Alle Artikel sind erfasst.') +
-        '</p>' +
-        (notes ? '<h3>Für das Team</h3><ul>' + notes + '</ul>' : '<p>Keine Engpässe oder Überhänge markiert.</p>') +
-        (changes.length
-          ? '<details><summary>Auffällige Veränderungen (' +
-            changes.length +
-            ')</summary><ul>' +
-            changes
-              .map(
-                l =>
-                  '<li>' +
-                  h(l.articleName) +
-                  ': zuletzt ' +
-                  n(previous.find(c => c.articleId === l.articleId)!.quantity) +
-                  ' → jetzt ' +
-                  n(countQuantity(l.packs, l.loose, l.packSize)) +
-                  ' ' +
-                  h(l.unit) +
-                  '</li>'
-              )
-              .join('') +
-            '</ul><p>Abweichung über 50 %. Kann durch Verbrauch oder Lieferung erklärbar sein; bitte kurz prüfen.</p></details>'
-          : '') +
-        '<div class="calm-actions">' +
-        button('inventory-review-back', 'Weiter zählen') +
-        button('inventory-confirm', open ? 'Trotzdem abschließen' : 'Abschließen', '', true) +
-        '</div></section>';
-      review.scrollIntoView?.({ block: 'nearest' });
-      return;
-    }
-    const previous = this.inventoryPrevious;
-    await this.run(
-      () => this.store.saveInventory(value, previous, this.operationId),
-      finish
-        ? 'Abendabschluss abgeschlossen und nachgelesen.'
-        : 'Entwurf gespeichert. Ihr könnt den Abendabschluss im Bestand fortsetzen.',
-      () => {
-        this.view = 'stock';
-        if (finish && nextUsePlans(this.state!, value.seasonId, value.area).length) this.wwUI.screen = 'next-use';
-      }
-    );
-  }
-  private readOrder(form: HTMLFormElement, showFieldErrors = true): Order {
-    return readSheetOrder(form, this.draft!, this.state!, showFieldErrors);
-  }
-  private updateOrderTotals(): void {
-    try {
-      const form = this.root.querySelector<HTMLFormElement>('form[data-form=order]');
-      if (!form) return;
-      const o = this.readOrder(form, false);
-      for (const l of o.lines) {
-        const el = form.querySelector('[data-line-total="' + l.id + '"]');
-        if (el) el.textContent = n(l.quantity) + ' ' + l.packName;
-      }
-      const sheetSummary = form.querySelector('[data-sheet-summary]');
-      if (sheetSummary) sheetSummary.textContent = o.lines.length ? o.lines.length + ' Artikel' : 'Mengen eintragen';
-      const summary = form.querySelector('[data-order-summary]');
-      if (summary) summary.innerHTML = deliverySummary(o);
-      const guidance = form.querySelector('[data-order-guidance]');
-      if (guidance) guidance.innerHTML = orderGuidance(o);
-      const prices = form.querySelector('[data-price-review]');
-      if (prices) {
-        const wasOpen = prices.querySelector('details')?.open;
-        prices.innerHTML = priceReview(o, this.state!);
-        if (wasOpen === false) prices.querySelector('details')?.removeAttribute('open');
-      }
-      const total = form.querySelector('[data-order-total]');
-      if (total)
-        total.textContent =
-          orderTotal(o) === null
-            ? 'Warenwert offen · Mengen oder Preise fehlen'
-            : 'Warenwert gesamt netto: ' + money(orderTotal(o)) + ' · ohne Pfand und Lieferkosten';
-    } catch {
-      /* Invalid input is explained at save without interrupting typing. */
-    }
-  }
-  private supplierFor(order: Order): Supplier {
-    const supplier = this.state!.suppliers.find(row => row.value.id === order.supplierId)?.value;
-    if (!supplier) throw new Error('Bitte Lieferanten wählen.');
-    return supplier;
-  }
-  private pdfName(order: Order): string {
-    return ('Bestellung-' + order.supplierName + '-' + this.season()?.year + '.pdf').replace(/[^a-zA-Z0-9äöüÄÖÜß._-]/g, '-');
-  }
-  private downloadPdf(order: Order, forDispatch = false): void {
-    const bytes = supplierPdf(order, this.supplierFor(order), undefined, forDispatch);
-    saveFile(this.pdfName(order), new Blob([new Uint8Array(bytes).buffer], { type: 'application/pdf' }), this.root.ownerDocument);
-  }
-  /** Teilen mit Dateien gibt es auf Telefonen und Tablets, in den meisten Desktop-Browsern nicht. */
-  private canShareFiles(): boolean {
-    const nav = this.root.ownerDocument.defaultView?.navigator;
-    try {
-      return !!nav?.canShare && nav.canShare({ files: [new File(['%PDF'], 'probe.pdf', { type: 'application/pdf' })] });
-    } catch {
-      return false;
-    }
-  }
-  /** Mit PDF teilen, sonst PDF speichern und das E-Mail-Programm öffnen. Abbrechen im Teilen-Menü ist kein Fehler. */
-  private async shareOrder(order: Order): Promise<void> {
-    const supplier = this.supplierFor(order),
-      mail = supplierMail(order, supplier),
-      bytes = supplierPdf(order, supplier, undefined, true);
-    const nav = this.root.ownerDocument.defaultView?.navigator;
-    if (this.canShareFiles() && nav?.share) {
-      const file = new File([new Uint8Array(bytes).buffer], this.pdfName(order), { type: 'application/pdf' });
-      try {
-        await nav.share({ files: [file], title: mail.subject, text: mail.body });
-        this.info = 'Teilen geöffnet. Nach dem Senden die Bestellung als bestellt dokumentieren.';
-      } catch (error) {
-        if ((error as { name?: string }).name !== 'AbortError') throw error;
-        this.info = 'Teilen abgebrochen. Nichts wurde gesendet.';
-      }
-      this.paintStatus();
-      return;
-    }
-    saveFile(this.pdfName(order), new Blob([new Uint8Array(bytes).buffer], { type: 'application/pdf' }), this.root.ownerDocument);
-    if (mail.href) {
-      const link = this.root.ownerDocument.createElement('a');
-      link.href = mail.href;
-      link.click();
-    }
-    this.info = mail.href
-      ? 'PDF gespeichert, E-Mail geöffnet. PDF anhängen und senden, danach als bestellt dokumentieren.'
-      : 'PDF gespeichert. Lieferant hat keine E-Mail-Adresse, bitte im E-Mail-Programm eintragen.';
-    this.paintStatus();
+    if (this.inventory) updateCountTotals(this);
   }
 
-  private async saveOrder(form: HTMLFormElement, record: boolean, confirmed = false): Promise<void> {
-    const order = this.readOrder(form);
-    if (record) {
-      order.status = 'Bestellt';
-      order.recordedBy = this.user;
-      order.recordedAt = new Date().toISOString();
-    }
-    validateOrder(order, catalog(this.state!));
-    if (record && !confirmed) {
-      form.querySelector('[data-order-confirm]')?.remove();
-      const confirmation = document.createElement('section');
-      confirmation.className = 'warning';
-      confirmation.setAttribute('data-order-confirm', '');
-      confirmation.setAttribute('aria-label', 'Bestellung dokumentieren');
-      confirmation.innerHTML =
-        '<p>Ist diese Bestellung bereits tatsächlich beim Lieferanten aufgegeben? Bestellweg, Mengen und Gebinde werden so festgehalten.</p><div class="actions">' +
-        button('order-record-confirm', 'Ja, Bestellung ist aufgegeben', '', true) +
-        button('order-record-back', 'Zurück zum Entwurf') +
-        '</div>';
-      form.append(confirmation);
-      confirmation.scrollIntoView({ block: 'nearest' });
-      return;
-    }
-    const previous = this.previous;
-    await this.run(
-      () => this.store.saveOrder(order, previous, this.operationId),
-      'Gespeichert und durch erneutes Lesen bestätigt.',
-      () => {
-        this.selectedOrder = order.id;
-      }
-    );
-  }
   private async save(form: HTMLFormElement): Promise<void> {
     if (form.dataset.form === 'ingredient') {
       const { article, offer } = readIngredient(form, this.quickIngredient!),
         draft = structuredClone(this.draft!),
         previous = this.previous,
         operationId = this.operationId;
-      this.uniqueName('articles', article);
+      uniqueName(this, 'articles', article);
       await this.run(
         async () => {
           await this.store.saveMaster('articles', article, undefined, operationId + '-article');
@@ -2473,19 +1069,19 @@ export class KitchenView {
       return;
     }
     if (form.dataset.form === 'delivery-slip') {
-      await this.saveSlip(form);
+      await saveSlip(this, form);
       return;
     }
     if (form.dataset.form === 'receipt') {
-      await this.saveReceipt(form);
+      await saveReceipt(this, form);
       return;
     }
     if (form.dataset.form === 'inventory') {
-      await this.saveInventory(form, false);
+      await saveInventory(this, form, false);
       return;
     }
     if (form.dataset.form === 'order') {
-      await this.saveOrder(form, false);
+      await saveOrder(this, form, false);
       return;
     }
     if (form.dataset.form === 'copy') {
@@ -2599,7 +1195,7 @@ export class KitchenView {
         storagePlace: get('storagePlace'),
         unavailableSeasons: this.state!.seasons.filter(s => data.has('unavailable_' + s.value.id)).map(s => s.value.id)
       };
-      this.uniqueName('articles', value);
+      uniqueName(this, 'articles', value);
       await this.run(
         () =>
           this.store.saveMaster(
@@ -2630,7 +1226,7 @@ export class KitchenView {
         reviewDate: get('reviewDate') || undefined,
         reviewReason: get('reviewReason')
       };
-      this.uniqueName('suppliers', value);
+      uniqueName(this, 'suppliers', value);
       await this.run(
         () =>
           this.store.saveMaster(
@@ -2709,94 +1305,5 @@ export class KitchenView {
         'Bestandsmeldung gespeichert und nachgelesen.'
       );
     }
-  }
-  private uniqueName(kind: 'articles' | 'suppliers', value: Article | Supplier): void {
-    if (
-      this.state![kind].some(
-        r =>
-          r.value.id !== value.id &&
-          r.value.name.trim().toLocaleLowerCase('de-DE') === value.name.trim().toLocaleLowerCase('de-DE')
-      )
-    )
-      throw new Error('Dieser Name ist bereits vorhanden. Bitte den vorhandenen Datensatz bearbeiten.');
-  }
-  private async previewImport(): Promise<void> {
-    if (this.importStarted)
-      throw new Error('Die laufende Übernahme bitte zuerst abschließen oder ausdrücklich schließen.');
-    const kind = this.importKind!;
-    const form = this.root.querySelector<HTMLFormElement>('form[data-form="import"]')!;
-    const data = new FormData(form);
-    const file = form.querySelector<HTMLInputElement>('input[type="file"]')!.files?.[0];
-    const raw = file ? await file.text() : String(data.get('csvText') || '');
-    this.importText = raw;
-    const preview = previewMasters(
-      kind,
-      raw,
-      this.state![kind].map(s => s.value.name)
-    );
-    const items: ImportItem[] = preview.rows.map(r => ({
-      kind,
-      value:
-        kind === 'articles'
-          ? { id: uuid(), name: r.Name, unit: r.Einheit, category: r.Kategorie || '', active: true }
-          : {
-              id: uuid(),
-              name: r.Name,
-              phone: r.Telefon || '',
-              email: r['E-Mail'] || '',
-              method: (r.Bestellweg || 'Telefon') as Method,
-              customerNumber: r.Kundennummer || '',
-              note: r.Hinweise || '',
-              active: true
-            },
-      done: false
-    }));
-    for (const item of items)
-      try {
-        validateEntity(item.kind, item.value);
-      } catch (e) {
-        preview.errors.push(item.value.name + ': ' + message(e));
-      }
-    this.importItems = preview.errors.length ? undefined : items;
-    this.importErrors = preview.errors;
-    this.render();
-  }
-  private async applyImport(): Promise<void> {
-    const items = this.importItems;
-    if (!items?.length) return;
-    this.importStarted = true;
-    this.lock(true);
-    try {
-      for (const item of items) {
-        if (item.done) continue;
-        if (item.kind === 'articles')
-          await this.store.saveMaster('articles', item.value as Article, undefined, item.value.id);
-        else await this.store.saveMaster('suppliers', item.value as Supplier, undefined, item.value.id);
-        item.done = true;
-      }
-      this.state = await this.store.load();
-      if (this.store.ww && this.seasonId) this.state.ww = await this.store.ww.load(this.seasonId);
-      this.clearEditor();
-      this.error = '';
-      this.info = items.length + ' Datensätze importiert und durch Lesen bestätigt.';
-      this.render();
-    } catch (e) {
-      this.error =
-        items.filter(i => i.done).length +
-        ' Datensätze bereits bestätigt. ' +
-        message(e) +
-        ' Die Übernahme kann für die übrigen Datensätze erneut gestartet werden.';
-      this.render();
-    } finally {
-      this.lock(false);
-    }
-  }
-  private download(text: string, name: string): void {
-    const url = URL.createObjectURL(new Blob(['\uFEFF' + text], { type: 'text/csv;charset=utf-8' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = name;
-    a.click();
-    URL.revokeObjectURL(url);
   }
 }
