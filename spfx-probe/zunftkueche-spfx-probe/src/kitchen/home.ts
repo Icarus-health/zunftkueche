@@ -5,8 +5,20 @@ import { latestCounts, deliveryState, countQuantity } from './operations.ts';
 import { deliveryTasks, orderDeadlines } from './workflow-tasks.ts';
 import { icon } from './icons.ts';
 
+/** Ungeprüfte Dateien im Rechnungseingang einer Saison. Wird im Hintergrund aus SharePoint gelesen. */
+export interface OpenBills {
+  seasonId: string;
+  name: string;
+  count: number;
+}
 /** One entry per daily workflow; detailed checks remain with the relevant task. */
-export function dashboard(state: Workspace, season: Season | undefined, area: Area, todayOverride?: string): string {
+export function dashboard(
+  state: Workspace,
+  season: Season | undefined,
+  area: Area,
+  todayOverride?: string,
+  bills: OpenBills[] = []
+): string {
   if (!season)
     return (
       '<div class="page-heading"><h1>Mit der ersten Saison beginnen</h1></div>' +
@@ -137,6 +149,14 @@ export function dashboard(state: Workspace, season: Season | undefined, area: Ar
       id: 'current-drafts',
       label: 'Entwürfe prüfen',
       detail: [...new Set(drafts.map(o => o.supplierName).filter(Boolean))].slice(0, 3).join(' · ')
+    });
+  /* Rechnungen im Eingang, auch aus einer anderen offenen Saison: sonst bleiben sie nach dem Saisonwechsel unsichtbar. */
+  for (const b of bills.filter(b => b.count > 0))
+    tasks.push({
+      text: b.count + ' ' + (b.count === 1 ? 'Rechnung' : 'Rechnungen') + ' im Eingang prüfen · ' + b.name,
+      action: 'inbox-season',
+      id: b.seasonId,
+      label: 'Rechnungen prüfen'
     });
   if (needs.length)
     tasks.push({

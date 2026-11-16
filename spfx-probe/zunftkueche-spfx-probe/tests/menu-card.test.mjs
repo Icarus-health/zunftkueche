@@ -41,7 +41,7 @@ test('Nummern nur für Wein und Sekt, vorhandene bleiben',()=>{
 test('Editor zeigt Rubriken, Auswahl und Ausgabe',()=>{
  const card={...emptyMenu(season,'Test'),lines:card2025(uuid)};
  const html=menuEditor(card,state,false);
- for(const t of ['Wein','Sekt + Secco','Bier und alkoholfreie Getränke','Speisen','Als PDF','Als Word','Karte speichern','Eigener Eintrag ohne Rezept','Gutedel 0,75 l · 15,00 €'])assert.ok(html.includes(t),t);
+ for(const t of ['Wein','Sekt + Secco','Bier und alkoholfreie Getränke','Speisen','Als PDF','Als Word','Preiskarte speichern','Eigener Eintrag ohne Rezept','Gutedel 0,75 l · 15,00 €'])assert.ok(html.includes(t),t);
  assert.doesNotMatch(html,/Intern: Verpflegung/);
 });
 function unzip(bytes){const v=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);const out={};let p=0;const dec=new TextDecoder();

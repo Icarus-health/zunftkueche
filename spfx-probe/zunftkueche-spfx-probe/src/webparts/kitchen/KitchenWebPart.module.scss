@@ -4747,6 +4747,10 @@
     font-size: 12px;
     font-weight: 400;
   }
+  :global(.figure-row) dd :global(.figure-open) {
+    color: var(--dim);
+    font-weight: 600;
+  }
   :global(.figure-card.total) :global(.figure-row) dd {
     font-size: 20px;
   }
@@ -4918,6 +4922,24 @@
   :global(.ov-card) > header h4 {
     margin: 0;
     font-size: 17px;
+  }
+  :global(.ov-card) > header h4 small {
+    display: block;
+    margin-top: 2px;
+    color: var(--dim);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  :global(.ov-card.suggested) {
+    border-style: dashed;
+  }
+  :global(.ov-proposed) {
+    border-color: #b7791f;
+    background: #fff8e6;
+  }
+  :global(.ov-slot.suggested) {
+    border: 1px dashed #b7791f;
+    background: transparent;
   }
   :global(.ov-card) > header button {
     margin-left: auto;

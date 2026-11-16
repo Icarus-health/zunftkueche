@@ -1,4 +1,6 @@
 import { deliveryRound } from './home.ts';
+import type { OpenBills } from './home';
+import { openBillFiles } from './ww/inbox-view.ts';
 import { orderReview } from './order-sheet.ts';
 import { LocalState, formFields, restoreFields } from './local-state.ts';
 import type { LocalDraft, ContextChoice } from './local-state';
@@ -228,6 +230,9 @@ export class KitchenView {
   overviewPicker = false;
   menuDraft?: MenuCard;
   menuPrevious?: Stored<WwDocument>;
+  /** Ungeprüfte Rechnungen je offener Saison, nach jedem Laden einmal im Hintergrund gelesen. */
+  openBills: OpenBills[] = [];
+  private billsFor?: Workspace;
   deliveryPicker = false;
   sourceSeason = '';
   importKind?: ImportKind;
@@ -922,7 +927,38 @@ export class KitchenView {
     if (!this.topVisible(top)) top.scrollIntoView?.({ block: 'start' });
   }
   private home(): string {
-    return dashboard(this.state!, this.season(), this.area);
+    if (this.state && this.billsFor !== this.state) {
+      this.billsFor = this.state;
+      this.checkBills(this.state).catch(() => {
+        /* Nur ein Hinweis auf der Übersicht. Fehlt der Zugriff, bleibt er einfach weg. */
+      });
+    }
+    return dashboard(this.state!, this.season(), this.area, undefined, this.openBills);
+  }
+  private async checkBills(state: Workspace): Promise<void> {
+    const inbox = this.store.inbox;
+    if (!inbox || !state.ww?.ready) return;
+    const result: OpenBills[] = [];
+    for (const s of state.seasons.map(r => r.value).filter(v => !v.archived && v.year)) {
+      const folder = await inbox.list('bill', s.year);
+      result.push({ seasonId: s.id, name: s.name, count: openBillFiles(folder, state, s.id) });
+    }
+    if (this.state !== state) return;
+    const before = JSON.stringify(this.openBills);
+    this.openBills = result;
+    if (this.view === 'heute' && !this.busy && before !== JSON.stringify(result)) this.render();
+  }
+  /** Rechnungseingang einer Saison öffnen, bei Bedarf vorher die Saison wechseln. */
+  private async openSeasonInbox(seasonId: string): Promise<void> {
+    if (!this.canLeave()) return;
+    if (seasonId && seasonId !== this.seasonId && this.state?.seasons.some(r => r.value.id === seasonId)) {
+      this.clearEditor();
+      this.seasonId = seasonId;
+      this.rememberContext();
+      await this.run(async () => {}, '', undefined, false);
+    }
+    this.view = 'reports';
+    await this.wwUI.action('ww-open', 'inbox');
   }
 
   async action(action: string, id: string, target?: HTMLElement): Promise<void> {
@@ -934,6 +970,10 @@ export class KitchenView {
 
     if (this.pendingSave && !['save-retry', 'save-reconcile'].includes(action))
       throw new Error('Bitte zuerst den Speichervorgang über die angezeigten Schaltflächen klären.');
+    if (action === 'inbox-season') {
+      await this.openSeasonInbox(id);
+      return;
+    }
     if (action === 'ww-open' && !this.dirty)
       this.view = ['recipes', 'plans', 'equipment'].includes(id)
         ? 'planning'

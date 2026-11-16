@@ -96,6 +96,11 @@ export function seasonOrders(state: Workspace, seasonId: string, area: Area): St
   );
 }
 
+/** Gespeichertes Datum oder, solange keines gespeichert ist, der Vorschlag. Leer = wirklich offen. */
+export const effectiveDay = (d: { date: string | null; suggestedDate: string | null }): string =>
+  d.date || d.suggestedDate || '';
+const proposed = (d: { date: string | null; suggestedDate: string | null }): boolean => !d.date && !!d.suggestedDate;
+
 export function overviewData(state: Workspace, season: Season, area: Area): OverviewData {
   const candidates = candidateDays(state, season, area);
   const deliveries: OverviewDelivery[] = [];
@@ -151,18 +156,26 @@ export function overviewData(state: Workspace, season: Season, area: Area): Over
       if (suppliers.size > 1)
         issues.push(name + ' kommt am ' + shortDay(date) + ' von ' + [...suppliers].sort().join(' und ') + '.');
   const filled = (d: OverviewDelivery): boolean => d.lines.some(l => l.quantity);
-  const undated = deliveries.filter(d => !d.date && filled(d));
-  if (undated.length) {
-    const names = [...new Set(undated.map(d => d.supplierName))];
+  const names = (list: OverviewDelivery[]): string => [...new Set(list.map(d => d.supplierName))].join(', ');
+  const suggested = deliveries.filter(d => proposed(d) && filled(d));
+  if (suggested.length)
+    issues.push(
+      suggested.length +
+        (suggested.length === 1 ? ' Datumsvorschlag ist' : ' Datumsvorschläge sind') +
+        ' noch nicht gespeichert: ' +
+        names(suggested) +
+        '. Unten prüfen und mit „Liefertermine speichern“ übernehmen.'
+    );
+  const undated = deliveries.filter(d => !effectiveDay(d) && filled(d));
+  if (undated.length)
     issues.push(
       undated.length +
         (undated.length === 1 ? ' Lieferung hat' : ' Lieferungen haben') +
         ' noch kein Datum: ' +
-        names.join(', ') +
+        names(undated) +
         '.'
     );
-  }
-  const timeless = deliveries.filter(d => d.date && filled(d) && !clockTime(d.time));
+  const timeless = deliveries.filter(d => effectiveDay(d) && filled(d) && !clockTime(d.time));
   if (timeless.length)
     issues.push(
       timeless.length +
@@ -189,17 +202,17 @@ const statusTone = (s: Order['status']): string =>
   s === 'Entwurf' ? 'warning' : s === 'Bestellt' ? 'success' : 'info';
 
 function grid(data: OverviewData): string {
-  const columns = [...data.days, ...(data.deliveries.some(d => !d.date) ? [''] : [])];
+  const columns = [...data.days, ...(data.deliveries.some(d => !effectiveDay(d)) ? [''] : [])];
   const head = columns.map(d => `<th scope="col">${d ? h(shortDay(d)) : 'ohne Datum'}</th>`).join('');
   const rows = data.suppliers
     .map(name => {
       const cells = columns
         .map(day => {
-          const hits = data.deliveries.filter(d => d.supplierName === name && (d.date || '') === day);
+          const hits = data.deliveries.filter(d => d.supplierName === name && effectiveDay(d) === day);
           const content = hits
             .map(d => {
               const count = d.lines.filter(l => l.quantity).length;
-              return `<span class="ov-slot ${d.status === 'Entwurf' ? 'draft' : 'fixed'}">${h(clockTime(d.time) || 'Zeit offen')}${d.place ? ' · ' + h(d.place) : ''}<small>${count} ${count === 1 ? 'Position' : 'Positionen'}</small></span>`;
+              return `<span class="ov-slot ${d.status === 'Entwurf' ? 'draft' : 'fixed'}${proposed(d) ? ' suggested' : ''}">${h(clockTime(d.time) || 'Zeit offen')}${d.place ? ' · ' + h(d.place) : ''}<small>${proposed(d) ? 'Vorschlag · ' : ''}${count} ${count === 1 ? 'Position' : 'Positionen'}</small></span>`;
             })
             .join('');
           return `<td>${content || '<span class="ov-none" aria-label="keine Lieferung">–</span>'}</td>`;
@@ -218,9 +231,9 @@ function deliveryCard(d: OverviewDelivery): string {
     ? `<ul class="ov-lines">${lines.map(l => `<li><span>${h(l.name)}</span><span>${h(quantity(l))}</span></li>`).join('')}</ul>`
     : '<p class="hint">Noch keine Mengen für diesen Termin.</p>';
   const editor = d.editable
-    ? `<div class="ov-edit"><label>Datum<input type="date" name="date|${h(key)}" value="${h(d.date || d.suggestedDate || '')}" /></label><label>Uhrzeit<input name="time|${h(key)}" value="${h(timeValue(d))}" placeholder="${h(timeValue(d) ? 'z. B. 17:00' : d.time || 'z. B. 17:00')}" maxlength="100" /></label><label>Ort<input name="place|${h(key)}" value="${h(d.place)}" placeholder="z. B. Halle, Küchentür" maxlength="200" /></label></div>${!d.date && d.suggestedDate ? `<p class="hint">Datum vorgeschlagen aus „${h(d.time || d.deliveryId)}“. Mit Speichern übernehmen.</p>` : ''}`
+    ? `<div class="ov-edit"><label>Datum<input type="date" name="date|${h(key)}" value="${h(effectiveDay(d))}"${proposed(d) ? ' class="ov-proposed"' : ''} /></label><label>Uhrzeit<input name="time|${h(key)}" value="${h(timeValue(d))}" placeholder="hh:mm" maxlength="100" /></label><label>Ort<input name="place|${h(key)}" value="${h(d.place)}" placeholder="z. B. Halle, Küchentür" maxlength="200" /></label></div>${proposed(d) ? `<p class="hint ov-proposed-hint">Vorschlag aus der Vorjahresangabe „${h(d.time || d.deliveryId)}“. Noch nicht gespeichert.</p>` : ''}`
     : `<p class="ov-fixed">${h(d.date ? longDay(d.date) : 'Datum offen')}${clockTime(d.time) ? ' · ' + h(clockTime(d.time)) : ''}${d.place ? ' · ' + h(d.place) : ''}<small>Bereits bestellt. Änderungen als Lieferhinweis erfassen.</small></p>`;
-  return `<article class="ov-card"><header><h4>${h(d.supplierName)}</h4><span class="badge ${statusTone(d.status)}">${h(d.status)}</span>${button('order-open', 'Bestellung öffnen', d.orderId)}</header>${editor}${body}</article>`;
+  return `<article class="ov-card${proposed(d) ? ' suggested' : ''}"><header><h4>${h(d.supplierName)}<small>${h(clockTime(d.time) || 'Uhrzeit offen')}</small></h4><span class="badge ${statusTone(d.status)}">${h(d.status)}</span>${proposed(d) ? '<span class="badge info">Datum vorgeschlagen</span>' : ''}${button('order-open', 'Bestellung öffnen', d.orderId)}</header>${editor}${body}</article>`;
 }
 
 /** Ganze Seite. */
@@ -234,7 +247,7 @@ export function orderOverview(state: Workspace, season: Season | undefined, area
     ? `<section class="ov-issues" role="status"><h2>Bitte prüfen</h2><ul>${data.issues.map(i => `<li>${h(i)}</li>`).join('')}</ul></section>`
     : '<p class="ov-ok" role="status">Keine Überschneidungen. Alle Lieferungen haben Datum und Uhrzeit.</p>';
   const groups = [...data.days, ''].map(day => {
-    const hits = data.deliveries.filter(d => (d.date || '') === day);
+    const hits = data.deliveries.filter(d => effectiveDay(d) === day);
     if (!hits.length) return '';
     const title = day ? longDay(day) : 'Ohne Datum';
     return `<section class="ov-day" aria-labelledby="ov-${h(day || 'offen')}"><h3 id="ov-${h(day || 'offen')}">${h(title)}<small>${hits.length} ${hits.length === 1 ? 'Lieferung' : 'Lieferungen'}</small></h3>${hits.map(deliveryCard).join('')}</section>`;
@@ -345,7 +358,7 @@ export function overviewPdf(
     y -= 6;
   }
   for (const day of [...data.days, '']) {
-    const hits = data.deliveries.filter(d => (d.date || '') === day && d.lines.some(l => l.quantity));
+    const hits = data.deliveries.filter(d => effectiveDay(d) === day && d.lines.some(l => l.quantity));
     if (!hits.length) continue;
     need(40);
     page.box(36, y - 4, 523, 18, [0.9, 0.91, 0.96]);
@@ -361,7 +374,8 @@ export function overviewPdf(
           '  ' +
           d.supplierName +
           (d.place ? ' · ' + d.place : '') +
-          (d.status === 'Entwurf' ? '  (Entwurf)' : ''),
+          (d.status === 'Entwurf' ? '  (Entwurf)' : '') +
+          (proposed(d) ? '  Datum vorgeschlagen' : ''),
         10,
         true
       );

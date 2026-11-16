@@ -102,10 +102,11 @@ function figures(row: Omit<AreaFigures, 'area'>, unassigned?: number, total = fa
       money(row.purchase),
       unassigned ? 'davon ohne Bereich: ' + money(unassigned) : ''
     ) +
+    /* Ohne Kassendaten wäre die Differenz nur der negative Einkauf und läse sich wie ein Verlust. */
     figureRow(
       'Verkäufe minus Einkauf',
-      money(cents(row.sales - row.purchase)),
-      total ? 'vorläufig, beides brutto' : ''
+      row.sales ? money(cents(row.sales - row.purchase)) : '<span class="figure-open">offen</span>',
+      row.sales ? (total ? 'vorläufig, beides brutto' : '') : 'erst mit Kassendaten'
     ) +
     figureRow(
       'Bestellwert netto',

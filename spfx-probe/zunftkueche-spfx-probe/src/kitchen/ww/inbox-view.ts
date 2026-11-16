@@ -14,6 +14,17 @@ export interface InboxView {
   busy: boolean;
 }
 
+/** Unterstützte Dateien im Rechnungsordner, zu denen es noch keine bestätigte Rechnung im aktuellen Dateistand gibt. */
+export function openBillFiles(folder: InboxFolder, state: Workspace, seasonId: string): number {
+  if (!folder.exists) return 0;
+  const records = documents(state.ww, 'bill').filter(doc => doc.scope === seasonId);
+  return folder.files.filter(
+    file =>
+      supportedInboxFile('bill', file) &&
+      !records.some(doc => doc.sourceFile?.id === file.id && doc.sourceFile?.version === file.version && doc.confirmed)
+  ).length;
+}
+
 export function inboxView(view: InboxView, state: Workspace, stateArea?: string): string {
   const sections: Array<[InboxKind, string]> = [
     ['bill', 'Rechnungen'],

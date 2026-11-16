@@ -24,8 +24,12 @@ test('Raster, Hinweise und keine historischen Entwürfe',()=>{
  assert.deepEqual(d.days,['2027-02-03','2027-02-05','2027-02-06']);
  assert.deepEqual(d.suppliers,['Rewe','Wiggenhauser']);
  assert.equal(d.deliveries.find(x=>x.deliveryId==='fri17').suggestedDate,'2027-02-05');
- assert.ok(d.issues.some(i=>/noch kein Datum: Wiggenhauser/.test(i)));
+ assert.ok(d.issues.some(i=>/2 Datumsvorschläge sind noch nicht gespeichert: Wiggenhauser/.test(i)),d.issues.join('|'));
+ assert.ok(!d.issues.some(i=>/noch kein Datum/.test(i)),d.issues.join('|'));
  const html=orderOverview(s,season,'Küche');
+ // Vorschläge stehen im Raster in ihrer Tagesspalte, markiert, und die Karte nennt die Uhrzeit
+ assert.doesNotMatch(html,/ohne Datum/);assert.match(html,/ov-slot draft suggested/);assert.match(html,/Datum vorgeschlagen/);
+ assert.match(html,/<h4>Wiggenhauser<small>17:00<\/small><\/h4>/);assert.match(html,/placeholder="hh:mm"/);
  assert.match(html,/Gesamtbestellung/);assert.match(html,/Liefertermine speichern/);assert.match(html,/Bereits bestellt/);
  assert.doesNotMatch(html,/Historisch/);
 });
@@ -62,4 +66,13 @@ test('Lieferplan als PDF',()=>{
  const bytes=overviewPdf(s,season,'Küche','2026-11-16T10:00:00.000Z');
  const text=new TextDecoder('latin1').decode(bytes);
  assert.match(text,/^%PDF-1\.4/);assert.match(text,/Lieferplan/);assert.match(text,/Wiggenhauser/);assert.match(text,/Bockwurst/);
+});
+test('Ohne passenden Einsatztag bleibt die Lieferung ohne Datum',()=>{
+ const s=state();s.orders[2].value.occasion='Historische Bestellliste';
+ s.orders[0].value.deliveries[0].time='irgendwann';s.orders[0].value.deliveries[0].id='x1';
+ s.orders[0].value.lines.forEach(l=>{l.schedule.x1=l.schedule.wed;delete l.schedule.wed;});
+ const d=overviewData(s,season,'Küche');
+ assert.ok(d.issues.some(i=>/1 Lieferung hat noch kein Datum: Wiggenhauser/.test(i)),d.issues.join('|'));
+ assert.ok(d.issues.some(i=>/1 Datumsvorschlag ist noch nicht gespeichert/.test(i)),d.issues.join('|'));
+ assert.match(orderOverview(s,season,'Küche'),/ohne Datum/);
 });

@@ -22,7 +22,7 @@ import { uuid } from '../view-support.ts';
 
 function current(app: KitchenView): MenuCard {
   const form = app.root.querySelector<HTMLFormElement>('form[data-form=menu]');
-  if (!app.menuDraft) throw new Error('Karte bitte erneut öffnen.');
+  if (!app.menuDraft) throw new Error('Preiskarte bitte erneut öffnen.');
   return form ? readMenu(form, app.menuDraft) : app.menuDraft;
 }
 export function openMenu(app: KitchenView): void {
@@ -119,14 +119,14 @@ export function menuReorder(app: KitchenView, section: string, ids: string[]): v
   app.render();
 }
 export async function saveMenu(app: KitchenView, form: HTMLFormElement): Promise<void> {
-  if (!app.menuDraft || !app.state) throw new Error('Karte bitte erneut öffnen.');
+  if (!app.menuDraft || !app.state) throw new Error('Preiskarte bitte erneut öffnen.');
   if (!app.writable()) throw new Error('Bitte eine aktive Saison wählen.');
   const card: MenuCard = { ...readMenu(form, app.menuDraft), at: new Date().toISOString(), by: app.user };
   validateDocument(card);
   const previous = app.menuPrevious;
   await app.run(
     () => app.store.ww.save(card, previous, app.operationId),
-    'Karte gespeichert und durch erneutes Lesen bestätigt.',
+    'Preiskarte gespeichert und durch erneutes Lesen bestätigt.',
     () => {
       const stored = documents(app.state?.ww, 'menu').find(m => m.id === card.id);
       app.menuPrevious = app.state?.ww?.records.find(r => r.value.id === card.id);
