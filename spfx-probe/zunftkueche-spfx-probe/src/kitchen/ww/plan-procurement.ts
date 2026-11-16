@@ -504,14 +504,15 @@ export function planProcurementForm(plan: Plan, s: Workspace, mode: ProcurementM
       [
         ['', 'Tag wählen'],
         ...slots.map(
-          slot =>
-            [slot.id, dayLabel(slot.date) + (isDaySlot(slot) ? '' : ' · ' + slot.name)] as [string, string]
+          slot => [slot.id, dayLabel(slot.date) + (isDaySlot(slot) ? '' : ' · ' + slot.name)] as [string, string]
         )
       ],
       selectedSlot,
       'required'
     ) +
-    (slots.length ? '' : '<p class="ww-note">Der Einsatztag liegt in der Vergangenheit. Bitte das Datum im Plan prüfen.</p>') +
+    (slots.length
+      ? ''
+      : '<p class="ww-note">Der Einsatztag liegt in der Vergangenheit. Bitte das Datum im Plan prüfen.</p>') +
     (mode === 'planning'
       ? '<div class="actions">' + button('ww-procure-suggest', 'Bestand und offene Lieferungen anrechnen') + '</div>'
       : '') +

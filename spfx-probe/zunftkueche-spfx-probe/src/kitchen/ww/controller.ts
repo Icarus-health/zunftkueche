@@ -4,11 +4,11 @@ import { fieldNumber, inputNumber } from '../field-errors.ts';
 import { ingredientForm, readIngredient } from '../ingredient-form.ts';
 import type { IngredientDraft } from '../ingredient-form';
 import type { Article, Offer } from '../model';
-import { AREAS, articleAvailable } from '../model.ts';
+import { AREAS, articleAvailable, isArea } from '../model.ts';
 import { recipeDemand } from './domain.ts';
 import { money } from '../markup.ts';
 import { withSchedule, scheduledOrder } from '../supplier-orders.ts';
-import type { Area, Order, Stored, Workspace } from '../model';
+import type { Area, Order, Stored, Supplier, Workspace } from '../model';
 import type {
   PriceList,
   Rule,
@@ -58,6 +58,9 @@ import { TableWizard } from './table-wizard.ts';
 import { billsOverview, billForm, billLine, billDetail, billLinkForm } from './bills-view.ts';
 import { relatedBills, returnMovements, billTypeLabel, linkedBill } from './bill-accounting.ts';
 import { billProposal } from '../imports/bill-proposal.ts';
+import { billArea, billTerms } from '../imports/bill-hints.ts';
+import { guessSupplier, withArticles } from './bill-suggest.ts';
+import { supportedInboxFile } from './inbox.ts';
 import { sha256 } from '../imports/identity.ts';
 import { inboxView } from './inbox-view.ts';
 import type { InboxView } from './inbox-view';
@@ -77,6 +80,8 @@ export interface Ports {
   redraw: () => void;
   mutate: (work: () => Promise<unknown>, message: string, after?: () => void) => Promise<void>;
   ingredient?: (article: Article, offer: Offer, operationId: string, after: () => void) => Promise<void>;
+  /** Neuen Lieferanten anlegen, ohne die offene Rechnungsprüfung zu verlieren. */
+  supplier?: (supplier: Supplier, operationId: string, after: () => void) => Promise<void>;
   orders: (orders: Order[], operationId: string) => Promise<unknown>;
 }
 export interface WwDraftSnapshot {
@@ -230,7 +235,9 @@ export class WwController {
         this.billProposals,
         this.previewUrl,
         this.previewImage,
-        !!this.inboxPage
+        !!this.inboxPage,
+        this.billQueue().label,
+        !!this.billQueue().nextId
       );
     if (this.screen === 'bills') return billsOverview(this.p.state(), this.p.area());
     if (this.screen === 'systems') return this.systems();
@@ -332,9 +339,53 @@ export class WwController {
       const original = form.querySelector<HTMLSelectElement>('[name=creditForId]');
       if (original) original.value = '';
     }
+    if (field === 'billArea')
+      for (const input of Array.from(form.querySelectorAll<HTMLInputElement>('[name^=order_]'))) input.checked = false;
     this.draft = this.readBill(form, this.draft);
     this.draft.confirmed = false;
+    if (field === 'supplierId')
+      this.draft.lines = withArticles(this.draft.lines, this.p.state(), this.draft.supplierId);
     this.p.redraw();
+  }
+  /** Preisliste aus einer bestätigten Rechnung: nur eindeutig zugeordnete Gebinde mit geändertem Preis. */
+  private billPriceList(bill: Bill): PriceList | undefined {
+    const proposals = invoicePriceProposals(linkedBill({ ...bill, confirmed: true }, this.p.state()), this.p.state());
+    if (!proposals.length) return undefined;
+    return {
+      ...(this.create('prices') as PriceList),
+      supplierId: bill.supplierId,
+      name: ('Preise aus Rechnung ' + (bill.number || bill.name)).slice(0, 160),
+      validFrom: bill.date,
+      confirmed: true,
+      at: new Date().toISOString(),
+      by: this.p.actor,
+      lines: proposals.map(p => ({
+        offerId: p.offer.id,
+        offerSignature: offerIdentity(p.offer),
+        priceNet: p.newPrice,
+        deposit: p.offer.deposit
+      }))
+    };
+  }
+  /** Stelle der geöffneten Datei unter den noch offenen Rechnungen im Eingang, und die nächste danach. */
+  private billQueue(): { label: string; nextId: string } {
+    const view = this.inboxPage,
+      folder = view?.folders.bill,
+      current = this.draft?.kind === 'bill' ? this.draft.sourceFile?.id : undefined;
+    if (!view || !folder?.exists || !current) return { label: '', nextId: '' };
+    const records = documents(this.p.state().ww, 'bill').filter(doc => doc.scope === view.season.id);
+    const open = folder.files.filter(file => {
+      if (!supportedInboxFile('bill', file) || view.duplicates.has(file.id + ':' + file.version)) return false;
+      if (file.id === current) return true;
+      const same = records.filter(doc => doc.sourceFile?.id === file.id && doc.sourceFile.version === file.version);
+      return !same.some(doc => doc.confirmed || doc.needsSeparateFiles || doc.area !== this.p.area());
+    });
+    const index = open.findIndex(file => file.id === current);
+    if (index < 0) return { label: '', nextId: '' };
+    return {
+      label: open.length > 1 ? 'noch ' + open.length + ' offen' : 'letzte offene Rechnung',
+      nextId: open[index + 1]?.id || open.find(file => file.id !== current)?.id || ''
+    };
   }
   public profileChosen(id: string): void {
     this.wizard?.useProfile(id);
@@ -749,13 +800,32 @@ export class WwController {
       return;
     }
     if (proposal.billType && !typeEdited && this.draft.gross === null) this.draft.billType = proposal.billType;
-    this.billProposals = this.draft.lines.length ? [] : proposal.lines;
+    const state = this.p.state();
+    if (!this.draft.supplierId) this.draft.supplierId = guessSupplier(text, fileName, state);
+    // Bereich nur bei einer neuen Prüfung vorschlagen; eine begonnene Prüfung bleibt in ihrem Bereich.
+    const guessedArea = billArea(text, fileName);
+    const areaEdited = form.querySelector<HTMLSelectElement>('[name=billArea]')?.dataset.userEdited === 'true';
+    if (guessedArea && !this.previous && !areaEdited && !this.draft.orderIds.length) this.draft.area = guessedArea;
     if (!this.draft.number) this.draft.number = proposal.number;
     if (proposal.date && !dateEdited && this.draft.date === today()) this.draft.date = proposal.date;
     if (!this.draft.name) this.draft.name = fileName.slice(0, 160);
     if (this.draft.net === null) this.draft.net = proposal.net;
     if (this.draft.tax === null) this.draft.tax = proposal.tax;
     if (this.draft.gross === null) this.draft.gross = proposal.gross;
+    const terms = billTerms(text, proposal.date);
+    if (!this.draft.deliveryDate && terms.deliveryDate) this.draft.deliveryDate = terms.deliveryDate;
+    if (!this.draft.dueDate && terms.dueDate) this.draft.dueDate = terms.dueDate;
+    if (!this.draft.skontoUntil && terms.skontoUntil) {
+      this.draft.skontoUntil = terms.skontoUntil;
+      this.draft.skontoAmount = terms.skontoAmount;
+    }
+    // Gelesene Positionen stehen sofort im Formular, mit Artikelvorschlag je Zeile. Geprüft wird am Original daneben.
+    const lines = proposal.lines.map(line => ({ ...line, id: crypto.randomUUID() }));
+    if (this.draft.lines.length) this.billProposals = [];
+    else {
+      this.draft.lines = withArticles(lines, state, this.draft.supplierId);
+      this.billProposals = [];
+    }
     this.sourceText =
       (usedOcr ? 'Bildscan-Texterkennung: Alle Angaben und Positionen am Original prüfen.\n\n' : '') + text;
     this.p.markDirty();
@@ -906,11 +976,86 @@ export class WwController {
       );
       return;
     }
+    if (action === 'ww-bill-supplier-new') {
+      const form = this.p.root.querySelector<HTMLFormElement>('form[data-form=ww-bill]');
+      if (!form || this.draft?.kind !== 'bill' || !this.p.supplier) return;
+      const name = (form.querySelector<HTMLInputElement>('[name=newSupplier]')?.value || '').trim();
+      if (!name) throw new Error('Bitte den Namen des neuen Lieferanten eintragen.');
+      if (
+        this.p
+          .state()
+          .suppliers.some(row => row.value.name.toLocaleLowerCase('de-DE') === name.toLocaleLowerCase('de-DE'))
+      )
+        throw new Error('Diesen Lieferanten gibt es schon. Bitte oben in der Liste auswählen.');
+      const supplier: Supplier = {
+        id: crypto.randomUUID(),
+        name,
+        phone: '',
+        email: '',
+        method: 'Telefon',
+        customerNumber: '',
+        note: '',
+        active: true
+      };
+      // Alles festhalten, was zur offenen Prüfung gehört: nach dem Anlegen geht es an derselben Stelle weiter.
+      const keep = {
+        screen: this.screen,
+        draft: { ...this.readBill(form, this.draft), supplierId: supplier.id, confirmed: false },
+        previous: this.previous,
+        upload: this.billUpload,
+        text: this.sourceText,
+        inbox: this.inboxPage,
+        image: this.previewImage
+      };
+      await this.p.supplier(supplier, this.operationId + '-supplier', () => {
+        this.screen = keep.screen;
+        this.previous = keep.previous;
+        this.billUpload = keep.upload;
+        this.sourceText = keep.text;
+        this.inboxPage = keep.inbox;
+        this.previewImage = keep.image;
+        if (keep.upload)
+          this.previewUrl = URL.createObjectURL(
+            new Blob([new Uint8Array(keep.upload.bytes).buffer], { type: 'application/pdf' })
+          );
+        this.draft = { ...keep.draft, lines: withArticles(keep.draft.lines, this.p.state(), supplier.id) };
+        this.p.markDirty();
+      });
+      return;
+    }
+    if (action === 'ww-bill-zoom') {
+      const bench = this.p.root.querySelector<HTMLElement>('.bill-workbench');
+      if (bench) {
+        const large = bench.classList.toggle('bill-zoomed');
+        for (const el of Array.from(
+          bench.querySelectorAll<HTMLElement>('.bill-original-bar [data-action=ww-bill-zoom]')
+        ))
+          el.textContent = large ? 'Verkleinern' : 'Vergrößern';
+      }
+      return;
+    }
+    if (action === 'ww-bill-save-next') {
+      const form = this.p.root.querySelector<HTMLFormElement>('form[data-form=ww-bill]');
+      if (!form || this.draft?.kind !== 'bill') return;
+      const nextId = this.billQueue().nextId;
+      const confirm = form.querySelector<HTMLInputElement>('[name=confirmed]');
+      if (confirm) confirm.checked = true;
+      await this.save(form);
+      // Nur weitergehen, wenn wirklich gespeichert wurde: dann ist der Entwurf geschlossen.
+      if (nextId && !this.draft && this.inboxPage) await this.openInboxFile('bill|' + nextId);
+      return;
+    }
     if (action === 'ww-bill-accept-lines') {
       const form = this.p.root.querySelector<HTMLFormElement>('form[data-form=ww-bill]');
       if (!form || this.draft?.kind !== 'bill' || !this.billProposals.length) return;
       this.draft = this.readBill(form, this.draft);
-      this.draft.lines.push(...this.billProposals.map(line => ({ ...line, id: crypto.randomUUID() })));
+      this.draft.lines.push(
+        ...withArticles(
+          this.billProposals.map(line => ({ ...line, id: crypto.randomUUID() })),
+          this.p.state(),
+          this.draft.supplierId
+        )
+      );
       this.billProposals = [];
       this.p.markDirty();
       this.p.redraw();
@@ -1262,8 +1407,7 @@ export class WwController {
       if (!plan || plan.scope !== this.p.season() || plan.area !== this.p.area())
         throw new Error('Bitte den Einsatz erneut wählen.');
       const slot = deliveryOption(plan, this.p.state(), get('slot'));
-      if (!slot || (mode !== 'planning' && slot.date < today()))
-        throw new Error('Bitte oben einen Liefertag wählen.');
+      if (!slot || (mode !== 'planning' && slot.date < today())) throw new Error('Bitte oben einen Liefertag wählen.');
       const allocations = Array.from(form.querySelectorAll<HTMLElement>('[data-allocation]')).map(r => ({
         articleId: r.dataset.allocation!,
         offerId: r.querySelector<HTMLSelectElement>('[name=offerId]')!.value,
@@ -1481,26 +1625,39 @@ export class WwController {
         operationId = this.operationId,
         upload = this.billUpload;
       validateDocument({ ...bill, attachment: upload ? 'original-' + upload.hash + '.pdf' : bill.attachment });
+      // Bestätigte Rechnung mit zugeordneten Artikeln: ihre Preise gehen als neue Zeilen in die Preisliste des Lieferanten.
+      const priceDoc = bill.confirmed && data.has('updatePrices') ? this.billPriceList(bill) : undefined;
+      if (priceDoc) validateDocument(priceDoc);
+      const saveBill = async (): Promise<unknown> => {
+        if (!upload) return this.p.store.save(bill, previous, operationId);
+        const current = await this.p.store.get(bill.id);
+        if (current?.operationId === operationId) return current;
+        const stage = { ...bill, confirmed: false, attachment: '' };
+        const stageId = operationId + '-stage';
+        const saved = current?.operationId === stageId ? current : await this.p.store.save(stage, previous, stageId);
+        const attachment = await this.p.store.attachOriginal(saved, upload.bytes, upload.hash, 'pdf');
+        const fresh = await this.p.store.get(bill.id);
+        if (fresh?.operationId === operationId) return fresh;
+        if (!fresh || fresh.operationId !== stageId)
+          throw new Error('Rechnung wurde zwischenzeitlich geändert. Bitte neu laden.');
+        return this.p.store.save({ ...bill, attachment }, fresh, operationId);
+      };
       await this.p.mutate(
         async () => {
-          if (!upload) return this.p.store.save(bill, previous, operationId);
-          const current = await this.p.store.get(bill.id);
-          if (current?.operationId === operationId) return current;
-          const stage = { ...bill, confirmed: false, attachment: '' };
-          const stageId = operationId + '-stage';
-          const saved = current?.operationId === stageId ? current : await this.p.store.save(stage, previous, stageId);
-          const attachment = await this.p.store.attachOriginal(saved, upload.bytes, upload.hash, 'pdf');
-          const fresh = await this.p.store.get(bill.id);
-          if (fresh?.operationId === operationId) return fresh;
-          if (!fresh || fresh.operationId !== stageId)
-            throw new Error('Rechnung wurde zwischenzeitlich geändert. Bitte neu laden.');
-          return this.p.store.save({ ...bill, attachment }, fresh, operationId);
+          const saved = await saveBill();
+          if (priceDoc) await this.p.store.save(priceDoc, undefined, operationId + '-prices');
+          return saved;
         },
         collection
           ? bill.scanNumberReview?.status === 'open'
             ? 'Belegprüfung als offen gespeichert.'
             : 'Prüfstatus gespeichert. Einzelbelege bitte getrennt ablegen.'
-          : billTypeLabel(bill) + (upload || bill.attachment ? ' mit Original gespeichert.' : ' gespeichert.'),
+          : billTypeLabel(bill) +
+              (bill.confirmed ? ' bestätigt' : ' als Entwurf gespeichert') +
+              (priceDoc
+                ? ' · ' + priceDoc.lines.length + (priceDoc.lines.length === 1 ? ' Preis' : ' Preise') + ' aktualisiert'
+                : '') +
+              '.',
         () => {
           this.inboxPage = inbox;
           this.screen = inbox ? 'inbox' : 'bills';
@@ -1558,20 +1715,33 @@ export class WwController {
       get = (key: string): string => String(data.get(key) || '').trim();
     const billType = get('billType') as BillType;
     const supplierId = get('supplierId');
+    const area = isArea(get('billArea')) ? (get('billArea') as Area) : doc.area;
+    const supplierName = this.p.state().suppliers.find(s => s.value.id === supplierId)?.value.name;
+    const optional = (key: string): string | undefined => get(key) || undefined;
     return {
       ...doc,
       billType,
-      name: get('name'),
+      area,
+      // Der Belegname ist nur ein Etikett für die Liste. Ohne Eingabe: Lieferant und Nummer, sonst der Dateiname.
+      name:
+        get('name') ||
+        [supplierName, get('number')].filter(Boolean).join(' ').slice(0, 160) ||
+        doc.fileName.slice(0, 160) ||
+        'Rechnung',
       supplierId,
       number: get('number'),
       date: get('date'),
+      deliveryDate: optional('deliveryDate'),
+      dueDate: optional('dueDate'),
+      skontoUntil: optional('skontoUntil'),
+      skontoAmount: get('skontoUntil') ? fieldNumber(form, 'skontoAmount') : undefined,
       net: fieldNumber(form, 'net', { signed: true }),
       tax: fieldNumber(form, 'tax', { signed: true }),
       gross: fieldNumber(form, 'gross', { signed: true }),
       adjustmentNet: fieldNumber(form, 'adjustmentNet', { signed: true }) ?? 0,
       note: get('note'),
       confirmed: data.has('confirmed'),
-      ...this.readBillLinks(form, { ...doc, billType, supplierId }),
+      ...this.readBillLinks(form, { ...doc, billType, supplierId, area }),
       lines: Array.from(form.querySelectorAll<HTMLElement>('[data-line]')).map(row => {
         const value = (key: string): string =>
           row.querySelector<HTMLInputElement | HTMLSelectElement>('[name=' + key + ']')!.value.trim();

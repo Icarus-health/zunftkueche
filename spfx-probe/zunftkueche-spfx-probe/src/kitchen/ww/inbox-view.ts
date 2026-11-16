@@ -1,5 +1,6 @@
 import type { Season, Workspace } from '../model';
-import { backLink, button, empty, h, moreMenu, ordersTabs } from '../markup.ts';
+import { backLink, button, empty, euro, h, moreMenu, ordersTabs } from '../markup.ts';
+import { paymentNote } from './bill-suggest.ts';
 import { linkedBill } from './bill-accounting.ts';
 import { documents } from './model.ts';
 import { supportedInboxFile } from './inbox.ts';
@@ -53,6 +54,10 @@ export function inboxView(view: InboxView, state: Workspace, stateArea?: string,
             '</section>'
           );
         const records = documents(state.ww, kind).filter(doc => doc.scope === view.season.id);
+        let openCount = 0,
+          confirmedCount = 0,
+          confirmedSum = 0,
+          firstOpen = '';
         const rows = [...folder.files]
           .sort((a, b) => Number(supportedInboxFile(kind, b)) - Number(supportedInboxFile(kind, a)))
           .map(file => {
@@ -101,17 +106,48 @@ export function inboxView(view: InboxView, state: Workspace, stateArea?: string,
                 h(folder.href + '/' + encodeURIComponent(file.name)) +
                 '" target="_blank" rel="noopener">Original in SharePoint öffnen</a>'
               : '';
+            // Geprüfte oder begonnene Rechnungen zeigen, was drinsteht: Lieferant, Nummer, Betrag, Zahlungsziel.
+            const bill = current?.kind === 'bill' ? current : undefined;
+            const supplier = bill ? (state.suppliers || []).find(r => r.value.id === bill.supplierId)?.value.name : '';
+            const title =
+              bill && (supplier || bill.number) ? [supplier, bill.number].filter(Boolean).join(' · ') : file.name;
+            const detail = [
+              largePdf ? 'PDF über 8 MB · Einzelbelege prüfen' : status,
+              bill?.confirmed ? paymentNote(bill) : '',
+              title === file.name ? '' : file.name
+            ]
+              .filter(Boolean)
+              .join(' · ');
+            if (bill?.confirmed && bill.gross !== null) confirmedSum += bill.gross;
+            if (bill?.confirmed) confirmedCount++;
+            else if (action && supported) firstOpen = firstOpen || file.id;
+            if (!bill?.confirmed && supported && !duplicate) openCount++;
             return (
-              '<div class="listrow"><div><strong>' +
-              h(file.name) +
+              '<div class="listrow' +
+              (bill?.confirmed ? ' is-done' : '') +
+              '"><div><strong>' +
+              h(title) +
               '</strong><small>' +
-              h(largePdf ? 'PDF über 8 MB · Einzelbelege prüfen' : status) +
-              '</small></div>' +
+              h(detail) +
+              '</small></div><div class="actions">' +
+              (bill && bill.gross !== null ? '<span class="num">' + h(euro(bill.gross)) + '</span>' : '') +
               (action || openOriginal) +
-              '</div>'
+              '</div></div>'
             );
           })
           .join('');
+        const overview =
+          kind === 'bill' && (openCount || confirmedCount)
+            ? '<div class="inbox-summary"><p><strong>' +
+              openCount +
+              ' offen</strong> · ' +
+              confirmedCount +
+              ' bestätigt' +
+              (confirmedCount ? ' · zusammen ' + h(euro(confirmedSum)) + ' brutto' : '') +
+              '</p>' +
+              (firstOpen ? button('ww-inbox-file', 'Nächste Rechnung prüfen', 'bill|' + firstOpen, true) : '') +
+              '</div>'
+            : '';
         return (
           prefix +
           '<p><a href="' +
@@ -119,6 +155,7 @@ export function inboxView(view: InboxView, state: Workspace, stateArea?: string,
           '" target="_blank" rel="noopener">' +
           (kind === 'bill' ? 'Rechnungsordner' : 'Kassenordner') +
           ' in SharePoint öffnen</a></p>' +
+          overview +
           (rows || empty('Noch keine Dateien im Jahresordner.')) +
           '</section>'
         );

@@ -10,8 +10,9 @@ test('Bäckerei: Summenzeile Netto/MwSt/Brutto und Positionen mit Rabatt',()=>{
  assert.equal(p.number,'26-10123');assert.equal(p.date,'2026-02-24');
  assert.deepEqual([p.net,p.tax,p.gross],[724.21,50.69,774.9]);
  assert.equal(p.lines.length,4);assert.equal(p.lines[1].name,'Spitzbrötchen');assert.equal(p.lines[1].quantity,470);
- // Positionen sind brutto: nie als Netto übernehmen
- assert.ok(p.lines.every(l=>l.unitNet===null&&l.totalNet===null));
+ // Positionen sind brutto. Weil Summe, Steuersatz und Nettosumme zusammenpassen, werden sie in Netto umgerechnet.
+ assert.deepEqual(p.lines.map(l=>[l.unitNet,l.totalNet,l.taxRate]),[[0.5047,35.33,7],[0.757,355.8,7],[5.0467,131.21,7],[0.6729,201.87,7]]);
+ assert.equal(Math.round(p.lines.reduce((a,l)=>a+l.totalNet,0)*100)/100,724.21);
 });
 test('Bäckerei: widersprüchliche Summenzeile wird nicht übernommen',()=>{
  const p=billProposal('Netto:   724,21   7,0 % MwSt:   50,69   Brutto:   780,00');

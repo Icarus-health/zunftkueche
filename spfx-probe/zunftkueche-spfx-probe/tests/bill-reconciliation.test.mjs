@@ -19,7 +19,7 @@ test('credits and deposit changes keep signed accounting amounts and stock retur
  const credit={...baseBill,id:'credit',billType:'credit',name:'Retoure',number:'G-1',net:-15.6,tax:-2.96,gross:-18.56,
   creditForId:invoice.id,lines:[{...goods,role:'return',quantity:2,unitNet:6,totalNet:-12},{...deposit,quantity:-2,unitNet:1.8,totalNet:-3.6}]};
  assert.doesNotThrow(()=>validateDocument(credit));
- assert.throws(()=>validateDocument({...credit,gross:18.56,net:15.6,tax:2.96,lines:[goods]}),/Nettosumme|Bruttobetrag/);
+ assert.throws(()=>validateDocument({...credit,gross:18.56,net:15.6,tax:2.96,lines:[goods]}),/Positionen ergeben zusammen|Bruttobetrag/);
  await store.save(invoice,undefined,'invoice');
  await store.save(ret,undefined,'return');
  await store.save(credit,undefined,'credit');

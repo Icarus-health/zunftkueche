@@ -21,6 +21,50 @@ const parse = (raw: string): number | null => {
   }
 };
 const close = (a: number, b: number): boolean => Math.abs(a - b) <= 0.021;
+const cents = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
+const round4 = (value: number): number => Math.round((value + Number.EPSILON) * 10000) / 10000;
+/** Ein einziger Steuersatz, wenn Netto und Brutto dazu passen (7 %, 19 % oder steuerfrei). */
+function singleRate(net: number | null, gross: number | null): number | null {
+  if (net === null || gross === null || !net) return null;
+  const rate = [19, 7, 0].find(r => Math.abs(net * (1 + r / 100) - gross) <= 0.021);
+  return rate === undefined ? null : rate;
+}
+interface GrossRow {
+  line: BillLine;
+  unit: number;
+  total: number;
+}
+/**
+ * Bruttozeilen in Netto umrechnen. Nur wenn die Zeilensumme (abzüglich eines Prozentrabatts) zum Bruttobetrag der
+ * Rechnung passt, ein einziger Steuersatz gilt und die Nettosumme der Zeilen danach die Nettosumme der Rechnung trifft.
+ * Der Rabatt steckt dann in den Zeilenpreisen: es sind die Preise, die tatsächlich bezahlt wurden.
+ */
+function netFromGross(rows: GrossRow[], net: number | null, gross: number | null, discountPercent = 0): BillLine[] {
+  const plain = rows.map(row => row.line);
+  const rate = singleRate(net, gross);
+  if (!rows.length || net === null || gross === null || rate === null) return plain;
+  const sum = rows.reduce((total, row) => total + row.total, 0);
+  if (!close(sum * (1 - discountPercent / 100), gross)) return plain;
+  const factor = (1 - discountPercent / 100) / (1 + rate / 100);
+  const priced = rows.map(row => ({
+    ...row.line,
+    unitNet: round4(row.unit * factor),
+    totalNet: cents(row.total * factor),
+    taxRate: rate
+  }));
+  // Rundung: höchstens ein Cent je Zeile, ausgeglichen an der größten Zeile.
+  const difference = cents(net - priced.reduce((total, line) => total + line.totalNet, 0));
+  if (Math.abs(difference) > 0.01 * priced.length + 0.001) return plain;
+  if (difference) {
+    const largest = priced.reduce((a, b) => (b.totalNet > a.totalNet ? b : a));
+    largest.totalNet = cents(largest.totalNet + difference);
+  }
+  if (
+    priced.some(line => line.quantity !== null && Math.abs(cents(line.quantity * line.unitNet) - line.totalNet) > 0.02)
+  )
+    return plain;
+  return priced;
+}
 const documentHeaders =
   /^[ \t]*(Rechnungsnummer|Rechnungs[- \t]*Nr\.?|Rechnung[ \t]+(?:Nr\.?|Nummer)|Gutschrift[ \t]+(?:Nr\.?|Nummer)|Belegnummer)[ \t]*[:#]?[ \t]*([A-Z0-9][A-Z0-9_.\/-]*(?:[ \t]+-[ \t]+[A-Z0-9][A-Z0-9_.\/-]*)*)(?:[ \t]+Datum[ \t]*:?[ \t]*(\d{1,2}\.\d{1,2}\.\d{4}))?[ \t]*(?:(?:Seite|Technical[ \t]+ID)[ \t]*:[^\r\n]*)?$/gim;
 const documentNumber = (value: string): string => value.replace(/[ \t]*-[ \t]*/g, '-');
@@ -188,11 +232,12 @@ function scannedReceiptLines(text: string): BillLine[] {
 
 // Only the explicit layout with gross unit and line amounts is supported here.
 // Its gross prices are never transferred into fields labelled net.
-function grossTableLines(text: string): BillLine[] {
+function grossTableLines(text: string, net: number | null, gross: number | null): BillLine[] {
   const rows = text.split(/\r?\n/),
     start = rows.findIndex(r => /Nr\.[ \t]+Artikelbeschreibung[ \t]+Anz\.[ \t]+Brutto[ \t]+Gesamtpreis/i.test(r));
   if (start < 0) return [];
   const result: BillLine[] = [];
+  const priced: GrossRow[] = [];
   let current: { index: number; name: string } | undefined;
   const amounts =
     /(?:^|[ \t]+)(\d+(?:,\d+)?)[ \t]+([\d.]+,\d{2})[ \t]+(?:e(?:ur)?[ \t]+)?([\d.]+,\d{2})(?:[ \t]+e(?:ur)?)?[ \t]*$/i;
@@ -206,7 +251,11 @@ function grossTableLines(text: string): BillLine[] {
     }
     if (!current) continue;
     const m = content.match(amounts);
-    if (!m) continue;
+    if (!m) {
+      // Zweite und dritte Zeile der Beschreibung (z. B. „Qualitätswein 0,75l“) gehören zum Artikel.
+      if (!first && row.trim()) current.name = (current.name + ' ' + row.trim()).slice(0, 240);
+      continue;
+    }
     const quantity = parse(m[1]),
       unit = parse(m[2]),
       total = parse(m[3]);
@@ -219,7 +268,7 @@ function grossTableLines(text: string): BillLine[] {
       name &&
       close(quantity * unit, total) &&
       !result.some(l => l.id === 'suggestion-' + current!.index)
-    )
+    ) {
       result.push({
         id: 'suggestion-' + current.index,
         articleId: null,
@@ -230,9 +279,14 @@ function grossTableLines(text: string): BillLine[] {
         totalNet: null,
         taxRate: null
       });
+      priced.push({ line: result[result.length - 1], unit, total });
+    }
     current = undefined;
   }
-  return result;
+  // „10,00 % Rabatt  -53,95“ unter der Zwischensumme: gilt für alle Zeilen.
+  const discount = text.match(/^[ \t]*(\d{1,2}(?:[.,]\d{1,2})?)[ \t]*%[ \t]*Rabatt[ \t]+-[ \t]*([\d.]+,\d{2})/im);
+  const percent = discount ? Number(discount[1].replace(',', '.')) : 0;
+  return netFromGross(priced, net, gross, Number.isFinite(percent) ? percent : 0);
 }
 function netTableLines(text: string): BillLine[] {
   const rows = text.split(/\r?\n/),
@@ -261,6 +315,10 @@ function netTableLines(text: string): BillLine[] {
           : undefined;
       if (!inline) continue;
       amounts = inline;
+    }
+    if (current && !amounts && !head && row.trim()) {
+      current.name = (current.name + ' ' + row.trim().replace(/[ \t]+/g, ' ')).slice(0, 240);
+      continue;
     }
     if (!current || !amounts) continue;
     const offset = amounts.length === 5 ? 1 : 0;
@@ -339,7 +397,7 @@ function discountTableLines(text: string): BillLine[] {
         name: current.name,
         quantity,
         unit: m[2],
-        unitNet: discount === 0 ? unit : null,
+        unitNet: discount === 0 ? unit : round4(totalNet / quantity),
         totalNet,
         taxRate
       });
@@ -378,7 +436,7 @@ function bakeryLines(text: string, net: number | null, gross: number | null): Bi
   const sum = found.reduce((s, l) => s + l.total, 0);
   const isNet = net !== null && close(sum, net);
   if (!found.length || (!isNet && !(gross !== null && close(sum, gross)))) return [];
-  return found.map((l, i) => ({
+  const lines = found.map((l, i) => ({
     id: 'bakery-' + (i + 1),
     articleId: null,
     name: l.name,
@@ -386,8 +444,15 @@ function bakeryLines(text: string, net: number | null, gross: number | null): Bi
     unit: l.unit,
     unitNet: isNet ? l.unitPrice : null,
     totalNet: isNet ? l.total : null,
-    taxRate: null
+    taxRate: isNet ? singleRate(net, gross) : null
   }));
+  return isNet
+    ? lines
+    : netFromGross(
+        lines.map((line, i) => ({ line, unit: found[i].unitPrice, total: found[i].total })),
+        net,
+        gross
+      );
 }
 // Summenzeile „Netto: … x % MwSt: … Brutto: …“ (ein Steuersatz).
 function inlineTotals(text: string): Pick<BillProposal, 'net' | 'tax' | 'gross'> | undefined {
@@ -407,16 +472,17 @@ function marketLines(text: string): BillLine[] {
     start = rows.findIndex(r => /MM[ \t]+ART\.-NR[ \t]+EAN[ \t]+ARTIKEL[ \t]+PACK/i.test(r));
   if (start < 0) return [];
   const lines: BillLine[] = [];
+  const found: Array<{ line: BillLine; total: number; code: string }> = [];
   for (const row of rows.slice(start + 1)) {
     if (/NETTO-WARENWERT/i.test(row)) break;
     const m = row.match(
-      /^[ \t]*\d+\.\d+[ \t]+\d{10,14}[ \t]+(.+?)[ \t]+([A-Z]{2})[ \t]+[\d.]+,\d{3}[ \t]+\d+[ \t]+([\d.]+,\d{2})[ \t]+(\d+)[ \t]+([\d.]+,\d{2})[ \t]+[A-Z](?:[ \t]|$)/
+      /^[ \t]*\d+\.\d+[ \t]+\d{10,14}[ \t]+(.+?)[ \t]+([A-Z]{2})[ \t]+[\d.]+,\d{3}[ \t]+\d+[ \t]+([\d.]+,\d{2})[ \t]+(\d+)[ \t]+([\d.]+,\d{2})[ \t]+([A-Z])(?:[ \t]|$)/
     );
     if (!m) continue;
     const unit = parse(m[3]),
       quantity = parse(m[4]),
       total = parse(m[5]);
-    if (unit !== null && quantity !== null && quantity > 0 && total !== null && close(unit * quantity, total))
+    if (unit !== null && quantity !== null && quantity > 0 && total !== null && close(unit * quantity, total)) {
       lines.push({
         id: 'market-' + (lines.length + 1),
         articleId: null,
@@ -427,8 +493,44 @@ function marketLines(text: string): BillLine[] {
         totalNet: null,
         taxRate: null
       });
+      found.push({ line: lines[lines.length - 1], total, code: m[6] });
+    }
   }
-  return lines;
+  // Großmarkt-Preise sind netto. Mengenrabatte nennen den Artikel und werden dort abgezogen.
+  const declared = parse((text.match(/NETTO-WARENWERT[ \t]*:[ \t]*([\d.]+,\d{2})/i) || [])[1] || '');
+  const rates = new Map(
+    [...text.matchAll(/^[ \t]*[\d.]+,\d{2}[ \t]+([A-Z])[ \t]*=[ \t]*(\d{1,2}),\d{2}[ \t]*%/gm)].map(m => [
+      m[1],
+      Number(m[2])
+    ])
+  );
+  const discounts = [
+    ...text.matchAll(/^[ \t]*Mengenrabatt[ \t]+(?:-[ \t]*)?(.+?)[ \t]+([\d.]+,\d{2})-[ \t]+[A-Z]\b/gim)
+  ];
+  const net = new Map(found.map(row => [row.line.id, row.total]));
+  for (const d of discounts) {
+    const target = found.filter(row => row.line.name === d[1].trim());
+    const value = parse(d[2]);
+    if (target.length !== 1 || value === null) return lines;
+    net.set(target[0].line.id, cents(net.get(target[0].line.id)! - value));
+  }
+  if (
+    declared === null ||
+    !close(
+      [...net.values()].reduce((a, b) => a + b, 0),
+      declared
+    )
+  )
+    return lines;
+  return found.map(row => {
+    const totalNet = net.get(row.line.id)!;
+    return {
+      ...row.line,
+      unitNet: round4(totalNet / row.line.quantity!),
+      totalNet,
+      taxRate: rates.get(row.code) ?? null
+    };
+  });
 }
 function scanHints(
   text: string,
@@ -599,7 +701,7 @@ export function billProposal(text: string, { usedOcr = false } = {}): BillPropos
     tax,
     gross,
     lines: [
-      ...grossTableLines(text),
+      ...grossTableLines(text, net, gross),
       ...netTableLines(text),
       ...discountTableLines(text),
       ...marketLines(text),

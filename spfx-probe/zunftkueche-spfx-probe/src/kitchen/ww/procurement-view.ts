@@ -149,7 +149,10 @@ function priceTable(doc: PriceList, s: Workspace): string {
     .join('');
   return (
     `<form data-form="ww-prices" class="panel ww-editor">` +
-    heading('Preise · ' + (supplier?.name || 'Lieferant'), 'Ein Preis je Artikel. Nur geänderte Zeilen werden gespeichert, die bisherigen Preise bleiben für alte Bestellungen erhalten.') +
+    heading(
+      'Preise · ' + (supplier?.name || 'Lieferant'),
+      'Ein Preis je Artikel. Nur geänderte Zeilen werden gespeichert, die bisherigen Preise bleiben für alte Bestellungen erhalten.'
+    ) +
     `<input type="hidden" name="name" value="${h(doc.name)}"><input type="hidden" name="supplierId" value="${h(doc.supplierId)}">` +
     `<div class="formgrid">${field('validFrom', 'Gültig ab', doc.validFrom, true, 'date')}</div>` +
     (rows
@@ -209,7 +212,9 @@ export function templateUse(template: Template, slots: Slot[], s: Workspace): st
             return `<tr><th>${h(s.articles.find(a => a.value.id === offer?.articleId)?.value.name || 'Artikel')}<small>${h(offer?.packName || '')}</small></th>${slots.map(slot => `<td>${field('qty_' + slot.id + '_' + i, 'Menge ' + dayLabel(slot.date), n(l.quantity), false, 'text', 'inputmode="decimal"')}</td>`).join('')}</tr>`;
           })
           .join('')}</tbody></table></div>`
-      : empty('Für diese Saison sind noch keine Einsatztage hinterlegt. Bitte unter Einstellungen bei „Saison bearbeiten“ eintragen.')
+      : empty(
+          'Für diese Saison sind noch keine Einsatztage hinterlegt. Bitte unter Einstellungen bei „Saison bearbeiten“ eintragen.'
+        )
   }${confirmationActions('Gemeinsame Lieferantenbestellung anlegen')}</form>`;
 }
 export function supplierRuleHint(rules: Rule[], supplierId: string, date: string): string {

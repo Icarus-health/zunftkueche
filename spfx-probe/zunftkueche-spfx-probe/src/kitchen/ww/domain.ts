@@ -414,7 +414,11 @@ export function validateBill(v: Bill): void {
       const value = cents(l.quantity * l.unitNet);
       const expected = l.role === 'return' ? -Math.abs(value) : value;
       if (Math.abs(expected - l.totalNet) > 0.02)
-        throw new Error('Positionsbetrag stimmt nicht mit Menge und Einzelpreis überein.');
+        throw new Error(
+          'Bei „' +
+            l.name +
+            '“ passt der Zeilenbetrag nicht zu Menge mal Einzelpreis. Bitte einen der drei Werte berichtigen.'
+        );
     }
   }
   if (
@@ -423,14 +427,30 @@ export function validateBill(v: Bill): void {
     v.lines.every(l => l.totalNet !== null) &&
     Math.abs(cents(v.lines.reduce((n, l) => n + l.totalNet!, 0) + v.adjustmentNet) - v.net) > 0.02
   )
-    throw new Error('Nettosumme der Positionen stimmt nicht.');
+    throw new Error(
+      'Die Positionen ergeben zusammen ' +
+        cents(v.lines.reduce((n, l) => n + l.totalNet!, 0) + v.adjustmentNet)
+          .toFixed(2)
+          .replace('.', ',') +
+        ' € netto, auf der Rechnung stehen ' +
+        v.net.toFixed(2).replace('.', ',') +
+        ' €. Position ergänzen oder berichtigen, oder die Positionen entfernen und nur die Summen bestätigen.'
+    );
   if (v.net !== null && v.tax !== null && v.gross !== null && Math.abs(cents(v.net + v.tax) - v.gross) > 0.02)
-    throw new Error('Bruttosumme stimmt nicht mit Netto und Steuer überein.');
-  if (
-    v.confirmed &&
-    (v.gross === null || !v.lines.length || v.lines.some(l => (!l.role || l.role === 'goods') && l.quantity === null))
-  )
-    throw new Error('Vor Bestätigung Positionen, Warenmengen und Gesamtbetrag prüfen.');
+    throw new Error(
+      'Netto plus Steuer ergibt nicht den Bruttobetrag. Bitte die drei Summen mit der Rechnung vergleichen.'
+    );
+  for (const day of [v.deliveryDate, v.dueDate, v.skontoUntil]) if (day) validDate(day);
+  if (v.skontoAmount !== undefined) amount(v.skontoAmount, true);
+  // Bestätigen geht auch nur mit den Summen. Positionen sind freiwillig, müssen dann aber vollständig sein.
+  if (v.confirmed && v.gross === null)
+    throw new Error(
+      'Der Bruttobetrag fehlt. Bitte „Brutto gesamt“ eintragen, dann lässt sich die Rechnung bestätigen.'
+    );
+  if (v.confirmed) {
+    const open = v.lines.find(l => (!l.role || l.role === 'goods') && l.quantity === null);
+    if (open) throw new Error('Bei „' + open.name + '“ fehlt die Menge. Menge eintragen oder die Position entfernen.');
+  }
   if (v.confirmed && v.billType === 'credit' && v.gross !== null && v.gross >= 0)
     throw new Error('Bitte den Bruttobetrag der Gutschrift negativ erfassen.');
   if (v.confirmed && v.billType === 'invoice' && v.gross !== null && v.gross < 0)

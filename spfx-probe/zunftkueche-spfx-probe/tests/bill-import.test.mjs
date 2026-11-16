@@ -17,24 +17,31 @@ test('tax base and gross are accepted only when the three totals reconcile',()=>
 });
 test('only clearly structured invoice positions become suggestions without guessing net prices from gross',()=>{
  const p=billProposal('Nr.   Artikelbeschreibung   Anz.   Brutto   Gesamtpreis\n\n1   106   Testgetränk 0,25 l\nQualitätsprodukt\n75   3,50   e   262,50   e\n\n2   803*   Testgläser   2   0,00   e   0,00   e\n\nRechnungssumme   262,50 e');
- assert.equal(p.lines.length,2);assert.equal(p.lines[0].name,'Testgetränk 0,25 l');assert.equal(p.lines[0].quantity,75);assert.equal(p.lines[0].unitNet,null);assert.equal(p.lines[0].totalNet,null);assert.equal(p.lines[0].articleId,null);
+ assert.equal(p.lines.length,2);assert.equal(p.lines[0].name,'Testgetränk 0,25 l Qualitätsprodukt');assert.equal(p.lines[0].quantity,75);assert.equal(p.lines[0].unitNet,null);assert.equal(p.lines[0].totalNet,null);assert.equal(p.lines[0].articleId,null);
  const wrong=billProposal('Nr. Artikelbeschreibung Anz. Brutto Gesamtpreis\n1 106 Testgetränk\n75 3,50 e 270,00 e\nRechnungssumme 270,00');assert.equal(wrong.lines.length,0);
  assert.equal(billProposal('1 106 Testgetränk\n75 3,50 e 262,50 e').lines.length,0);
 });
-test('position suggestions are displayed for explicit review before transfer',async()=>{
+test('gross lines become net prices only when sum, tax rate and discount reconcile with the totals',()=>{
+ const text='Nr.   Artikelbeschreibung   Anz.   Brutto   Gesamtpreis\n\n1   106   Gutedel trocken 0,25 l\n75   3,50   e   262,50   e\n\n2   503   Sekt Brut 0.2l\n42   4,90   e   205,80   e\n\n3   293   Weißherbst\n8   8,90   e   71,20   e\n\nZwischensumme   539,50   e\n\n10,00 % Rabatt   -53,95   e\n\nRechnungssumme   485,55   e\n\nSumme Netto   408,03   e\n\n19.00% MwSt   408,03 e   77,52   e';
+ const p=billProposal(text);assert.deepEqual([p.net,p.tax,p.gross],[408.03,77.52,485.55]);
+ assert.deepEqual(p.lines.map(l=>[l.quantity,l.unitNet,l.totalNet,l.taxRate]),[[75,2.6471,198.53,19],[42,3.7059,155.65,19],[8,6.7311,53.85,19]]);
+ assert.equal(Math.round(p.lines.reduce((a,l)=>a+l.totalNet,0)*100)/100,408.03);
+ const off=billProposal(text.replace('Summe Netto   408,03','Summe Netto   400,00').replace('408,03 e   77,52','400,00 e   85,55'));assert.ok(off.lines.every(l=>l.unitNet===null&&l.totalNet===null),'ohne passenden Steuersatz bleiben die Preise leer');
+});
+test('read positions stand in the form right away and the summary names what was read',async()=>{
  const {billForm}=await import('../src/kitchen/ww/bills-view.ts');const {workspace}=await import('./support/kitchen-data.mjs');
  const p=billProposal('Nr. Artikelbeschreibung Anz. Brutto Gesamtpreis\n1 106 Testgetränk\n75 3,50 e 262,50 e\nRechnungssumme 262,50');
  const bill={id:'b',scope:'s2027',area:'Küche',supplierId:'',name:'',date:'2026-02-20',number:'',net:null,tax:null,gross:null,adjustmentNet:0,orderIds:[],lines:[],note:'',confirmed:false,fileName:'',attachment:''};
- const html=billForm(bill,workspace(),'PDF-Text',p.lines);assert.match(html,/Testgetränk/);assert.match(html,/Positionen übernehmen/);assert.match(html,/Saison.*prüfen/i);
+ const html=billForm({...bill,lines:p.lines,gross:262.5},workspace(),'PDF-Text');assert.match(html,/value="Testgetränk"/);assert.doesNotMatch(html,/Positionen übernehmen/);assert.match(html,/Aus der Rechnung gelesen:<\/strong> Brutto 262,50\s€ · 1 Position/);assert.match(html,/Bitte ergänzen:<\/strong> Lieferant, Rechnungsnummer/);
 });
 test('a clearly labelled net-price table proposes quantities and matching net amounts',()=>{
  const p=billProposal('Pos Menge Art.-Nr. Text Einzelpreis\nEUR\nUSt.\n%\nGesamtpreis\nEUR\n1 92,00 Fl. A123 Testgetränk\nQualitätsprodukt\n3,45 19,00 317,40\nGesamt Netto 317,40');
- assert.equal(p.lines.length,1);assert.equal(p.lines[0].name,'Testgetränk');assert.equal(p.lines[0].quantity,92);assert.equal(p.lines[0].unit,'Fl.');assert.equal(p.lines[0].unitNet,3.45);assert.equal(p.lines[0].totalNet,317.4);assert.equal(p.lines[0].taxRate,19);
+ assert.equal(p.lines.length,1);assert.equal(p.lines[0].name,'Testgetränk Qualitätsprodukt');assert.equal(p.lines[0].quantity,92);assert.equal(p.lines[0].unit,'Fl.');assert.equal(p.lines[0].unitNet,3.45);assert.equal(p.lines[0].totalNet,317.4);assert.equal(p.lines[0].taxRate,19);
  const bad=billProposal('Pos Menge Art.-Nr. Text Einzelpreis\n1 92,00 Fl. A123 Test\n3,45 19,00 318,00\nGesamt Netto 318,00');assert.equal(bad.lines.length,0);
 });
 test('discounted invoice table suggests lines only when amount and discount reconcile',()=>{
  const text='Pos. Artikelnummer Artikelbezeichnung Menge USt. Einzelpreis Rabatt Gesamtpreis\n1 42007 Apfel-Prickler\n750ml\n6 Stk. 19 % 8,32 EUR 15 % 42,43 EUR\nZwischensumme (Netto) 42,43 EUR';const p=billProposal(text);
- assert.equal(p.net,42.43);assert.equal(p.lines.length,1);assert.equal(p.lines[0].name,'Apfel-Prickler 750ml');assert.equal(p.lines[0].quantity,6);assert.equal(p.lines[0].unit,'Stk.');assert.equal(p.lines[0].unitNet,null);assert.equal(p.lines[0].totalNet,42.43);assert.equal(p.lines[0].taxRate,19);
+ assert.equal(p.net,42.43);assert.equal(p.lines.length,1);assert.equal(p.lines[0].name,'Apfel-Prickler 750ml');assert.equal(p.lines[0].quantity,6);assert.equal(p.lines[0].unit,'Stk.');assert.equal(p.lines[0].unitNet,7.0717);assert.equal(p.lines[0].totalNet,42.43);assert.equal(p.lines[0].taxRate,19);
  assert.equal(billProposal(text.replace('42,43 EUR\n','43,00 EUR\n')).lines.length,0);
 });
 test('multi-rate totals and product rows are proposed only when their printed arithmetic matches',()=>{

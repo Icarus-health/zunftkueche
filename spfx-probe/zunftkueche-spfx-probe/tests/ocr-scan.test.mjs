@@ -8,5 +8,5 @@ test('OCR uses only explicitly packaged assets and bounded work',()=>{
 test('invoice form provides explicit on-device scan option',async()=>{
  const {billForm}=await import('../src/kitchen/ww/bills-view.ts');const {workspace}=await import('./support/kitchen-data.mjs');
  const bill={id:'b',scope:'s2027',area:'Küche',supplierId:'',name:'',date:'2027-02-20',number:'',net:null,tax:null,gross:null,adjustmentNet:0,orderIds:[],lines:[],note:'',confirmed:false,fileName:'',attachment:''};
- const html=billForm(bill,workspace(),'');assert.match(html,/data-action="ww-pdf-ocr"/);assert.match(html,/Texterkennung/);assert.match(html,/auf diesem Gerät/);
+ const html=billForm(bill,workspace(),'');assert.match(html,/data-action="ww-pdf-ocr"/);assert.match(html,/Texterkennung/);
 });

@@ -157,6 +157,11 @@ export interface Bill extends Base, BillRelations {
   adjustmentNet: number;
   lines: BillLine[];
   note: string;
+  /** Ab 1.23: Angaben aus dem Rechnungstext. Fehlen bei älteren Belegen. */
+  deliveryDate?: string;
+  dueDate?: string;
+  skontoUntil?: string;
+  skontoAmount?: number | null;
 }
 export const importPurposes = ['sales', 'payments', 'menuOrders'] as const;
 export type Purpose = (typeof importPurposes)[number];

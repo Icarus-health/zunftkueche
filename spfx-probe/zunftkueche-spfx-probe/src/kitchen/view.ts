@@ -356,7 +356,13 @@ export class KitchenView {
         this.receiving.deliveryId = target.value;
         this.render();
       }
-      if (target.name === 'supplierId' || target.name === 'billType') this.wwUI.billContextChanged(target.name);
+      if (
+        target.name === 'supplierId' ||
+        target.name === 'billType' ||
+        target.name === 'billArea' ||
+        (target.name === 'articleId' && target.closest('form[data-form=ww-bill]'))
+      )
+        this.wwUI.billContextChanged(target.name);
       if (target.name === 'costMode') {
         const split = target.closest('details')?.querySelector<HTMLElement>('[data-cost-split]');
         if (split) split.hidden = target.value !== 'split';
@@ -453,6 +459,14 @@ export class KitchenView {
           'Zutat und Liefergebinde angelegt.',
           after
         ),
+      supplier: async (supplier, operationId, after) => {
+        validateEntity('suppliers', supplier);
+        await this.run(
+          () => this.store.saveMaster('suppliers', supplier, undefined, operationId),
+          'Lieferant „' + supplier.name + '“ angelegt. Kontaktdaten könnt ihr später unter Lieferanten ergänzen.',
+          after
+        );
+      },
       orders: async (orders, operationId) => {
         for (const order of orders)
           await this.store.saveOrder(

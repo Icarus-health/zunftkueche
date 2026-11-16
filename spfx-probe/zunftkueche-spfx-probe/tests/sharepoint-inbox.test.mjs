@@ -68,5 +68,7 @@ test('inbox status refers to the saved file version and does not treat an update
     assert.match(html,/Übernommen · Küche/);
     assert.match(html,/Neuer Dateistand/);
     assert.match(html,/Doppelte Datei · Übernommen\.pdf/);
-    assert.equal((html.match(/data-action="ww-inbox-file"/g)||[]).length, 1);
+    // Eine Zeile bleibt prüfbar; derselbe Dateistand steht zusätzlich hinter „Nächste Rechnung prüfen“.
+    assert.equal((html.match(/data-action="ww-inbox-file"/g)||[]).length, 2);
+    assert.match(html,/1 offen<\/strong> · 1 bestätigt/);
 });

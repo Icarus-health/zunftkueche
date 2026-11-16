@@ -4,23 +4,30 @@ import type { Bill, BillLine } from './model';
 import { billGrossForArea, billTypeLabel, linkedBill, relatedBills, returnMovements } from './bill-accounting.ts';
 import { reconcileBill } from './reconciliation.ts';
 import { documents, billLineLabels, billLineRoles } from './model.ts';
-import { button, field, select, h, n, money, note, check, empty, backLink } from '../markup.ts';
+import { button, field, select, h, n, money, euro, amount2, note, check, empty, backLink } from '../markup.ts';
+import { areaOptions } from '../model.ts';
+import { count } from '../units.ts';
+import { paymentNote } from './bill-suggest.ts';
 import { businessTabs, heading, confirmationActions, dayLabel } from './common.ts';
 export function billLine(s: Workspace, l?: BillLine): string {
-  return `<div class="ww-line" data-line data-id="${h(l?.id || crypto.randomUUID())}">${field('lineName', 'Originalbezeichnung', l?.name || '', true)}${select(
-    'lineRole',
-    'Positionsart',
-    billLineRoles.map(role => [role, billLineLabels[role]]),
-    l?.role ?? 'goods'
-  )}${select(
+  const decimal = 'inputmode="decimal"';
+  return `<div class="ww-line bill-line" data-line data-id="${h(l?.id || crypto.randomUUID())}">${field('lineName', 'Bezeichnung auf der Rechnung', l?.name || '', true)}${select(
     'articleId',
-    'Artikel zuordnen (optional)',
+    'Artikel',
     [
-      ['', 'Noch nicht zugeordnet'],
-      ...s.articles.filter(r => r.value.active).map(r => [r.value.id, r.value.name] as [string, string])
+      ['', 'Kein Artikel zugeordnet'],
+      ...s.articles
+        .filter(r => r.value.active || r.value.id === l?.articleId)
+        .sort((x, y) => x.value.name.localeCompare(y.value.name, 'de'))
+        .map(r => [r.value.id, r.value.name] as [string, string])
     ],
     l?.articleId || ''
-  )}${field('quantity', 'Rechnungsmenge', n(l?.quantity), false, 'text', 'inputmode="decimal"')}${field('unit', 'Rechnungseinheit', l?.unit || '')}${field('unitNet', 'Einzelpreis netto', n(l?.unitNet), false, 'text', 'inputmode="decimal"')}${field('totalNet', 'Zeilenbetrag netto', n(l?.totalNet), false, 'text', 'inputmode="decimal"')}${field('taxRate', 'Steuersatz %', n(l?.taxRate), false, 'text', 'inputmode="decimal"')}${button('ww-remove', 'Entfernen')}</div>`;
+  )}${field('quantity', 'Menge', n(l?.quantity), false, 'text', decimal)}${field('unit', 'Einheit', l?.unit || '')}${field('unitNet', 'Preis netto', amount2(l?.unitNet), false, 'text', decimal)}${field('totalNet', 'Zeile netto', amount2(l?.totalNet), false, 'text', decimal)}${field('taxRate', 'Steuer %', n(l?.taxRate), false, 'text', decimal)}${select(
+    'lineRole',
+    'Art',
+    billLineRoles.map(role => [role, billLineLabels[role]]),
+    l?.role ?? 'goods'
+  )}${button('ww-remove', 'Entfernen')}</div>`;
 }
 function billRelations(b: Bill, s: Workspace): string {
   const orders = s.orders.filter(
@@ -116,7 +123,9 @@ export function billForm(
   suggestions: BillLine[] = [],
   previewUrl = '',
   previewImage?: { image: string; pages: number },
-  fromInbox = false
+  fromInbox = false,
+  queue = '',
+  hasNext = false
 ): string {
   if (b.scanNumberReview?.status === 'open') {
     const original = previewUrl
@@ -161,31 +170,69 @@ export function billForm(
       ? '<p class="ww-alert">Original als Einzelbeleg geprüft. Nummer, Datum und Beträge aus dem Original eintragen.</p>'
       : '';
   const credit = b.billType === 'credit';
+  const decimal = 'inputmode="decimal"';
   const progress = '<p class="ww-full" data-pdf-progress role="status" aria-live="polite" hidden></p>';
   const retry =
-    '<details class="ww-full"><summary>Erkennung erneut versuchen</summary>' +
+    '<details class="ww-full form-more"><summary>Schlecht gelesen? Texterkennung für Scans verwenden</summary>' +
     button('ww-pdf-ocr', 'Scan mit Texterkennung lesen') +
     '</details>';
-  return `<form data-form="ww-bill" class="panel ww-editor">${heading(credit ? 'Gutschrift prüfen' : 'Rechnung prüfen', fromInbox || credit ? '' : 'Original behalten, Angaben prüfen und mit Bestellungen verbinden.')}${reviewNote}${
-    fromInbox
-      ? '<p class="muted">Original aus SharePoint · ' + h(b.fileName) + '</p>' + progress
-      : '<p class="ww-alert">Saison: ' +
-        h(season?.name || 'nicht gewählt') +
-        ' · Rechnungsdatum und Saison prüfen. Gelieferte Mengen bei der Bestellung annehmen.</p>'
-  }${b.needsSeparateFiles ? '<p class="ww-alert" role="alert">Mehrere Belege erkannt. Bitte die Einzelbelege aus dem Original ablegen und getrennt prüfen.</p>' : ''}<div class="bill-workbench">${previewUrl ? '<aside class="bill-original"><h2>Original vergleichen</h2>' + (previewImage ? '<a href="' + h(previewUrl) + '" target="_blank" rel="noopener noreferrer"><img src="' + h(previewImage.image) + '" alt="Rechnungsoriginal, Seite 1"></a><p>Seite 1 von ' + previewImage.pages + (previewImage.pages > 1 ? ' · Weitere Seiten im Original öffnen.' : '') + '</p>' : '<p>Seitenvorschau nicht verfügbar. Bitte das Original separat öffnen.</p>') + '<a href="' + h(previewUrl) + '" target="_blank" rel="noopener noreferrer">Original separat öffnen</a></aside>' : ''}<div class="formgrid">${
-    fromInbox
-      ? ''
-      : '<h2 class="ww-full">1 · PDF auswählen und lesen</h2>' +
-        field('pdf', 'PDF-Original auswählen', '', false, 'file', 'accept=".pdf"') +
-        button('ww-pdf-read', 'Rechnung auslesen') +
-        progress +
-        retry +
-        '<p class="ww-full muted">Text und Bildscans werden auf diesem Gerät gelesen. Ergebnisse am Original prüfen.</p>' +
-        (b.fileName
-          ? '<p class="ww-full">Original: ' + h(b.fileName) + (b.attachment ? ' · gespeichert' : '') + '</p>'
-          : '')
-  }
-    <h2 class="ww-full">${fromInbox ? 'Rechnungsdaten' : '2 · Rechnungsdaten prüfen'}</h2>${select(
+  const supplierName = s.suppliers.find(r => r.value.id === b.supplierId)?.value.name;
+  // Was die App aus der Datei übernommen hat, in einem Satz. Leere Felder nennt der zweite Satz.
+  const mapped = b.lines.filter(l => l.articleId).length;
+  const read = [
+    supplierName ? 'Lieferant ' + supplierName : '',
+    b.number ? 'Nummer ' + b.number : '',
+    b.gross !== null ? 'Brutto ' + euro(b.gross) : '',
+    b.lines.length
+      ? count(b.lines.length, 'Position', 'Positionen') + (mapped ? ', ' + mapped + ' mit Artikel' : '')
+      : '',
+    paymentNote(b)
+  ].filter(Boolean);
+  const missing = [
+    b.supplierId ? '' : 'Lieferant',
+    b.number ? '' : 'Rechnungsnummer',
+    b.gross === null ? 'Bruttobetrag' : ''
+  ].filter(Boolean);
+  const summary =
+    sourceText && (read.length || missing.length)
+      ? '<div class="bill-read" role="status">' +
+        (read.length ? '<p><strong>Aus der Rechnung gelesen:</strong> ' + h(read.join(' · ')) + '</p>' : '') +
+        (missing.length
+          ? '<p><strong>Bitte ergänzen:</strong> ' + h(missing.join(', ')) + '</p>'
+          : '<p>Bitte kurz mit dem Original vergleichen, dann bestätigen.</p>') +
+        '</div>'
+      : '';
+  const lineSum = b.lines.every(l => l.totalNet !== null)
+    ? b.lines.reduce((sum, l) => sum + (l.totalNet || 0), 0) + b.adjustmentNet
+    : null;
+  const lineNote = !b.lines.length
+    ? '<p class="muted ww-full">Positionen sind freiwillig. Ohne Positionen zählt die Rechnung mit ihren Summen, aber ohne Preise je Artikel.</p>'
+    : lineSum !== null && b.net !== null
+      ? '<p class="ww-full ' +
+        (Math.abs(lineSum - b.net) <= 0.02 ? 'muted' : 'ww-alert') +
+        '">Summe der Positionen ' +
+        h(euro(lineSum)) +
+        ' netto · auf der Rechnung ' +
+        h(euro(b.net)) +
+        (Math.abs(lineSum - b.net) <= 0.02 ? ' · passt.' : ' · passt noch nicht.') +
+        '</p>'
+      : '';
+  const terms =
+    '<details class="ww-full form-more"' +
+    (b.deliveryDate || b.dueDate || b.skontoUntil ? ' open' : '') +
+    '><summary>Lieferung und Zahlung</summary><div class="formgrid">' +
+    field('deliveryDate', 'Lieferdatum', b.deliveryDate || '', false, 'date') +
+    field('dueDate', 'Zahlbar bis', b.dueDate || '', false, 'date') +
+    field('skontoUntil', 'Skonto bis', b.skontoUntil || '', false, 'date') +
+    field('skontoAmount', 'Skonto-Betrag', amount2(b.skontoAmount), false, 'text', decimal) +
+    '</div></details>';
+  const more =
+    '<details class="ww-full form-more"' +
+    (b.orderIds.length || b.creditForId || b.returnIds?.length || b.costAssignment || b.adjustmentNet || credit
+      ? ' open'
+      : '') +
+    '><summary>Weitere Angaben: Bestellung, Kostenstelle, Gutschrift</summary><div class="formgrid">' +
+    select(
       'billType',
       'Belegart',
       [
@@ -193,9 +240,137 @@ export function billForm(
         ['credit', 'Gutschrift']
       ],
       b.billType ?? ((b.gross ?? 0) < 0 ? 'credit' : 'invoice')
-    )}
-    ${field('name', 'Belegname', b.name, true)}${select('supplierId', 'Lieferant', [['', 'Lieferant auswählen'], ...s.suppliers.filter(r => r.value.active).map(r => [r.value.id, r.value.name] as [string, string])], b.supplierId, 'required')}${field('number', credit ? 'Gutschriftnummer' : 'Rechnungsnummer', b.number)}${field('date', credit ? 'Belegdatum' : 'Rechnungsdatum', b.date, true, 'date')}${field('net', 'Netto gesamt', n(b.net), false, 'text', 'inputmode="decimal"')}${field('tax', 'Steuer gesamt', n(b.tax), false, 'text', 'inputmode="decimal"')}${field('gross', 'Brutto gesamt', n(b.gross), false, 'text', 'inputmode="decimal"')}${field('adjustmentNet', 'Nebenkosten / Rabatt netto (mit Vorzeichen)', n(b.adjustmentNet), false, 'text', 'inputmode="decimal"')}<h2 class="ww-full">${fromInbox ? 'Bestellung und Positionen' : '3 · Bestellung und Positionen prüfen'}</h2><details class="ww-full"${b.orderIds.length || b.creditForId || b.returnIds?.length ? ' open' : ''}><summary>Bestellung, Originalrechnung und Rückgaben zuordnen</summary>
-    ${billRelations(b, s)}</details>${billCostFields(b)}${suggestions.length ? `<div class="ww-full ww-alert"><strong>${suggestions.length} Positionsvorschläge gefunden</strong><p>Mengen und Bezeichnungen am Original prüfen. Preise und Einheiten am Beleg prüfen. Brutto-Preise werden nicht als Netto übernommen; unerkannte Positionen ergänzen.</p><ul>${suggestions.map(l => `<li>${h(l.name)} · ${n(l.quantity)}</li>`).join('')}</ul>${button('ww-bill-accept-lines', 'Positionen übernehmen')}</div>` : ''}<div class="ww-lines">${b.lines.map(l => billLine(s, l)).join('')}</div>${button('ww-add', credit ? 'Position hinzufügen' : 'Rechnungsposition hinzufügen', 'bill')}${b.billType === 'credit' ? '<p class="ww-full muted">Beträge einer Gutschrift mit negativem Vorzeichen eintragen.</p>' : ''}${note('note', 'Hinweise / Abweichungen / Pfand', b.note)}${b.needsSeparateFiles ? '' : check('confirmed', credit ? 'Gutschrift geprüft und bestätigen' : 'Original, Lieferant, Positionen, Mengen, Summen und Bestellbezug geprüft und Rechnung bestätigen', b.confirmed)}</div></div>${sourceText ? `<details><summary>Ausgelesener PDF-Text · Angaben am Original prüfen</summary><pre class="ww-original">${h(sourceText)}</pre></details>` : ''}${fromInbox ? retry : '<p>Die Texterkennung liefert Vorschläge für Kopf, Summen und bei unterstützten Formaten Positionen. Alle Angaben am Original prüfen; unlesbare oder mehrdeutige Werte bleiben offen. Für Bildscans steht die Texterkennung zur Verfügung; bei schlechter Qualität Angaben manuell erfassen.</p>'}${confirmationActions(b.needsSeparateFiles ? 'Zur Prüfung speichern' : credit ? 'Gutschrift speichern' : 'Rechnung speichern', fromInbox ? 'Zurück zu den Rechnungen' : 'Abbrechen')}</form>`;
+    ) +
+    field('name', 'Belegname', b.name) +
+    field(
+      'adjustmentNet',
+      'Nebenkosten oder Rabatt netto (mit Vorzeichen)',
+      amount2(b.adjustmentNet),
+      false,
+      'text',
+      decimal
+    ) +
+    '</div>' +
+    billRelations(b, s) +
+    billCostFields(b) +
+    note('note', 'Hinweise, Abweichungen, Pfand', b.note) +
+    '</details>';
+  const priced = b.needsSeparateFiles ? [] : invoicePriceProposals(linkedBill({ ...b, confirmed: true }, s), s);
+  const prices = priced.length
+    ? '<fieldset class="ww-full bill-prices"><legend>Preise für die Preisliste</legend><ul>' +
+      priced
+        .map(
+          p =>
+            '<li><strong>' +
+            h(s.articles.find(a => a.value.id === p.offer.articleId)?.value.name || p.name) +
+            '</strong> · ' +
+            h(p.offer.packName) +
+            ': ' +
+            h(euro(p.newPrice)) +
+            ' netto <span class="muted">(' +
+            (p.oldPrice === null ? 'bisher ohne Preis' : 'bisher ' + h(euro(p.oldPrice))) +
+            ')</span></li>'
+        )
+        .join('') +
+      '</ul>' +
+      check(
+        'updatePrices',
+        'Beim Bestätigen in die Preisliste von ' + (supplierName || 'diesem Lieferanten') + ' übernehmen',
+        true
+      ) +
+      '</fieldset>'
+    : '';
+  const original = previewUrl
+    ? '<aside class="bill-original"><div class="bill-original-bar"><h2>Original</h2>' +
+      (previewImage ? button('ww-bill-zoom', 'Vergrößern') : '') +
+      '<a href="' +
+      h(previewUrl) +
+      '" target="_blank" rel="noopener noreferrer">In neuem Fenster öffnen</a></div>' +
+      (previewImage
+        ? '<button type="button" class="bill-page" data-action="ww-bill-zoom" aria-label="Original vergrößern oder verkleinern"><img src="' +
+          h(previewImage.image) +
+          '" alt="Rechnungsoriginal, Seite 1"></button><p class="muted">Seite 1 von ' +
+          previewImage.pages +
+          (previewImage.pages > 1 ? ' · weitere Seiten im neuen Fenster.' : '') +
+          '</p>'
+        : '<p>Seitenvorschau nicht verfügbar. Bitte das Original im neuen Fenster öffnen.</p>') +
+      '</aside>'
+    : '';
+  const upload = fromInbox
+    ? ''
+    : '<div class="ww-full bill-upload">' +
+      field('pdf', 'Rechnung als PDF auswählen', '', false, 'file', 'accept=".pdf"') +
+      button('ww-pdf-read', 'Rechnung auslesen') +
+      '</div>' +
+      progress +
+      (b.fileName
+        ? '<p class="ww-full muted">Original: ' + h(b.fileName) + (b.attachment ? ' · gespeichert' : '') + '</p>'
+        : '');
+  return (
+    `<form data-form="ww-bill" class="panel ww-editor bill-form">` +
+    heading(
+      credit ? 'Gutschrift prüfen' : 'Rechnung prüfen',
+      fromInbox ? b.fileName + (queue ? ' · ' + queue : '') : season?.name || ''
+    ) +
+    reviewNote +
+    (fromInbox ? progress : '') +
+    (b.needsSeparateFiles
+      ? '<p class="ww-alert" role="alert">Mehrere Belege erkannt. Bitte die Einzelbelege aus dem Original ablegen und getrennt prüfen.</p>'
+      : '') +
+    summary +
+    `<div class="bill-workbench">${original}<div class="formgrid">` +
+    upload +
+    select(
+      'supplierId',
+      'Lieferant',
+      [
+        ['', 'Lieferant auswählen'],
+        ...s.suppliers.filter(r => r.value.active).map(r => [r.value.id, r.value.name] as [string, string])
+      ],
+      b.supplierId,
+      'required'
+    ) +
+    select('billArea', 'Bereich', areaOptions(), b.area) +
+    (b.supplierId
+      ? ''
+      : '<details class="ww-full form-more bill-new-supplier"><summary>Lieferant fehlt in der Liste?</summary><div class="bill-upload">' +
+        field('newSupplier', 'Name des neuen Lieferanten', '') +
+        button('ww-bill-supplier-new', 'Anlegen und auswählen') +
+        '</div></details>') +
+    field('number', credit ? 'Gutschriftnummer' : 'Rechnungsnummer', b.number) +
+    field('date', credit ? 'Belegdatum' : 'Rechnungsdatum', b.date, true, 'date') +
+    field('gross', 'Brutto gesamt', amount2(b.gross), false, 'text', decimal) +
+    field('net', 'Netto gesamt', amount2(b.net), false, 'text', decimal) +
+    field('tax', 'Steuer gesamt', amount2(b.tax), false, 'text', decimal) +
+    terms +
+    `<h2 class="ww-full">Positionen</h2>` +
+    lineNote +
+    (suggestions.length
+      ? `<div class="ww-full ww-alert"><strong>${count(suggestions.length, 'weitere Position', 'weitere Positionen')} in der Datei gefunden</strong>${button('ww-bill-accept-lines', 'Positionen übernehmen')}</div>`
+      : '') +
+    `<div class="ww-lines ww-full">${b.lines.map(l => billLine(s, l)).join('')}</div>` +
+    '<div class="ww-full">' +
+    button('ww-add', 'Position hinzufügen', 'bill') +
+    '</div>' +
+    (credit ? '<p class="ww-full muted">Beträge einer Gutschrift mit negativem Vorzeichen eintragen.</p>' : '') +
+    prices +
+    more +
+    '</div></div>' +
+    (sourceText
+      ? `<details class="form-more"><summary>Ausgelesener Text der Datei</summary><pre class="ww-original">${h(sourceText)}</pre></details>`
+      : '') +
+    retry +
+    '<div class="actions sticky-actions">' +
+    (b.needsSeparateFiles
+      ? ''
+      : check('confirmed', credit ? 'Geprüft, Gutschrift bestätigen' : 'Geprüft, Rechnung bestätigen', b.confirmed)) +
+    `<button type="submit" class="primary">${b.needsSeparateFiles ? 'Zur Prüfung speichern' : 'Speichern'}</button>` +
+    (fromInbox && hasNext && !b.needsSeparateFiles
+      ? button('ww-bill-save-next', 'Bestätigen und nächste Rechnung')
+      : '') +
+    button('ww-cancel', fromInbox ? 'Zurück zu den Rechnungen' : 'Abbrechen') +
+    '</div></form>'
+  );
 }
 export function billsOverview(s: Workspace, area: Area): string {
   return (

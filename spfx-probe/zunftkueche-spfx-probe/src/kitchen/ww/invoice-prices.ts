@@ -3,6 +3,7 @@ import type { Workspace, Offer } from '../model';
 import type { Bill } from './model';
 import { documents } from './model.ts';
 import { effectiveOffer } from './domain.ts';
+import { unitName } from '../units.ts';
 export interface InvoicePriceProposal {
   offer: Offer;
   name: string;
@@ -34,12 +35,18 @@ export function invoicePriceProposals(b: Bill, s: Workspace): InvoicePricePropos
       Math.abs(line.quantity * line.unitNet - line.totalNet) > 0.02
     )
       continue;
+    // Die Rechnungseinheit muss dem Gebinde entsprechen: gleicher Name („Fl.“ gilt als „Flasche“) oder, bei
+    // Gebinden mit genau einer Einheit, die Einheit des Artikels. Sonst wäre es ein Preis je Flasche statt je Kiste.
+    const same = (a: string, b: string): boolean =>
+      unitName(a, 1).trim().toLowerCase() === unitName(b, 1).trim().toLowerCase();
+    const articleUnit = s.articles.find(a => a.value.id === line.articleId)?.value.unit || '';
     const candidates = s.offers.filter(
       o =>
         o.value.active &&
         o.value.supplierId === b.supplierId &&
         o.value.articleId === line.articleId &&
-        o.value.packName.trim().toLowerCase() === line.unit.trim().toLowerCase()
+        (same(o.value.packName, line.unit) ||
+          (o.value.packSize === 1 && (!line.unit.trim() || same(articleUnit, line.unit))))
     );
     if (candidates.length !== 1) continue;
     const offer = candidates[0].value;
@@ -48,7 +55,6 @@ export function invoicePriceProposals(b: Bill, s: Workspace): InvoicePricePropos
       .flatMap(o => o.value.lines)
       .filter(l => l.offerId === offer.id);
     if (
-      !linked.length ||
       linked.some(
         l =>
           l.packSize !== offer.packSize ||
