@@ -26,7 +26,7 @@ const documentHeaders =
 const documentNumber = (value: string): string => value.replace(/[ \t]*-[ \t]*/g, '-');
 
 function scannedTaxTotals(text: string): Pick<BillProposal, 'net' | 'tax' | 'gross'> | undefined {
-  const tables = text.split(/^[ \t]*UST-Satz[ \t]+Netto-Entgelt[ \t]+UST-Betrag[ \t]+Brutto-Entgelt[ \t]*$/im);
+  const tables = text.split(/^[ \t|]*UST-Satz[ \t]+Netto-Entgelt[ \t]+UST-Betrag[ \t]+Brutto-Entgelt[ \t]*$/im);
   if (tables.length === 1) return undefined;
   const unknown = { net: null, tax: null, gross: null };
   if (tables.length !== 2) return unknown;
@@ -44,9 +44,10 @@ function scannedTaxTotals(text: string): Pick<BillProposal, 'net' | 'tax' | 'gro
     const [net, tax, gross] = match.slice(2).map(parse);
     if (net === null || tax === null || gross === null || !close(net + tax, gross)) return unknown;
     if (/^Gesamtbetrag$/i.test(match[1])) {
-      return rates.length && close(sumNet, net) && close(sumTax, tax) && close(sumGross, gross)
-        ? { net, tax, gross }
-        : unknown;
+      if (rates.length)
+        return close(sumNet, net) && close(sumTax, tax) && close(sumGross, gross) ? { net, tax, gross } : unknown;
+      // Steuerzeilen nicht erkannt: nur übernehmen, wenn eine zweite Stelle des Belegs denselben Betrag nennt.
+      return confirmedElsewhere(text, gross) ? { net, tax, gross } : unknown;
     }
     const rate = Number(match[1].replace('%', '').replace(',', '.'));
     if (rate > 100 || rates.includes(rate) || !close((net * rate) / 100, tax)) return unknown;
@@ -57,6 +58,16 @@ function scannedTaxTotals(text: string): Pick<BillProposal, 'net' | 'tax' | 'gro
   }
   return unknown;
 }
+function confirmedElsewhere(text: string, gross: number): boolean {
+  return [
+    ...text.matchAll(
+      /^[ \t]*(?:Summe[ \t]+aller[ \t]+bezogenen[ \t]+Waren[ \t]+und[ \t]+Leistungen|Gutschrift|Offener[ \t]+Zahlbetrag)[ \t]+(-?[\d.]+,\d{2})[ \t]*(?:EUR)?[ \t]*$/gim
+    )
+  ].some(m => {
+    const amount = parse(m[1]);
+    return amount !== null && close(Math.abs(amount), Math.abs(gross));
+  });
+}
 function hasScannedCredit(text: string, gross: number | null | undefined): boolean {
   if (gross === null || gross === undefined || gross >= 0) return false;
   const amounts = new Set(
@@ -66,23 +77,24 @@ function hasScannedCredit(text: string, gross: number | null | undefined): boole
   return amounts.size === 1 && amount !== null && close(amount, -gross);
 }
 
-function beverageTotals(text: string): Pick<BillProposal, 'net' | 'tax' | 'gross'> | undefined {
-  const groups = text.split(/\r?\n/).filter(row => /^[ \t]*(?:Ware|Pfand)[ \t]*\*[ \t]*\d/i.test(row));
+function beverageTotals(text: string, usedOcr = false): Pick<BillProposal, 'net' | 'tax' | 'gross'> | undefined {
+  const groups = text.split(/\r?\n/).filter(row => /^[ \t]*(?:Ware|Pfand)[ \t]*[*“”"'][ \t]*\d/i.test(row));
   if (!groups.length) return undefined;
   const unknown = { net: null, tax: null, gross: null };
   const totals = [...text.matchAll(/^[ \t]*Rechnungsbetrag[ \t]*:?[ \t]+EUR[ \t]+([^\r\n]+)$/gim)];
-  const gross =
-    totals.length === 1 && /^-?(?:\d+|\d{1,3}(?:\.\d{3})+),\d{2}$/.test(totals[0][1].trim())
-      ? parse(totals[0][1].trim())
-      : null;
-  if (gross === null) return unknown;
+  const raw = totals.length === 1 ? totals[0][1].trim() : '';
+  let gross = /^-?(?:\d+|\d{1,3}(?:\.\d{3})+),\d{2}$/.test(raw) ? parse(raw) : null;
+  // Texterkennung liest die letzte Ziffer manchmal als ] | l I. Dann zählt nur ein Betrag, der zu den Teilsummen passt.
+  const blurred =
+    usedOcr && gross === null && /^-?(?:\d+|\d{1,3}(?:\.\d{3})+),\d[\]|lI]$/.test(raw) ? raw.slice(0, -1) : '';
+  if (gross === null && !blurred) return unknown;
   const categories = new Set<string>();
   let netCents = 0,
     taxCents = 0,
     grossCents = 0;
   for (const row of groups) {
     const match = row.match(
-      /^[ \t]*(Ware|Pfand)[ \t]*\*[ \t]*(\d{1,3}(?:,\d{1,2})?)[ \t]*%[ \t]*:[ \t]*EUR[ \t]+(-?[\d.]+,\d{2})[ \t]+MwSt\.[ \t]*:[ \t]*EUR[ \t]+(-?[\d.]+,\d{2})[ \t]+Gesamt[ \t]*:[ \t]*EUR[ \t]+(-?[\d.]+,\d{2})[ \t]*$/i
+      /^[ \t]*(Ware|Pfand)[ \t]*[*“”"'][ \t]*(\d{1,3}(?:,\d{1,2})?)[ \t]*%[ \t]*:[ \t]*EUR[ \t]+(-?[\d.]+,\d{2})[ \t]+MwSt\.[ \t]*:[ \t]*EUR[ \t]+(-?[\d.]+,\d{2})[ \t]+Gesamt[ \t]*:[ \t]*EUR[ \t]+(-?[\d.]+,\d{2})[ \t]*$/i
     );
     if (!match) return unknown;
     const [, category, rateText, ...amounts] = match;
@@ -103,6 +115,11 @@ function beverageTotals(text: string): Pick<BillProposal, 'net' | 'tax' | 'gross
     netCents += Math.round(base * 100);
     taxCents += Math.round(tax * 100);
     grossCents += Math.round(subtotal * 100);
+  }
+  if (gross === null) {
+    const sum = (grossCents / 100).toFixed(2).replace('.', ',');
+    if (sum.slice(0, -1) !== blurred.replace(/\./g, '')) return unknown;
+    gross = grossCents / 100;
   }
   return grossCents === Math.round(gross * 100) ? { net: netCents / 100, tax: taxCents / 100, gross } : unknown;
 }
@@ -456,7 +473,7 @@ function scanHints(
   // Texterkennung schneidet Nummern gelegentlich ab (455 statt 455923). Solche Bruchstücke zählen nicht als eigene Nummer.
   if (usedOcr)
     for (const id of [...identifiers])
-      if ([...identifiers].some(o => o !== id && o.startsWith(id))) identifiers.delete(id);
+      if (!/\d/.test(id) || [...identifiers].some(o => o !== id && o.startsWith(id))) identifiers.delete(id);
   return {
     ...(identifiers.size > 1 || documentKinds.size > 1 ? { needsSeparateFiles: true as const } : {}),
     ...(usedOcr && identifiers.size > 1 && documentKinds.size < 2 && finalTotalPages < 2
@@ -477,7 +494,7 @@ export function billProposal(text: string, { usedOcr = false } = {}): BillPropos
     /^[ \t]*Rechnungsnummer[ \t]*:[ \t]*\r?\n[ \t]*Rechnungsdatum[ \t]*:[ \t]*\r?\n[ \t]*([A-Z0-9][A-Z0-9_.\/-]*)[ \t]*\r?\n[ \t]*(\d{1,2}\.\d{1,2}\.\d{4})[ \t]*$/im
   );
   const number =
-    only(usedOcr ? numbers.filter(n => !numbers.some(o => o !== n && o.startsWith(n))) : numbers) ||
+    only(usedOcr ? numbers.filter(n => /\d/.test(n) && !numbers.some(o => o !== n && o.startsWith(n))) : numbers) ||
     (!numbers.length && block ? block[1] : '');
   const dateLabels =
     /(?:\bRechnungsdatum|\bBelegdatum|^[ \t]*(?:Proforma-Lieferschein[ \t]+)?Datum)[ \t]*:?\s*(\d{1,2}\.\d{1,2}\.\d{4})/gim;
@@ -503,7 +520,7 @@ export function billProposal(text: string, { usedOcr = false } = {}): BillPropos
       ...scanTotals,
       lines: scanTotals.gross === null ? [] : scannedReceiptLines(text)
     };
-  const beverage = beverageTotals(text);
+  const beverage = beverageTotals(text, usedOcr);
   if (beverage) return { ...hints, ...(billType ? { billType } : {}), number, date, ...beverage, lines: [] };
   let net = parse(
     unique(

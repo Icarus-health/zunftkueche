@@ -44,3 +44,17 @@ test('Texterkennung: abgeschnittene Rechnungsnummer auf Seite 2 trennt den Beleg
  // Ohne Texterkennung bleiben zwei Nummern ein Warnsignal
  assert.equal(billProposal(text).needsSeparateFiles,true);
 });
+test('Texterkennung Getränkerechnung: Sternchen als Anführungszeichen, letzte Ziffer unscharf',()=>{
+ const text=['Seite 1','Rechnungs-Nr.: Be','Seite 2','Datum: 21.02.2026','Rechnungs-Nr.: 455922',
+ 'Ware* 19,00%: EUR 351,84 MwSt. : EUR 66,85 Gesamt : EUR 418,69','Pfand“ 19,00% : EUR 108,00 MwSt. : EUR 20,52 Gesamt : EUR 128,52','RECHNUNGSBETRAG EUR 547,2]'].join('\n');
+ const p=billProposal(text,{usedOcr:true});
+ assert.equal(p.needsSeparateFiles,undefined);assert.equal(p.number,'455922');assert.deepEqual([p.net,p.tax,p.gross],[459.84,87.37,547.21]);
+ // passt die unscharfe Zahl nicht zu den Teilsummen, bleibt alles offen
+ assert.equal(billProposal(text.replace('547,2]','548,2]'),{usedOcr:true}).gross,null);
+});
+test('Texterkennung Sammelgutschrift: Gesamtzeile ohne Steuerzeilen nur mit zweiter Fundstelle',()=>{
+ const base=['Proforma-Lieferschein Datum: 25.02.2026','| UST-Satz Netto-Entgelt UST-Betrag Brutto-Entgelt','Gesamtbetrag -73,81 -6,68 -80,49'];
+ const p=billProposal([...base,'Summe aller bezogenen Waren und Leistungen -80,49 EUR'].join('\n'),{usedOcr:true});
+ assert.deepEqual([p.net,p.tax,p.gross],[-73.81,-6.68,-80.49]);
+ assert.equal(billProposal(base.join('\n'),{usedOcr:true}).gross,null);
+});
