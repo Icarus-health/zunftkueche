@@ -8,41 +8,60 @@ const scheduled=()=>({...structuredClone(order),status:'Entwurf',recordedBy:null
 function setup(state=workspace(),extra={}){const dom=new JSDOM('<div id="app"></div>',{url:'https://example.test/'});for(const name of ['document','Element','HTMLFormElement','HTMLSelectElement','FormData'])globalThis[name]=dom.window[name]||dom.window.document;const root=document.getElementById('app');const store={testMode:false,load:async()=>structuredClone(state),...extra};return{view:new KitchenView(root,store,'TEST Person'),root,state,dom};}
 test('supplier matrix edits two days and persists one order with matching aggregate',async()=>{
  const state=workspace();state.orders=[stored(scheduled())];let saved;const {view,root}=setup(state,{saveOrder:async value=>{saved=structuredClone(value);state.orders=[stored(value)];return stored(value);}});await view.start();await view.action('order-edit','order');
- const form=root.querySelector('form[data-form=order]');assert.ok(form.querySelector('table'));form.querySelector('[name=schedule_line_wed]').value='4';form.querySelector('[name=schedule_line_fri]').value='6';await view.save(form);assert.equal(saved.lines[0].quantity,10);assert.deepEqual(saved.lines[0].schedule,{wed:4,fri:6});assert.equal(state.orders.length,1);assert.ok(root.querySelector('[data-action=order-pdf]'));
+ const form=root.querySelector('form[data-form=order]');assert.ok(form.querySelector('table'));form.querySelector('[name=schedule_line_wed]').value='4';form.querySelector('[name=schedule_line_fri]').value='6';await view.save(form);assert.equal(saved.lines[0].quantity,10);assert.deepEqual(saved.lines[0].schedule,{wed:4,fri:6});assert.equal(state.orders.length,1);assert.ok(root.querySelector('[data-action=order-mail]'));assert.ok(root.querySelector('[data-action=order-mark].primary'),'Entwurf: Als bestellt markieren ist der Hauptknopf');
 });
 test('adding a delivery preserves entered cells and never creates another order',async()=>{
  const state=workspace();state.orders=[stored(scheduled())];const {view,root}=setup(state);await view.start();await view.action('order-edit','order');root.querySelector('[name=schedule_line_wed]').value='7';await view.action('delivery-add','');assert.equal(view.draft.lines[0].schedule.wed,7);assert.equal(view.draft.deliveries.length,3);assert.equal(state.orders.length,1);
 });
-test('mail preparation uses reviewed edits, keeps internal notes private, and leaves the draft editable', async () => {
+test('PDF und E-Mail-Text: speichert den Entwurf zuerst, hält interne Hinweise zurück und lässt weiterarbeiten', async () => {
     const state = workspace();
     const source = { ...scheduled(), occasion: 'Fasnet & Küche', note: 'INTERN – keine Weitergabe', supplierNote: 'Bitte am Seiteneingang liefern.' };
     state.orders = [stored(source)];
     state.suppliers[0].value.email = 'bestellung+fasnet@example.invalid';
     let writes = 0;
-    const { view, root } = setup(state, { saveOrder: async () => { writes++; throw new Error('Unexpected write'); } });
+    const { view, root } = setup(state, { saveOrder: async value => { writes++; state.orders = [stored(structuredClone(value))]; return stored(value); } });
     await view.start();
     await view.action('order-edit', source.id);
     root.querySelector('[name=schedule_line_wed]').value = '4';
     await view.action('order-review', '');
-    await assert.rejects(view.action('order-preview-mail', ''), /Mengen und Gebinde/);
+    await assert.rejects(view.action('order-preview-mail', ''), /Mengen und Gebinde geprüft/);
+    assert.equal(writes, 0);
     root.querySelector('[name=reviewAll]').checked = true;
     await view.action('order-preview-mail', '');
+    assert.equal(writes, 1, 'der Entwurf ist gespeichert, bevor die Versandseite erscheint');
+    assert.equal(view.dirty, false, 'die Versandseite ist keine Sackgasse mit ungespeicherten Eingaben');
+    assert.equal(state.orders[0].value.status, 'Entwurf');
     const message = root.querySelector('[data-order-mail] textarea').value;
-    assert.match(message, /03\.02\.2027[\s\S]*4 Gebinde[\s\S]*05\.02\.2027[\s\S]*5 Gebinde/);
+    assert.match(message, /03\.02\.2027[\s\S]*– 4 [\s\S]*05\.02\.2027[\s\S]*– 5 /);
+    assert.doesNotMatch(message, /Gebinde à/);
     assert.match(message, /Seiteneingang/);
     assert.doesNotMatch(message, /INTERN|Weitergabe/);
     const link = new URL(root.querySelector('[data-order-mail] a').getAttribute('href'));
     assert.equal(decodeURIComponent(link.pathname), 'bestellung+fasnet@example.invalid');
     assert.match(link.searchParams.get('subject'), /Fasnet & Küche/);
     assert.ok(root.querySelector('[data-action=order-dispatch-pdf]'));
-    await view.action('order-mail-back', '');
-    await view.action('order-edit-sheet', '');
+    assert.ok(root.querySelector('[data-order-mail] [data-action=order-mark]'), 'von hier aus als bestellt markieren');
+    await view.action('nav', 'heute');
+    assert.doesNotMatch(root.querySelector('[data-status]').textContent, /Ungespeicherte/);
+    await view.action('order-edit', source.id);
     assert.equal(root.querySelector('[name=schedule_line_wed]').value, '4');
-    assert.equal(writes, 0);
-    assert.equal(source.status, 'Entwurf');
-    assert.equal(source.lines[0].schedule.wed, 3);
 });
-
+test('Als bestellt markieren: fragt einmal nach und speichert dann den Status', async () => {
+    const state = workspace();
+    const source = scheduled();
+    source.lines = source.lines.map(l => ({ ...l, reviewed: true }));
+    state.orders = [stored(source)];
+    let saved;
+    const { view, root } = setup(state, { saveOrder: async value => { saved = structuredClone(value); state.orders = [stored(saved)]; return stored(value); } });
+    await view.start();
+    await view.action('order-open', source.id);
+    await view.action('order-mark', source.id);
+    assert.equal(saved, undefined, 'erst nach der Rückfrage');
+    assert.match(root.querySelector('[data-order-confirm]').textContent, /beim Lieferanten aufgegeben/);
+    await view.action('order-mark-confirm', source.id);
+    assert.equal(saved.status, 'Bestellt');
+    assert.ok(saved.recordedAt && saved.recordedBy);
+});
 test('a legacy telephone order exposes only the supplier-facing notes in its order text', async () => {
     const state = workspace();
     const legacy = { ...order, deliveryDate: '2027-02-05', note: 'INTERN', supplierNote: 'Hintereingang' };

@@ -11,8 +11,6 @@ import type { IngredientDraft } from './ingredient-form';
 import { withSchedule, copyScheduledOrder } from './supplier-orders.ts';
 import { orderMailView } from './order-mail.ts';
 import { WwController } from './ww/controller.ts';
-import { orderRound } from './workflow-tasks.ts';
-import { orderOverview } from './order-overview.ts';
 import { overviewAction, saveOverview } from './actions/overview-actions.ts';
 import { menuAction, menuReorder, saveMenu } from './actions/menu-actions.ts';
 import { startMenuDrag } from './menu-drag.ts';
@@ -93,7 +91,10 @@ export class KitchenView {
     this.paintStatus();
   };
   private readonly keydown = (event: Event): void => {
-    if ((event as KeyboardEvent).key === 'Escape' && (this.closeContext(true) || this.closeMenu(true)))
+    if (
+      (event as KeyboardEvent).key === 'Escape' &&
+      (this.closeContext(true) || this.closeMenus() || this.closeMenu(true))
+    )
       event.preventDefault();
   };
   private readonly beforeUnload = (event: BeforeUnloadEvent): void => {
@@ -226,7 +227,6 @@ export class KitchenView {
   quickIngredient?: IngredientDraft;
   copyPicker = false;
   reorderPicker = false;
-  roundPicker = false;
   overviewPicker = false;
   menuDraft?: MenuCard;
   menuPrevious?: Stored<WwDocument>;
@@ -256,6 +256,7 @@ export class KitchenView {
     this.viaKeyboard = (event as MouseEvent).detail === 0;
     if (!(event.target instanceof Element && event.target.closest('.sidebar nav'))) this.closeMenu();
     if (!(event.target instanceof Element && event.target.closest('.context-switch'))) this.closeContext();
+    this.closeMenus(event.target instanceof Element ? event.target : undefined);
     const target =
       event.target instanceof Element ? event.target.closest<HTMLButtonElement>('button[data-action]') : undefined;
     if (target && !this.busy) {
@@ -510,7 +511,6 @@ export class KitchenView {
     this.copySource = undefined;
     this.copyPicker = false;
     this.reorderPicker = false;
-    this.roundPicker = false;
     this.overviewPicker = false;
     this.menuDraft = undefined;
     this.menuPrevious = undefined;
@@ -711,8 +711,7 @@ export class KitchenView {
     else if (this.copyPicker) body = copyList(this);
     else if (this.reorderPicker) body = reorderList(this);
     else if (this.deliveryPicker) body = deliveryRound(s, season, this.area);
-    else if (this.roundPicker) body = orderRound(s, season, this.area);
-    else if (this.overviewPicker) body = orderOverview(s, season, this.area);
+    else if (this.overviewPicker) body = orders(this);
     else if (this.view === 'heute') body = this.home();
     else if (this.view === 'articles') body = articles(this);
     else if (this.view === 'suppliers') body = suppliers(this);
@@ -852,6 +851,18 @@ export class KitchenView {
     this.syncHistory();
     return true;
   }
+  /** Aufgeklappte Menüs („Mehr“, weitere Angaben der Bestellung) schließen sich bei einem Klick daneben und mit Escape. */
+  private closeMenus(target?: Element): boolean {
+    let closed = false;
+    for (const menu of Array.from(
+      this.root.querySelectorAll<HTMLDetailsElement>('details.more-menu[open], details.sheet-options[open]')
+    )) {
+      if (target && menu.contains(target) && !target.closest('.more-menu-list button')) continue;
+      menu.open = false;
+      closed = true;
+    }
+    return closed;
+  }
   private closeContext(focus = false): boolean {
     const sheet = this.root.querySelector<HTMLDetailsElement>('.context-switch[open]');
     if (!sheet) return false;
@@ -892,7 +903,6 @@ export class KitchenView {
     if (this.copyPicker) return 'copy-list';
     if (this.reorderPicker) return 'reorder-list';
     if (this.deliveryPicker) return 'delivery-round';
-    if (this.roundPicker) return 'order-round';
     if (this.overviewPicker) return 'order-overview';
     return 'view:' + this.view;
   }
@@ -1071,11 +1081,11 @@ export class KitchenView {
         (this.view === 'orders' &&
           row.dataset.orderStatus !== undefined &&
           !!this.statusFilter &&
-          (this.statusFilter === 'current-drafts'
+          (this.statusFilter === 'open'
             ? row.dataset.orderStatus !== 'Entwurf' || row.dataset.orderCurrent !== 'true'
-            : this.statusFilter === 'open-deliveries'
-              ? row.dataset.orderOpen !== 'true' || row.dataset.orderCurrent !== 'true'
-              : row.dataset.orderStatus !== this.statusFilter)) ||
+            : this.statusFilter === 'ordered'
+              ? row.dataset.orderStatus !== 'Bestellt'
+              : !['Abgeschlossen', 'Storniert'].includes(row.dataset.orderStatus))) ||
         (planned && row.dataset.relevant === 'false');
       if (!row.hidden) shown++;
     }

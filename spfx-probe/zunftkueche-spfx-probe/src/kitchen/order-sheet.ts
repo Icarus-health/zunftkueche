@@ -9,6 +9,7 @@ import { button, field, select, note, check, segmented, h, n, money } from './ma
 import { dayLabel } from './ww/common.ts';
 import { orderTotal } from './domain.ts';
 import { icon } from './icons.ts';
+import { candidateDays } from './order-overview.ts';
 
 export function deliveryTitle(d: Delivery, index: number): string {
   return d.date ? dayLabel(d.date) : 'Termin ' + (index + 1) + (d.time ? ' · ' + d.time : '') + ' (Datum offen)';
@@ -171,12 +172,47 @@ export function readSheetOrder(form: HTMLFormElement, source: Order, state: Work
 }
 function settings(order: Order, state: Workspace): string {
   const offers = state.offers.filter(o => o.value.active && o.value.supplierId === order.supplierId);
-  return `<details class="sheet-options"><summary><span class="sr-only">Optionen</span>${icon('more')}</summary><div class="sheet-options-body"><h2>Bestelldaten</h2>${field('occasion', 'Bestellrunde', order.occasion)}${select(
+  return `<details class="sheet-options"><summary><span class="sr-only">Weitere Angaben</span>${icon('more')}</summary><div class="sheet-options-body"><h2>Bestelldaten</h2>${field('occasion', 'Anlass', order.occasion)}${select(
     'method',
     'Bestellweg',
     ['Telefon', 'E-Mail', 'Onlineshop', 'Abholung'].map(x => [x, x]),
     order.method
-  )}${note('supplierNote', 'Mitteilung auf der PDF', order.supplierNote || '')}${note('note', 'Interner Hinweis', order.note)}<h2>Liefertermine</h2>${order.deliveries!.map((d, i) => '<div class="sheet-date">' + field('date_' + d.id, 'Lieferdatum · Termin ' + (i + 1), d.date || '', false, 'date') + field('time_' + d.id, 'Zeitfenster', d.time) + field('place_' + d.id, 'Lieferort', d.place) + button('delivery-remove', 'Tag entfernen', d.id) + '</div>').join('')}${button('delivery-add', 'Liefertag hinzufügen')}<h2>Artikel und Gebinde</h2>${select('addOffer', 'Liefergebinde auswählen', [['', 'Bitte wählen'], ...offers.map(o => [o.value.id, (state.articles.find(a => a.value.id === o.value.articleId)?.value.name || 'Artikel') + ' · ' + o.value.packName] as [string, string])], '')}${button('line-add', 'Position hinzufügen')}${button('order-ingredient', 'Neuen Artikel mit Liefergebinde anlegen')}${order.lines.map(l => '<div class="sheet-manage-line"><span>' + h(l.articleName) + '</span>' + button('line-remove', 'Entfernen', l.id) + '</div>').join('')}<h2>Entwurf</h2><button type="submit">Entwurf speichern</button></div></details>`;
+  )}${note('supplierNote', 'Mitteilung an den Lieferanten', order.supplierNote || '')}${note('note', 'Interner Hinweis', order.note)}<h2>Artikel</h2>${select('addOffer', 'Artikel hinzufügen', [['', 'Bitte wählen'], ...offers.map(o => [o.value.id, (state.articles.find(a => a.value.id === o.value.articleId)?.value.name || 'Artikel') + ' · ' + o.value.packName] as [string, string])], '')}${button('line-add', 'Hinzufügen')}${button('order-ingredient', 'Neuen Artikel anlegen')}${order.lines.map(l => '<div class="sheet-manage-line"><span>' + h(l.articleName) + '</span>' + button('line-remove', 'Entfernen', l.id) + '</div>').join('')}<div class="sheet-options-done">${button('sheet-options-close', 'Fertig', '', true)}</div></div></details>`;
+}
+/** Liefertage stehen sichtbar über der Mengentabelle. Offen, solange ein Datum fehlt. Einsatztage als Schnellwahl. */
+function days(order: Order, state: Workspace): string {
+  const season = state.seasons.find(s => s.value.id === order.seasonId)?.value,
+    candidates = season ? candidateDays(state, season, order.area) : [],
+    dates = order.deliveries!,
+    used = new Set(dates.map(d => d.date).filter(Boolean)),
+    missing = dates.filter(d => !d.date).length,
+    short = deliveryShortLabels(dates);
+  return `<details class="sheet-days" data-section-key="liefertage"${missing ? ' open' : ''}><summary><span>Liefertage</span><small>${h(short.join(' · '))}${missing ? ' · ' + (missing === 1 ? 'Datum fehlt' : missing + ' Daten fehlen') : ''}</small></summary>${dates
+    .map((d, i) => {
+      const chips = d.date
+        ? ''
+        : candidates
+            .filter(day => !used.has(day))
+            .map(
+              day =>
+                '<button type="button" class="day-chip" data-action="delivery-day" data-id="' +
+                h(d.id + '|' + day) +
+                '">' +
+                h(dayLabel(day).replace(/\d{4}$/, '')) +
+                '</button>'
+            )
+            .join('');
+      return (
+        '<div class="sheet-date">' +
+        field('date_' + d.id, 'Liefertag ' + (i + 1), d.date || '', false, 'date') +
+        field('time_' + d.id, 'Uhrzeit', d.time, false, 'text', 'placeholder="z. B. 17:00"') +
+        field('place_' + d.id, 'Ort', d.place) +
+        (dates.length > 1 ? button('delivery-remove', 'Entfernen', d.id) : '') +
+        (chips ? '<p class="day-chips"><span>Einsatztage:</span>' + chips + '</p>' : '') +
+        '</div>'
+      );
+    })
+    .join('')}${button('delivery-add', 'Liefertag hinzufügen')}</details>`;
 }
 export function orderSheet(source: Order, state: Workspace): string {
   const order = withSchedule(source),
@@ -195,13 +231,13 @@ export function orderSheet(source: Order, state: Workspace): string {
       );
   const dates = order.deliveries!,
     short = deliveryShortLabels(dates);
-  return `<form data-form="order" class="panel supplier-order calm-workflow order-sheet"><div class="calm-heading"><div>${button('cancel', 'Zurück')}<h1>${h(order.supplierName || 'Lieferant auswählen')}</h1></div>${settings(order, state)}</div>${supplier}${order.supplierId ? '<p class="sheet-meta"><span class="badge ' + (order.status === 'Entwurf' ? 'warning' : 'neutral') + '">' + h(order.status) + '</span><span>' + dates.length + ' ' + (dates.length === 1 ? 'Liefertag' : 'Liefertage') + '</span></p><div class="calm-toolbar"><label class="search-label"><span class="sr-only">Artikel im Ordersatz suchen</span><input type="search" name="sheetSearch" aria-label="Artikel im Ordersatz suchen" placeholder="Artikel suchen …" autocomplete="off"></label>' + (dates.length > 1 ? dayChoice(dates) : '') + '</div><div class="supplier-matrix-scroll"><table class="supplier-matrix calm-sheet"><thead><tr><th>Artikel</th>' + dates.map((d, i) => '<th data-delivery-column="' + h(d.id) + '"><span class="delivery-head"><span>' + h(d.date ? dayLabel(d.date) : short[i]) + '</span>' + (d.date ? '' : button('order-dates', 'Datum offen', d.id).replace('<button ', '<button aria-label="' + h('Datum offen · ' + deliveryTitle(d, i).replace(' (Datum offen)', '') + ' · Datum festlegen') + '" ')) + '</span></th>').join('') + '</tr></thead><tbody>' + rows.map(l => '<tr data-sheet-row data-search="' + h(l.articleName + ' ' + l.code) + '"><th scope="row">' + h(l.articleName) + '<small>' + h(l.packName) + (l.packSize !== 1 ? ' · ' + n(l.packSize) + ' ' + h(l.unit) : '') + '</small><input type="checkbox" name="review_' + h(l.id) + '" ' + (l.reviewed ? 'checked' : '') + ' hidden aria-hidden="true" tabindex="-1"></th>' + dates.map((d, i) => '<td data-delivery-column="' + h(d.id) + '"><input name="schedule_' + h(l.id) + '_' + h(d.id) + '" value="' + h(n(l.schedule?.[d.id] ?? null)) + '" inputmode="decimal" aria-label="' + h(l.articleName + ' · ' + deliveryTitle(d, i) + ' · ' + l.packName) + '" placeholder="–"></td>').join('') + '</tr>').join('') + '</tbody></table></div><p data-sheet-empty hidden>Keine passenden Artikel.</p>' : ''}<div class="calm-actions"><span data-sheet-summary>${order.lines.length ? order.lines.length + ' Artikel' : 'Mengen eintragen'}</span>${order.supplierId && !rows.length ? '<p>Noch keine Liefergebinde hinterlegt.</p>' + button('order-ingredient', 'Artikel und Gebinde anlegen', '', true) : order.supplierId ? button('order-review', 'Weiter zur Prüfung', '', true) : ''}</div></form>`;
+  return `<form data-form="order" class="panel supplier-order calm-workflow order-sheet"><div class="calm-heading"><div>${button('cancel', 'Zurück')}<h1>${h(order.supplierName || 'Lieferant auswählen')}</h1></div>${settings(order, state)}</div>${supplier}${order.supplierId ? '<p class="sheet-meta"><span class="badge ' + (order.status === 'Entwurf' ? 'warning' : 'neutral') + '">' + h(order.status) + '</span><span>' + dates.length + ' ' + (dates.length === 1 ? 'Liefertag' : 'Liefertage') + '</span></p>' + days(order, state) + '<div class="calm-toolbar"><label class="search-label"><span class="sr-only">Artikel suchen</span><input type="search" name="sheetSearch" aria-label="Artikel suchen" placeholder="Artikel suchen …" autocomplete="off"></label>' + (dates.length > 1 ? dayChoice(dates) : '') + '</div><div class="supplier-matrix-scroll"><table class="supplier-matrix calm-sheet"><thead><tr><th>Artikel</th>' + dates.map((d, i) => '<th data-delivery-column="' + h(d.id) + '"><span class="delivery-head"><span>' + h(d.date ? dayLabel(d.date) : short[i]) + '</span>' + (d.date ? '' : button('order-dates', 'Datum fehlt', d.id).replace('<button ', '<button aria-label="' + h('Datum fehlt · ' + deliveryTitle(d, i).replace(' (Datum offen)', '') + ' · Datum festlegen') + '" ')) + '</span></th>').join('') + '</tr></thead><tbody>' + rows.map(l => '<tr data-sheet-row data-search="' + h(l.articleName + ' ' + l.code) + '"><th scope="row">' + h(l.articleName) + '<small>' + h(l.packName) + (l.packSize !== 1 ? ' · ' + n(l.packSize) + ' ' + h(l.unit) : '') + '</small><input type="checkbox" name="review_' + h(l.id) + '" ' + (l.reviewed ? 'checked' : '') + ' hidden aria-hidden="true" tabindex="-1"></th>' + dates.map((d, i) => '<td data-delivery-column="' + h(d.id) + '"><input name="schedule_' + h(l.id) + '_' + h(d.id) + '" value="' + h(n(l.schedule?.[d.id] ?? null)) + '" inputmode="decimal" aria-label="' + h(l.articleName + ' · ' + deliveryTitle(d, i) + ' · ' + l.packName) + '" placeholder="–"></td>').join('') + '</tr>').join('') + '</tbody></table></div><p data-sheet-empty hidden>Keine passenden Artikel.</p>' : ''}<div class="calm-actions"><span data-sheet-summary>${order.lines.length ? order.lines.length + ' Artikel' : 'Mengen eintragen'}</span>${order.supplierId && !rows.length ? '<p>Für diesen Lieferanten sind noch keine Artikel hinterlegt.</p>' + button('order-ingredient', 'Artikel anlegen', '', true) : order.supplierId ? '<button type="submit">Entwurf speichern</button>' + button('order-review', 'Weiter zur Prüfung', '', true) : ''}</div></form>`;
 }
 export function orderReview(source: Order, state: Workspace): string {
   const order = withSchedule(source),
     supplier = state.suppliers.find(s => s.value.id === order.supplierId)?.value,
     total = orderTotal(order);
-  return `<form data-form="order" class="panel supplier-order calm-workflow order-review"><div class="calm-heading"><div>${button('order-edit-sheet', 'Mengen bearbeiten')}<h1>Bestellung prüfen</h1></div></div><p class="calm-subtitle">${h(order.supplierName)} · ${h(order.occasion)}</p><div class="supplier-matrix-scroll"><table class="supplier-matrix calm-review"><thead><tr><th>Artikel</th><th>Liefermengen</th><th>Netto / Gebinde</th></tr></thead><tbody>${order.lines
+  return `<form data-form="order" class="panel supplier-order calm-workflow order-review"><div class="calm-heading"><div>${button('order-edit-sheet', 'Mengen bearbeiten')}<h1>Bestellung prüfen</h1></div></div><p class="calm-subtitle">${h(order.supplierName)} · ${h(order.occasion)}</p><div class="supplier-matrix-scroll"><table class="supplier-matrix calm-review"><thead><tr><th>Artikel</th><th>Liefermengen</th><th>Preis netto in €</th></tr></thead><tbody>${order.lines
     .map(
       l =>
         '<tr><th scope="row">' +
@@ -224,9 +260,9 @@ export function orderReview(source: Order, state: Workspace): string {
     )
     .join(
       ''
-    )}</tbody></table></div><p data-order-total class="calm-total">${total === null ? 'Warenwert unvollständig · Preise oder Mengen offen' : money(total) + ' netto'}</p><details class="calm-disclosure"><summary>Kontakt und Preisstand prüfen</summary><p>${h(order.method)} · ${h(supplier?.phone || supplier?.email || 'Kontakt noch offen')}</p><p>${h(supplier?.note || '')}</p><div data-price-review>${priceReview(order, state)}</div></details>${check(
+    )}</tbody></table></div><p data-order-total class="calm-total">${total === null ? 'Warenwert unvollständig · Preise oder Mengen offen' : money(total) + ' netto'}</p><details class="calm-disclosure"><summary>Kontakt und Preise prüfen</summary><p>${h(order.method)} · ${h(supplier?.phone || supplier?.email || 'Kontakt noch offen')}</p><p>${h(supplier?.note || '')}</p><div data-price-review>${priceReview(order, state)}</div></details>${check(
     'reviewAll',
     'Mengen und Gebinde geprüft',
     order.lines.every(l => l.reviewed)
-  )}<div class="calm-actions"><button type="submit">Entwurf speichern</button>${button('order-preview-pdf', 'PDF herunterladen')}${button('order-preview-mail', 'Bestellung versenden', '', true)}</div><details class="calm-disclosure"><summary>Bestellung bereits aufgegeben?</summary><p>Nach der Abgabe beim Lieferanten dokumentieren.</p>${button('order-record', 'Als bestellt dokumentieren')}</details></form>`;
+  )}<div class="calm-actions order-finish"><button type="submit">Entwurf speichern</button>${button('order-preview-mail', 'PDF und E-Mail-Text')}${button('order-record', 'Als bestellt markieren', '', true)}</div><p class="calm-hint">Erst „PDF und E-Mail-Text“ für den Lieferanten, nach der Abgabe „Als bestellt markieren“. Bestellte Lieferungen erscheinen in der Warenannahme.</p></form>`;
 }

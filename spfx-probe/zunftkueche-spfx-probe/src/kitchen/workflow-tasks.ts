@@ -60,59 +60,7 @@ export function deliveryTasks(orders: Order[], seasonId: string, area: Area, tod
   );
 }
 
-import type { Season, Workspace } from './model';
-import { button, empty } from './markup.ts';
-import { articleAvailable } from './model.ts';
-export function orderRound(state: Workspace, season: Season | undefined, area: Area): string {
-  if (!season) return '<h1>Bestellrunde</h1><p>Bitte zuerst eine Saison wählen.</p>';
-  const rows = state.suppliers
-    .filter(s => s.value.active)
-    .sort((a, b) => a.value.name.localeCompare(b.value.name, 'de'))
-    .map(({ value: supplier }) => {
-      const orders = state.orders.filter(
-        o =>
-          o.value.seasonId === season.id &&
-          o.value.area === area &&
-          o.value.supplierId === supplier.id &&
-          o.value.status !== 'Storniert' &&
-          !/^historisch(?:e|er|es)?\b/i.test(o.value.occasion.trim())
-      );
-      const drafts = orders.filter(o => o.value.status === 'Entwurf');
-      const offerCount = state.offers.filter(
-        o =>
-          o.value.active &&
-          o.value.supplierId === supplier.id &&
-          state.articles.some(a => a.value.id === o.value.articleId && articleAvailable(a.value, season.id))
-      ).length;
-      const action =
-          season.archived || drafts.length > 1 ? 'supplier-orders' : drafts.length ? 'order-edit' : 'order-new',
-        id = action === 'order-edit' ? drafts[0].value.id : supplier.id;
-      return (
-        '<div class="supplier-round-row">' +
-        button(action, supplier.name, id) +
-        '<span>' +
-        offerCount +
-        ' ' +
-        (offerCount === 1 ? 'Liefergebinde' : 'Liefergebinde') +
-        '</span><div>' +
-        (orders.length
-          ? button('supplier-orders', orders.length + ' ' + (orders.length === 1 ? 'Vorgang' : 'Vorgänge'), supplier.id)
-          : '<small>Noch nicht begonnen</small>') +
-        '</div></div>'
-      );
-    })
-    .join('');
-  return (
-    '<div class="page-heading"><div><h1>Bestellrunde</h1></div><div class="actions">' +
-    (season.archived ? '' : button('copy-list', 'Aus Vorjahr übernehmen')) +
-    button('order-overview', 'Gesamtbestellung', '', true) +
-    button('nav', 'Alle Bestellungen', 'orders') +
-    '</div></div><section class="supplier-round-list"><div class="supplier-round-head"><span>Lieferant</span><span>Ordersatz</span><span>Bestellungen</span></div>' +
-    (rows || empty('Zuerst einen Lieferanten anlegen.')) +
-    '</section>'
-  );
-}
-
+import type { Workspace } from './model';
 import { documents } from './ww/model.ts';
 export function orderDeadlines(
   state: Workspace,

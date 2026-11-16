@@ -11,7 +11,13 @@ export function deliverySummary(source: Order): string {
     dates = order.deliveries!,
     missing = dates.filter(d => !d.date).length,
     prices = order.lines.filter(l => l.priceNet === null).length;
-  return `<p class="workspace-note">${order.lines.length} ${order.lines.length === 1 ? 'Position' : 'Positionen'} · ${dates.length} ${dates.length === 1 ? 'Liefertermin' : 'Liefertermine'} · ${missing} ${missing === 1 ? 'Termin' : 'Termine'} offen · ${prices} ${prices === 1 ? 'Preis' : 'Preise'} offen. Zeiten und Mengen sind vor dem Bestellen zu prüfen.</p>`;
+  const parts = [
+    order.lines.length + ' ' + (order.lines.length === 1 ? 'Artikel' : 'Artikel'),
+    dates.length + ' ' + (dates.length === 1 ? 'Liefertag' : 'Liefertage'),
+    ...(missing ? [missing + ' ' + (missing === 1 ? 'Datum fehlt' : 'Daten fehlen')] : []),
+    ...(prices ? [prices + ' ' + (prices === 1 ? 'Preis offen' : 'Preise offen')] : [])
+  ];
+  return `<p class="workspace-note">${parts.join(' · ')}${order.status === 'Entwurf' && (missing || prices) ? '. Vor dem Bestellen ergänzen.' : ''}</p>`;
 }
 export function deliveryMatrix(source: Order, editable: boolean): string {
   const order = withSchedule(source),

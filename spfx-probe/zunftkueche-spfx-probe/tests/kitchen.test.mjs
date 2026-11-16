@@ -36,7 +36,7 @@ test('draft validation rejects wrong supplier offers and missing articles',()=>{
 });
 test('ordered copies require reviewed lines and named ordering evidence',()=>{
  assert.throws(()=>validateOrder({...order,recordedBy:''},state),/Person/);
- assert.throws(()=>validateOrder({...order,lines:[{...line,reviewed:false}]},state),/prüfen/);
+ assert.throws(()=>validateOrder({...order,lines:[{...line,reviewed:false}]},state),/geprüft/);
 });
 test('master validation rejects invalid packing and invalid dates',()=>{
  assert.throws(()=>validateEntity('offers',{...offer,packSize:0}),/Gebinde/);

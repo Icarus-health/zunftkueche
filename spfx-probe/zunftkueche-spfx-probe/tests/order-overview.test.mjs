@@ -30,7 +30,7 @@ test('Raster, Hinweise und keine historischen Entwürfe',()=>{
  // Vorschläge stehen im Raster in ihrer Tagesspalte, markiert, und die Karte nennt die Uhrzeit
  assert.doesNotMatch(html,/ohne Datum/);assert.match(html,/ov-slot draft suggested/);assert.match(html,/Datum vorgeschlagen/);
  assert.match(html,/<h4>Wiggenhauser<small>17:00<\/small><\/h4>/);assert.match(html,/placeholder="hh:mm"/);
- assert.match(html,/Gesamtbestellung/);assert.match(html,/Liefertermine speichern/);assert.match(html,/Bereits bestellt/);
+ assert.match(html,/Bestellungen nach Liefertag/);assert.doesNotMatch(orderOverview(s,season,'Küche',true),/page-heading/);assert.match(html,/Liefertermine speichern/);assert.match(html,/Bereits bestellt/);
  assert.doesNotMatch(html,/Historisch/);
 });
 test('Gleicher Artikel am selben Tag bei zwei Lieferanten wird gemeldet',()=>{

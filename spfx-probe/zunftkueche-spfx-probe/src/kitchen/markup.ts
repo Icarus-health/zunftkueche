@@ -57,3 +57,50 @@ export function panel(title: string, body: string): string {
 export function empty(text: string): string {
   return `<p class="empty">${h(text)}</p>`;
 }
+
+/** Abschnitte innerhalb eines Tabs, zum Beispiel Lieferanten | Artikel. */
+export function segments(action: string, items: Array<[string, string]>, active: string, label: string): string {
+  return `<nav class="seg-tabs" aria-label="${h(label)}">${items.map(([id, title]) => `<button type="button" data-action="${action}" data-id="${h(id)}" aria-current="${id === active ? 'page' : 'false'}">${h(title)}</button>`).join('')}</nav>`;
+}
+export const ordersTabs = (active: 'list' | 'days' | 'bills'): string =>
+  segments(
+    'orders-tab',
+    [
+      ['list', 'Nach Lieferant'],
+      ['days', 'Nach Liefertag'],
+      ['bills', 'Rechnungen']
+    ],
+    active,
+    'Ansicht der Bestellungen'
+  );
+export const suppliersTabs = (active: 'suppliers' | 'articles'): string =>
+  segments(
+    'nav',
+    [
+      ['suppliers', 'Lieferanten'],
+      ['articles', 'Artikel']
+    ],
+    active,
+    'Lieferanten und Artikel'
+  );
+export const reportsTabs = (active: 'reports' | 'stock'): string =>
+  segments(
+    'nav',
+    [
+      ['reports', 'Zahlen'],
+      ['stock', 'Bestand']
+    ],
+    active,
+    'Auswertung und Bestand'
+  );
+/** Seltene Aktionen hinter einem Knopf „Mehr“, damit je Seite ein Hauptknopf bleibt. */
+export function moreMenu(buttons: string[]): string {
+  const items = buttons.filter(Boolean);
+  return items.length
+    ? `<details class="more-menu"><summary>Mehr</summary><div class="more-menu-list">${items.join('')}</div></details>`
+    : '';
+}
+/** Zurück steht immer oben links und nennt das Ziel. */
+export function backLink(action: string, target: string, id = ''): string {
+  return `<button type="button" class="back-link" data-action="${action}" data-id="${h(id)}"><span aria-hidden="true">‹</span> ${h(target)}</button>`;
+}

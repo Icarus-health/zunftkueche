@@ -73,7 +73,7 @@ export function dashboard(
   };
   const tiles: Tile[] = [
     {
-      title: 'Bestellrunde',
+      title: 'Bestellungen',
       status: drafts.length
         ? drafts.length + ' ' + (drafts.length === 1 ? 'Entwurf' : 'Entwürfe') + ' offen'
         : state.suppliers.filter(s => s.value.active).length + ' Lieferanten',
@@ -146,7 +146,7 @@ export function dashboard(
       text:
         drafts.length + ' ' + (drafts.length === 1 ? 'Bestellentwurf' : 'Bestellentwürfe') + ' vorbereiten und prüfen',
       action: 'dashboard-orders',
-      id: 'current-drafts',
+      id: 'open',
       label: 'Entwürfe prüfen',
       detail: [...new Set(drafts.map(o => o.supplierName).filter(Boolean))].slice(0, 3).join(' · ')
     });

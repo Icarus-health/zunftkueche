@@ -68,7 +68,7 @@ test('an error is repeated beside the button when the status line is scrolled ou
  assert.ok(mail);
  await click(mail);
  const status=root.querySelector('[data-status]'),hint=root.querySelector('[data-inline-status]');
- assert.match(status.textContent,/Alle Mengen und Gebinde/);
+ assert.match(status.textContent,/fehlt eine Menge/);
  assert.equal(status.getAttribute('role'),'alert');
  assert.ok(hint,'error is repeated near the button');
  assert.equal(hint.textContent,status.textContent);
@@ -87,7 +87,7 @@ test('no duplicate message appears while the status line is visible, and it clea
  await store.saveOrder(draft,undefined,'seed-draft');await view.action('reload','');
  await view.action('order-open','draft');
  await click(root.querySelector('[data-action=order-mail]'));
- assert.match(root.querySelector('[data-status]').textContent,/Alle Mengen und Gebinde/);
+ assert.match(root.querySelector('[data-status]').textContent,/fehlt eine Menge/);
  assert.equal(root.querySelector('[data-inline-status]'),null);
  layout.statusTop=-900;
  await click(root.querySelector('[data-action=order-mail]'));

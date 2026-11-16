@@ -50,16 +50,22 @@ export function validateSchedule(order: Order, forDispatch = false): void {
     throw new Error('Bitte 1 bis 31 Liefertermine angeben.');
   const ids = new Set<string>(),
     dates = new Set<string>();
-  for (const d of order.deliveries) {
+  for (const [index, d] of order.deliveries.entries()) {
     if (!d || !key(d.id) || ids.has(d.id)) throw new Error('Doppelter oder ungültiger Liefertermin.');
     ids.add(d.id);
     if (typeof d.time !== 'string' || d.time.length > 100 || typeof d.place !== 'string' || d.place.length > 200)
       throw new Error('Zeit und Lieferort bitte prüfen.');
     const slot = d.date + '|' + d.time.trim().toLocaleLowerCase() + '|' + d.place.trim().toLocaleLowerCase();
     if (d.date !== null && (!validDate(d.date) || dates.has(slot)))
-      throw new Error('Datum, Zeit und Lieferort bitte prüfen; gleiche Liefertermine nur einmal angeben.');
+      throw new Error(
+        'Zwei Liefertage haben dasselbe Datum, dieselbe Uhrzeit und denselben Ort. Bitte einen davon ändern oder entfernen.'
+      );
     if ((forDispatch || (order.status !== 'Entwurf' && order.status !== 'Storniert')) && !d.date)
-      throw new Error('Datum für jeden Liefertermin bestätigen.');
+      throw new Error(
+        order.deliveries.length === 1
+          ? 'Der Liefertag fehlt. Bitte unter „Liefertage“ ein Datum eintragen.'
+          : 'Bei Liefertag ' + (index + 1) + ' fehlt das Datum. Datum eintragen oder den leeren Tag entfernen.'
+      );
     if (d.date) dates.add(slot);
   }
   if (order.supplierNote !== undefined && (typeof order.supplierNote !== 'string' || order.supplierNote.length > 1000))

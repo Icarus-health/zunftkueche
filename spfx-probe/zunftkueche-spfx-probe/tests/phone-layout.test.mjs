@@ -37,7 +37,7 @@ test('the overview highlights exactly one next step and no other button is prima
  assert.equal(card.querySelector('button').dataset.action,'dashboard-orders');
  assert.equal(root.querySelectorAll('button.primary').length,1);
  assert.equal(root.querySelector('.calm-notices').textContent.includes('Bestellentwürfe'),false,'the highlighted task is not repeated below');
- assert.deepEqual([...root.querySelectorAll('.workflow-start .tile-title')].map(x=>x.textContent),['Bestellrunde','Warenannahme','Abendabschluss','Speisen & Getränke']);
+ assert.deepEqual([...root.querySelectorAll('.workflow-start .tile-title')].map(x=>x.textContent),['Bestellungen','Warenannahme','Abendabschluss','Speisen & Getränke']);
  assert.equal(root.querySelector('button.workflow-start[data-action=ww-open]').dataset.id,'recipes','the whole tile is the button');
  assert.equal(root.querySelector('button.workflow-start[data-action=order-round] .count-pill').textContent,'2 Entwürfe','the badge says what it counts for screen readers');
 });

@@ -29,7 +29,7 @@ test('open delivery dates: the visible label is part of the spoken name of every
  const buttons=[...root.querySelectorAll('button[data-action=order-dates]')];
  assert.equal(buttons.length,2);
  for(const b of buttons)assert.ok(contains(b.getAttribute('aria-label'),b.textContent),b.getAttribute('aria-label'));
- assert.equal(buttons[0].getAttribute('aria-label'),'Datum offen · Termin 1 · Mittwoch – Datum prüfen · Datum festlegen');
+ assert.equal(buttons[0].getAttribute('aria-label'),'Datum fehlt · Termin 1 · Mittwoch – Datum prüfen · Datum festlegen');
  for(const radio of root.querySelectorAll('input[name=deliveryView]'))assert.ok(contains(radio.getAttribute('aria-label'),radio.nextElementSibling.textContent),radio.getAttribute('aria-label'));
 });
 

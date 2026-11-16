@@ -237,12 +237,14 @@ function deliveryCard(d: OverviewDelivery): string {
 }
 
 /** Ganze Seite. */
-export function orderOverview(state: Workspace, season: Season | undefined, area: Area): string {
-  if (!season) return '<h1>Gesamtbestellung</h1><p>Bitte zuerst eine Saison wählen.</p>';
+export function orderOverview(state: Workspace, season: Season | undefined, area: Area, embedded = false): string {
+  if (!season) return '<p>Bitte zuerst eine Saison wählen.</p>';
   const data = overviewData(state, season, area);
-  const heading = `<div class="page-heading"><div><h1>Gesamtbestellung</h1><p>${h(season.name)} · ${h(area)} · alle Lieferanten nach Liefertag</p></div><div class="actions">${button('overview-pdf', 'Lieferplan als PDF')}${button('order-round', 'Zur Bestellrunde')}</div></div>`;
+  const heading = embedded
+    ? ''
+    : `<div class="page-heading"><div><h1>Bestellungen nach Liefertag</h1><p>${h(season.name)} · ${h(area)}</p></div><div class="actions">${button('overview-pdf', 'Lieferplan als PDF')}</div></div>`;
   if (!data.deliveries.length)
-    return heading + empty('Noch keine Bestellungen in dieser Saison. In der Bestellrunde je Lieferant beginnen.');
+    return heading + empty('Noch keine Bestellungen in dieser Saison. Unter „Nach Lieferant“ beginnen.');
   const issues = data.issues.length
     ? `<section class="ov-issues" role="status"><h2>Bitte prüfen</h2><ul>${data.issues.map(i => `<li>${h(i)}</li>`).join('')}</ul></section>`
     : '<p class="ov-ok" role="status">Keine Überschneidungen. Alle Lieferungen haben Datum und Uhrzeit.</p>';

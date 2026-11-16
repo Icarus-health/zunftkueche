@@ -173,7 +173,11 @@ export function validateOrder(order: Order, state?: Catalog, forDispatch = false
   if (v.recordedBy !== null) text(v.recordedBy, 'Bestellende Person', false, 200);
   if (v.recordedAt !== null) timestamp(v.recordedAt);
   if (!Array.isArray(v.lines) || v.lines.length < 1 || v.lines.length > 200)
-    throw new Error('Bitte zwischen einer und 200 Bestellpositionen angeben.');
+    throw new Error(
+      Array.isArray(v.lines) && !v.lines.length
+        ? 'Noch keine Menge eingetragen. Bitte bei mindestens einem Artikel eine Menge eintragen.'
+        : 'Bitte zwischen einer und 200 Bestellpositionen angeben.'
+    );
   const ids = new Set<string>();
   for (const raw of v.lines) {
     const l = object(raw);
@@ -202,13 +206,23 @@ export function validateOrder(order: Order, state?: Catalog, forDispatch = false
       (!l.reviewed || l.quantity === null || l.quantity === 0)
     )
       throw new Error(
-        'Alle Mengen und Gebinde vor dem Bestellen prüfen; bestellte Mengen müssen größer als null sein.'
+        l.quantity === null
+          ? 'Bei „' +
+              String(l.articleName) +
+              '“ fehlt eine Menge. Bitte für jeden Liefertag eine Zahl eintragen, auch 0.'
+          : l.quantity === 0
+            ? '„' + String(l.articleName) + '“ hat die Menge 0. Bitte Menge eintragen oder den Artikel entfernen.'
+            : 'Das Häkchen „Mengen und Gebinde geprüft“ fehlt noch.'
       );
   }
   if ((v.status === 'Bestellt' || v.status === 'Abgeschlossen') && (!v.recordedBy || !v.recordedAt))
     throw new Error('Bestellende Person und Zeitpunkt fehlen.');
   if (forDispatch && (order.status === 'Storniert' || !order.deliveryDate))
-    throw new Error('Bitte eine aktive Bestellung mit bestätigtem Lieferdatum wählen.');
+    throw new Error(
+      order.status === 'Storniert'
+        ? 'Diese Bestellung ist storniert.'
+        : 'Der Liefertag fehlt. Bitte unter „Mengen bearbeiten“ bei „Liefertage“ ein Datum eintragen.'
+    );
   validateSchedule(order, forDispatch);
   validateStoredReceipts(order);
   validateDeliveryNotes(order);

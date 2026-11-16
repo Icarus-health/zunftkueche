@@ -3,6 +3,7 @@ import { validateOrder } from './domain.ts';
 import { withSchedule } from './supplier-orders.ts';
 import { button, h, n } from './markup.ts';
 import { dayLabel } from './ww/common.ts';
+import { quantityUnit, unitName } from './units.ts';
 
 interface SupplierMail {
   to: string;
@@ -26,13 +27,12 @@ export function supplierOrderText(source: Order, supplier: Supplier, forDispatch
       const quantity = line.schedule?.[delivery.id] ?? null;
       if (quantity === 0) return [];
       const item = line.articleName + (line.code ? ' (' + line.code + ')' : '');
+      /* Für den Lieferanten lesbar: „48 Flaschen Sekt“ statt „48 Gebinde à 1 Fl“. Der Gebindeinhalt nur, wenn er nicht 1 ist. */
+      const pack = quantityUnit(quantity ?? 2, line.packName);
       return [
         '– ' +
-          (quantity === null ? 'Menge offen' : n(quantity) + ' Gebinde à ' + n(line.packSize) + ' ' + line.unit) +
-          ' · ' +
-          item +
-          ' · ' +
-          line.packName
+          (quantity === null ? 'Menge offen · ' + item : n(quantity) + ' ' + pack + ' ' + item) +
+          (line.packSize !== 1 ? ' (je ' + n(line.packSize) + ' ' + unitName(line.unit, line.packSize) + ')' : '')
       ];
     });
     if (positions.length) {
@@ -93,7 +93,7 @@ export function orderMailView(order: Order, supplier: Supplier, shareFiles = fal
   return (
     '<section class="panel order-mail" data-order-mail><div class="calm-heading"><div>' +
     button('order-mail-back', 'Zurück') +
-    '<h1 tabindex="-1">Bestellung versenden</h1></div></div>' +
+    '<h1 tabindex="-1">PDF und E-Mail-Text</h1></div></div>' +
     '<p class="calm-subtitle">' +
     h(order.supplierName) +
     '</p>' +
@@ -115,6 +115,12 @@ export function orderMailView(order: Order, supplier: Supplier, shareFiles = fal
       : '') +
     '</div><div class="calm-actions">' +
     button('order-share', primary, '', true) +
-    '</div></section>'
+    '</div>' +
+    (order.status === 'Entwurf'
+      ? '<div class="mail-next"><p>Bestellung beim Lieferanten abgegeben?</p>' +
+        button('order-mark', 'Als bestellt markieren', order.id) +
+        '</div>'
+      : '') +
+    '</section>'
   );
 }

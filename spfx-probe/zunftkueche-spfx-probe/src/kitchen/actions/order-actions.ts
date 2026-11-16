@@ -4,7 +4,7 @@ import { readSheetOrder } from '../order-sheet.ts';
 import { scheduledOrder, withSchedule } from '../supplier-orders.ts';
 import { supplierPdf } from '../supplier-pdf.ts';
 import { supplierMail, supplierOrderText } from '../order-mail.ts';
-import { deliveryMatrix, deliverySummary, supplierTools, orderGuidance, priceReview } from '../supplier-forms.ts';
+import { deliveryMatrix, deliverySummary, orderGuidance, priceReview } from '../supplier-forms.ts';
 import { documents } from '../ww/model.ts';
 import { effectiveOffer } from '../ww/domain.ts';
 import { priceSuggestion } from '../order-guidance.ts';
@@ -12,32 +12,64 @@ import type { Order, Stored, Supplier } from '../model';
 import { catalog } from '../model.ts';
 import { saveFile } from '../save-file.ts';
 import { validateOrder, orderTotal } from '../domain.ts';
-import { h, n, money, select, button, empty } from '../markup.ts';
+import { h, n, money, select, button, empty, ordersTabs, moreMenu, backLink } from '../markup.ts';
+import { orderOverview } from '../order-overview.ts';
+import { articleAvailable } from '../model.ts';
 import { deliveryState, receivedQuantity, latestCounts } from '../operations.ts';
 import { searchField, badge, stamp, displayDate } from '../workspace.ts';
 import { deliverySlipsView } from '../operation-forms.ts';
 import { sha256 } from '../imports/identity.ts';
 import type { KitchenView } from '../view';
+import { dayLabel } from '../ww/common.ts';
 import { uuid } from '../view-support.ts';
 
+const orderedQuestion =
+  '<p>Ist die Bestellung beim Lieferanten aufgegeben? Danach sind die Mengen fest. Änderungen gehen dann über eine Nachbestellung.</p>';
 export function orders(app: KitchenView): string {
+  const season = app.season();
   const rows = app.state!.orders.filter(o => o.value.seasonId === app.seasonId && o.value.area === app.area);
+  const days = app.overviewPicker;
+  const heading = `<div class="page-heading"><div><h1>Bestellungen</h1><p>${h(season?.name || 'Bitte Saison wählen')} · ${h(app.area)}</p></div><div class="actions">${moreMenu([app.writable() ? button('copy-list', 'Aus Vorjahr übernehmen') : '', app.writable() && app.state!.ww?.ready ? button('ww-open', 'Vorlage laden', 'templates') : '', button('overview-pdf', 'Lieferplan als PDF')])}${app.writable() ? button('order-new', 'Neue Bestellung', '', true) : ''}</div></div>${ordersTabs(days ? 'days' : 'list')}`;
+  if (days) return heading + orderOverview(app.state!, season, app.area, true);
+  /* Lieferanten mit Artikeln, für die es in dieser Saison noch keine Bestellung gibt. */
+  const started = new Set(
+    rows
+      .filter(o => o.value.status !== 'Storniert' && !/^historisch(?:e|er|es)?\b/i.test(o.value.occasion.trim()))
+      .map(o => o.value.supplierId)
+  );
+  const open =
+    season && app.writable()
+      ? app
+          .state!.suppliers.filter(x => x.value.active && !started.has(x.value.id))
+          .map(x => ({
+            supplier: x.value,
+            count: app.state!.offers.filter(
+              o =>
+                o.value.active &&
+                o.value.supplierId === x.value.id &&
+                app.state!.articles.some(a => a.value.id === o.value.articleId && articleAvailable(a.value, season.id))
+            ).length
+          }))
+          .filter(x => x.count > 0)
+          .sort((a, b) => a.supplier.name.localeCompare(b.supplier.name, 'de'))
+      : [];
+  const pending = open.length
+    ? `<section class="order-pending" aria-labelledby="order-pending-title"><h2 id="order-pending-title">Noch ohne Bestellung</h2>${open.map(x => `<div class="listrow"><div><strong>${h(x.supplier.name)}</strong><small>${x.count} Artikel</small></div>${button('order-new', 'Bestellung beginnen', x.supplier.id)}</div>`).join('')}</section>`
+    : '';
   return (
-    `<div class="page-heading"><div><h1>Bestellungen</h1><p>${h(app.season()?.name || 'Bitte Saison wählen')} · ${h(app.area)}</p></div><div class="actions">${button('order-overview', 'Gesamtbestellung')}${button('ww-open', 'Dateieingang', 'inbox')}${app.writable() ? button('copy-list', 'Aus Vorjahr übernehmen') + button('order-new', 'Neue Bestellung', '', true) : ''}</div></div><div class="toolbar order-list-tools">${searchField(app.query, 'Bestellungen suchen')}${select(
+    heading +
+    `<div class="toolbar order-list-tools">${searchField(app.query, 'Bestellungen suchen')}${select(
       'orderStatus',
       'Status',
       [
-        ['', 'Alle Vorgänge'],
-        ['current-drafts', 'Aktuelle Entwürfe'],
-        ['open-deliveries', 'Offene Lieferungen'],
-        ['Entwurf', 'Alle Entwürfe'],
-        ['Bestellt', 'Bestellt'],
-        ['Abgeschlossen', 'Abgeschlossen'],
-        ['Storniert', 'Storniert']
+        ['', 'Alle'],
+        ['open', 'Offen'],
+        ['ordered', 'Bestellt'],
+        ['done', 'Erledigt']
       ],
       app.statusFilter
-    )}</div><section class="order-table"><div class="order-table-head"><span>Lieferant / Vorgang</span><span>Liefertermin</span><span>Status</span><span>Warenwert netto</span></div>${rows.map(({ value: o }) => `<div class="order-table-row" data-search="${h(o.supplierName + ' ' + o.occasion + ' ' + o.lines.map(l => l.articleName).join(' '))}" data-order-status="${h(o.status)}" data-order-current="${!/^historisch(?:e|er|es)?\b/i.test(o.occasion.trim())}" data-order-open="${o.status === 'Bestellt' && deliveryState(o) !== 'Vollständig geliefert'}"><div><button type="button" class="order-supplier" data-action="order-open" data-id="${h(o.id)}" aria-label="Bestellung von ${h(o.supplierName)} öffnen">${h(o.supplierName)}</button><small>${h(o.occasion || 'Ohne Anlass')} · ${o.lines.length} ${o.lines.length === 1 ? 'Position' : 'Positionen'}</small></div><span>${o.deliveries ? o.deliveries.length + (o.deliveries.length === 1 ? ' Liefertag · ' : ' Liefertage · ') + h(o.deliveryDate ? displayDate(o.deliveryDate) : 'Daten offen') : h(o.deliveryDate ? displayDate(o.deliveryDate) : 'Noch offen')}</span><span>${badge(o.receipts?.length ? deliveryState(o) : o.status, o.status === 'Entwurf' ? 'warning' : deliveryState(o) === 'Vollständig geliefert' ? 'success' : 'neutral')}</span><strong>${orderTotal(o) === null ? 'Preise offen' : money(orderTotal(o))}</strong></div>`).join('') || empty('Noch keine Bestellungen. Einen Entwurf anlegen oder aus einem Vorjahr übernehmen.')}</section><p data-filter-empty hidden>Keine passenden Bestellungen.</p>` +
-    supplierTools(app.state!)
+    )}</div><section class="order-table"><div class="order-table-head"><span>Lieferant</span><span>Liefertag</span><span>Status</span><span>Warenwert netto</span></div>${rows.map(({ value: o }) => `<div class="order-table-row" data-search="${h(o.supplierName + ' ' + o.occasion + ' ' + o.lines.map(l => l.articleName).join(' '))}" data-order-status="${h(o.status)}" data-order-current="${!/^historisch(?:e|er|es)?\b/i.test(o.occasion.trim())}" data-order-open="${o.status === 'Bestellt' && deliveryState(o) !== 'Vollständig geliefert'}"><div><button type="button" class="order-supplier" data-action="order-open" data-id="${h(o.id)}" aria-label="Bestellung von ${h(o.supplierName)} öffnen">${h(o.supplierName)}</button><small>${h(o.occasion || 'Ohne Anlass')} · ${o.lines.length} ${o.lines.length === 1 ? 'Position' : 'Positionen'}</small></div><span>${o.deliveries ? o.deliveries.length + (o.deliveries.length === 1 ? ' Liefertag · ' : ' Liefertage · ') + h(o.deliveryDate ? displayDate(o.deliveryDate) : 'Daten offen') : h(o.deliveryDate ? displayDate(o.deliveryDate) : 'Noch offen')}</span><span>${badge(o.receipts?.length ? deliveryState(o) : o.status, o.status === 'Entwurf' ? 'warning' : deliveryState(o) === 'Vollständig geliefert' ? 'success' : 'neutral')}</span><strong>${orderTotal(o) === null ? 'Preise offen' : money(orderTotal(o))}</strong></div>`).join('') || empty('Noch keine Bestellungen. Einen Entwurf anlegen oder aus einem Vorjahr übernehmen.')}</section><p data-filter-empty hidden>Keine passenden Bestellungen.</p>` +
+    pending
   );
 }
 
@@ -55,7 +87,7 @@ export function orderDetail(app: KitchenView, row?: Stored<Order>): string {
     o.seasonId === app.seasonId &&
     o.area === app.area &&
     ['Bestellt', 'Abgeschlossen'].includes(o.status);
-  return `<section class="panel"><div class="row"><div><h1>${h(o.supplierName)}</h1><p>${h(o.occasion || 'Bestellung')}</p></div>${button('cancel', 'Zurück')}</div><div class="detail-meta">${badge(o.status, o.status === 'Entwurf' ? 'warning' : 'neutral')}${badge(deliveryState(o), deliveryState(o) === 'Vollständig geliefert' ? 'success' : 'neutral')}<span>${h(o.method)} · Liefertermin ${h(o.deliveryDate || 'noch offen')}</span></div>${o.recordedAt ? `<p class="muted">Bestellung dokumentiert am ${h(stamp(o.recordedAt))} · ${h(o.recordedBy)}</p>` : ''}${o.sourceYear ? `<p class="muted">Übernommen aus Saison ${o.sourceYear}. Die Ausgangsbestellung bleibt erhalten.</p>` : ''}${o.deliveries ? deliverySummary(o) + deliveryMatrix(o, false) : ''}<div class="detail-lines" ${o.deliveries ? 'hidden' : ''}>${o.lines.map(l => `<div class="detail-line"><div><strong>${h(l.articleName)}</strong><small>${h(l.code)} · 1 ${h(l.packName)} = ${n(l.packSize)} ${h(l.unit)}</small>${received ? `<small>Geliefert ${n(receivedQuantity(o, l.id))} ${h(l.packName)} · offen ${n(Math.max(0, (l.quantity || 0) - receivedQuantity(o, l.id)))} ${h(l.packName)}</small>` : ''}</div><strong>${l.quantity === null ? 'Menge offen' : n(l.quantity) + ' ' + h(l.packName)}</strong><span>${l.quantity === null ? '' : n(l.quantity * l.packSize) + ' ' + h(l.unit)}</span><span>${money(l.priceNet)} netto / ${h(l.packName)}</span></div>`).join('')}</div><p class="total">${total === null ? 'Gesamtsumme offen · Preise oder Mengen fehlen' : 'Warenwert netto: ' + money(total) + ' · ohne Pfand'}</p>${o.note ? `<p>${h(o.note)}</p>` : ''}<div class="actions">${app.writable() && o.status === 'Bestellt' && !o.deliveries && deliveryState(o) !== 'Vollständig geliefert' ? button('receipt-new', 'Lieferung prüfen', o.id, true) : ''}${button('order-pdf', 'PDF herunterladen', o.id)}${app.writable() && o.status === 'Entwurf' ? button('order-mail', 'Bestellung versenden', o.id) : ''}${button('order-bill', 'Rechnung zuordnen', o.id)}${app.writable() && o.status === 'Entwurf' ? button('order-edit', 'Entwurf bearbeiten', o.id, true) : ''}${o.deliveries ? o.deliveries.map(d => '<div class="delivery-summary"><strong>' + h(d.date || 'Datum offen') + '</strong><span>' + h(d.place) + ' · ' + h(d.time) + '</span>' + (app.writable() && o.status === 'Bestellt' ? button('receipt-new', 'Lieferung prüfen', o.id + '|' + d.id) : '') + '</div>').join('') : button('order-text', 'Bestelltext anzeigen', o.id)}${app.writable() && o.status === 'Bestellt' ? button('order-follow', 'Nachbestellung anlegen', o.id) + button('order-close', 'Vorgang abschließen', o.id) : ''}</div><div data-order-text class="ordertext" hidden></div>${o.deliveryNotes?.length ? `<details class="receipt-history" open><summary>Ausgefallene Lieferungen (${o.deliveryNotes.length})</summary>${o.deliveryNotes.map(x => `<div><strong>Keine Lieferung · ${h(stamp(x.recordedAt))}</strong><p>${h(x.recordedBy)} · ${h(o.deliveries?.find(d => d.id === x.deliveryId)?.date || 'Termin offen')}</p><p>${h(x.note)}</p></div>`).join('')}</details>` : ''}${
+  return `<section class="panel">${backLink('cancel', 'Bestellungen')}<div class="row"><div><h1>${h(o.supplierName)}</h1><p>${h(o.occasion || 'Bestellung')}</p></div></div><div class="detail-meta">${badge(o.status, o.status === 'Entwurf' ? 'warning' : 'neutral')}${badge(deliveryState(o), deliveryState(o) === 'Vollständig geliefert' ? 'success' : 'neutral')}<span>${h(o.method)} · ${h(o.deliveryDate ? 'erste Lieferung ' + displayDate(o.deliveryDate) : 'Liefertag noch offen')}</span></div>${o.recordedAt ? `<p class="muted">Bestellung dokumentiert am ${h(stamp(o.recordedAt))} · ${h(o.recordedBy)}</p>` : ''}${o.sourceYear ? `<p class="muted">Übernommen aus Saison ${o.sourceYear}. Die Ausgangsbestellung bleibt erhalten.</p>` : ''}${o.deliveries ? deliverySummary(o) + deliveryMatrix(o, false) : ''}<div class="detail-lines" ${o.deliveries ? 'hidden' : ''}>${o.lines.map(l => `<div class="detail-line"><div><strong>${h(l.articleName)}</strong><small>${h(l.code)} · 1 ${h(l.packName)} = ${n(l.packSize)} ${h(l.unit)}</small>${received ? `<small>Geliefert ${n(receivedQuantity(o, l.id))} ${h(l.packName)} · offen ${n(Math.max(0, (l.quantity || 0) - receivedQuantity(o, l.id)))} ${h(l.packName)}</small>` : ''}</div><strong>${l.quantity === null ? 'Menge offen' : n(l.quantity) + ' ' + h(l.packName)}</strong><span>${l.quantity === null ? '' : n(l.quantity * l.packSize) + ' ' + h(l.unit)}</span><span>${money(l.priceNet)} netto / ${h(l.packName)}</span></div>`).join('')}</div><p class="total">${total === null ? 'Gesamtsumme offen · Preise oder Mengen fehlen' : 'Warenwert netto: ' + money(total) + ' · ohne Pfand'}</p>${o.note ? `<p>${h(o.note)}</p>` : ''}<div class="actions">${app.writable() && o.status === 'Bestellt' && !o.deliveries && deliveryState(o) !== 'Vollständig geliefert' ? button('receipt-new', 'Lieferung prüfen', o.id, true) : ''}${app.writable() && o.status === 'Entwurf' ? button('order-edit', 'Entwurf bearbeiten', o.id) + button('order-mail', 'PDF und E-Mail-Text', o.id) + button('order-mark', 'Als bestellt markieren', o.id, true) : button('order-pdf', 'PDF herunterladen', o.id) + (o.status === 'Entwurf' ? '' : button('order-bill', 'Rechnung zuordnen', o.id))}${o.deliveries ? o.deliveries.map(d => '<div class="delivery-summary"><strong>' + h(d.date ? dayLabel(d.date) : 'Datum offen') + '</strong><span>' + h([d.time, d.place].filter(Boolean).join(' · ')) + '</span>' + (app.writable() && o.status === 'Bestellt' ? button('receipt-new', 'Lieferung prüfen', o.id + '|' + d.id) : '') + '</div>').join('') : button('order-text', 'Bestelltext anzeigen', o.id)}${app.writable() && o.status === 'Bestellt' ? button('order-follow', 'Nachbestellung anlegen', o.id) + button('order-close', 'Vorgang abschließen', o.id) : ''}</div><div data-order-text class="ordertext" hidden></div>${o.deliveryNotes?.length ? `<details class="receipt-history" open><summary>Ausgefallene Lieferungen (${o.deliveryNotes.length})</summary>${o.deliveryNotes.map(x => `<div><strong>Keine Lieferung · ${h(stamp(x.recordedAt))}</strong><p>${h(x.recordedBy)} · ${h(displayDate(o.deliveries?.find(d => d.id === x.deliveryId)?.date || '') || 'Termin offen')}</p><p>${h(x.note)}</p></div>`).join('')}</details>` : ''}${
     received
       ? `<details class="receipt-history"><summary>Lieferhistorie (${o.receipts!.length})</summary>${o
           .receipts!.map(
@@ -142,11 +174,42 @@ export async function orderAction(
     return true;
   }
   if (action === 'order-dates') {
-    const options = app.root.querySelector<HTMLDetailsElement>('.sheet-options');
-    if (options) {
-      options.open = true;
-      options.querySelector<HTMLInputElement>('[name="date_' + id + '"]')?.focus();
+    const block = app.root.querySelector<HTMLDetailsElement>('.sheet-days');
+    if (block) {
+      block.open = true;
+      const input = block.querySelector<HTMLInputElement>('[name="date_' + id + '"]');
+      input?.scrollIntoView?.({ block: 'center' });
+      input?.focus();
     }
+    return true;
+  }
+  if (action === 'sheet-options-close') {
+    const options = app.root.querySelector<HTMLDetailsElement>('.sheet-options');
+    if (options) options.open = false;
+    return true;
+  }
+  if (action === 'delivery-day') {
+    if (!app.draft) return true;
+    const [deliveryId, date] = id.split('|');
+    const input = app.root.querySelector<HTMLInputElement>('[name="date_' + deliveryId + '"]');
+    if (!input) return true;
+    input.value = date;
+    app.draft = readOrder(app, app.root.querySelector<HTMLFormElement>('form[data-form=order]')!);
+    app.dirty = true;
+    app.render();
+    app.rememberDraft();
+    return true;
+  }
+  if (action === 'orders-tab') {
+    if (id === 'bills') {
+      await app.action('ww-open', 'inbox');
+      return true;
+    }
+    if (!app.canLeave()) return true;
+    app.clearEditor();
+    app.view = 'orders';
+    app.overviewPicker = id === 'days';
+    app.render();
     return true;
   }
   if (action === 'order-review' || action === 'order-edit-sheet') {
@@ -193,7 +256,8 @@ export async function orderAction(
     if (!app.canLeave()) return true;
     app.clearEditor();
     app.view = 'orders';
-    app.roundPicker = true;
+    app.query = '';
+    app.statusFilter = '';
     app.render();
     return true;
   }
@@ -410,12 +474,66 @@ export async function orderAction(
     const order = withSchedule(source);
     validateOrder(order, catalog(app.state), true);
     if (form) {
-      app.draft = order;
-      app.rememberDraft();
+      /* Erst speichern, dann die Versandseite zeigen. Sonst wäre die Seite eine Sackgasse mit ungespeicherten Eingaben. */
+      validateOrder(order, catalog(app.state));
+      const previous = app.previous;
+      await app.run(
+        () => app.store.saveOrder(order, previous, app.operationId),
+        'Entwurf gespeichert.',
+        () => {
+          app.selectedOrder = order.id;
+          app.mailOrder = app.state?.orders.find(row => row.value.id === order.id)?.value || order;
+        }
+      );
+      app.root.querySelector<HTMLElement>('[data-order-mail] h1')?.focus();
+      return true;
     }
+    app.selectedOrder = order.id;
     app.mailOrder = order;
     app.render();
     app.root.querySelector<HTMLElement>('[data-order-mail] h1')?.focus();
+    return true;
+  }
+  if (action === 'order-mark' || action === 'order-mark-confirm') {
+    const old = app.state.orders.find(row => row.value.id === id);
+    if (
+      !old ||
+      old.value.status !== 'Entwurf' ||
+      !app.writable() ||
+      old.value.seasonId !== app.seasonId ||
+      old.value.area !== app.area
+    )
+      throw new Error('Bitte einen Bestellentwurf der aktiven Saison wählen.');
+    const order = withSchedule({
+      ...old.value,
+      status: 'Bestellt',
+      recordedBy: app.user,
+      recordedAt: new Date().toISOString()
+    });
+    validateOrder(order, catalog(app.state));
+    if (action === 'order-mark') {
+      app.root.querySelector('[data-order-confirm]')?.remove();
+      const box = document.createElement('section');
+      box.className = 'warning';
+      box.setAttribute('data-order-confirm', '');
+      box.setAttribute('aria-label', 'Als bestellt markieren');
+      box.innerHTML =
+        orderedQuestion +
+        '<div class="actions">' +
+        button('order-mark-confirm', 'Ja, ist bestellt', id, true) +
+        button('order-record-back', 'Noch nicht') +
+        '</div>';
+      (app.root.querySelector('[data-order-mail], main section.panel') || app.root.querySelector('main')!).append(box);
+      box.scrollIntoView?.({ block: 'nearest' });
+      return true;
+    }
+    await app.run(
+      () => app.store.saveOrder(order, old, app.operationId),
+      'Als bestellt gespeichert. Die Lieferung erscheint jetzt in der Warenannahme.',
+      () => {
+        app.selectedOrder = order.id;
+      }
+    );
     return true;
   }
   if (action === 'order-mail-back') {
@@ -423,7 +541,7 @@ export async function orderAction(
     app.info = '';
     app.error = '';
     app.render();
-    app.root.querySelector<HTMLElement>('[data-action=order-preview-mail], [data-action=order-mail]')?.focus();
+    app.root.querySelector<HTMLElement>('[data-action=order-mail]')?.focus();
     return true;
   }
   if (action === 'order-dispatch-pdf' && app.mailOrder) {
@@ -667,9 +785,10 @@ export async function saveOrder(
     confirmation.setAttribute('data-order-confirm', '');
     confirmation.setAttribute('aria-label', 'Bestellung dokumentieren');
     confirmation.innerHTML =
-      '<p>Ist diese Bestellung bereits tatsächlich beim Lieferanten aufgegeben? Bestellweg, Mengen und Gebinde werden so festgehalten.</p><div class="actions">' +
-      button('order-record-confirm', 'Ja, Bestellung ist aufgegeben', '', true) +
-      button('order-record-back', 'Zurück zum Entwurf') +
+      orderedQuestion +
+      '<div class="actions">' +
+      button('order-record-confirm', 'Ja, ist bestellt', '', true) +
+      button('order-record-back', 'Noch nicht') +
       '</div>';
     form.append(confirmation);
     confirmation.scrollIntoView({ block: 'nearest' });
@@ -678,7 +797,7 @@ export async function saveOrder(
   const previous = app.previous;
   await app.run(
     () => app.store.saveOrder(order, previous, app.operationId),
-    'Gespeichert und durch erneutes Lesen bestätigt.',
+    record ? 'Als bestellt gespeichert. Die Lieferung erscheint jetzt in der Warenannahme.' : 'Entwurf gespeichert.',
     () => {
       app.selectedOrder = order.id;
     }
