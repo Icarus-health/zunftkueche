@@ -5,6 +5,7 @@ import { saveFile } from '../save-file.ts';
 import { countSheetPdf } from '../count-sheet-pdf.ts';
 import type { KitchenView } from '../view';
 import { countStep, countNext } from './count-actions.ts';
+import { dayRow } from '../forms.ts';
 
 /** Bedienelemente ohne Speichern: Menü, Plus und Minus, Ausdrucke, unterbrochene Entwürfe. Gibt true zurück, wenn die Aktion hier behandelt wurde. */
 export async function uiAction(app: KitchenView, action: string, id: string, target?: HTMLElement): Promise<boolean> {
@@ -16,6 +17,19 @@ export async function uiAction(app: KitchenView, action: string, id: string, tar
       target?.setAttribute('aria-expanded', String(open));
       if (open && app.viaKeyboard) bar.querySelector<HTMLElement>('nav button[data-tab="more"]')?.focus();
       app.syncHistory();
+    }
+    return true;
+  }
+  if (action === 'day-add' || action === 'day-remove') {
+    const list = target?.closest('.day-list')?.querySelector<HTMLElement>('.day-rows');
+    if (!list) return true;
+    if (action === 'day-add') {
+      list.insertAdjacentHTML('beforeend', dayRow());
+      list.querySelector<HTMLInputElement>('.day-row:last-child input')?.focus();
+    } else {
+      target?.closest('.day-row')?.remove();
+      if (!list.children.length) list.insertAdjacentHTML('beforeend', dayRow());
+      app.dirty = true;
     }
     return true;
   }

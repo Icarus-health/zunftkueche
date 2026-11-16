@@ -5388,10 +5388,14 @@
   /* Zahnrad: Einstellungen stehen unten in der Seitenleiste, abgesetzt von den Arbeitsbereichen. */
   @media (min-width: 761px) {
     :global(.sidebar) nav button:global(.nav-settings) {
-      margin-top: 14px;
-      padding-top: 14px;
+      position: relative;
+      margin-top: 29px;
+    }
+    :global(.sidebar) nav button:global(.nav-settings)::before {
+      content: '';
+      position: absolute;
+      inset: -15px 0 auto 0;
       border-top: 1px solid var(--line);
-      border-radius: 0;
     }
     :global(.sidebar) nav button:global(.nav-settings) :global(.nav-go) {
       display: none;
@@ -5472,5 +5476,123 @@
   /* Die feste Speichern-Leiste darf das letzte Auswahlfeld nicht verdecken. */
   :global(.menu-editor) {
     padding-bottom: 96px;
+  }
+}
+/* 1.23.0 Paket E: Stammdaten */
+.kitchen {
+  :global(.link-button) {
+    min-height: 44px;
+    padding: 0 6px;
+    border: 0;
+    background: none;
+    color: var(--action);
+    font-size: 14px;
+    cursor: pointer;
+  }
+  :global(.link-button):hover {
+    text-decoration: underline;
+  }
+  :global(.table-scroll) {
+    overflow-x: auto;
+    margin: 0 0 12px;
+  }
+  :global(.price-table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+    text-align: left;
+  }
+  :global(.price-table) th,
+  :global(.price-table) td {
+    padding: 8px 12px 8px 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+  }
+  :global(.price-table) thead th {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+  :global(.price-table) thead th,
+  :global(.price-table) tbody th {
+    background: none;
+  }
+  :global(.price-table) tbody th {
+    font-weight: 600;
+  }
+  :global(.profile-content) h2 {
+    margin: 26px 0 10px;
+  }
+  :global(.profile-content) > :global(.actions) {
+    margin: 4px 0 0;
+  }
+  :global(.price-table) :global(.num) {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  :global(.price-table) td:last-child {
+    text-align: right;
+    padding-right: 0;
+  }
+  :global(.price-table) input {
+    width: 100%;
+    max-width: 140px;
+    min-height: 44px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  :global(.day-list),
+  :global(.form-block) {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  :global(.day-list) legend,
+  :global(.form-block) legend {
+    padding: 0 6px;
+    font-weight: 600;
+  }
+  :global(.day-list) p,
+  :global(.form-block) > p {
+    margin: 0 0 10px;
+    color: var(--dim);
+    font-size: 14px;
+  }
+  :global(.form-block) {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0 16px;
+    align-items: end;
+  }
+  :global(.form-block) > p {
+    grid-column: 1 / -1;
+  }
+  :global(.day-rows) {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  :global(.day-row) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  :global(.day-row) input {
+    flex: 0 1 220px;
+    min-height: 44px;
+  }
+  :global(.form-more) {
+    grid-column: 1 / -1;
+  }
+  :global(.form-more) > summary {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    color: var(--action);
+    cursor: pointer;
   }
 }

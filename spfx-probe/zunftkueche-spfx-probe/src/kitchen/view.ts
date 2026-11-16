@@ -30,7 +30,8 @@ import type {
   Workspace
 } from './model';
 import { isArea } from './model.ts';
-import { parseDecimal } from './domain.ts';
+import { parseDecimal, validateEntity } from './domain.ts';
+import { today as berlinToday } from './ww/common.ts';
 import { SharePointStore } from './sharepoint.ts';
 import type { ImportKind } from './csv';
 import { masterForm, orderForm, copyForm } from './forms.ts';
@@ -1272,7 +1273,14 @@ export class KitchenView {
         name: get('name'),
         year: Number(get('year')),
         archived: data.has('archived'),
-        operatingDays: list('operatingDays').sort(),
+        operatingDays: [
+          ...new Set(
+            data
+              .getAll('operatingDays')
+              .map(x => String(x).trim())
+              .filter(Boolean)
+          )
+        ].sort(),
         deliveryPlaces: list('deliveryPlaces'),
         storagePlaces: list('storagePlaces'),
         units: list('units'),
@@ -1307,15 +1315,42 @@ export class KitchenView {
         unavailableSeasons: this.state!.seasons.filter(s => data.has('unavailable_' + s.value.id)).map(s => s.value.id)
       };
       uniqueName(this, 'articles', value);
+      const supplierId = editing.id ? '' : get('supplierId');
+      let offer: Offer | undefined;
+      if (supplierId) {
+        if (!this.state!.suppliers.some(s => s.value.id === supplierId && s.value.active))
+          throw new Error('Bitte einen aktiven Lieferanten wählen.');
+        const price = parseDecimal(get('priceNet'));
+        offer = {
+          id: uuid(),
+          articleId: value.id,
+          supplierId,
+          code: get('code'),
+          packName: get('packName') || value.unit,
+          packSize: parseDecimal(get('packSize')) ?? 1,
+          priceNet: price,
+          priceDate: price === null ? null : berlinToday(),
+          deposit: null,
+          note: '',
+          active: true
+        };
+        validateEntity('articles', value);
+        validateEntity('offers', offer);
+      } else if (!editing.id && (get('priceNet') || get('packName')))
+        throw new Error('Für Gebinde und Preis bitte auch den Lieferanten wählen.');
+      const operationId = this.operationId,
+        created = offer;
       await this.run(
-        () =>
-          this.store.saveMaster(
+        async () => {
+          await this.store.saveMaster(
             'articles',
             value,
             this.state!.articles.find(a => a.value.id === editing.id),
-            this.operationId
-          ),
-        'Artikel gespeichert und nachgelesen.'
+            created ? operationId + '-article' : operationId
+          );
+          if (created) await this.store.saveMaster('offers', created, undefined, operationId + '-offer');
+        },
+        created ? 'Artikel mit Gebinde und Preis angelegt.' : 'Artikel gespeichert und nachgelesen.'
       );
       return;
     }
@@ -1332,10 +1367,7 @@ export class KitchenView {
         method: get('method') as Method,
         customerNumber: get('customerNumber'),
         note: get('note'),
-        active: data.has('active'),
-        reviewStatus: (get('reviewStatus') || undefined) as Supplier['reviewStatus'],
-        reviewDate: get('reviewDate') || undefined,
-        reviewReason: get('reviewReason')
+        active: data.has('active')
       };
       uniqueName(this, 'suppliers', value);
       await this.run(
@@ -1353,15 +1385,17 @@ export class KitchenView {
     }
     if (editing.kind === 'offers') {
       const old = editing.value as Offer;
+      const newPrice = parseDecimal(get('priceNet')),
+        priceChanged = newPrice !== old.priceNet;
       const value: Offer = {
         ...old,
         supplierId: get('supplierId'),
         code: get('code'),
         packName: get('packName'),
         packSize: parseDecimal(get('packSize')) ?? 0,
-        priceNet: parseDecimal(get('priceNet')),
-        priceDate: get('priceDate') || null,
-        priceStatus: get('priceStatus') as Offer['priceStatus'],
+        priceNet: newPrice,
+        priceDate: priceChanged ? (newPrice === null ? null : berlinToday()) : old.priceDate,
+        ...(priceChanged && newPrice !== null ? { priceStatus: 'geprueft' as const } : {}),
         deposit: parseDecimal(get('deposit')),
         note: get('note'),
         active: data.has('active')

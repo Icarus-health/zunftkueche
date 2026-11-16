@@ -8,6 +8,7 @@ import { berlinDay, planDemand, stockProjection, round, stableId, templateOrders
 import { receivedQuantity } from '../operations.ts';
 import { button, select, field, h, n } from '../markup.ts';
 import { heading, confirmationActions, dayLabel, today } from './common.ts';
+import { deliverySlots, isDaySlot } from './delivery-days.ts';
 export interface ProcurementRow {
   articleId: string;
   name: string;
@@ -357,15 +358,24 @@ export function preferredOffer<T extends { id: string }>(
     .find(line => line.articleId === articleId && candidates.some(offer => offer.id === line.offerId));
   return used ? candidates.find(offer => offer.id === used.offerId) : undefined;
 }
+/**
+ * Liefertage für einen Einsatz: gepflegte Liefertermine und zusätzlich die Einsatztage der Saison bis zum Einsatz.
+ * So geht „Einkauf vorbereiten“ auch, wenn niemand eigene Liefertermine angelegt hat.
+ */
+export function deliveryOptions(plan: Plan, s: Workspace, earliest = ''): Slot[] {
+  return deliverySlots(s, plan.scope, [plan.date]).filter(slot => slot.date >= earliest && slot.date <= plan.date);
+}
+export function deliveryOption(plan: Plan, s: Workspace, id: string): Slot | undefined {
+  return deliveryOptions(plan, s).find(slot => slot.id === id);
+}
 export function planProcurementForm(plan: Plan, s: Workspace, mode: ProcurementMode = 'planning'): string {
   const suggestions = procurementSuggestions(plan, s);
   const rows = procurementRows(plan, s);
   const earliest = mode === 'planning' ? '' : today();
-  const slots = documents(s.ww, 'slot')
-    .filter(slot => slot.scope === plan.scope && slot.date >= earliest && slot.date <= plan.date)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  const slots = deliveryOptions(plan, s, earliest);
   const matchingDay = slots.filter(slot => slot.date === plan.date);
-  const selectedSlot = slots.length === 1 ? slots[0].id : matchingDay.length === 1 ? matchingDay[0].id : '';
+  const selectedSlot =
+    slots.length === 1 ? slots[0].id : matchingDay.length === 1 ? matchingDay[0].id : slots[slots.length - 1]?.id || '';
   const saved = areaAllocations(plan, s).filter(entry => entry.planId === plan.id);
   const relatedDrafts = ordersForPlan(plan, s).filter(order => order.status === 'Entwurf');
   const offers = s.offers
@@ -490,18 +500,18 @@ export function planProcurementForm(plan: Plan, s: Workspace, mode: ProcurementM
     heading(title, plan.name + ' · ' + dayLabel(plan.date)) +
     select(
       'slot',
-      'Liefertermin',
+      'Liefertag',
       [
-        ['', 'Termin wählen'],
-        ...slots.map(slot => [slot.id, dayLabel(slot.date) + ' · ' + slot.name] as [string, string])
+        ['', 'Tag wählen'],
+        ...slots.map(
+          slot =>
+            [slot.id, dayLabel(slot.date) + (isDaySlot(slot) ? '' : ' · ' + slot.name)] as [string, string]
+        )
       ],
       selectedSlot,
       'required'
     ) +
-    (slots.length
-      ? ''
-      : '<p>Für diesen Einsatz fehlt ein passender Liefertermin.</p>' +
-        button('ww-open', 'Liefertermine öffnen', 'slots')) +
+    (slots.length ? '' : '<p class="ww-note">Der Einsatztag liegt in der Vergangenheit. Bitte das Datum im Plan prüfen.</p>') +
     (mode === 'planning'
       ? '<div class="actions">' + button('ww-procure-suggest', 'Bestand und offene Lieferungen anrechnen') + '</div>'
       : '') +

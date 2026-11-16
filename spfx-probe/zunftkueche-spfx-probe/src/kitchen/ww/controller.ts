@@ -32,7 +32,7 @@ import { today } from './common.ts';
 import { button, h, empty } from '../markup.ts';
 import { parseDecimal } from '../domain.ts';
 import { documents, purposeLabels } from './model.ts';
-import { templateOrders, validateDocument, offerIdentity } from './domain.ts';
+import { templateOrders, validateDocument, offerIdentity, effectiveOffer } from './domain.ts';
 import { procurementForm, procurementLine, procurementOverview, templateUse } from './procurement-view.ts';
 import {
   operationForm,
@@ -47,8 +47,10 @@ import {
   planProcurementForm,
   mergePlanOrders,
   procurementReservation,
-  planAlreadyOrdered
+  planAlreadyOrdered,
+  deliveryOption
 } from './plan-procurement.ts';
+import { deliverySlots } from './delivery-days.ts';
 import type { ProcurementMode } from './plan-procurement';
 import { exportBusinessRows } from './reports.ts';
 import { createBackup, verifyBackup } from './backup.ts';
@@ -258,7 +260,8 @@ export class WwController {
       return this.inboxPage
         ? inboxView(this.inboxPage, this.p.state(), this.p.area(), this.inboxKind)
         : empty('Bitte eine Saison auswählen.');
-    if (this.useTemplate) return templateUse(this.useTemplate, documents(this.p.state().ww, 'slot'), this.p.state());
+    if (this.useTemplate)
+      return templateUse(this.useTemplate, deliverySlots(this.p.state(), this.p.season()), this.p.state());
     if (this.draft && ['slot', 'rule', 'template', 'prices'].includes(this.draft.kind))
       return procurementForm(this.draft as Slot | Rule | Template | PriceList, this.p.state());
     return (
@@ -396,13 +399,19 @@ export class WwController {
   public openSupplier(screen: 'rules' | 'prices', supplierId: string): void {
     this.clear();
     this.screen = screen;
+    this.openedFromOverview = true;
     if (screen === 'rules') {
       const old = this.p.state().ww?.records.find(r => r.value.kind === 'rule' && r.value.supplierId === supplierId);
       if (old) {
         this.previous = old;
         this.draft = structuredClone(old.value);
       } else this.draft = { ...(this.create('rule') as Rule), supplierId };
-    } else this.draft = { ...(this.create('prices') as PriceList), supplierId };
+    } else
+      this.draft = {
+        ...(this.create('prices') as PriceList),
+        supplierId,
+        name: 'Preise ab ' + today().split('-').reverse().join('.')
+      };
     this.p.redraw();
   }
   private create(kind: WwDocument['kind']): WwDocument {
@@ -1248,12 +1257,13 @@ export class WwController {
       return;
     }
     if (form.dataset.form === 'ww-procure') {
-      const slot = documents(this.p.state().ww, 'slot').find(s => s.id === get('slot'));
       const plan = this.procurementPlan;
       const mode = this.procurementMode;
       if (!plan || plan.scope !== this.p.season() || plan.area !== this.p.area())
         throw new Error('Bitte den Einsatz erneut wählen.');
-      if (!slot || (mode !== 'planning' && slot.date < today())) throw new Error('Passenden Liefertermin wählen.');
+      const slot = deliveryOption(plan, this.p.state(), get('slot'));
+      if (!slot || (mode !== 'planning' && slot.date < today()))
+        throw new Error('Bitte oben einen Liefertag wählen.');
       const allocations = Array.from(form.querySelectorAll<HTMLElement>('[data-allocation]')).map(r => ({
         articleId: r.dataset.allocation!,
         offerId: r.querySelector<HTMLSelectElement>('[name=offerId]')!.value,
@@ -1281,9 +1291,9 @@ export class WwController {
     if (form.dataset.form === 'ww-use') {
       const template = this.useTemplate!;
       const ids = data.getAll('slot').map(String);
-      if (!ids.length) throw new Error('Bitte mindestens einen Liefertermin wählen.');
-      const slots = documents(this.p.state().ww, 'slot').filter(s => ids.includes(s.id));
-      if (slots.length !== ids.length) throw new Error('Liefertermine wurden geändert. Bitte neu laden.');
+      if (!ids.length) throw new Error('Bitte oben mindestens einen Liefertag ankreuzen.');
+      const slots = deliverySlots(this.p.state(), this.p.season()).filter(s => ids.includes(s.id));
+      if (slots.length !== ids.length) throw new Error('Die Liefertage wurden geändert. Bitte neu laden.');
       const orders = slots.flatMap(slot =>
         templateOrders(
           {
@@ -1373,11 +1383,25 @@ export class WwController {
         doc.lines = lines as Template['lines'];
         doc.note = get('note');
       } else {
-        doc.lines = (lines as PriceList['lines']).map(l => ({
-          ...l,
-          offerSignature: offerIdentity(this.p.state().offers.find(o => o.value.id === l.offerId)!.value)
-        }));
         doc.validFrom = get('validFrom');
+        const lists = documents(this.p.state().ww, 'prices');
+        // Nur geänderte Preise speichern: so zeigt der Stand je Artikel, wann der Preis zuletzt wirklich neu war.
+        doc.lines = (lines as PriceList['lines'])
+          .filter(l => {
+            const offer = this.p.state().offers.find(o => o.value.id === l.offerId)!.value;
+            try {
+              const current = effectiveOffer(offer, lists, doc.validFrom);
+              return current.priceNet !== l.priceNet || current.deposit !== l.deposit;
+            } catch {
+              return true;
+            }
+          })
+          .map(l => ({
+            ...l,
+            offerSignature: offerIdentity(this.p.state().offers.find(o => o.value.id === l.offerId)!.value)
+          }));
+        if (!doc.lines.length) throw new Error('Es wurde kein Preis geändert.');
+        if (!doc.name) doc.name = 'Preise ab ' + doc.validFrom.split('-').reverse().join('.');
         doc.confirmed = true;
       }
     }
@@ -1486,12 +1510,13 @@ export class WwController {
     }
     validateDocument(doc);
     const previous = this.previous,
-      operationId = this.operationId;
+      operationId = this.operationId,
+      back = this.openedFromOverview && (doc.kind === 'prices' || doc.kind === 'rule') ? '' : screen;
     await this.p.mutate(
       () => this.p.store.save(doc, previous, operationId),
-      'Gespeichert und durch Lesen bestätigt.',
+      doc.kind === 'prices' ? 'Preise gespeichert.' : 'Gespeichert.',
       () => {
-        this.screen = screen;
+        this.screen = back;
       }
     );
   }

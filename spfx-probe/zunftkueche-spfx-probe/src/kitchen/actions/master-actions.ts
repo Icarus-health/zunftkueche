@@ -1,10 +1,11 @@
 // Stammdaten: Saison, Lieferanten, Artikel, Liefergebinde, Einzelzählung.
 // Aus view.ts ausgelagert. Erster Parameter `app` ist immer die Ansicht, die Zustand und Dienste hält.
 import { icon } from '../icons.ts';
-import { supplierNeedsReview } from '../review-status.ts';
+import { supplierHint } from '../review-status.ts';
 import { documents } from '../ww/model.ts';
 import { effectiveOffer } from '../ww/domain.ts';
-import { h, n, money, button, empty, moreMenu, suppliersTabs } from '../markup.ts';
+import { h, n, money, euro, button, empty, moreMenu, suppliersTabs } from '../markup.ts';
+import { unitName } from '../units.ts';
 import { searchField, displayDate } from '../workspace.ts';
 import type { KitchenView } from '../view';
 import { uuid } from '../view-support.ts';
@@ -32,56 +33,61 @@ export function articles(app: KitchenView): string {
         .map(({ value: offer }) => {
           const supplier = supplierName(offer.supplierId);
           const price = effectiveOffer(offer, priceLists, date);
-          const amount = price.priceNet === null ? 'Preis offen' : money(price.priceNet) + ' netto';
+          const amount = price.priceNet === null ? 'Preis offen' : euro(price.priceNet) + ' netto';
           return `<tr><td><strong>${h(supplier)}</strong>${offer.active ? '' : '<small>Inaktiv</small>'}</td>
    <td>${h(offer.packName)} à ${n(offer.packSize)} ${h(article.unit)}</td>
    <td>${h(amount)}${price.priceDate ? '<small>Stand ' + h(displayDate(price.priceDate)) + '</small>' : ''}</td>
-   <td><button type="button" data-action="offer-edit" data-id="${h(offer.id)}" aria-label="Angebot von ${h(supplier)} bearbeiten">Bearbeiten</button></td></tr>`;
+   <td><button type="button" data-action="offer-edit" data-id="${h(offer.id)}" aria-label="Gebinde und Preis bei ${h(supplier)} bearbeiten">Bearbeiten</button></td></tr>`;
         })
         .join('');
       const comparison = offerRows
-        ? `<table class="article-offers" aria-label="Lieferangebote für ${h(article.name)}"><thead><tr><th scope="col">Lieferant</th>
+        ? `<table class="article-offers" aria-label="Lieferanten für ${h(article.name)}"><thead><tr><th scope="col">Lieferant</th>
    <th scope="col">Gebinde</th><th scope="col">Preis je Gebinde</th><th scope="col"><span class="sr-only">Aktion</span></th></tr></thead>
    <tbody>${offerRows}</tbody></table>`
-        : '<p class="muted">Noch kein Lieferangebot.</p>';
+        : '<p class="muted">Noch bei keinem Lieferanten hinterlegt.</p>';
       return `<details class="article-list-row" data-search="${h(keywords)}"><summary><span class="article-name">${icon('chevron')}
   <span><strong>${h(article.name)}</strong>${article.active ? '' : ' <small>Inaktiv</small>'}</span></span>
   <span>${h(article.category || 'Ohne Kategorie')}</span><span>${h(article.unit)}</span>
-  <span>${offers.length} ${offers.length === 1 ? 'Angebot' : 'Angebote'}<span class="sr-only">Angebote ansehen</span></span></summary>
+  <span>${offers.length ? offers.length + ' ' + (offers.length === 1 ? 'Lieferant' : 'Lieferanten') : 'Kein Lieferant'}<span class="sr-only"> ansehen</span></span></summary>
   <div class="article-detail">${comparison}<div class="actions">${button('article-edit', 'Artikel bearbeiten', article.id)}
-  ${article.active ? button('offer-new', 'Lieferangebot hinzufügen', article.id) : ''}</div></div></details>`;
+  ${article.active ? button('offer-new', 'Weiteren Lieferanten hinzufügen', article.id) : ''}</div></div></details>`;
     })
     .join('');
-  return `<div class="page-heading"><div><h1>Artikel</h1><p>Alles, was ihr bestellt und zählt. Gilt für alle Bereiche.</p></div><div class="actions">${moreMenu([button('import', 'CSV importieren', 'articles')])}${button('article-new', 'Artikel anlegen', '', true)}</div></div>${suppliersTabs('articles')}<div class="toolbar">${searchField(app.query, 'Artikel oder Lieferanten suchen')}</div><section class="article-list" aria-label="Artikelliste"><div class="article-list-head"><span>Artikel</span><span>Kategorie</span><span>Einheit</span><span>Lieferangebote</span></div>${rows || empty('Noch keine Artikel angelegt.')}</section><p data-filter-empty hidden>Keine passenden Artikel.</p>`;
+  return `<div class="page-heading"><div><h1>Artikel</h1><p>Alles, was ihr bestellt und zählt. Gilt für alle Bereiche.</p></div><div class="actions">${moreMenu([button('import', 'Artikel aus CSV einlesen', 'articles')])}${button('article-new', 'Artikel anlegen', '', true)}</div></div>${suppliersTabs('articles')}<div class="toolbar">${searchField(app.query, 'Artikel oder Lieferanten suchen')}</div><section class="article-list" aria-label="Artikelliste"><div class="article-list-head"><span>Artikel</span><span>Kategorie</span><span>Einheit</span><span>Lieferanten</span></div>${rows || empty('Noch keine Artikel angelegt.')}</section><p data-filter-empty hidden>Keine passenden Artikel.</p>`;
+}
+
+/** Preisliste eines Lieferanten: ein Preis je Artikel und Gebinde, mit dem Tag, seit dem er gilt. */
+function priceList(app: KitchenView, supplierId: string): string {
+  const s = app.state!;
+  const lists = documents(s.ww, 'prices');
+  const day = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+  const name = (articleId: string): string => s.articles.find(a => a.value.id === articleId)?.value.name || 'Artikel';
+  const rows = s.offers
+    .filter(o => o.value.supplierId === supplierId && o.value.active)
+    .sort((a, b) => name(a.value.articleId).localeCompare(name(b.value.articleId), 'de'))
+    .map(({ value: offer }) => {
+      const article = s.articles.find(a => a.value.id === offer.articleId)?.value;
+      let current = offer;
+      try {
+        current = effectiveOffer(offer, lists, day);
+      } catch {
+        /* Gebinde seit der letzten Preisliste geändert: Preis am Artikel zeigen */
+      }
+      return `<tr><th scope="row">${h(article?.name || 'Artikel')}</th><td>${h(offer.packName)} à ${n(offer.packSize)} ${h(unitName(article?.unit || '', offer.packSize))}</td><td class="num">${current.priceNet === null ? '<span class="muted">offen</span>' : h(euro(current.priceNet))}</td><td>${current.priceNet !== null && current.priceDate ? h(displayDate(current.priceDate)) : ''}</td><td><button type="button" class="link-button" data-action="offer-edit" data-id="${h(offer.id)}" aria-label="${h(article?.name || 'Artikel')} bearbeiten">Bearbeiten</button></td></tr>`;
+    })
+    .join('');
+  return rows
+    ? `<div class="table-scroll"><table class="price-table"><thead><tr><th scope="col">Artikel</th><th scope="col">Gebinde</th><th scope="col" class="num">Preis netto</th><th scope="col">Stand</th><th scope="col"><span class="sr-only">Aktion</span></th></tr></thead><tbody>${rows}</tbody></table></div>`
+    : '<p>Noch keine Artikel bei diesem Lieferanten.</p>';
 }
 
 export function suppliers(app: KitchenView): string {
   const s = app.state!;
-  return `<div class="page-heading"><div><h1>Lieferanten</h1><p>Kontakte, Artikel und Preise an einem Ort.</p></div><div class="actions">${moreMenu([button('import', 'CSV importieren', 'suppliers')])}${button('supplier-new', 'Lieferant anlegen', '', true)}</div></div>${suppliersTabs('suppliers')}<div class="toolbar">${searchField(app.query, 'Lieferanten suchen')}</div><section class="supplier-list">${
+  return `<div class="page-heading"><div><h1>Lieferanten</h1><p>Kontakte, Artikel und Preise an einem Ort.</p></div><div class="actions">${moreMenu([button('ww-price-import', 'Preisliste aus Excel einlesen'), button('ww-open', 'Frühere Preise', 'prices'), button('import', 'Lieferanten aus CSV einlesen', 'suppliers')])}${button('supplier-new', 'Lieferant anlegen', '', true)}</div></div>${suppliersTabs('suppliers')}<div class="toolbar">${searchField(app.query, 'Lieferanten suchen')}</div><section class="supplier-list">${
     s.suppliers
       .map(
         ({ value: v }) =>
-          `<details class="supplier-profile" data-search="${h([v.name, v.contactPerson || '', v.address || '', v.phone, v.email].join(' '))}"><summary><span><strong>${h(v.name)}</strong><small>${v.active ? h(v.method) : 'Inaktiv'}${v.active && supplierNeedsReview(v) ? ' · Bestellweg / Angaben prüfen' : ''}</small></span><span>Profil öffnen</span></summary><div class="profile-content"><dl><div><dt>Ansprechpartner</dt><dd>${h(v.contactPerson || 'Nicht hinterlegt')}</dd></div><div><dt>Adresse</dt><dd>${h(v.address || 'Nicht hinterlegt')}</dd></div><div><dt>Telefon</dt><dd>${h(v.phone || 'Nicht hinterlegt')}</dd></div><div><dt>E-Mail</dt><dd>${h(v.email || 'Nicht hinterlegt')}</dd></div><div><dt>Bestellweg</dt><dd>${h(v.method)}</dd></div><div><dt>Kundennummer</dt><dd>${h(v.customerNumber || 'Nicht hinterlegt')}</dd></div></dl><p>Prüfstatus: ${h(v.reviewStatus === 'geprueft' ? 'Manuell geprüft' : v.reviewStatus === 'offen' ? 'Klärung erforderlich' : 'Noch nicht festgelegt')}${v.reviewDate ? ' · ' + h(displayDate(v.reviewDate)) : ''}${v.reviewReason ? ' · ' + h(v.reviewReason) : ''}</p><h2>Notizen und Absprachen</h2><p>${h(v.note || 'Keine Notizen hinterlegt.')}</p>${button('supplier-edit', 'Profil bearbeiten', v.id, true)}<h2>Artikel und Gebinde</h2>${
-            s.offers
-              .filter(o => o.value.supplierId === v.id && o.value.active)
-              .map(
-                o =>
-                  '<div class="review-row"><div><strong>' +
-                  h(s.articles.find(a => a.value.id === o.value.articleId)?.value.name || 'Artikel') +
-                  '</strong><small>' +
-                  h(o.value.packName) +
-                  ' à ' +
-                  n(o.value.packSize) +
-                  ' · ' +
-                  money(
-                    effectiveOffer(o.value, documents(s.ww, 'prices'), new Date().toISOString().slice(0, 10)).priceNet
-                  ) +
-                  ' netto</small></div>' +
-                  button('offer-edit', 'Angebot bearbeiten', o.value.id) +
-                  '</div>'
-              )
-              .join('') || '<p>Noch keine Lieferangebote.</p>'
-          }<div class="actions">${button('supplier-prices', 'Preisstand ergänzen', v.id)}${button('supplier-rules', 'Lieferregeln', v.id)}</div><h2>Bestellungen dieser Saison</h2>${
+          `<details class="supplier-profile" data-search="${h([v.name, v.contactPerson || '', v.address || '', v.phone, v.email].join(' '))}"><summary><span><strong>${h(v.name)}</strong><small>${v.active ? h(v.method) : 'Inaktiv'}${v.active && supplierHint(v) ? ' · ' + h(supplierHint(v)) : ''}</small></span><span>Profil öffnen</span></summary><div class="profile-content"><dl><div><dt>Ansprechpartner</dt><dd>${h(v.contactPerson || 'Nicht hinterlegt')}</dd></div><div><dt>Adresse</dt><dd>${h(v.address || 'Nicht hinterlegt')}</dd></div><div><dt>Telefon</dt><dd>${h(v.phone || 'Nicht hinterlegt')}</dd></div><div><dt>E-Mail</dt><dd>${h(v.email || 'Nicht hinterlegt')}</dd></div><div><dt>Bestellweg</dt><dd>${h(v.method)}</dd></div><div><dt>Kundennummer</dt><dd>${h(v.customerNumber || 'Nicht hinterlegt')}</dd></div></dl><h2>Notizen und Absprachen</h2><p>${h(v.note || 'Keine Notizen hinterlegt.')}</p>${button('supplier-edit', 'Profil bearbeiten', v.id, true)}<h2>Artikel und Preise</h2>${priceList(app, v.id)}<div class="actions">${button('supplier-prices', 'Preise ändern', v.id)}${button('article-new', 'Artikel hinzufügen', 'supplier:' + v.id)}${button('supplier-rules', 'Bestellschluss und Liefertage', v.id)}</div><h2>Bestellungen dieser Saison</h2>${
             s.orders
               .filter(
                 o => o.value.supplierId === v.id && o.value.seasonId === app.seasonId && o.value.area === app.area
@@ -154,7 +160,8 @@ export async function masterAction(
     app.editing = {
       kind: 'articles',
       id: old?.id || '',
-      value: old ? structuredClone(old) : { id: uuid(), name: '', unit: '', category: '', active: true }
+      value: old ? structuredClone(old) : { id: uuid(), name: '', unit: '', category: '', active: true },
+      supplierId: id.startsWith('supplier:') ? id.slice(9) : undefined
     };
     app.render();
     return true;

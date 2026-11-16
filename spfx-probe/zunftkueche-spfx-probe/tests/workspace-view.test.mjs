@@ -7,12 +7,12 @@ import { readInventory, saveInventory } from '../src/kitchen/actions/count-actio
 function setup(state=workspace(),extra={}){const dom=new JSDOM('<div id="app"></div>',{url:'https://example.test/'});for(const name of ['document','Element','HTMLFormElement','HTMLSelectElement','FormData'])globalThis[name]=dom.window[name]||dom.window.document;const root=document.getElementById('app');const store={testMode:false,load:async()=>structuredClone(state),...extra};return {view:new KitchenView(root,store,'TEST Person'),root,store,state,dom};}
 test('settings provide existing season, delivery configuration, safe backup and clearly labelled provider information',async()=>{
  const {view,root}=setup();await view.start();await view.action('nav','management');
- assert.match(root.textContent,/Saison und Liefertermine/);assert.ok(root.querySelector('[data-action=season-edit]'));assert.ok(root.querySelector('[data-action=ww-open][data-id=slots]'));
+ assert.match(root.textContent,/Saison und Einsatztage/);assert.ok(root.querySelector('[data-action=season-edit]'));assert.equal(root.querySelector('[data-action=ww-open][data-id=slots]'),null);
  assert.match(root.textContent,/Wiederherstellung.*nicht direkt in der App/);assert.match(root.textContent,/Datensicherung/);assert.ok(root.querySelector('[data-action=ww-backup]'));
  assert.match(root.textContent,/Impressum/);assert.equal(root.querySelector('a[href="https://schelmenzunft.de/impressum/"]')?.textContent,'Impressum');
  assert.match(root.textContent,/Datenschutzerklärung der Website/);assert.match(root.textContent,/Neue Kassen- und Menüimporte.*Originaldatei/);
 });
-test('article rows visibly communicate that they open details',async()=>{const {view,root}=setup();await view.start();await view.action('nav','articles');const summary=root.querySelector('.article-list-row summary');assert.match(summary.textContent,/Angebote ansehen/);const details=summary.closest('details');assert.ok(details.querySelector('[data-action=article-edit]'));assert.ok(details.querySelector('[data-action=offer-new]'));});
+test('article rows visibly communicate that they open details',async()=>{const {view,root}=setup();await view.start();await view.action('nav','articles');const summary=root.querySelector('.article-list-row summary');assert.match(summary.textContent,/Lieferant ansehen/);const details=summary.closest('details');assert.ok(details.querySelector('[data-action=article-edit]'));assert.ok(details.querySelector('[data-action=offer-new]'));});
 test('the selected workspace exposes task navigation and real receiving work',async()=>{
  const {view,root}=setup();await view.start();assert.ok(root.querySelector('aside'));assert.match(root.textContent,/Bestellungen/);assert.ok(root.querySelector('[data-action=delivery-list]'));assert.match(root.textContent,/0 von 1 Artikeln zuletzt gezählt/);await view.action('delivery-list','');assert.ok(root.querySelector('[data-action=receipt-new]'));
 });

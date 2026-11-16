@@ -10,6 +10,20 @@ export function n(value: number | null | undefined): string {
     ? ''
     : new Intl.NumberFormat('de-DE', { maximumFractionDigits: 4, useGrouping: false }).format(value);
 }
+/** Betrag für ein Eingabefeld: immer zwei Nachkommastellen, mehr nur wenn der Wert sie wirklich hat. */
+export function amount2(value: number | null | undefined): string {
+  return value === null || value === undefined
+    ? ''
+    : new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4, useGrouping: false }).format(
+        value
+      );
+}
+/** Geldbetrag zum Lesen: immer zwei Nachkommastellen, z. B. 12,50 €. */
+export function euro(value: number | null | undefined): string {
+  return value === null || value === undefined
+    ? ''
+    : new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
+}
 export function money(value: number | null): string {
   return value === null
     ? 'Preis offen'
