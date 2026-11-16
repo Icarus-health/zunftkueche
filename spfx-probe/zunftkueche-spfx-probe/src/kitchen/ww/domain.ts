@@ -306,6 +306,24 @@ export function validateDocument(v: WwDocument): void {
         if (!v.recipes.some(p => p.id === r.productId)) throw new Error('Produktzuordnung oder Rezepturversion fehlt.');
       }
     }
+  } else if (v.kind === 'menu') {
+    text(v.name, 'Name der Karte', 160);
+    text(v.title, 'Untertitel', 160, true);
+    text(v.footer, 'Fußzeile', 600, true);
+    list(v.lines, 150);
+    unique(v.lines.map(l => l.id));
+    for (const l of v.lines) {
+      key(l.id);
+      if (!['wine', 'sparkling', 'drinks', 'food'].includes(l.section))
+        throw new Error('Rubrik der Karte bitte prüfen.');
+      if (l.recipeId !== null) key(l.recipeId);
+      text(l.number, 'Nummer', 10, true);
+      text(l.label, 'Bezeichnung', 160);
+      text(l.detail, 'Zusatz', 160, true);
+      text(l.size, 'Größe', 40, true);
+      text(l.producer, 'Erzeuger', 80, true);
+      amount(l.priceGross, true);
+    }
   } else throw new Error('Unbekannte Vorgangsart.');
   if (JSON.stringify(v).length > 56000)
     throw new Error('Der Vorgang ist zu groß. Bitte weniger Positionen gemeinsam übernehmen; es wird nichts gekürzt.');

@@ -1,4 +1,4 @@
-# Zunftküche: Aufbau des Codes (Stand 1.21.0)
+# Zunftküche: Aufbau des Codes (Stand 1.22.0)
 
 Für alle, die die App später pflegen. Kurz: Daten und Rechenregeln sind von der Oberfläche getrennt, jede Oberfläche hat ihr eigenes Modul, und für fast jede Regel gibt es einen Test.
 
@@ -12,10 +12,13 @@ Für alle, die die App später pflegen. Kurz: Daten und Rechenregeln sind von de
 | `src/kitchen/domain.ts`, `operations.ts` | Prüfregeln und Rechnungen für Stammdaten, Bestellungen, Zählungen, Wareneingang. |
 | `src/kitchen/sharepoint.ts` | Lesen und Schreiben der SharePoint-Listen (`ZK_V1_…`). Jeder Datensatz ist JSON in einer Listenzeile. |
 | `src/kitchen/view.ts` | Rahmen der App: Laden, Zeichnen, Navigation, Zurück-Geste, Fokus, Speichern-Ablauf. |
-| `src/kitchen/actions/` | Was beim Tippen auf eine Schaltfläche passiert, je Bereich eine Datei: `order-actions`, `receipt-actions`, `count-actions`, `master-actions`, `import-actions`, `ui-actions`. |
+| `src/kitchen/actions/` | Was beim Tippen auf eine Schaltfläche passiert, je Bereich eine Datei: `order-actions`, `overview-actions`, `menu-actions`, `receipt-actions`, `count-actions`, `master-actions`, `import-actions`, `ui-actions`. |
 | `src/kitchen/home.ts`, `workspace.ts`, `operation-forms.ts`, `order-sheet.ts`, `supplier-forms.ts` | Bildschirme als HTML-Bausteine (Übersicht, Bestand, Abendabschluss, Warenannahme, Bestellblatt). |
 | `src/kitchen/fasnet-report.ts` | Auswertung der ganzen Saison über alle Bereiche. |
-| `src/kitchen/pdf-document.ts` | Kleiner PDF-Baukasten. Genutzt von `supplier-pdf.ts` (Bestellung) und `count-sheet-pdf.ts` (Abendabschluss auf Papier). |
+| `src/kitchen/order-overview.ts` | Gesamtbestellung: alle Lieferanten nach Liefertag, Prüfhinweise, Liefertermine der Entwürfe, Lieferplan als PDF. |
+| `src/kitchen/menu-card.ts`, `menu-export.ts`, `menu-header.ts` | Karte für den Zunftabend: Auswahl aus Rezepten, Word- und PDF-Ausgabe im Aufbau der Druckvorlage, Kopfbild mit Jahr. Bild und Schrift in `menu-assets/`. |
+| `src/kitchen/zip.ts` | ZIP ohne Kompression für die Word-Datei. |
+| `src/kitchen/pdf-document.ts` | Kleiner PDF-Baukasten mit Helvetica, schräg, JPEG-Bild und Zeichenbreiten. Genutzt für Bestellung, Abendabschluss auf Papier, Lieferplan und Karte. |
 | `src/kitchen/ww/` | Warenwirtschaft: Rezepte, Planung, Einkauf aus Planung, Rechnungen, Kassendaten, Bewegungen, Auswertung je Bereich. Eigener Controller mit Host-Schnittstelle. |
 | `src/kitchen/imports/` | Lesen von PDF (auch Scans per Texterkennung), CSV und Excel. |
 | `tests/` | Rund 390 Tests mit Node und jsdom. `tests/preview-server.mjs` startet eine lokale Vorschau mit künstlichen Daten. |

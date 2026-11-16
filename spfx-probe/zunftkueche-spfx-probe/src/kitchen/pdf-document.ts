@@ -57,6 +57,14 @@ export class PdfPage {
   public text(x: number, y: number, value: string, size = 9, bold = false): void {
     this.stream += `BT /${bold ? 'F2' : 'F1'} ${size} Tf ${x.toFixed(2)} ${y.toFixed(2)} Td (${pdfLiteral(value)}) Tj ET\n`;
   }
+  /** Schräg gestellte Helvetica (F3). */
+  public italic(x: number, y: number, value: string, size = 9): void {
+    this.stream += `BT /F3 ${size} Tf ${x.toFixed(2)} ${y.toFixed(2)} Td (${pdfLiteral(value)}) Tj ET\n`;
+  }
+  /** Bild an Position zeichnen; das Bild wird bei pdfDocument mitgegeben. */
+  public image(name: string, x: number, y: number, width: number, height: number): void {
+    this.stream += `q ${width.toFixed(2)} 0 0 ${height.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /${name} Do Q\n`;
+  }
   /** Gefülltes Rechteck in Grauwerten oder RGB 0..1. */
   public box(x: number, y: number, width: number, height: number, rgb: [number, number, number]): void {
     this.stream += `${rgb.join(' ')} rg ${x} ${y} ${width} ${height} re f 0 0 0 rg\n`;
@@ -73,38 +81,186 @@ export class PdfPage {
   }
 }
 
+/** JPEG-Bild für pdfDocument; wird unverändert eingebettet. */
+export interface PdfImage {
+  name: string;
+  jpeg: Uint8Array;
+  width: number;
+  height: number;
+}
 /** Setzt die Seiten zu einer PDF-Datei zusammen. Querformat A4 ist 842 × 595, Hochformat 595 × 842. */
-export function pdfDocument(pages: string[], width = 842, height = 595): Uint8Array {
-  const objects: string[] = [
+export function pdfDocument(pages: string[], width = 842, height = 595, images: PdfImage[] = []): Uint8Array {
+  const objects: Array<string | Uint8Array[]> = [
     '',
     '<< /Type /Catalog /Pages 2 0 R >>',
     '',
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'
   ];
+  // Schräge Schrift und Bilder nur, wenn sie gebraucht werden: bestehende Dokumente bleiben bytegleich.
+  const italic = pages.some(p => p.includes('/F3 '));
+  const fonts = '/F1 3 0 R /F2 4 0 R' + (italic ? ' /F3 5 0 R' : '');
+  if (italic) objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>');
+  const xobjects = images.map(image => {
+    const id = objects.length;
+    objects.push([
+      pdfBytes(
+        `<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${image.jpeg.length} >>\nstream\n`
+      ),
+      image.jpeg,
+      pdfBytes('\nendstream')
+    ]);
+    return '/' + image.name + ' ' + id + ' 0 R';
+  });
+  const resources = `<< /Font << ${fonts} >>${xobjects.length ? ' /XObject << ' + xobjects.join(' ') + ' >>' : ''} >>`;
   const kids: number[] = [];
   for (const content of pages) {
     const id = objects.length;
     kids.push(id);
     objects.push(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${id + 1} 0 R >>`
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources ${resources} /Contents ${id + 1} 0 R >>`
     );
     objects.push(`<< /Length ${pdfBytes(content).length} >>\nstream\n${content}endstream`);
   }
   objects[2] = `<< /Type /Pages /Count ${kids.length} /Kids [${kids.map(n => n + ' 0 R').join(' ')}] >>`;
-  let pdf = '%PDF-1.4\n%âãÏÓ\n';
+  const chunks: Uint8Array[] = [pdfBytes('%PDF-1.4\n%âãÏÓ\n')];
+  let length = chunks[0].length;
+  const push = (chunk: Uint8Array): void => {
+    chunks.push(chunk);
+    length += chunk.length;
+  };
   const offsets = [0];
   for (let i = 1; i < objects.length; i++) {
-    offsets.push(pdfBytes(pdf).length);
-    pdf += `${i} 0 obj\n${objects[i]}\nendobj\n`;
+    offsets.push(length);
+    const body = objects[i];
+    push(pdfBytes(`${i} 0 obj\n`));
+    if (typeof body === 'string') push(pdfBytes(body));
+    else body.forEach(push);
+    push(pdfBytes('\nendobj\n'));
   }
-  const xref = pdfBytes(pdf).length;
-  pdf +=
-    `xref\n0 ${objects.length}\n0000000000 65535 f \n` +
-    offsets
-      .slice(1)
-      .map(n => String(n).padStart(10, '0') + ' 00000 n \n')
-      .join('') +
-    `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
-  return pdfBytes(pdf);
+  const xref = length;
+  push(
+    pdfBytes(
+      `xref\n0 ${objects.length}\n0000000000 65535 f \n` +
+        offsets
+          .slice(1)
+          .map(n => String(n).padStart(10, '0') + ' 00000 n \n')
+          .join('') +
+        `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`
+    )
+  );
+  const out = new Uint8Array(length);
+  let at = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, at);
+    at += chunk.length;
+  }
+  return out;
+}
+
+// Zeichenbreiten der Helvetica in 1/1000 em (Adobe-Metrik), für Rechtsbündiges und Zentriertes.
+const HELVETICA: Record<string, number> = {
+  ' ': 278,
+  '!': 278,
+  '"': 355,
+  '#': 556,
+  $: 556,
+  '%': 889,
+  '&': 667,
+  "'": 191,
+  '(': 333,
+  ')': 333,
+  '*': 389,
+  '+': 584,
+  ',': 278,
+  '-': 333,
+  '.': 278,
+  '/': 278,
+  ':': 278,
+  ';': 278,
+  '<': 584,
+  '=': 584,
+  '>': 584,
+  '?': 556,
+  '@': 1015,
+  A: 667,
+  B: 667,
+  C: 722,
+  D: 722,
+  E: 667,
+  F: 611,
+  G: 778,
+  H: 722,
+  I: 278,
+  J: 500,
+  K: 667,
+  L: 556,
+  M: 833,
+  N: 722,
+  O: 778,
+  P: 667,
+  Q: 778,
+  R: 722,
+  S: 667,
+  T: 611,
+  U: 722,
+  V: 667,
+  W: 944,
+  X: 667,
+  Y: 667,
+  Z: 611,
+  '[': 278,
+  '\\': 278,
+  ']': 278,
+  '^': 469,
+  _: 556,
+  '`': 333,
+  a: 556,
+  b: 556,
+  c: 500,
+  d: 556,
+  e: 556,
+  f: 278,
+  g: 556,
+  h: 556,
+  i: 222,
+  j: 222,
+  k: 500,
+  l: 222,
+  m: 833,
+  n: 556,
+  o: 556,
+  p: 556,
+  q: 556,
+  r: 333,
+  s: 500,
+  t: 278,
+  u: 556,
+  v: 500,
+  w: 722,
+  x: 500,
+  y: 500,
+  z: 500,
+  '{': 334,
+  '|': 260,
+  '}': 334,
+  '~': 584,
+  ä: 556,
+  ö: 556,
+  ü: 556,
+  Ä: 667,
+  Ö: 778,
+  Ü: 722,
+  ß: 611,
+  '€': 556,
+  '–': 556,
+  '·': 278,
+  é: 556,
+  è: 556,
+  à: 556
+};
+/** Breite eines Textes in Punkt; fette Schrift etwas breiter angenähert. */
+export function textWidth(value: string, size: number, bold = false): number {
+  const units = [...value].reduce((sum, c) => sum + (HELVETICA[c] ?? (/\d/.test(c) ? 556 : 556)), 0);
+  return (units * size * (bold ? 1.06 : 1)) / 1000;
 }

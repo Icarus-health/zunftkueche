@@ -189,7 +189,7 @@ export function operationOverview(page: string, s: Workspace, area: Area, season
         'Gerichte und Getränke kalkulieren und für die Veranstaltung einplanen.',
         button('ww-new', 'Rezept anlegen', 'recipe', true)
       ) +
-      `<div class="actions">${button('ww-open', 'Portionen planen', 'plans')}</div><section class="data-list recipe-list"><div class="recipe-list-head" aria-hidden="true"><span>Rezept / Verkaufsprodukt</span><span>Status</span><span>Wareneinsatz netto</span><span>Verkauf brutto</span><span>Aktion</span></div>${
+      `<div class="actions">${button('ww-open', 'Portionen planen', 'plans')}${button('menu-open', 'Karte für den Zunftabend')}</div><section class="data-list recipe-list"><div class="recipe-list-head" aria-hidden="true"><span>Rezept / Verkaufsprodukt</span><span>Status</span><span>Wareneinsatz netto</span><span>Verkauf brutto</span><span>Aktion</span></div>${
         documents(s.ww, 'recipe')
           .sort((a, b) => b.at.localeCompare(a.at))
           .filter((r, i, all) => all.findIndex(x => x.familyId === r.familyId) === i)

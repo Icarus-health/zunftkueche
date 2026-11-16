@@ -10,6 +10,11 @@ import { withSchedule, copyScheduledOrder } from './supplier-orders.ts';
 import { orderMailView } from './order-mail.ts';
 import { WwController } from './ww/controller.ts';
 import { orderRound } from './workflow-tasks.ts';
+import { orderOverview } from './order-overview.ts';
+import { overviewAction, saveOverview } from './actions/overview-actions.ts';
+import { menuAction, saveMenu } from './actions/menu-actions.ts';
+import { menuEditor } from './menu-card.ts';
+import type { MenuCard, WwDocument } from './ww/model';
 import type {
   Area,
   Article,
@@ -219,6 +224,9 @@ export class KitchenView {
   copyPicker = false;
   reorderPicker = false;
   roundPicker = false;
+  overviewPicker = false;
+  menuDraft?: MenuCard;
+  menuPrevious?: Stored<WwDocument>;
   deliveryPicker = false;
   sourceSeason = '';
   importKind?: ImportKind;
@@ -485,6 +493,9 @@ export class KitchenView {
     this.copyPicker = false;
     this.reorderPicker = false;
     this.roundPicker = false;
+    this.overviewPicker = false;
+    this.menuDraft = undefined;
+    this.menuPrevious = undefined;
     this.deliveryPicker = false;
     this.importKind = undefined;
     this.importItems = undefined;
@@ -649,6 +660,7 @@ export class KitchenView {
         `<p>Die Daten werden auf der SharePoint-Seite dieses Kanals gespeichert.</p>${this.needsSetup ? button('setup', 'Arbeitsbereich einrichten', '', true) : '<p>Verbindung wird geprüft.</p>'}`
       );
     else if (this.quickIngredient) body = ingredientForm(this.quickIngredient, s);
+    else if (this.menuDraft) body = menuEditor(this.menuDraft, s, !!this.menuPrevious);
     else if (this.wwUI.screen) body = this.wwUI.render();
     else if (this.receiving)
       body = receiptForm(this.receiving.previous.value, this.receiving.deliveryId, !!s.ww?.ready);
@@ -682,6 +694,7 @@ export class KitchenView {
     else if (this.reorderPicker) body = reorderList(this);
     else if (this.deliveryPicker) body = deliveryRound(s, season, this.area);
     else if (this.roundPicker) body = orderRound(s, season, this.area);
+    else if (this.overviewPicker) body = orderOverview(s, season, this.area);
     else if (this.view === 'heute') body = this.home();
     else if (this.view === 'articles') body = articles(this);
     else if (this.view === 'suppliers') body = suppliers(this);
@@ -848,6 +861,7 @@ export class KitchenView {
   private pageKey(): string {
     if (!this.state) return 'setup';
     if (this.quickIngredient) return 'ingredient';
+    if (this.menuDraft) return 'menu';
     if (this.wwUI.screen) return 'ww:' + this.wwUI.pageKey();
     if (this.receiving) return 'receipt:' + this.receiving.previous.value.id;
     if (this.inventory) return 'inventory:' + this.inventory.id;
@@ -861,6 +875,7 @@ export class KitchenView {
     if (this.reorderPicker) return 'reorder-list';
     if (this.deliveryPicker) return 'delivery-round';
     if (this.roundPicker) return 'order-round';
+    if (this.overviewPicker) return 'order-overview';
     return 'view:' + this.view;
   }
   private sectionKey(section: HTMLDetailsElement): string {
@@ -985,6 +1000,8 @@ export class KitchenView {
     if (await receiptAction(this, action, id, target)) return;
     if (await inventoryAction(this, action, id, target)) return;
     if (await masterAction(this, action, id, target)) return;
+    if (overviewAction(this, action)) return;
+    if (await menuAction(this, action, id)) return;
     if (await orderAction(this, action, id, target)) return;
     if (await importAction(this, action, id, target)) return;
   }
@@ -1066,6 +1083,14 @@ export class KitchenView {
     }
     if (form.dataset.form?.startsWith('ww-')) {
       await this.wwUI.save(form);
+      return;
+    }
+    if (form.dataset.form === 'menu') {
+      await saveMenu(this, form);
+      return;
+    }
+    if (form.dataset.form === 'order-overview') {
+      await saveOverview(this, form);
       return;
     }
     if (form.dataset.form === 'delivery-slip') {

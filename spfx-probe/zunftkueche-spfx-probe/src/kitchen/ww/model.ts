@@ -257,7 +257,28 @@ export interface DeliverySlip extends Base {
   extension: SlipExtension;
   attachment?: string;
 }
+/** Karte einer Saison, wie sie gedruckt ausliegt. Rubriken in fester Reihenfolge. */
+export type MenuSection = 'wine' | 'sparkling' | 'drinks' | 'food';
+export interface MenuLine {
+  id: string;
+  section: MenuSection;
+  recipeId: string | null;
+  number: string;
+  label: string;
+  detail: string;
+  size: string;
+  producer: string;
+  priceGross: number | null;
+}
+export interface MenuCard extends Base {
+  kind: 'menu';
+  name: string;
+  title: string;
+  footer: string;
+  lines: MenuLine[];
+}
 export type WwDocument =
+  | MenuCard
   | DeliverySlip
   | AllocationLedger
   | BillLink

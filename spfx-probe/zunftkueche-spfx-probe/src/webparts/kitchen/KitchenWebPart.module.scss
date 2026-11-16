@@ -4809,3 +4809,274 @@
     opacity: 1;
   }
 }
+
+.kitchen {
+  /* 1.22.0 Gesamtbestellung: Raster Lieferant × Liefertag, darunter je Tag die Lieferungen. */
+  :global(.ov-section) {
+    margin-top: 24px;
+  }
+  :global(.ov-issues),
+  :global(.ov-ok) {
+    margin: 16px 0 0;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: var(--warnbg);
+    color: var(--warnink);
+  }
+  :global(.ov-ok) {
+    background: #e3f3ea;
+    color: var(--ok);
+  }
+  :global(.ov-issues) h2 {
+    margin: 0 0 6px;
+    font-size: 17px;
+  }
+  :global(.ov-issues) ul {
+    margin: 0;
+    padding-left: 20px;
+  }
+  :global(.ov-grid-wrap) {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+  :global(.ov-grid) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+  }
+  :global(.ov-grid) th,
+  :global(.ov-grid) td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+  }
+  :global(.ov-grid) thead th {
+    background: var(--tint);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  :global(.ov-grid) tbody th {
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  :global(.ov-grid) tr:last-child > * {
+    border-bottom: 0;
+  }
+  :global(.ov-slot) {
+    display: block;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: var(--tint);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  :global(.ov-slot) + :global(.ov-slot) {
+    margin-top: 4px;
+  }
+  :global(.ov-slot.draft) {
+    background: #fff0d1;
+  }
+  :global(.ov-slot) small {
+    display: block;
+    color: var(--dim);
+    font-weight: 500;
+  }
+  :global(.ov-none) {
+    color: var(--dim);
+  }
+  :global(.ov-day) {
+    margin-top: 16px;
+  }
+  :global(.ov-day) > h3 {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 8px;
+    font-size: 18px;
+  }
+  :global(.ov-day) > h3 small {
+    color: var(--dim);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  :global(.ov-card) {
+    margin-bottom: 10px;
+    padding: 12px 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+  :global(.ov-card) > header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+  }
+  :global(.ov-card) > header h4 {
+    margin: 0;
+    font-size: 17px;
+  }
+  :global(.ov-card) > header button {
+    margin-left: auto;
+  }
+  :global(.ov-edit) {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) minmax(100px, 0.7fr) minmax(150px, 1.3fr);
+    gap: 8px 12px;
+    margin-top: 10px;
+  }
+  :global(.ov-fixed) {
+    margin: 8px 0 0;
+    font-weight: 600;
+  }
+  :global(.ov-fixed) small {
+    display: block;
+    color: var(--dim);
+    font-weight: 500;
+  }
+  :global(.ov-lines) {
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  :global(.ov-lines) li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    border-top: 1px solid var(--line);
+  }
+  :global(.ov-lines) li span:last-child {
+    color: var(--dim);
+    text-align: right;
+  }
+  @media (max-width: 760px) {
+    :global(.ov-edit) {
+      grid-template-columns: 1fr 1fr;
+    }
+    :global(.ov-edit) label:last-child {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+.kitchen {
+  /* 1.22.0 Karte für den Zunftabend: Rubriken wie in der Druckvorlage, Zeilen zum Bearbeiten. */
+  :global(.menu-editor) {
+    margin-top: 16px;
+  }
+  :global(.menu-start) {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+  :global(.menu-start) summary {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  :global(.menu-head) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 12px;
+  }
+  :global(.menu-section) {
+    margin-top: 20px;
+  }
+  :global(.menu-section) > h2 {
+    margin: 0 0 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #a6c9ec;
+    color: #000;
+    font-size: 18px;
+  }
+  :global(.menu-section) > h2 small {
+    font-size: 14px;
+    font-style: italic;
+    font-weight: 500;
+  }
+  :global(.menu-cols),
+  :global(.menu-line) {
+    display: grid;
+    grid-template-columns: minmax(200px, 2.6fr) minmax(110px, 1.2fr) 76px 88px 140px;
+    align-items: center;
+    gap: 8px;
+  }
+  :global(.menu-cols.numbered.producer),
+  :global(.menu-line.numbered.producer) {
+    grid-template-columns: 56px minmax(200px, 2.6fr) minmax(90px, 0.9fr) 76px minmax(130px, 1.2fr) 88px 140px;
+  }
+  :global(.menu-cols) {
+    padding: 0 0 4px;
+    color: var(--dim);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  :global(.menu-line) {
+    padding: 6px 0;
+    border-top: 1px solid var(--line);
+  }
+  :global(.menu-line) > input {
+    min-width: 0;
+  }
+  :global(.menu-line) :global(.menu-price) {
+    text-align: right;
+  }
+  :global(.menu-line-actions) {
+    display: flex;
+    gap: 4px;
+  }
+  :global(.menu-icon) {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+  :global(.menu-icon) :global(.zk-icon) {
+    width: 20px;
+    height: 20px;
+  }
+  :global(.menu-icon[disabled]) {
+    opacity: 0.35;
+  }
+  :global(.menu-add) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  :global(.menu-add) label {
+    flex: 1 1 280px;
+  }
+  @media (max-width: 760px) {
+    :global(.menu-head) {
+      grid-template-columns: 1fr;
+    }
+    :global(.menu-cols),
+    :global(.menu-cols.numbered.producer) {
+      display: none;
+    }
+    :global(.menu-line),
+    :global(.menu-line.numbered.producer) {
+      grid-template-columns: 1fr 1fr;
+      padding: 10px 0;
+    }
+    :global(.menu-line) :global(.menu-label),
+    :global(.menu-line) :global(.menu-detail),
+    :global(.menu-line) :global(.menu-producer),
+    :global(.menu-line-actions) {
+      grid-column: 1 / -1;
+    }
+  }
+}

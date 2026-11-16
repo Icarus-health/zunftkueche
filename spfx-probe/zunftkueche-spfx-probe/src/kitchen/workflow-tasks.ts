@@ -105,6 +105,7 @@ export function orderRound(state: Workspace, season: Season | undefined, area: A
   return (
     '<div class="page-heading"><div><h1>Bestellrunde</h1></div><div class="actions">' +
     (season.archived ? '' : button('copy-list', 'Aus Vorjahr übernehmen')) +
+    button('order-overview', 'Gesamtbestellung', '', true) +
     button('nav', 'Alle Bestellungen', 'orders') +
     '</div></div><section class="supplier-round-list"><div class="supplier-round-head"><span>Lieferant</span><span>Ordersatz</span><span>Bestellungen</span></div>' +
     (rows || empty('Zuerst einen Lieferanten anlegen.')) +

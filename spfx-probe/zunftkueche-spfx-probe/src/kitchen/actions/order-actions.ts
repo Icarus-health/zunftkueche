@@ -23,7 +23,7 @@ import { uuid } from '../view-support.ts';
 export function orders(app: KitchenView): string {
   const rows = app.state!.orders.filter(o => o.value.seasonId === app.seasonId && o.value.area === app.area);
   return (
-    `<div class="page-heading"><div><h1>Bestellungen</h1><p>${h(app.season()?.name || 'Bitte Saison wählen')} · ${h(app.area)}</p></div><div class="actions">${app.writable() ? button('copy-list', 'Aus Vorjahr übernehmen') + button('order-new', 'Neue Bestellung', '', true) : ''}</div></div><div class="toolbar order-list-tools">${searchField(app.query, 'Bestellungen suchen')}${select(
+    `<div class="page-heading"><div><h1>Bestellungen</h1><p>${h(app.season()?.name || 'Bitte Saison wählen')} · ${h(app.area)}</p></div><div class="actions">${button('order-overview', 'Gesamtbestellung')}${app.writable() ? button('copy-list', 'Aus Vorjahr übernehmen') + button('order-new', 'Neue Bestellung', '', true) : ''}</div></div><div class="toolbar order-list-tools">${searchField(app.query, 'Bestellungen suchen')}${select(
       'orderStatus',
       'Status',
       [
