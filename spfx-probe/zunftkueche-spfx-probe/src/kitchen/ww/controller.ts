@@ -108,6 +108,8 @@ export class WwController {
   private ingredient?: IngredientDraft;
   private wizard?: TableWizard;
   private inboxPage?: InboxView;
+  /** Welcher Teil des Eingangs gezeigt wird: Rechnungen bei den Bestellungen, Kassendateien bei der Auswertung. */
+  private inboxKind: InboxKind = 'bill';
   private inboxPending?: { value: SystemImport; original: InboxOriginal };
   private procurementPlan?: Plan;
   private procurementMode: ProcurementMode = 'planning';
@@ -248,13 +250,13 @@ export class WwController {
         h(value.area) +
         '</p><div class="actions">' +
         button('ww-inbox-resume-system', 'Geprüften Import abschließen', '', true) +
-        button('ww-cancel', 'Zurück zum Dateieingang') +
+        button('ww-cancel', 'Zurück') +
         '</div></section>'
       );
     }
     if (this.screen === 'inbox')
       return this.inboxPage
-        ? inboxView(this.inboxPage, this.p.state(), this.p.area())
+        ? inboxView(this.inboxPage, this.p.state(), this.p.area(), this.inboxKind)
         : empty('Bitte eine Saison auswählen.');
     if (this.useTemplate) return templateUse(this.useTemplate, documents(this.p.state().ww, 'slot'), this.p.state());
     if (this.draft && ['slot', 'rule', 'template', 'prices'].includes(this.draft.kind))
@@ -768,9 +770,10 @@ export class WwController {
       this.updateCosts();
       return;
     }
-    if (action === 'ww-open' && id === 'inbox') {
+    if (action === 'ww-open' && (id === 'inbox' || id === 'inbox-system')) {
       if (!this.p.canLeave()) return;
       this.clear();
+      this.inboxKind = id === 'inbox' ? 'bill' : 'system';
       this.screen = 'inbox';
       await this.refreshInbox();
       return;

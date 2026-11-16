@@ -36,7 +36,7 @@ test('the stock page shortcut opens the movement form and cancelling returns to 
  await click(shortcut);
  const form=root.querySelector('form[data-form=ww-movement]');
  assert.ok(form,'movement form is shown');
- assert.equal(root.querySelector('[data-id=stock]').getAttribute('aria-current'),'page');
+ assert.equal(root.querySelector('nav [data-action=nav][data-id=reports]').getAttribute('aria-current'),'page','Bestand gehört zum Tab Auswertung');
  await click(form.querySelector('[data-action=ww-cancel]'));
  assert.equal(root.querySelector('form[data-form=ww-movement]'),null);
  assert.equal(root.querySelector('main h1').textContent,'Bestand');

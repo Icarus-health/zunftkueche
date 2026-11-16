@@ -4,7 +4,7 @@ import type { Bill, BillLine } from './model';
 import { billGrossForArea, billTypeLabel, linkedBill, relatedBills, returnMovements } from './bill-accounting.ts';
 import { reconcileBill } from './reconciliation.ts';
 import { documents, billLineLabels, billLineRoles } from './model.ts';
-import { button, field, select, h, n, money, note, check, empty } from '../markup.ts';
+import { button, field, select, h, n, money, note, check, empty, backLink } from '../markup.ts';
 import { businessTabs, heading, confirmationActions, dayLabel } from './common.ts';
 export function billLine(s: Workspace, l?: BillLine): string {
   return `<div class="ww-line" data-line data-id="${h(l?.id || crypto.randomUUID())}">${field('lineName', 'Originalbezeichnung', l?.name || '', true)}${select(
@@ -138,8 +138,8 @@ export function billForm(
       review +
       (!original && sourceText ? '<p role="status">' + h(sourceText) + '</p>' : '') +
       (original
-        ? confirmationActions('Prüfung offen speichern', fromInbox ? 'Zurück zum Dateieingang' : 'Abbrechen')
-        : button('ww-cancel', fromInbox ? 'Zurück zum Dateieingang' : 'Abbrechen')) +
+        ? confirmationActions('Prüfung offen speichern', fromInbox ? 'Zurück zu den Rechnungen' : 'Abbrechen')
+        : button('ww-cancel', fromInbox ? 'Zurück zu den Rechnungen' : 'Abbrechen')) +
       '</form>'
     );
   }
@@ -151,7 +151,7 @@ export function billForm(
       (previewUrl
         ? '<p><a href="' + h(previewUrl) + '" target="_blank" rel="noopener noreferrer">Sammel-PDF öffnen</a></p>'
         : '') +
-      confirmationActions('Prüfstatus speichern', 'Zurück zum Dateieingang') +
+      confirmationActions('Prüfstatus speichern', 'Zurück zu den Rechnungen') +
       '</form>'
     );
   }
@@ -195,7 +195,7 @@ export function billForm(
       b.billType ?? ((b.gross ?? 0) < 0 ? 'credit' : 'invoice')
     )}
     ${field('name', 'Belegname', b.name, true)}${select('supplierId', 'Lieferant', [['', 'Lieferant auswählen'], ...s.suppliers.filter(r => r.value.active).map(r => [r.value.id, r.value.name] as [string, string])], b.supplierId, 'required')}${field('number', credit ? 'Gutschriftnummer' : 'Rechnungsnummer', b.number)}${field('date', credit ? 'Belegdatum' : 'Rechnungsdatum', b.date, true, 'date')}${field('net', 'Netto gesamt', n(b.net), false, 'text', 'inputmode="decimal"')}${field('tax', 'Steuer gesamt', n(b.tax), false, 'text', 'inputmode="decimal"')}${field('gross', 'Brutto gesamt', n(b.gross), false, 'text', 'inputmode="decimal"')}${field('adjustmentNet', 'Nebenkosten / Rabatt netto (mit Vorzeichen)', n(b.adjustmentNet), false, 'text', 'inputmode="decimal"')}<h2 class="ww-full">${fromInbox ? 'Bestellung und Positionen' : '3 · Bestellung und Positionen prüfen'}</h2><details class="ww-full"${b.orderIds.length || b.creditForId || b.returnIds?.length ? ' open' : ''}><summary>Bestellung, Originalrechnung und Rückgaben zuordnen</summary>
-    ${billRelations(b, s)}</details>${billCostFields(b)}${suggestions.length ? `<div class="ww-full ww-alert"><strong>${suggestions.length} Positionsvorschläge gefunden</strong><p>Mengen und Bezeichnungen am Original prüfen. Preise und Einheiten am Beleg prüfen. Brutto-Preise werden nicht als Netto übernommen; unerkannte Positionen ergänzen.</p><ul>${suggestions.map(l => `<li>${h(l.name)} · ${n(l.quantity)}</li>`).join('')}</ul>${button('ww-bill-accept-lines', 'Positionen übernehmen')}</div>` : ''}<div class="ww-lines">${b.lines.map(l => billLine(s, l)).join('')}</div>${button('ww-add', credit ? 'Position hinzufügen' : 'Rechnungsposition hinzufügen', 'bill')}${b.billType === 'credit' ? '<p class="ww-full muted">Beträge einer Gutschrift mit negativem Vorzeichen eintragen.</p>' : ''}${note('note', 'Hinweise / Abweichungen / Pfand', b.note)}${b.needsSeparateFiles ? '' : check('confirmed', credit ? 'Gutschrift geprüft und bestätigen' : 'Original, Lieferant, Positionen, Mengen, Summen und Bestellbezug geprüft und Rechnung bestätigen', b.confirmed)}</div></div>${sourceText ? `<details><summary>Ausgelesener PDF-Text · Angaben am Original prüfen</summary><pre class="ww-original">${h(sourceText)}</pre></details>` : ''}${fromInbox ? retry : '<p>Die Texterkennung liefert Vorschläge für Kopf, Summen und bei unterstützten Formaten Positionen. Alle Angaben am Original prüfen; unlesbare oder mehrdeutige Werte bleiben offen. Für Bildscans steht die Texterkennung zur Verfügung; bei schlechter Qualität Angaben manuell erfassen.</p>'}${confirmationActions(b.needsSeparateFiles ? 'Zur Prüfung speichern' : credit ? 'Gutschrift speichern' : 'Rechnung speichern', fromInbox ? 'Zurück zum Dateieingang' : 'Abbrechen')}</form>`;
+    ${billRelations(b, s)}</details>${billCostFields(b)}${suggestions.length ? `<div class="ww-full ww-alert"><strong>${suggestions.length} Positionsvorschläge gefunden</strong><p>Mengen und Bezeichnungen am Original prüfen. Preise und Einheiten am Beleg prüfen. Brutto-Preise werden nicht als Netto übernommen; unerkannte Positionen ergänzen.</p><ul>${suggestions.map(l => `<li>${h(l.name)} · ${n(l.quantity)}</li>`).join('')}</ul>${button('ww-bill-accept-lines', 'Positionen übernehmen')}</div>` : ''}<div class="ww-lines">${b.lines.map(l => billLine(s, l)).join('')}</div>${button('ww-add', credit ? 'Position hinzufügen' : 'Rechnungsposition hinzufügen', 'bill')}${b.billType === 'credit' ? '<p class="ww-full muted">Beträge einer Gutschrift mit negativem Vorzeichen eintragen.</p>' : ''}${note('note', 'Hinweise / Abweichungen / Pfand', b.note)}${b.needsSeparateFiles ? '' : check('confirmed', credit ? 'Gutschrift geprüft und bestätigen' : 'Original, Lieferant, Positionen, Mengen, Summen und Bestellbezug geprüft und Rechnung bestätigen', b.confirmed)}</div></div>${sourceText ? `<details><summary>Ausgelesener PDF-Text · Angaben am Original prüfen</summary><pre class="ww-original">${h(sourceText)}</pre></details>` : ''}${fromInbox ? retry : '<p>Die Texterkennung liefert Vorschläge für Kopf, Summen und bei unterstützten Formaten Positionen. Alle Angaben am Original prüfen; unlesbare oder mehrdeutige Werte bleiben offen. Für Bildscans steht die Texterkennung zur Verfügung; bei schlechter Qualität Angaben manuell erfassen.</p>'}${confirmationActions(b.needsSeparateFiles ? 'Zur Prüfung speichern' : credit ? 'Gutschrift speichern' : 'Rechnung speichern', fromInbox ? 'Zurück zu den Rechnungen' : 'Abbrechen')}</form>`;
 }
 export function billsOverview(s: Workspace, area: Area): string {
   return (
@@ -249,7 +249,8 @@ export function billDetail(row: Stored<Bill>, s: Workspace): string {
       linkedBill(doc, s).creditForId === b.id
   );
   return (
-    heading(b.name, b.number + ' · ' + dayLabel(b.date), button('ww-cancel', 'Zurück')) +
+    backLink('ww-cancel', 'Rechnungen') +
+    heading(b.name, b.number + ' · ' + dayLabel(b.date)) +
     `<section class="panel"><h2>${h(billTypeLabel(b))}</h2><p>Netto ${b.net === null ? 'offen' : money(b.net)} · Steuer ${b.tax === null ? 'offen' : money(b.tax)} · Brutto ${money(b.gross)}</p><div class="ww-preview"><table><thead><tr><th>Position</th><th>Art</th><th>Menge</th><th>Einzelpreis netto</th><th>Zeile netto</th></tr></thead><tbody>${b.lines.map(l => `<tr><td>${h(l.name)}</td><td>${h(l.role ? billLineLabels[l.role] : 'Offen')}</td><td>${n(l.quantity)} ${h(l.unit)}</td><td>${money(l.unitNet)}</td><td>${money(l.totalNet)}</td></tr>`).join('')}</tbody></table></div><p>${h(b.note)}</p>${b.scanNumberReview?.status === 'reviewed' ? `<p class="ww-source">Einzelbeleg geprüft von ${h(b.scanNumberReview.by)} am ${h(new Date(b.scanNumberReview.at).toLocaleString('de-DE'))}. ${h(b.scanNumberReview.reason)}</p>` : ''}<p class="ww-source">Geprüft: ${h(b.by)} · ${h(new Date(b.at).toLocaleString('de-DE'))}</p>${b.attachment ? button('ww-bill-original', 'PDF-Original herunterladen', b.id) : ''}</section>${
       invoicePriceProposals(b, s).length
         ? '<section class="panel"><h2>Preisänderungen prüfen</h2><p>Nettopreis je eindeutig zugeordnetem Liefergebinde. Keine Änderung an alten Bestellungen. Rabatt, Pfand, Fracht oder unklare Einheiten werden nicht übernommen.</p>' +

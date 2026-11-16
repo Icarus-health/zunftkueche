@@ -4,7 +4,7 @@ import { icon } from '../icons.ts';
 import { supplierNeedsReview } from '../review-status.ts';
 import { documents } from '../ww/model.ts';
 import { effectiveOffer } from '../ww/domain.ts';
-import { h, n, money, button, empty } from '../markup.ts';
+import { h, n, money, button, empty, moreMenu, suppliersTabs } from '../markup.ts';
 import { searchField, displayDate } from '../workspace.ts';
 import type { KitchenView } from '../view';
 import { uuid } from '../view-support.ts';
@@ -52,12 +52,12 @@ export function articles(app: KitchenView): string {
   ${article.active ? button('offer-new', 'Lieferangebot hinzufügen', article.id) : ''}</div></div></details>`;
     })
     .join('');
-  return `<div class="page-heading"><div><h1>Artikel</h1><p>Gemeinsame Stammdaten für alle Bereiche.</p></div><div class="actions">${button('import', 'CSV importieren', 'articles')}${button('article-new', 'Artikel anlegen', '', true)}</div></div><div class="toolbar">${searchField(app.query, 'Artikel oder Lieferanten suchen')}</div><section class="article-list" aria-label="Artikelliste"><div class="article-list-head"><span>Artikel</span><span>Kategorie</span><span>Einheit</span><span>Lieferangebote</span></div>${rows || empty('Noch keine Artikel angelegt.')}</section><p data-filter-empty hidden>Keine passenden Artikel.</p>`;
+  return `<div class="page-heading"><div><h1>Artikel</h1><p>Alles, was ihr bestellt und zählt. Gilt für alle Bereiche.</p></div><div class="actions">${moreMenu([button('import', 'CSV importieren', 'articles')])}${button('article-new', 'Artikel anlegen', '', true)}</div></div>${suppliersTabs('articles')}<div class="toolbar">${searchField(app.query, 'Artikel oder Lieferanten suchen')}</div><section class="article-list" aria-label="Artikelliste"><div class="article-list-head"><span>Artikel</span><span>Kategorie</span><span>Einheit</span><span>Lieferangebote</span></div>${rows || empty('Noch keine Artikel angelegt.')}</section><p data-filter-empty hidden>Keine passenden Artikel.</p>`;
 }
 
 export function suppliers(app: KitchenView): string {
   const s = app.state!;
-  return `<div class="page-heading"><div><h1>Lieferanten</h1><p>Kontakte und Absprachen an einem Ort.</p></div><div class="actions">${button('supplier-new', 'Lieferant anlegen', '', true)}${button('import', 'CSV importieren', 'suppliers')}</div></div><div class="toolbar">${searchField(app.query, 'Lieferanten suchen')}</div><section class="supplier-list">${
+  return `<div class="page-heading"><div><h1>Lieferanten</h1><p>Kontakte, Artikel und Preise an einem Ort.</p></div><div class="actions">${moreMenu([button('import', 'CSV importieren', 'suppliers')])}${button('supplier-new', 'Lieferant anlegen', '', true)}</div></div>${suppliersTabs('suppliers')}<div class="toolbar">${searchField(app.query, 'Lieferanten suchen')}</div><section class="supplier-list">${
     s.suppliers
       .map(
         ({ value: v }) =>

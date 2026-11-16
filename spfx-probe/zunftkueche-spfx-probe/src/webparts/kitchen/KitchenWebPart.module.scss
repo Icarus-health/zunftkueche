@@ -4433,7 +4433,7 @@
       inset: auto;
       z-index: auto;
       min-height: 100dvh;
-      grid-template-rows: auto repeat(5, auto) minmax(0, 1fr) auto;
+      grid-template-rows: auto repeat(4, auto) minmax(0, 1fr) auto;
       align-content: stretch;
       padding: 14px 0 0;
       border: 0;
@@ -4444,7 +4444,7 @@
       position: sticky;
       bottom: 0;
       z-index: 2;
-      grid-row: 8;
+      grid-row: 7;
       align-self: end;
       min-height: 67px;
       padding: 8px 2px calc(10px + env(safe-area-inset-bottom, 0px));
@@ -4522,7 +4522,7 @@
       font-size: 22px;
       color: var(--dim);
     }
-    :global(.app-layout) > :global(.sidebar)[data-menu-open='true'] nav button[data-id='articles'] {
+    :global(.app-layout) > :global(.sidebar)[data-menu-open='true'] nav button[data-id='suppliers'] {
       border-radius: 16px 16px 0 0;
     }
     :global(.app-layout) > :global(.sidebar)[data-menu-open='true'] nav button[data-id='management'] {
@@ -5364,5 +5364,63 @@
       flex: 1 1 auto;
       padding: 0 10px;
     }
+  }
+}
+.kitchen {
+  /* 1.23.0 Erste Zeile jeder Seite: Zurück links, Bereich und Saison rechts. */
+  :global(.topbar) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 0;
+    margin-bottom: 4px;
+  }
+  :global(.topbar) > :global(.context-switch) {
+    margin: 0 0 0 auto;
+  }
+  :global(.topbar) > :global(.back-link) {
+    margin: 0 0 0 -8px;
+  }
+  :global(.task-mode) :global(.topbar) {
+    display: none;
+  }
+  /* Zahnrad: Einstellungen stehen unten in der Seitenleiste, abgesetzt von den Arbeitsbereichen. */
+  @media (min-width: 761px) {
+    :global(.sidebar) nav button:global(.nav-settings) {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      border-radius: 0;
+    }
+    :global(.sidebar) nav button:global(.nav-settings) :global(.nav-go) {
+      display: none;
+    }
+  }
+  :global(.plan-list) {
+    display: grid;
+    gap: 10px;
+  }
+  :global(.plan-card) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface);
+  }
+  :global(.plan-card) h2 {
+    margin: 0;
+    font-size: 18px;
+  }
+  :global(.plan-card) p {
+    margin: 2px 0 0;
+    color: var(--dim);
+  }
+  :global(.plan-card) :global(.actions) {
+    margin: 0;
   }
 }

@@ -4,7 +4,8 @@ import type { EquipmentItem, Movement, Plan, Recipe } from './model';
 import { documents } from './model.ts';
 import { planDemand, recipeDemand, stockProjection } from './domain.ts';
 import type { StockRow } from './domain';
-import { button, field, h, n, money, note, select, empty, check } from '../markup.ts';
+import { backLink, button, field, h, n, money, moreMenu, note, planningTabs, select, empty, check } from '../markup.ts';
+import { count } from '../units.ts';
 import { heading, confirmationActions, dayLabel, today } from './common.ts';
 import { planAlreadyOrdered } from './plan-procurement.ts';
 
@@ -186,16 +187,17 @@ export function operationOverview(page: string, s: Workspace, area: Area, season
     return (
       heading(
         'Speisen & Getränke',
-        'Gerichte und Getränke kalkulieren und für die Veranstaltung einplanen.',
-        button('ww-new', 'Rezept anlegen', 'recipe', true)
+        'Rezepte mit Zutaten und Verkaufspreis.',
+        '<div class="actions">' + button('ww-new', 'Rezept anlegen', 'recipe', true) + '</div>'
       ) +
-      `<div class="actions">${button('ww-open', 'Portionen planen', 'plans')}${button('menu-open', 'Preiskarte für den Zunftabend')}</div><section class="data-list recipe-list"><div class="recipe-list-head" aria-hidden="true"><span>Rezept / Verkaufsprodukt</span><span>Status</span><span>Wareneinsatz netto</span><span>Verkauf brutto</span><span>Aktion</span></div>${
+      planningTabs('recipes') +
+      `<section class="data-list recipe-list"><div class="recipe-list-head" aria-hidden="true"><span>Gericht oder Getränk</span><span>Stand</span><span>Wareneinsatz netto</span><span>Verkauf brutto</span><span></span></div>${
         documents(s.ww, 'recipe')
           .sort((a, b) => b.at.localeCompare(a.at))
           .filter((r, i, all) => all.findIndex(x => x.familyId === r.familyId) === i)
           .map(r => {
             const demand = recipeDemand(r, 1, s, documents(s.ww, 'prices'));
-            return `<div class="recipe-list-row"><div><strong>${h(r.name)}</strong><small>${h(r.category || 'Ohne Kategorie')} · Ausbeute ${n(r.yield)}</small></div><span><span class="sr-only">Status: </span>${r.confirmed ? 'Freigegeben' : 'Entwurf'}</span><span><span class="sr-only">Wareneinsatz netto: </span>${money(demand.costNet)} <small>je Portion</small></span><span><span class="sr-only">Verkauf brutto: </span>${money(r.salePriceGross)} <small>je Portion</small></span>${button('ww-edit', r.confirmed ? 'Rezept bearbeiten' : 'Bearbeiten', r.id)}</div>`;
+            return `<div class="recipe-list-row"><div><strong>${h(r.name)}</strong><small>${h(r.category || 'Ohne Kategorie')} · für ${h(count(r.yield, 'Portion', 'Portionen'))}</small></div><span><span class="sr-only">Stand: </span>${r.confirmed ? 'geprüft' : '<span class="badge warning">ungeprüft</span>'}</span><span><span class="sr-only">Wareneinsatz netto: </span>${money(demand.costNet)} <small>je Portion</small></span><span><span class="sr-only">Verkauf brutto: </span>${money(r.salePriceGross)} <small>je Portion</small></span>${button('ww-edit', 'Bearbeiten', r.id)}</div>`;
           })
           .join('') ||
         empty('Noch keine Rezepte. Auch Getränke können als Verkaufsprodukt mit einer Zutat angelegt werden.')
@@ -207,16 +209,15 @@ export function operationOverview(page: string, s: Workspace, area: Area, season
       .sort((a, b) => a.date.localeCompare(b.date));
     return (
       heading(
-        'Portionen und Bedarf',
-        'Plane die Mengen je Einsatz.',
-        button('ww-new', 'Einsatz planen', 'plan', true)
+        'Speisen & Getränke',
+        'Portionen je Einsatz. Daraus entstehen Bedarf und Einkauf.',
+        '<div class="actions">' +
+          moreMenu([button('ww-open', 'Arbeitsmittel', 'equipment')]) +
+          button('ww-new', 'Einsatz planen', 'plan', true) +
+          '</div>'
       ) +
-      '<div class="actions">' +
-      button('ww-open', 'Rezepte', 'recipes') +
-      button('ww-open', 'Arbeitsmittel', 'equipment') +
-      button('ww-open', 'Kassendaten einlesen', 'systems') +
-      '</div>' +
-      '<section class="workflow-starts">' +
+      planningTabs('plans') +
+      '<section class="plan-list">' +
       (plans
         .map(plan => {
           const ordered = planAlreadyOrdered(plan, s);
@@ -226,19 +227,19 @@ export function operationOverview(page: string, s: Workspace, area: Area, season
               : ''
             : button('ww-procure', 'Einkauf vorbereiten', plan.id);
           return (
-            '<div class="workflow-start"><div><h2>' +
+            '<div class="plan-card"><div><h2>' +
             h(plan.name) +
             '</h2><p>' +
             h(dayLabel(plan.date)) +
-            (plan.lines.length ? ' · ' + plan.lines.length + ' Gerichte / Getränke' : '') +
-            (plan.materials?.length ? ' · ' + plan.materials.length + ' Materialpositionen' : '') +
-            '</p>' +
-            '<details><summary>Plan ansehen oder ändern</summary><div class="actions">' +
+            (plan.lines.length
+              ? ' · ' + count(plan.lines.length, 'Gericht oder Getränk', 'Gerichte und Getränke')
+              : '') +
+            (plan.materials?.length ? ' · ' + count(plan.materials.length, 'Material', 'Materialien') : '') +
+            '</p></div><div class="actions">' +
+            button('ww-edit', 'Portionen ändern', plan.id) +
             button('ww-demand', 'Bedarf ansehen', plan.id) +
-            button('ww-edit', 'Bearbeiten', plan.id) +
-            '</div></details></div>' +
             action +
-            '</div>'
+            '</div></div>'
           );
         })
         .join('') || empty('Noch keine Portionsplanung.')) +
@@ -251,14 +252,14 @@ export function operationOverview(page: string, s: Workspace, area: Area, season
       .filter(item => item.scope === season && item.area === area)
       .sort((a, b) => a.name.localeCompare(b.name, 'de'));
     return (
+      backLink('ww-open', 'Portionen', 'plans') +
       heading(
         'Arbeitsmittel',
         'Vorbereitung · ' + area,
-        editable ? button('ww-new', 'Arbeitsmittel hinzufügen', 'equipment', true) : ''
+        editable
+          ? '<div class="actions">' + button('ww-new', 'Arbeitsmittel hinzufügen', 'equipment', true) + '</div>'
+          : ''
       ) +
-      '<div class="actions">' +
-      button('ww-open', 'Zu den Einsätzen', 'plans') +
-      '</div>' +
       '<section class="data-list">' +
       (items
         .map(item => {
@@ -338,7 +339,8 @@ export function demandView(plan: Plan, s: Workspace): string {
       : ''
     : button('ww-procure', 'Einkauf vorbereiten', plan.id, true);
   return (
-    heading('Bedarf', plan.name + ' · ' + dayLabel(plan.date), button('ww-cancel', 'Zurück')) +
+    backLink('ww-cancel', 'Portionen') +
+    heading('Bedarf', plan.name + ' · ' + dayLabel(plan.date)) +
     issues.map(i => `<p class="ww-alert">${h(i)}</p>`).join('') +
     '<section class="panel">' +
     (rows

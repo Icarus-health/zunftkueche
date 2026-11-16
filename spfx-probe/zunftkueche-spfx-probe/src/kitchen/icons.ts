@@ -41,6 +41,12 @@ const shapes: Record<string, [string, string?]> = {
   chevron: ['<path d="m9 6 6 6-6 6"/>'],
   down: ['<path d="m6 9 6 6 6-6"/>'],
   up: ['<path d="M12 19V6"/><path d="m6 11 6-6 6 6"/>'],
+  card: [
+    '<rect x="5" y="3.5" width="14" height="17" rx="1.8"/><path d="M8.5 8h7"/><path d="M8.5 12h7"/><path d="M8.5 16h4"/>',
+    '<rect x="5" y="3.5" width="14" height="17" rx="1.8"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4" ' +
+      CUT +
+      ' stroke-width="1.6" stroke-linecap="round"/>'
+  ],
   arrowdown: ['<path d="M12 5v13"/><path d="m6 13 6 6 6-6"/>'],
   grip: [
     '<path d="M9 6h.01"/><path d="M15 6h.01"/><path d="M9 12h.01"/><path d="M15 12h.01"/><path d="M9 18h.01"/><path d="M15 18h.01"/>'

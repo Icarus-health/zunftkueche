@@ -4,7 +4,7 @@ import type { Article, Method, Supplier } from '../model';
 import { validateEntity } from '../domain.ts';
 import { columns, previewMasters } from '../csv.ts';
 import type { ImportKind } from '../csv';
-import { h, select, note, button, panel, empty } from '../markup.ts';
+import { h, select, note, button, panel, empty, backLink } from '../markup.ts';
 import type { KitchenView } from '../view';
 import { uuid, message } from '../view-support.ts';
 import type { ImportItem } from '../view-support';
@@ -17,14 +17,17 @@ export function copyList(app: KitchenView): string {
   const rows = s.orders.filter(
     o => o.value.seasonId === app.sourceSeason && o.value.area === app.area && o.value.status !== 'Storniert'
   );
-  return panel(
-    'Vorjahresbestellung wählen',
-    `<div class="row">${select(
-      'sourceSeason',
-      'Ausgangssaison',
-      seasons.map(s => [s.value.id, s.value.name]),
-      app.sourceSeason
-    )}${button('cancel', 'Zurück')}</div>${rows.length ? rows.map(o => `<div class="listrow"><div><strong>${h(o.value.supplierName)}</strong><p>${h(o.value.occasion || 'Ohne Anlass')} · ${h(o.value.status)} · ${o.value.lines.length} Positionen</p></div>${button('copy-pick', 'Positionen auswählen', o.value.id)}</div>`).join('') : empty('Für diese Ausgangssaison und diesen Bereich sind noch keine übernehmbaren Bestellungen erfasst.')}`
+  return (
+    backLink('cancel', 'Bestellungen') +
+    panel(
+      'Aus Vorjahr übernehmen',
+      `<div class="row">${select(
+        'sourceSeason',
+        'Ausgangssaison',
+        seasons.map(s => [s.value.id, s.value.name]),
+        app.sourceSeason
+      )}</div>${rows.length ? rows.map(o => `<div class="listrow"><div><strong>${h(o.value.supplierName)}</strong><p>${h(o.value.occasion || 'Ohne Anlass')} · ${h(o.value.status)} · ${o.value.lines.length} Positionen</p></div>${button('copy-pick', 'Positionen auswählen', o.value.id)}</div>`).join('') : empty('Für diese Ausgangssaison und diesen Bereich sind noch keine übernehmbaren Bestellungen erfasst.')}`
+    )
   );
 }
 

@@ -14,8 +14,8 @@ const draft=(id,extra={})=>({...structuredClone(order),id,status:'Entwurf',recor
 test('navigation marks four areas for the tab bar and keeps the rest behind "Mehr"',()=>{
  const root=page(sidebar(season,'heute'));
  const buttons=[...root.querySelectorAll('nav button[data-action=nav]')];
- assert.deepEqual(buttons.filter(b=>b.dataset.tab==='main').map(b=>b.dataset.id),['heute','orders','stock','planning']);
- assert.deepEqual(buttons.filter(b=>b.dataset.tab==='more').map(b=>b.dataset.id),['articles','suppliers','reports','management']);
+ assert.deepEqual(buttons.filter(b=>b.dataset.tab==='main').map(b=>b.dataset.id),['heute','orders','planning','menu']);
+ assert.deepEqual(buttons.filter(b=>b.dataset.tab==='more').map(b=>b.dataset.id),['suppliers','reports','management']);
  assert.equal(root.querySelector('nav .nav-short').textContent,'Speisen');
  assert.equal(root.querySelector('nav .nav-long').textContent,'Speisen & Getränke','the full name stays for desktop and screen readers');
  const more=root.querySelector('nav button.nav-more');

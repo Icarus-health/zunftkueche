@@ -107,9 +107,8 @@ export function orderDetail(app: KitchenView, row?: Stored<Order>): string {
 export function reorderList(app: KitchenView): string {
   const counts = latestCounts(app.state!, app.seasonId, app.area).filter(c => c.reorder);
   return (
-    '<section class="panel"><div class="page-heading"><div><h1>Nachbestellbedarf prüfen</h1><p>Die letzte Zählung zeigt einen Hinweis, keine automatisch berechnete Bestellmenge. Bestand und Bedarf vor der Bestellung prüfen.</p></div>' +
-    button('cancel', 'Zurück') +
-    '</div>' +
+    backLink('cancel', 'Zurück') +
+    '<section class="panel"><div class="page-heading"><div><h1>Nachbestellen</h1><p>Beim Zählen als „Nachbestellen“ markiert. Die Menge legt ihr selbst fest.</p></div></div>' +
     (counts
       .map(c => {
         const offers = app.state!.offers.filter(o => o.value.articleId === c.articleId && o.value.active);

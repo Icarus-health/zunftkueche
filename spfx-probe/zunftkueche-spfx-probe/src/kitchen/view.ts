@@ -12,7 +12,7 @@ import { withSchedule, copyScheduledOrder } from './supplier-orders.ts';
 import { orderMailView } from './order-mail.ts';
 import { WwController } from './ww/controller.ts';
 import { overviewAction, saveOverview } from './actions/overview-actions.ts';
-import { menuAction, menuReorder, saveMenu } from './actions/menu-actions.ts';
+import { loadMenu, menuAction, menuReorder, saveMenu } from './actions/menu-actions.ts';
 import { startMenuDrag } from './menu-drag.ts';
 import { menuEditor } from './menu-card.ts';
 import type { MenuCard, WwDocument } from './ww/model';
@@ -672,6 +672,14 @@ export class KitchenView {
     const s = this.state;
     const season = this.season();
     let body = '';
+    /* Der Tab „Karte“ zeigt immer die Karte der Saison. Nach Abbrechen oder Saisonwechsel wird sie neu geladen. */
+    if (s && this.view === 'menu' && !this.menuDraft) {
+      try {
+        loadMenu(this);
+      } catch {
+        /* Ohne Saison oder Warenwirtschaft steht unten ein Hinweis. */
+      }
+    }
     if (!s)
       body = panel(
         'Arbeitsbereich',
@@ -719,6 +727,9 @@ export class KitchenView {
     else if (this.view === 'planning') body = this.wwUI.renderPlanning();
     else if (this.view === 'reports') body = reportsOverview(s, season, this.area);
     else if (this.view === 'management') body = settingsView(season, this.area);
+    else if (this.view === 'menu')
+      body =
+        '<div class="page-heading"><div><h1>Karte</h1></div></div><p>Bitte zuerst eine Saison wählen. Die Karte wird je Saison gespeichert.</p>';
     else body = orders(this);
 
     const page = this.pageKey(),
@@ -876,7 +887,19 @@ export class KitchenView {
     if (!main) return;
     const sheet = Array.from(main.children).find(el => el.classList.contains('context-switch')),
       head = Array.from(main.children).find(el => el.classList.contains('page-heading'));
-    if (sheet && head) head.append(sheet);
+    if (!sheet) return;
+    /* Die Übersicht hat eine eigene Kopfzeile mit Marke links und Kapsel rechts. */
+    if (head?.classList.contains('calm-home-heading')) {
+      head.append(sheet);
+      return;
+    }
+    /* Überall sonst dieselbe erste Zeile: Zurück links, Bereich und Saison rechts. Darunter Titel und Hauptknopf. */
+    const bar = this.root.ownerDocument.createElement('div');
+    bar.className = 'topbar';
+    sheet.before(bar);
+    const back = main.querySelector<HTMLElement>('.back-link');
+    if (back) bar.append(back);
+    bar.append(sheet);
   }
   private applyDeliveryView(): void {
     const selected =
@@ -890,7 +913,7 @@ export class KitchenView {
   private pageKey(): string {
     if (!this.state) return 'setup';
     if (this.quickIngredient) return 'ingredient';
-    if (this.menuDraft) return 'menu';
+    if (this.menuDraft) return this.view === 'menu' ? 'view:menu' : 'menu';
     if (this.wwUI.screen) return 'ww:' + this.wwUI.pageKey();
     if (this.receiving) return 'receipt:' + this.receiving.previous.value.id;
     if (this.inventory) return 'inventory:' + this.inventory.id;
@@ -989,7 +1012,7 @@ export class KitchenView {
         ? 'planning'
         : ['journal', 'next-use'].includes(id)
           ? 'stock'
-          : ['inbox', 'bills', 'systems'].includes(id)
+          : ['inbox-system', 'systems'].includes(id)
             ? 'reports'
             : 'orders';
     if (action.startsWith('ww-')) {

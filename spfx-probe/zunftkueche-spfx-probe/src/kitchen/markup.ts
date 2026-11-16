@@ -93,6 +93,16 @@ export const reportsTabs = (active: 'reports' | 'stock'): string =>
     active,
     'Auswertung und Bestand'
   );
+export const planningTabs = (active: 'recipes' | 'plans'): string =>
+  segments(
+    'ww-open',
+    [
+      ['recipes', 'Rezepte'],
+      ['plans', 'Portionen']
+    ],
+    active,
+    'Rezepte und Portionen'
+  );
 /** Seltene Aktionen hinter einem Knopf „Mehr“, damit je Seite ein Hauptknopf bleibt. */
 export function moreMenu(buttons: string[]): string {
   const items = buttons.filter(Boolean);

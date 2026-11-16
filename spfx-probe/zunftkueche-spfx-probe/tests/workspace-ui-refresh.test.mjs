@@ -6,7 +6,7 @@ const stored = value => ({itemId:1, etag:'"1"', operationId:'x', value});
 const state = {seasons:[stored(season)],suppliers:[stored(supplier)],articles:[stored(article)],offers:[],orders:[],counts:[]};
 test('primary navigation exposes master data and identifies the active page', () => {
  const html = sidebar(season,'articles');
- assert.match(html,/data-id="articles" aria-current="page"/);
+ assert.match(html,/data-id="suppliers" aria-current="page"/);assert.doesNotMatch(html,/data-id="articles"/);
  assert.match(html,/data-id="suppliers"/);
 });
 test('stock overview says in words when stock is not counted yet', () => {

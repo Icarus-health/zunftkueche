@@ -1,6 +1,5 @@
 import type { Season, Workspace } from '../model';
-import { button, empty, h } from '../markup.ts';
-import { heading } from './common.ts';
+import { backLink, button, empty, h, moreMenu, ordersTabs } from '../markup.ts';
 import { linkedBill } from './bill-accounting.ts';
 import { documents } from './model.ts';
 import { supportedInboxFile } from './inbox.ts';
@@ -25,13 +24,17 @@ export function openBillFiles(folder: InboxFolder, state: Workspace, seasonId: s
   ).length;
 }
 
-export function inboxView(view: InboxView, state: Workspace, stateArea?: string): string {
-  const sections: Array<[InboxKind, string]> = [
-    ['bill', 'Rechnungen'],
-    ['system', 'Kasse']
-  ];
+/** Rechnungen gehören zu den Bestellungen, Kassendateien zur Auswertung. Beide lesen denselben Eingang aus SharePoint. */
+export function inboxView(view: InboxView, state: Workspace, stateArea?: string, only: InboxKind = 'bill'): string {
+  const sections: Array<[InboxKind, string]> =
+    only === 'bill' ? [['bill', 'Neue Dateien im Rechnungsordner']] : [['system', 'Dateien im Kassenordner']];
+  const refresh = view.busy ? '' : button('ww-inbox-refresh', 'Dateiliste aktualisieren');
+  const top =
+    only === 'bill'
+      ? `<div class="page-heading"><div><h1>Bestellungen</h1><p>${h(view.season.name)} · ${h(stateArea || '')}</p></div><div class="actions">${moreMenu([refresh, button('ww-open', 'Bestätigte Rechnungen', 'bills')])}</div></div>${ordersTabs('bills')}`
+      : `${backLink('nav', 'Auswertung', 'reports')}<div class="page-heading"><div><h1>Kassendateien</h1><p>${h(view.season.name)}</p></div><div class="actions">${refresh}</div></div>`;
   return (
-    heading('Dateieingang', '', view.busy ? '' : button('ww-inbox-refresh', 'Dateiliste aktualisieren')) +
+    top +
     (view.busy ? '<p role="status">SharePoint-Dateien werden gelesen …</p>' : '') +
     sections
       .map(([kind, name]) => {

@@ -22,18 +22,22 @@ import { uuid } from '../view-support.ts';
 
 function current(app: KitchenView): MenuCard {
   const form = app.root.querySelector<HTMLFormElement>('form[data-form=menu]');
-  if (!app.menuDraft) throw new Error('Preiskarte bitte erneut öffnen.');
+  if (!app.menuDraft) throw new Error('Karte bitte erneut öffnen.');
   return form ? readMenu(form, app.menuDraft) : app.menuDraft;
 }
-export function openMenu(app: KitchenView): void {
+/** Lädt die gespeicherte Karte der Saison oder beginnt eine leere. Zeichnet nicht neu. */
+export function loadMenu(app: KitchenView): void {
   const season = app.season();
   if (!season || !app.state) throw new Error('Bitte zuerst eine Saison wählen.');
   if (!app.state.ww?.ready) throw new Error('Die Warenwirtschaft ist noch nicht eingerichtet.');
-  app.clearEditor();
   const stored = app.state.ww.records.find(r => r.value.kind === 'menu' && r.value.id === menuId(season.id));
   app.menuPrevious = stored;
   app.menuDraft = stored ? (structuredClone(stored.value) as MenuCard) : emptyMenu(season, app.user);
-  app.view = 'planning';
+}
+export function openMenu(app: KitchenView): void {
+  app.clearEditor();
+  app.view = 'menu';
+  loadMenu(app);
   app.render();
 }
 function file(app: KitchenView, card: MenuCard, ext: string): string {
@@ -49,7 +53,7 @@ export async function menuAction(app: KitchenView, action: string, id: string): 
   if (action === 'menu-close') {
     if (!app.canLeave()) return true;
     app.clearEditor();
-    app.view = 'planning';
+    app.view = 'menu';
     app.render();
     return true;
   }
@@ -119,19 +123,19 @@ export function menuReorder(app: KitchenView, section: string, ids: string[]): v
   app.render();
 }
 export async function saveMenu(app: KitchenView, form: HTMLFormElement): Promise<void> {
-  if (!app.menuDraft || !app.state) throw new Error('Preiskarte bitte erneut öffnen.');
+  if (!app.menuDraft || !app.state) throw new Error('Karte bitte erneut öffnen.');
   if (!app.writable()) throw new Error('Bitte eine aktive Saison wählen.');
   const card: MenuCard = { ...readMenu(form, app.menuDraft), at: new Date().toISOString(), by: app.user };
   validateDocument(card);
   const previous = app.menuPrevious;
   await app.run(
     () => app.store.ww.save(card, previous, app.operationId),
-    'Preiskarte gespeichert und durch erneutes Lesen bestätigt.',
+    'Karte gespeichert.',
     () => {
       const stored = documents(app.state?.ww, 'menu').find(m => m.id === card.id);
       app.menuPrevious = app.state?.ww?.records.find(r => r.value.id === card.id);
       app.menuDraft = stored ? structuredClone(stored) : card;
-      app.view = 'planning';
+      app.view = 'menu';
     }
   );
 }

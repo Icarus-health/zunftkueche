@@ -49,9 +49,12 @@ test('area and season sit behind one capsule that names both, the fields keep th
  assert.equal(root.querySelector('.work-context').textContent,'Küche · '+season.name,'quiet line for tasks');
 });
 
-test('the capsule moves next to the page title and closes with Escape',async()=>{
- const {dom,root,view}=live(workspace());await view.start();await view.action('nav','stock');
- const sheet=root.querySelector('.page-heading>.context-switch');assert.ok(sheet,'inside the page heading');
+test('the capsule sits top right in the same first row on every page and closes with Escape',async()=>{
+ const {dom,root,view}=live(workspace());await view.start();
+ assert.ok(root.querySelector('.calm-home-heading>.context-switch'),'the overview keeps brand left and capsule right');
+ await view.action('nav','stock');
+ const sheet=root.querySelector('main>.topbar>.context-switch');assert.ok(sheet,'in the top bar above the page heading');
+ assert.equal(root.querySelector('.page-heading .context-switch'),null,'never between title and buttons');
  sheet.open=true;root.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
  assert.equal(sheet.open,false);
 });
