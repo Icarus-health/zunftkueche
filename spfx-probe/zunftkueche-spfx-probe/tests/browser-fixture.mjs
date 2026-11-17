@@ -121,5 +121,5 @@ if(!localStorage.getItem(storage+'-ready')){
  localStorage.setItem(storage+'-ready','1');
 }
 const css=await (await fetch('/production.css')).text(),style=document.createElement('style');style.textContent=css;document.head.append(style);
-const root=document.getElementById('kitchen-root');root.className='kitchen';
+const root=document.getElementById('kitchen-root');root.className='kitchen';if(new URLSearchParams(location.search).get('dark')==='1'){root.dataset.dark='true';document.body.style.background='#1b1a19';}
 const view=new KitchenView(root,store,'Lokale Vorschau');await view.start();

@@ -4,7 +4,7 @@ import type { Bill, BillLine } from './model';
 import { billGrossForArea, billTypeLabel, linkedBill, relatedBills, returnMovements } from './bill-accounting.ts';
 import { reconcileBill } from './reconciliation.ts';
 import { documents, billLineLabels, billLineRoles } from './model.ts';
-import { button, field, select, h, n, money, euro, amount2, note, check, empty, backLink } from '../markup.ts';
+import { button, field, select, h, n, money, euro, amount2, note, check, emptyAction, backLink } from '../markup.ts';
 import { areaOptions } from '../model.ts';
 import { count, unitName } from '../units.ts';
 import { paymentNote } from './bill-suggest.ts';
@@ -389,7 +389,13 @@ export function billsOverview(s: Workspace, area: Area): string {
           b =>
             `<div class="listrow"><div><h2>${h(s.suppliers.find(v => v.value.id === b.supplierId)?.value.name || 'Lieferant')} · ${h(b.number || b.name)}</h2><p>${h(b.number || 'Nummer offen')} · ${dayLabel(b.date)} · ${h(billTypeLabel(b))} · ${h(s.suppliers.find(r => r.value.id === b.supplierId)?.value.name)} · ${b.scanNumberReview?.status === 'open' ? 'Belegnummern prüfen' : b.needsSeparateFiles ? 'Einzelbelege erforderlich' : b.confirmed ? 'Bestätigt' : 'Entwurf'}${b.costAssignment?.mode === 'open' ? ' · Kostenstelle offen' : ''}</p><small>${[b.lines.length ? count(b.lines.length, 'Position', 'Positionen') : 'nur Summen', b.orderIds.length ? count(b.orderIds.length, 'Bestellung zugeordnet', 'Bestellungen zugeordnet') : '', paymentNote(b), b.attachment ? 'Original gespeichert' : ''].filter(Boolean).join(' · ')}</small></div><div class="actions"><strong>${money(b.gross)} brutto</strong>${button(b.confirmed ? 'ww-bill-view' : 'ww-edit', b.confirmed ? 'Ansehen' : 'Weiter prüfen', b.id)}</div></div>`
         )
-        .join('') || empty('Noch keine Rechnungen. Original als PDF hinzufügen oder Beleg manuell erfassen.')
+        .join('') ||
+      emptyAction(
+        'Noch keine Rechnungen. Original als PDF hinzufügen oder Beleg manuell erfassen.',
+        'ww-new',
+        'Erste Rechnung erfassen',
+        'bill'
+      )
     }</section>`
   );
 }

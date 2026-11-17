@@ -1,4 +1,4 @@
-# Zunftküche: Aufbau des Codes (Stand 1.23.0)
+# Zunftküche: Aufbau des Codes (Stand 1.24.0)
 
 Für alle, die die App später pflegen. Kurz: Daten und Rechenregeln sind von der Oberfläche getrennt, jede Oberfläche hat ihr eigenes Modul, und für fast jede Regel gibt es einen Test.
 
@@ -6,8 +6,9 @@ Für alle, die die App später pflegen. Kurz: Daten und Rechenregeln sind von de
 
 | Ordner / Datei | Inhalt |
 |---|---|
-| `src/webparts/kitchen/KitchenWebPart.ts` | Einstieg in SharePoint. Startet `KitchenView`. |
-| `src/webparts/kitchen/KitchenWebPart.module.scss` | Gesamtes Aussehen. Schrift Archivo und Logo liegen in `assets/`. |
+| `src/webparts/kitchen/KitchenWebPart.ts` | Einstieg in SharePoint. Startet `KitchenView` und reicht hell oder dunkel vom Rahmen durch (SharePoint-Theme, im Teams-Tab das Teams-Design). |
+| `src/kitchen/host-theme.ts` | Entscheidung hell oder dunkel als reine Funktion, schreibt `data-dark` an das Wurzelelement. |
+| `src/webparts/kitchen/KitchenWebPart.module.scss` | Gesamtes Aussehen nach dem Zunft-Standard build-like-apple. Farbrollen hell und dunkel im Kopf, Schlussschicht am Dateiende. Logo in `assets/`, keine eigene Schrift. |
 | `src/kitchen/model.ts` | Datentypen und die Liste der Bereiche (`AREAS`: Küche, Zunftscheuer, Marktplatz). Neue Bereiche nur hier ergänzen. |
 | `src/kitchen/domain.ts`, `operations.ts` | Prüfregeln und Rechnungen für Stammdaten, Bestellungen, Zählungen, Wareneingang. |
 | `src/kitchen/sharepoint.ts` | Lesen und Schreiben der SharePoint-Listen (`ZK_V1_…`). Jeder Datensatz ist JSON in einer Listenzeile. |
@@ -31,6 +32,16 @@ Für alle, die die App später pflegen. Kurz: Daten und Rechenregeln sind von de
 Sieben Punkte in der Seitenleiste: Übersicht, Bestellungen, Lieferanten, Speisen & Getränke, Karte, Auswertung, Einstellungen. Unterseiten hängen als Umschalter an ihrem Punkt: Bestellungen (Nach Lieferant, Nach Liefertag, Rechnungen), Lieferanten (Lieferanten, Artikel), Speisen (Rezepte, Portionen), Auswertung (Zahlen, Bestand). Jede Seite hat einen Hauptknopf, Seltenes steht unter „Mehr“.
 
 Stammdaten: ein Preis je Artikel und Lieferant. Preisänderungen entstehen als Preisliste mit Datum (im Profil des Lieferanten unter „Preise ändern“ oder beim Bestätigen einer Rechnung). Alte Bestellungen behalten ihre Preise.
+
+## Aussehen seit 1.24 (Zunft-Standard build-like-apple)
+
+- Schrift ist die System-Schrift (`-apple-system`, auf Windows Segoe UI). Textstile: Seitentitel 28 fett, Abschnitt 20, Zwischentitel 17, Fließtext 16, Listen 15 oder 14, Nebentext 13. Fett ist nur der Seitentitel, sonst höchstens 600.
+- Farben stehen nur als Rollen im Kopf des Stylesheets (`--bg`, `--surface`, `--ink`, `--dim`, `--line`, `--fill…`, `--action…`), einmal hell und einmal im Block `.kitchen[data-dark='true']`. Im Bauteil steht nie ein fester Farbwert. Ein Test prüft das. Akzent ist das Blau aus dem Zunftlogo.
+- Hell oder dunkel bestimmt der Rahmen, die App hat keinen eigenen Schalter. In der lokalen Vorschau schaltet `?dark=1` um.
+- Knöpfe sind Kapseln, 44 px hoch. Je Seite eine gefüllte Hauptaktion (`primary`), betonte Aktionen in einem Abschnitt getönt (`button(…, 'tinted')`), der Rest grau mit Akzentschrift. „Entfernen“ ist rot und ohne Fläche.
+- Listen sind weiße Gruppen (Radius 14) auf grauem Grund mit eingerückten Haarlinien, Karten und Formulare Radius 20, Felder Radius 10. Abstände im 4er-Raster.
+- Leere Listen nennen den nächsten Schritt als Knopf (`emptyAction`). Beim Laden stehen Platzhalterzeilen.
+- Bewegung ist kurz und schaltet sich mit „Bewegung reduzieren“ ab.
 
 ## Regeln, die den Code sauber halten
 

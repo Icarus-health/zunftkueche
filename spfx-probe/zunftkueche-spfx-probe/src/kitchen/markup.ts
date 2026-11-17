@@ -67,14 +67,19 @@ export function segmented(
 export function check(name: string, label: string, checked: boolean): string {
   return `<label class="check"><input type="checkbox" name="${h(name)}" ${checked ? 'checked' : ''} />${h(label)}</label>`;
 }
-export function button(action: string, label: string, id = '', primary = false): string {
-  return `<button type="button" data-action="${action}" data-id="${h(id)}" class="${primary ? 'primary' : ''}">${h(label)}</button>`;
+/** Knopf. `primary` ist die eine gefüllte Hauptaktion der Seite, `'tinted'` die betonte Aktion innerhalb eines Abschnitts. */
+export function button(action: string, label: string, id = '', primary: boolean | 'tinted' = false): string {
+  return `<button type="button" data-action="${action}" data-id="${h(id)}" class="${primary === 'tinted' ? 'tinted' : primary ? 'primary' : ''}">${h(label)}</button>`;
 }
 export function panel(title: string, body: string): string {
   return `<section class="panel"><h2>${h(title)}</h2>${body}</section>`;
 }
 export function empty(text: string): string {
   return `<p class="empty">${h(text)}</p>`;
+}
+/** Leere Liste mit nächstem Schritt: sagt, was fehlt, und bietet das Anlegen gleich als Knopf an. */
+export function emptyAction(text: string, action: string, label: string, id = ''): string {
+  return `<div class="empty-state">${empty(text)}${button(action, label, id, 'tinted')}</div>`;
 }
 
 /** Abschnitte innerhalb eines Tabs, zum Beispiel Lieferanten | Artikel. */

@@ -715,7 +715,7 @@ export class KitchenView {
     if (!s)
       body = panel(
         'Arbeitsbereich',
-        `<p>Die Daten werden auf der SharePoint-Seite dieses Kanals gespeichert.</p>${this.needsSetup ? button('setup', 'Arbeitsbereich einrichten', '', true) : '<p>Verbindung wird geprüft.</p>'}`
+        `<p>Die Daten werden auf der SharePoint-Seite dieses Kanals gespeichert.</p>${this.needsSetup ? button('setup', 'Arbeitsbereich einrichten', '', true) : '<p>Verbindung wird geprüft.</p><div class="skeleton" aria-hidden="true"><span></span><span></span><span></span></div>'}`
       );
     else if (this.quickIngredient) body = ingredientForm(this.quickIngredient, s);
     else if (this.menuDraft) body = menuEditor(this.menuDraft, s, !!this.menuPrevious);

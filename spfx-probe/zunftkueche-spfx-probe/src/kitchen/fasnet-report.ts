@@ -127,7 +127,7 @@ export function fasnetReport(state: Workspace, seasonId: string, seasonName: str
     ? `<p class="figure-hint" role="status">${f.billsOpen} ${f.billsOpen === 1 ? 'Beleg hat' : 'Belege haben'} noch keine Kostenstelle.</p>`
     : '';
   return (
-    `<section class="fasnet-report" aria-labelledby="fasnet-total"><div class="figure-card total"><h2 id="fasnet-total">${h(seasonName)} gesamt</h2><p>Alle Bereiche zusammen. Nur bestätigte Rechnungen und Kassendaten.</p>${figures(f.total, f.purchaseUnassigned, true)}${open}${button('fasnet-export', 'Ganze Saison als CSV')}</div>` +
+    `<section class="fasnet-report" aria-labelledby="fasnet-total"><div class="figure-card total"><h2 id="fasnet-total">${h(seasonName)} gesamt</h2><p>Alle Bereiche zusammen. Nur bestätigte Rechnungen und Kassendaten.</p>${figures(f.total, f.purchaseUnassigned, true)}${open}${button('fasnet-export', 'Ganze Saison exportieren (CSV)')}</div>` +
     `<div class="figure-areas">${f.areas.map(row => `<div class="figure-card"><h3>${h(row.area)}</h3>${figures(row)}</div>`).join('')}</div></section>`
   );
 }

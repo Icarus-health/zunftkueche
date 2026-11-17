@@ -144,7 +144,7 @@ function priceTable(doc: PriceList, s: Workspace): string {
       const article = s.articles.find(a => a.value.id === offer?.articleId)?.value;
       if (!offer || !article) return '';
       const label = article.name + ', ' + offer.packName;
-      return `<tr data-line><th scope="row">${h(article.name)}<input type="hidden" name="offerId" value="${h(offer.id)}"></th><td>${h(packLabel(offer.packName, offer.packSize, article.unit, n(offer.packSize)))}</td><td><input name="priceNet" inputmode="decimal" value="${h(amount2(line.priceNet))}" aria-label="Preis netto für ${h(label)}"></td><td><input name="deposit" inputmode="decimal" value="${h(amount2(line.deposit))}" aria-label="Pfand für ${h(label)}"></td></tr>`;
+      return `<tr data-line><th scope="row">${h(article.name)}<input type="hidden" name="offerId" value="${h(offer.id)}"></th><td>${h(packLabel(offer.packName, offer.packSize, article.unit, n(offer.packSize)))}</td><td data-label="Preis netto je Gebinde"><input name="priceNet" inputmode="decimal" value="${h(amount2(line.priceNet))}" aria-label="Preis netto für ${h(label)}"></td><td data-label="Pfand je Gebinde"><input name="deposit" inputmode="decimal" value="${h(amount2(line.deposit))}" aria-label="Pfand für ${h(label)}"></td></tr>`;
     })
     .join('');
   return (

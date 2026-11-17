@@ -187,7 +187,7 @@ export function updateCountTotals(app: KitchenView): void {
       );
       if (quantity !== null && visible.has(l.articleId)) counted++;
       if (el) {
-        el.textContent = quantity === null ? 'offen' : n(quantity) + ' ' + l.unit;
+        el.textContent = quantity === null ? 'offen' : n(quantity) + ' ' + unitName(l.unit, quantity);
         el.dataset.state = quantity === null ? 'open' : 'counted';
       }
     } catch {

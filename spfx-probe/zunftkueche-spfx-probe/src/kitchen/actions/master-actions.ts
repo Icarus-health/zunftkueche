@@ -4,7 +4,7 @@ import { icon } from '../icons.ts';
 import { supplierHint } from '../review-status.ts';
 import { documents } from '../ww/model.ts';
 import { effectiveOffer } from '../ww/domain.ts';
-import { h, n, euro, button, empty, moreMenu, suppliersTabs } from '../markup.ts';
+import { h, n, euro, button, emptyAction, moreMenu, suppliersTabs } from '../markup.ts';
 import { unitName, packLabel } from '../units.ts';
 import { searchField, displayDate } from '../workspace.ts';
 import type { KitchenView } from '../view';
@@ -53,7 +53,7 @@ export function articles(app: KitchenView): string {
   ${article.active ? button('offer-new', 'Weiteren Lieferanten hinzufügen', article.id) : ''}</div></div></details>`;
     })
     .join('');
-  return `<div class="page-heading"><div><h1>Artikel</h1><p>Alles, was ihr bestellt und zählt. Gilt für alle Bereiche.</p></div><div class="actions">${moreMenu([button('import', 'Artikel aus CSV einlesen', 'articles')])}${button('article-new', 'Artikel anlegen', '', true)}</div></div>${suppliersTabs('articles')}<div class="toolbar">${searchField(app.query, 'Artikel oder Lieferanten suchen')}</div><section class="article-list" aria-label="Artikelliste"><div class="article-list-head"><span>Artikel</span><span>Kategorie</span><span>Einheit</span><span>Lieferanten</span></div>${rows || empty('Noch keine Artikel angelegt.')}</section><p data-filter-empty hidden>Keine passenden Artikel.</p>`;
+  return `<div class="page-heading"><div><h1>Artikel</h1><p>Alles, was ihr bestellt und zählt. Gilt für alle Bereiche.</p></div><div class="actions">${moreMenu([button('import', 'Artikel aus CSV einlesen', 'articles')])}${button('article-new', 'Artikel anlegen', '', true)}</div></div>${suppliersTabs('articles')}<div class="toolbar">${searchField(app.query, 'Artikel oder Lieferanten suchen')}</div><section class="article-list" aria-label="Artikelliste"><div class="article-list-head"><span>Artikel</span><span>Kategorie</span><span>Einheit</span><span>Lieferanten</span></div>${rows || emptyAction('Noch keine Artikel angelegt.', 'article-new', 'Ersten Artikel anlegen')}</section><p data-filter-empty hidden>Keine passenden Artikel.</p>`;
 }
 
 /** Preisliste eines Lieferanten: ein Preis je Artikel und Gebinde, mit dem Tag, seit dem er gilt. */
@@ -87,7 +87,7 @@ export function suppliers(app: KitchenView): string {
     s.suppliers
       .map(
         ({ value: v }) =>
-          `<details class="supplier-profile" data-search="${h([v.name, v.contactPerson || '', v.address || '', v.phone, v.email].join(' '))}"><summary><span><strong>${h(v.name)}</strong><small>${v.active ? h(v.method) : 'Inaktiv'}${v.active && supplierHint(v) ? ' · ' + h(supplierHint(v)) : ''}</small></span><span>Profil öffnen</span></summary><div class="profile-content"><dl><div><dt>Ansprechpartner</dt><dd>${h(v.contactPerson || 'Nicht hinterlegt')}</dd></div><div><dt>Adresse</dt><dd>${h(v.address || 'Nicht hinterlegt')}</dd></div><div><dt>Telefon</dt><dd>${h(v.phone || 'Nicht hinterlegt')}</dd></div><div><dt>E-Mail</dt><dd>${h(v.email || 'Nicht hinterlegt')}</dd></div><div><dt>Bestellweg</dt><dd>${h(v.method)}</dd></div><div><dt>Kundennummer</dt><dd>${h(v.customerNumber || 'Nicht hinterlegt')}</dd></div></dl><h2>Notizen und Absprachen</h2><p>${h(v.note || 'Keine Notizen hinterlegt.')}</p>${button('supplier-edit', 'Profil bearbeiten', v.id, true)}<h2>Artikel und Preise</h2>${priceList(app, v.id)}<div class="actions">${button('supplier-prices', 'Preise ändern', v.id)}${button('article-new', 'Artikel hinzufügen', 'supplier:' + v.id)}${button('supplier-rules', 'Bestellschluss und Liefertage', v.id)}</div><h2>Bestellungen dieser Saison</h2>${
+          `<details class="supplier-profile" data-search="${h([v.name, v.contactPerson || '', v.address || '', v.phone, v.email].join(' '))}"><summary><span><strong>${h(v.name)}</strong><small>${v.active ? h(v.method) : 'Inaktiv'}${v.active && supplierHint(v) ? ' · ' + h(supplierHint(v)) : ''}</small></span><span>Profil öffnen</span></summary><div class="profile-content"><dl><div><dt>Ansprechpartner</dt><dd>${h(v.contactPerson || 'Nicht hinterlegt')}</dd></div><div><dt>Adresse</dt><dd>${h(v.address || 'Nicht hinterlegt')}</dd></div><div><dt>Telefon</dt><dd>${h(v.phone || 'Nicht hinterlegt')}</dd></div><div><dt>E-Mail</dt><dd>${h(v.email || 'Nicht hinterlegt')}</dd></div><div><dt>Bestellweg</dt><dd>${h(v.method)}</dd></div><div><dt>Kundennummer</dt><dd>${h(v.customerNumber || 'Nicht hinterlegt')}</dd></div></dl><h2>Notizen und Absprachen</h2><p>${h(v.note || 'Keine Notizen hinterlegt.')}</p>${button('supplier-edit', 'Profil bearbeiten', v.id, 'tinted')}<h2>Artikel und Preise</h2>${priceList(app, v.id)}<div class="actions">${button('supplier-prices', 'Preise ändern', v.id)}${button('article-new', 'Artikel hinzufügen', 'supplier:' + v.id)}${button('supplier-rules', 'Bestellschluss und Liefertage', v.id)}</div><h2>Bestellungen dieser Saison</h2>${
             s.orders
               .filter(
                 o => o.value.supplierId === v.id && o.value.seasonId === app.seasonId && o.value.area === app.area
@@ -105,7 +105,7 @@ export function suppliers(app: KitchenView): string {
               .join('') || '<p>Noch keine Bestellung.</p>'
           }</div></details>`
       )
-      .join('') || empty('Noch keine Lieferanten angelegt.')
+      .join('') || emptyAction('Noch keine Lieferanten angelegt.', 'supplier-new', 'Ersten Lieferanten anlegen')
   }</section><p data-filter-empty hidden>Keine passenden Lieferanten.</p>`;
 }
 

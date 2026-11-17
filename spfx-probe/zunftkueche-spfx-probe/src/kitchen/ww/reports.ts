@@ -140,7 +140,7 @@ export function wwReport(s: Workspace, season: string, area: Area): string {
   return (
     '<section class="plain-section"><div class="page-heading"><div><h2>Saisonabrechnung</h2>' +
     '<p>Bestätigte Daten der gewählten Saison und des Bereichs.</p></div>' +
-    button('ww-export', 'Auswertung als CSV') +
+    button('ww-export', 'Auswertung exportieren (CSV)') +
     '</div>' +
     paymentReport(systems) +
     '<h3>Artikelverkäufe</h3>' +

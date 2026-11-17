@@ -30,7 +30,8 @@ test('symbols are drawn inline, without an icon font, and the navigation has a f
  assert.equal(page(icon('check')).querySelector('.zk-solid'),null,'small symbols only need the line form');
  const css=readFileSync(new URL('../src/webparts/kitchen/KitchenWebPart.module.scss',import.meta.url),'utf8').replace(/\s+/g,' ').replace(/\s*([{};:,>])\s*/g,'$1').replace(/\s*!important/g,'!important');
  assert.doesNotMatch(css,/ui-icons|Montserrat/,'old fonts are no longer bundled');
- assert.match(css,/font-family:ZKArchivo;src:url\('\.\/assets\/Archivo-latin\.woff2'\)/);
+ assert.doesNotMatch(css,/@font-face|Archivo/,'no bundled font any more, the system font is used');
+ assert.match(css,/font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui/);
 });
 
 test('the crest appears on the overview only, the sidebar keeps the name',()=>{

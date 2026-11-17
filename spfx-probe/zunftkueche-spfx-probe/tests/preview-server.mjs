@@ -19,7 +19,7 @@ const server=createServer(async(req,res)=>{try{const request=new URL(req.url,'ht
  if(path==='/vendor/jszip-wrapper.mjs'){res.writeHead(200,{'Content-Type':'text/javascript'});res.end("import '/vendor/jszip.js';export default window.JSZip;");return;}
  let file;if(path==='/vendor/jszip.js')file='node_modules/jszip/dist/jszip.min.js';else if(path==='/vendor/pdf.mjs')file='node_modules/pdfjs-dist/legacy/build/pdf.mjs';else if(path==='/vendor/pdf-worker.mjs')file='node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs';else if(path==='/lib/kitchen/imports/pdfjs-dist/legacy/build/pdf.worker.min.mjs')file='node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs';else if(path==='/production.css')file='lib/webparts/kitchen/KitchenWebPart.module.scss.css';
  else if(path.startsWith('/lib/kitchen/')||path==='/tests/browser-fixture.mjs'||path==='/tests/support/fake-sharepoint.mjs'||path==='/tests/fixtures/acceptance/rechnung-beispiel.pdf')file=path.slice(1);
- else if(['/assets/zunft-logo.webp','/assets/Archivo-latin.woff2','/assets/Archivo-latin-ext.woff2'].includes(path))file='src/webparts/kitchen'+path;
+ else if(path==='/assets/zunft-logo.webp')file='src/webparts/kitchen'+path;
  else{res.writeHead(404);res.end('Not found');return;}
  const absolute=resolve(root,file);if(!absolute.startsWith(root+'/')){res.writeHead(403);res.end();return;}
  let data=await readFile(absolute);if(path==='/production.css')data=data.toString().replace(/:global\(([^)]+)\)/g,'$1');

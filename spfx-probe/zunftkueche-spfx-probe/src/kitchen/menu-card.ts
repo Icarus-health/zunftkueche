@@ -193,7 +193,7 @@ export function menuEditor(card: MenuCard, state: Workspace, saved: boolean): st
       );
     return `<section class="menu-section" aria-labelledby="menu-${s.id}"><h2 id="menu-${s.id}">${h(s.title)}${s.subtitle ? ` <small>${h(s.subtitle)}</small>` : ''}</h2>${lines.length ? columns(s.numbered, s.producer) + lines.map((l, i) => lineRow(l, i, lines.length, s.numbered, s.producer)).join('') : '<p class="hint">Noch nichts in dieser Rubrik.</p>'}<div class="menu-add">${select('add_' + s.id, 'Hinzufügen aus Speisen & Getränken', [['', 'Bitte wählen'], ...choices, ['free', 'Eigener Eintrag ohne Rezept']], '')}${button('menu-add', 'Hinzufügen', s.id)}</div></section>`;
   });
-  const start = `<details class="menu-start" ${card.lines.length ? '' : 'open'}><summary>${card.lines.length ? 'Neu beginnen' : 'Karte beginnen'}</summary><p>${card.lines.length ? 'Ersetzt die aktuelle Liste. Erst mit Speichern endgültig.' : 'Startpunkt wählen, danach alles anpassbar.'}</p><div class="actions">${button('menu-preset', 'Wie Karte 2025 (Vorlage)', '', !card.lines.length)}${button('menu-propose', 'Aus Speisen & Getränken vorschlagen')}</div></details>`;
+  const start = `<details class="menu-start" ${card.lines.length ? '' : 'open'}><summary>${card.lines.length ? 'Neu beginnen' : 'Karte beginnen'}</summary><p>${card.lines.length ? 'Ersetzt die aktuelle Liste. Erst mit Speichern endgültig.' : 'Startpunkt wählen, danach alles anpassbar.'}</p><div class="actions">${button('menu-preset', 'Wie Karte 2025 (Vorlage)', '', card.lines.length ? false : 'tinted')}${button('menu-propose', 'Aus Speisen & Getränken vorschlagen')}</div></details>`;
   const count = card.lines.length;
   const open = card.lines.filter(l => l.priceGross === null).length;
   return (

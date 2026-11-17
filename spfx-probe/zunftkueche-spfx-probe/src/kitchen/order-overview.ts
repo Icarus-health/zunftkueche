@@ -262,7 +262,7 @@ export function orderOverview(state: Workspace, season: Season | undefined, area
     heading +
     issues +
     `<section class="ov-section"><h2>Überblick</h2>${grid(data)}</section>` +
-    `<form data-form="order-overview" class="ov-section"><h2>Je Liefertag</h2>${groups.join('')}${editable ? '<div class="actions sticky-actions"><button type="submit" class="primary">Liefertermine speichern</button></div>' : ''}</form>`
+    `<form data-form="order-overview" class="ov-section"><h2>Je Liefertag</h2>${groups.join('')}${editable ? '<div class="actions sticky-actions"><button type="submit" class="tinted">Liefertermine speichern</button></div>' : ''}</form>`
   );
 }
 

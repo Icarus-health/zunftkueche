@@ -4,7 +4,21 @@ import type { EquipmentItem, Movement, Plan, Recipe } from './model';
 import { documents } from './model.ts';
 import { planDemand, recipeDemand, stockProjection } from './domain.ts';
 import type { StockRow } from './domain';
-import { backLink, button, field, h, n, money, moreMenu, note, planningTabs, select, empty, check } from '../markup.ts';
+import {
+  backLink,
+  button,
+  field,
+  h,
+  n,
+  money,
+  moreMenu,
+  note,
+  planningTabs,
+  select,
+  empty,
+  emptyAction,
+  check
+} from '../markup.ts';
 import { count, unitName } from '../units.ts';
 
 const price2 = (value: number): string => value.toFixed(2).replace('.', ',');
@@ -237,7 +251,12 @@ export function operationOverview(page: string, s: Workspace, area: Area, season
             return `<div class="recipe-list-row"><div><strong>${h(r.name)}</strong><small>${h(r.category || 'Ohne Kategorie')} · für ${h(count(r.yield, 'Portion', 'Portionen'))}</small></div><span><span class="sr-only">Stand: </span>${r.confirmed ? 'geprüft' : '<span class="badge warning">ungeprüft</span>'}</span><span><span class="sr-only">Wareneinsatz netto: </span>${money(demand.costNet)} <small>je Portion</small></span><span><span class="sr-only">Verkauf brutto: </span>${money(r.salePriceGross)} <small>je Portion</small></span>${button('ww-edit', 'Bearbeiten', r.id)}</div>`;
           })
           .join('') ||
-        empty('Noch keine Rezepte. Auch Getränke können als Verkaufsprodukt mit einer Zutat angelegt werden.')
+        emptyAction(
+          'Noch keine Rezepte. Auch Getränke können als Verkaufsprodukt mit einer Zutat angelegt werden.',
+          'ww-new',
+          'Erstes Rezept anlegen',
+          'recipe'
+        )
       }</section>`
     );
   if (page === 'plans') {
@@ -279,7 +298,7 @@ export function operationOverview(page: string, s: Workspace, area: Area, season
             '</div></div>'
           );
         })
-        .join('') || empty('Noch keine Portionsplanung.')) +
+        .join('') || emptyAction('Noch keine Portionsplanung.', 'ww-new', 'Ersten Einsatz planen', 'plan')) +
       '</section>'
     );
   }
