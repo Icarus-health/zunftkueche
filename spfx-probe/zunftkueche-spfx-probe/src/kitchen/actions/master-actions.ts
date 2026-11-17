@@ -53,7 +53,7 @@ export function articles(app: KitchenView): string {
   ${article.active ? button('offer-new', 'Weiteren Lieferanten hinzufügen', article.id) : ''}</div></div></details>`;
     })
     .join('');
-  return `<div class="page-heading"><div><h1>Artikel</h1><p>Alles, was ihr bestellt und zählt. Gilt für alle Bereiche.</p></div><div class="actions">${moreMenu([button('import', 'Artikel aus CSV einlesen', 'articles')])}${button('article-new', 'Artikel anlegen', '', true)}</div></div>${suppliersTabs('articles')}<div class="toolbar">${searchField(app.query, 'Artikel oder Lieferanten suchen')}</div><section class="article-list" aria-label="Artikelliste"><div class="article-list-head"><span>Artikel</span><span>Kategorie</span><span>Einheit</span><span>Lieferanten</span></div>${rows || emptyAction('Noch keine Artikel angelegt.', 'article-new', 'Ersten Artikel anlegen')}</section><p data-filter-empty hidden>Keine passenden Artikel.</p>`;
+  return `<div class="page-heading"><div><h1>Artikel</h1><p>Alles, was ihr bestellt und zählt. Gilt für alle Bereiche.</p></div><div class="actions">${moreMenu([button('import', 'Artikel aus CSV einlesen …', 'articles')])}${button('article-new', 'Artikel anlegen', '', true)}</div></div>${suppliersTabs('articles')}<div class="toolbar">${searchField(app.query, 'Artikel oder Lieferanten suchen')}</div><section class="article-list" aria-label="Artikelliste"><div class="article-list-head"><span>Artikel</span><span>Kategorie</span><span>Einheit</span><span>Lieferanten</span></div>${rows || emptyAction('Noch keine Artikel angelegt.', 'article-new', 'Ersten Artikel anlegen')}</section><p data-filter-empty hidden>Keine passenden Artikel.</p>`;
 }
 
 /** Preisliste eines Lieferanten: ein Preis je Artikel und Gebinde, mit dem Tag, seit dem er gilt. */
@@ -83,7 +83,7 @@ function priceList(app: KitchenView, supplierId: string): string {
 
 export function suppliers(app: KitchenView): string {
   const s = app.state!;
-  return `<div class="page-heading"><div><h1>Lieferanten</h1><p>Kontakte, Artikel und Preise an einem Ort.</p></div><div class="actions">${moreMenu([button('ww-price-import', 'Preisliste aus Excel einlesen'), button('ww-open', 'Frühere Preise', 'prices'), button('import', 'Lieferanten aus CSV einlesen', 'suppliers')])}${button('supplier-new', 'Lieferant anlegen', '', true)}</div></div>${suppliersTabs('suppliers')}<div class="toolbar">${searchField(app.query, 'Lieferanten suchen')}</div><section class="supplier-list">${
+  return `<div class="page-heading"><div><h1>Lieferanten</h1><p>Kontakte, Artikel und Preise an einem Ort.</p></div><div class="actions">${moreMenu([button('ww-price-import', 'Preisliste aus Excel einlesen …'), button('ww-open', 'Frühere Preise', 'prices'), button('import', 'Lieferanten aus CSV einlesen …', 'suppliers')])}${button('supplier-new', 'Lieferant anlegen', '', true)}</div></div>${suppliersTabs('suppliers')}<div class="toolbar">${searchField(app.query, 'Lieferanten suchen')}</div><section class="supplier-list">${
     s.suppliers
       .map(
         ({ value: v }) =>

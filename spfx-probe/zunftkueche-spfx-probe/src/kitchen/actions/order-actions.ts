@@ -30,7 +30,7 @@ export function orders(app: KitchenView): string {
   const season = app.season();
   const rows = app.state!.orders.filter(o => o.value.seasonId === app.seasonId && o.value.area === app.area);
   const days = app.overviewPicker;
-  const heading = `<div class="page-heading"><div><h1>Bestellungen</h1><p>${h(season?.name || 'Bitte Saison wählen')} · ${h(app.area)}</p></div><div class="actions">${moreMenu([app.writable() ? button('copy-list', 'Aus Vorjahr übernehmen') : '', app.writable() && app.state!.ww?.ready ? button('ww-open', 'Vorlage laden', 'templates') : '', button('overview-pdf', 'Lieferplan als PDF')])}${app.writable() ? button('order-new', 'Neue Bestellung', '', true) : ''}</div></div>${ordersTabs(days ? 'days' : 'list')}`;
+  const heading = `<div class="page-heading"><div><h1>Bestellungen</h1><p>${h(season?.name || 'Bitte Saison wählen')} · ${h(app.area)}</p></div><div class="actions">${moreMenu([app.writable() ? button('copy-list', 'Aus Vorjahr übernehmen …') : '', app.writable() && app.state!.ww?.ready ? button('ww-open', 'Vorlage laden …', 'templates') : '', button('overview-pdf', 'Lieferplan als PDF')])}${app.writable() ? button('order-new', 'Neue Bestellung', '', true) : ''}</div></div>${ordersTabs(days ? 'days' : 'list')}`;
   if (days) return heading + orderOverview(app.state!, season, app.area, true);
   /* Lieferanten mit Artikeln, für die es in dieser Saison noch keine Bestellung gibt. */
   const started = new Set(
@@ -75,7 +75,7 @@ export function orders(app: KitchenView): string {
 }
 
 export function orderDetail(app: KitchenView, row?: Stored<Order>): string {
-  if (!row) return empty('Bestellung nicht gefunden. Bitte neu laden.');
+  if (!row) return emptyAction('Bestellung nicht gefunden.', 'reload', 'Neu laden');
   const o = row.value,
     total = orderTotal(o),
     received = !!o.receipts?.length;

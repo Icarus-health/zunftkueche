@@ -1,19 +1,21 @@
 {
- "$schema":"https://developer.microsoft.com/json-schemas/spfx/client-side-web-part-manifest.schema.json",
- "id":"c435509e-2886-4231-b6bf-7f6a4b537210",
- "alias":"KitchenWebPart",
- "componentType":"WebPart",
- "version":"*",
- "manifestVersion":2,
- "requiresCustomScript":false,
- "supportedHosts":["SharePointWebPart","SharePointFullPage","TeamsTab"],
- "supportsThemeVariants":true,
- "preconfiguredEntries":[{
-  "groupId":"5c03119e-3074-46fd-976b-c60198311f70",
-  "group":{"default":"Zunftküche"},
-  "title":{"default":"Zunftküche"},
-  "description":{"default":"Artikel, Lieferanten, Bestellungen, Vorjahresübernahme und Abendbestand"},
-  "officeFabricIconFontName":"Shop",
-  "properties":{}
- }]
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx/client-side-web-part-manifest.schema.json",
+  "id": "c435509e-2886-4231-b6bf-7f6a4b537210",
+  "alias": "KitchenWebPart",
+  "componentType": "WebPart",
+  "version": "*",
+  "manifestVersion": 2,
+  "requiresCustomScript": false,
+  "supportedHosts": ["SharePointWebPart", "SharePointFullPage", "TeamsTab"],
+  "supportsThemeVariants": true,
+  "preconfiguredEntries": [
+    {
+      "groupId": "5c03119e-3074-46fd-976b-c60198311f70",
+      "group": { "default": "Zunftküche" },
+      "title": { "default": "Zunftküche" },
+      "description": { "default": "Artikel, Lieferanten, Bestellungen, Vorjahresübernahme und Abendbestand" },
+      "officeFabricIconFontName": "Shop",
+      "properties": {}
+    }
+  ]
 }

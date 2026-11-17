@@ -3124,7 +3124,6 @@
     display: inline;
   }
   :global(.sidebar) nav button[aria-current='page'] :global(.zk-icon):not(:global(.zk-dual)) :global(.zk-line) {
-    stroke-width: 2.5;
   }
   :global(.more-title),
   :global(.nav-go) {
@@ -3186,7 +3185,6 @@
     color: var(--action);
   }
   :global(.context-switch) > summary :global(.zk-line) {
-    stroke-width: 2.2;
   }
   :global(.context-switch)[open] > summary {
     background: var(--tint);
@@ -3546,7 +3544,6 @@
     color: var(--dim);
   }
   :global(.search-label) > :global(.zk-icon) :global(.zk-line) {
-    stroke-width: 2.2;
   }
   :global(.toolbar) {
     margin: 0 0 12px;
@@ -3574,7 +3571,6 @@
     color: var(--control);
   }
   :global(.list-link) > :global(.zk-icon) :global(.zk-line) {
-    stroke-width: 2.4;
   }
   :global(.stock-list) {
     display: grid;
@@ -3651,7 +3647,6 @@
     font-size: 14px;
   }
   :global(.stock-status) :global(.zk-line) {
-    stroke-width: 3;
   }
   :global(.stock-status.success) :global(.zk-icon) {
     color: var(--ok);
@@ -3749,7 +3744,6 @@
     font-size: 22px;
   }
   :global(.sheet-options) > summary :global(.zk-line) {
-    stroke-width: 3.4;
   }
   :global(.sheet-options-body) {
     border: 0;
@@ -3826,7 +3820,7 @@
     border: 1px solid var(--control);
     border-radius: 980px;
     background: var(--surface)
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233f4695' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m8 9 4-4 4 4'/%3E%3Cpath d='m8 15 4 4 4-4'/%3E%3C/svg%3E")
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233f4695' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m8 9 4-4 4 4'/%3E%3Cpath d='m8 15 4 4 4-4'/%3E%3C/svg%3E")
       no-repeat right 12px center/16px;
     font-size: 14px;
     font-weight: 600;
@@ -3948,7 +3942,6 @@
     color: var(--ok);
   }
   :global(.count-item) > summary > :global(.zk-icon) :global(.zk-line) {
-    stroke-width: 2.6;
   }
   :global(.count-total)[data-state='counted'] + :global(.zk-icon) {
     display: block;
@@ -4075,7 +4068,6 @@
     font-size: 20px;
   }
   :global(.stepper) :global(.zk-line) {
-    stroke-width: 2.4;
   }
   :global(.count-editor) :global(.segmented) > label {
     font-size: 13px;
@@ -4216,7 +4208,6 @@
     color: var(--ok);
   }
   :global(.receipt-line) :global(.zk-line) {
-    stroke-width: 2.6;
   }
   :global(.receipt-form) :global(.receipt-line)[data-state='complete'] > :global(.zk-icon) {
     display: block;
@@ -4460,7 +4451,6 @@
       background: var(--tint);
     }
     :global(.app-layout) > :global(.sidebar) nav button:global(.nav-more) :global(.zk-line) {
-      stroke-width: 3.6;
     }
     /* „Mehr“ ist eine eigene Seite mit Liste, kein aufklappendes Menü. Die Leiste bleibt unten stehen. */
     /* Im Seitenfluss statt über allem: in SharePoint liegt dessen eigene Kopfleiste sonst über dem Titel. */
@@ -5097,7 +5087,6 @@
   :global(.menu-grip) :global(.zk-icon) {
     width: 22px;
     height: 22px;
-    stroke-width: 3;
   }
   :global(.menu-grip):hover {
     background: var(--surface);
@@ -6681,5 +6670,46 @@
   main:has([data-order-confirm]) button:global(.primary)[data-action='order-record'] {
     background: var(--fill-2);
     color: var(--action);
+  }
+}
+
+.kitchen[data-dark='true'] {
+  /* Pfeil im Tag-Auswahlfeld: helle Akzentfarbe im Dunkeln */
+  :global(.day-choice) select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa1f1' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m8 9 4-4 4 4'/%3E%3Cpath d='m8 15 4 4 4-4'/%3E%3C/svg%3E");
+  }
+}
+.kitchen {
+  /* Läuft eine Speicherung, dreht im auslösenden Knopf ein Spinner; der Knopf bleibt gesperrt, die Beschriftung bleibt stehen */
+  button[aria-busy='true'] {
+    gap: 8px;
+  }
+  button[aria-busy='true']::before {
+    content: '';
+    flex: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: zk-spin 0.8s linear infinite;
+  }
+  button[aria-busy='true']:disabled {
+    opacity: 0.8;
+  }
+}
+@keyframes zk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.kitchen {
+  /* Menüeinträge bleiben einzeilig, das Menü wird so breit wie der längste Eintrag */
+  :global(.more-menu-list) {
+    width: max-content;
+    max-width: calc(100vw - 32px);
+  }
+  :global(.more-menu-list) button {
+    white-space: nowrap;
   }
 }

@@ -231,7 +231,7 @@ export function operationOverview(page: string, s: Workspace, area: Area, season
             button('ww-next-plan', 'Bedarf prüfen', plan.id) +
             '</div>'
         )
-        .join('') || empty('Keine anstehenden Einsätze geplant.')) +
+        .join('') || emptyAction('Keine anstehenden Einsätze geplant.', 'ww-new', 'Einsatz planen', 'plan')) +
       '</section>'
     );
   if (page === 'recipes')

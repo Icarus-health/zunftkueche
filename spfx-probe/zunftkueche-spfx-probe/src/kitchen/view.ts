@@ -614,10 +614,12 @@ export class KitchenView {
           'input,select,button,textarea'
         )
       ).map(el => [el, el.disabled]);
+      this.markBusy();
       this.locked.forEach(([el]) => {
         el.disabled = true;
       });
     } else {
+      this.root.querySelectorAll('[aria-busy="true"]').forEach(el => el.removeAttribute('aria-busy'));
       this.locked.forEach(([el, disabled]) => {
         if (el.isConnected) el.disabled = disabled;
       });
@@ -626,6 +628,16 @@ export class KitchenView {
       this.focusMemo = '';
       this.restoreFocus(memo);
     }
+  }
+  /** Der Knopf, der die Arbeit ausgelöst hat, zeigt einen Spinner, solange gespeichert wird. Bei Enter im Feld ist es der Hauptknopf des Formulars. */
+  private markBusy(): void {
+    const active = this.root.ownerDocument.activeElement;
+    if (!active || !this.root.contains(active)) return;
+    const target =
+      active.tagName === 'BUTTON'
+        ? active
+        : active.closest('form')?.querySelector('button[type=submit], button.primary');
+    target?.setAttribute('aria-busy', 'true');
   }
   async run(work: () => Promise<unknown>, success: string, after?: () => void, mutation = true): Promise<void> {
     if (this.busy) return;

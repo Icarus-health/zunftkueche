@@ -4,7 +4,7 @@
 import type { Area, Delivery, Order, Season, Stored, Workspace } from './model';
 import { documents } from './ww/model.ts';
 import { withSchedule, scheduledOrder } from './supplier-orders.ts';
-import { button, empty, h, n } from './markup.ts';
+import { button, empty, h, n, emptyAction } from './markup.ts';
 import { unitName } from './units.ts';
 import { PdfPage, pdfDocument, wrap } from './pdf-document.ts';
 
@@ -247,7 +247,10 @@ export function orderOverview(state: Workspace, season: Season | undefined, area
     ? ''
     : `<div class="page-heading"><div><h1>Bestellungen nach Liefertag</h1><p>${h(season.name)} · ${h(area)}</p></div><div class="actions">${button('overview-pdf', 'Lieferplan als PDF')}</div></div>`;
   if (!data.deliveries.length)
-    return heading + empty('Noch keine Bestellungen in dieser Saison. Unter „Nach Lieferant“ beginnen.');
+    return (
+      heading +
+      emptyAction('Noch keine Bestellungen in dieser Saison.', 'orders-tab', 'Nach Lieferant beginnen', 'list')
+    );
   const issues = data.issues.length
     ? `<section class="ov-issues" role="status"><h2>Bitte prüfen</h2><ul>${data.issues.map(i => `<li>${h(i)}</li>`).join('')}</ul></section>`
     : '<p class="ov-ok" role="status">Keine Überschneidungen. Alle Lieferungen haben Datum und Uhrzeit.</p>';

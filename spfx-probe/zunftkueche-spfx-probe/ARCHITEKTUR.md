@@ -42,6 +42,9 @@ Stammdaten: ein Preis je Artikel und Lieferant. Preisänderungen entstehen als P
 - Listen sind weiße Gruppen (Radius 14) auf grauem Grund mit eingerückten Haarlinien, Karten und Formulare Radius 20, Felder Radius 10. Abstände im 4er-Raster.
 - Leere Listen nennen den nächsten Schritt als Knopf (`emptyAction`). Beim Laden stehen Platzhalterzeilen.
 - Bewegung ist kurz und schaltet sich mit „Bewegung reduzieren“ ab.
+- Symbole (`icons.ts`): eigene SVGs im 24er-Raster, Strich 1,8 mit runden Enden, Punkte als gefüllte Kreise. Keine SF Symbols (Lizenz nur für Apple-Plattformen), kein Überschreiben der Strichstärke im Stylesheet.
+- Menüeinträge, nach denen noch eine Eingabe folgt, enden mit „ …“ (geschütztes Leerzeichen).
+- Während gespeichert wird, trägt der auslösende Knopf `aria-busy` und zeigt einen Spinner.
 
 ## Regeln, die den Code sauber halten
 
