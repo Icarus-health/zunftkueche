@@ -14,7 +14,10 @@ import { WwController } from './ww/controller.ts';
 import { overviewAction, saveOverview } from './actions/overview-actions.ts';
 import { loadMenu, menuAction, menuReorder, saveMenu } from './actions/menu-actions.ts';
 import { startMenuDrag } from './menu-drag.ts';
-import { menuEditor } from './menu-card.ts';
+import { menuEditor, readMenu } from './menu-card.ts';
+import { menuPreview } from './menu-preview.ts';
+import { WAPPEN } from './menu-assets.ts';
+import { registerFonts } from './fonts.ts';
 import type { MenuCard, WwDocument } from './ww/model';
 import type {
   Area,
@@ -326,9 +329,30 @@ export class KitchenView {
         updateCountTotals(this);
       }
       if (this.receiving) updateReceiptProgress(this);
+      if (target.closest('form[data-form=menu]')) this.scheduleMenuPreview();
       this.rememberDraft();
     }
   };
+  private previewTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Vorschau der Karte kurz nach der letzten Eingabe neu zeichnen. */
+  private scheduleMenuPreview(): void {
+    if (this.previewTimer) clearTimeout(this.previewTimer);
+    this.previewTimer = setTimeout(() => this.drawMenuPreview(), 120);
+  }
+  /** Zeichnet die Vorschau aus den aktuellen Eingaben, ohne die Seite neu aufzubauen. */
+  private drawMenuPreview(): void {
+    const target = this.root.querySelector<HTMLElement>('[data-menu-preview]');
+    if (!target || !this.menuDraft) return;
+    const form = this.root.querySelector<HTMLFormElement>('form[data-form=menu]');
+    let card = this.menuDraft;
+    try {
+      if (form) card = readMenu(form, this.menuDraft);
+    } catch {
+      /* Ungültige Eingabe (z. B. Preis): Vorschau zeigt den letzten gültigen Stand. */
+      return;
+    }
+    target.innerHTML = menuPreview(card, { href: WAPPEN.png, width: WAPPEN.width, height: WAPPEN.height });
+  }
   private readonly change = (event: Event): void => {
     const origin = event.target;
     if (!(origin instanceof HTMLSelectElement) && !(origin instanceof Element && origin.matches('input[type=radio]')))
@@ -430,6 +454,7 @@ export class KitchenView {
     root.addEventListener('keydown', this.keydown);
     root.addEventListener('submit', this.submit);
     root.addEventListener('input', this.input);
+    registerFonts(root.ownerDocument);
     root.addEventListener('change', this.change);
     this.wwUI = new WwController({
       root,
@@ -501,6 +526,7 @@ export class KitchenView {
     this.root.removeEventListener('pointerdown', this.pointerdown);
     this.root.removeEventListener('submit', this.submit);
     this.root.removeEventListener('input', this.input);
+    if (this.previewTimer) clearTimeout(this.previewTimer);
     this.root.removeEventListener('change', this.change);
   }
   season(): Season | undefined {
@@ -785,6 +811,7 @@ export class KitchenView {
       .querySelector('.app-layout')
       ?.classList.toggle('task-mode', !!this.root.querySelector('main form.calm-workflow .calm-heading button'));
     this.placeContextSwitch();
+    this.drawMenuPreview();
     const phone = !!this.root.ownerDocument.defaultView?.matchMedia?.('(max-width:600px)').matches,
       dayViews = Array.from(this.root.querySelectorAll<HTMLInputElement>('input[name=deliveryView]')),
       dayList = this.root.querySelector<HTMLSelectElement>('select[name=deliveryView]');

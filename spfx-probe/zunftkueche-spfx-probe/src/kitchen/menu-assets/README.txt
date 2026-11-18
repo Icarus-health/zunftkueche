@@ -1,3 +1,6 @@
-Kopfbild der Karte: Ausschnitt aus der Vorlage „Preislistezunft25 neues Design“ (Wappen, Trennlinie, „Schelmenzunft Staufen“).
-Die Zeile „-Staufener Zunftabend <Jahr>-“ ist entfernt und wird in der App mit Montserrat 400, 28 px, 1,2 px Zeichenabstand neu gesetzt
-(linke Kante x = 329, Grundlinie y = 223 im Bild 1200 × 292). Montserrat: SIL Open Font License, siehe Montserrat-OFL.txt.
+Dateien der gedruckten Karte (seit 1.25.0 nach dem Zunft-Design-System).
+wappen-blau.png / .jpg: Wappen allein in Zunftblau (#3F4695) aus der Gruppe Logos des Design-Systems, auf 420 px Höhe verkleinert, unverändert sonst.
+  PNG mit Transparenz für Word und die Vorschau, JPEG auf Weiß für das PDF.
+montserrat-200/300/400.ttf: Montserrat ExtraLight, Light, Regular aus dem Design-System, auf die WinAnsi-Zeichen beschnitten
+  (fontTools). Breiten dazu in ../menu-font-metrics.ts. Werden in PDF und Word eingebettet.
+Montserrat: SIL Open Font License, siehe Montserrat-OFL.txt.

@@ -16,7 +16,7 @@ import {
   reorderSection
 } from '../menu-card.ts';
 import { menuDocx, menuPdf } from '../menu-export.ts';
-import { menuHeader } from '../menu-header.ts';
+import { loadMenuAssets } from '../menu-assets.ts';
 import { saveFile } from '../save-file.ts';
 import { uuid } from '../view-support.ts';
 
@@ -50,6 +50,18 @@ export async function menuAction(app: KitchenView, action: string, id: string): 
     openMenu(app);
     return true;
   }
+  if (action === 'menu-preview') {
+    /* Nur am Telefon: Vorschau als eigene Ansicht über dem Editor. Eingaben bleiben stehen. */
+    const layout = app.root.querySelector('.menu-layout');
+    const open = !layout?.classList.contains('preview-open');
+    layout?.classList.toggle('preview-open', open);
+    app.root
+      .querySelector<HTMLElement>(
+        open ? '.menu-preview [data-action=menu-preview]' : 'form[data-form=menu] [data-action=menu-preview]'
+      )
+      ?.focus();
+    return true;
+  }
   if (action === 'menu-close') {
     if (!app.canLeave()) return true;
     app.clearEditor();
@@ -60,9 +72,9 @@ export async function menuAction(app: KitchenView, action: string, id: string): 
   const card = current(app);
   if (action === 'menu-pdf' || action === 'menu-docx') {
     validateDocument(card);
-    const header = await menuHeader(app.root.ownerDocument, card.title);
+    const assets = await loadMenuAssets();
     const pdf = action === 'menu-pdf';
-    const data = pdf ? menuPdf(card, header?.jpeg || null) : menuDocx(card, header?.png || null);
+    const data = pdf ? menuPdf(card, assets) : menuDocx(card, assets);
     saveFile(
       file(app, card, pdf ? 'pdf' : 'docx'),
       new Blob([new Uint8Array(data).buffer], {

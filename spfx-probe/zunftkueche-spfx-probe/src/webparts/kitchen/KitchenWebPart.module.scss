@@ -6514,10 +6514,10 @@
     }
   }
 }
-/* Dunkel: das Zunftzeichen übernimmt die helle Akzentfarbe, sonst steht Dunkelblau auf Schwarz */
+/* Dunkel: Wappen weiß auf Nachtblau (Fassung _weiss des Zunft-Systems) */
 .kitchen[data-dark='true'] {
   :global(.brand-mark) {
-    background: var(--action);
+    background: #fff;
     -webkit-mask: url('./assets/zunft-logo.webp') center / contain no-repeat;
     mask: url('./assets/zunft-logo.webp') center / contain no-repeat;
   }
@@ -6711,5 +6711,225 @@
   }
   :global(.more-menu-list) button {
     white-space: nowrap;
+  }
+}
+
+/* 1.25.0 Zunft-Design-System (freigegeben 16.11.2026): Farben, Montserrat, keine Schatten.
+   Bedienregeln aus build-like-apple bleiben: Ziele ab 44 px, Text ab 11 px, eine Hauptaktion, Symbole in der Navigation.
+   Thema Papier hell, Thema Nacht dunkel. Statusfarben (ok, Warnung, Fehler) bleiben, weil sie Bedeutung tragen. */
+.kitchen {
+  --bg: #e7e8f2; /* hauch */
+  --surface: #fff; /* weiss */
+  --ink: #20234b; /* nachtblau */
+  --dim: #585a78; /* schiefer */
+  --faint: rgba(32, 35, 75, 0.3);
+  --line: #cfd1e5; /* nebel */
+  --control: #9091a5; /* nachtblau-50, Rahmen von Feldern 3,1:1 */
+  --fill: rgba(63, 70, 149, 0.16);
+  --fill-2: rgba(63, 70, 149, 0.08);
+  --fill-3: rgba(63, 70, 149, 0.05);
+  --action: #3f4695; /* zunftblau */
+  --action-hover: #20234b;
+  --action-fill: #20234b; /* gefüllter Knopf in ink */
+  --action-fill-hover: #3f4695;
+  --onaction: #fff;
+  --hero: #3f4695;
+  --hero-dim: #e7e8f2;
+  --tint: rgba(63, 70, 149, 0.1);
+  --tint-strong: rgba(63, 70, 149, 0.18);
+  --selected: rgba(63, 70, 149, 0.1);
+  --rail: #fff;
+  --bar: rgba(255, 255, 255, 0.9);
+  --icon-cut: #e7e8f2;
+  --focus: #3f4695;
+  --seg-on: #fff;
+  --raised: #fff;
+  font-family: ZKMontserrat, 'Segoe UI', system-ui, Arial, sans-serif;
+  font-synthesis: none;
+  font-weight: 400;
+  h1 {
+    font-weight: 300;
+    letter-spacing: 0.01em;
+  }
+  /* Rubrik über Titeln wie im Zunft-System: Versalien, weit gesperrt, Zunftblau */
+  :global(.rubrik) {
+    color: var(--action);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+  }
+  /* Keine Schatten: schwebende Flächen bekommen eine feine Linie */
+  :global(.context-sheet),
+  :global(.sheet-options-body),
+  :global(.more-menu-list) {
+    box-shadow: 0 0 0 1px var(--control);
+  }
+  :global(.segmented) input:checked + span,
+  :global(.seg-tabs) button[aria-current='page'] {
+    box-shadow: 0 0 0 1px var(--line);
+  }
+  :global(.menu-line.dragging) {
+    box-shadow: none;
+  }
+  /* Montserrat läuft breiter als die System-Schrift: Knöpfe in einer Reihe brechen lieber um, als die Beschriftung zu kappen */
+  :global(.actions) > button {
+    min-width: fit-content;
+    max-width: 100%;
+  }
+}
+.kitchen[data-dark='true'] {
+  /* Thema Nacht: Weiß auf Nachtblau, gefüllter Knopf weiß mit nachtblauer Schrift */
+  --bg: #20234b;
+  --surface: #2b2f62;
+  --ink: #fff;
+  --dim: #cfd1e5;
+  --faint: rgba(207, 209, 229, 0.3);
+  --line: #585a78;
+  --control: #9091a5;
+  --fill: rgba(207, 209, 229, 0.2);
+  --fill-2: rgba(207, 209, 229, 0.12);
+  --fill-3: rgba(207, 209, 229, 0.08);
+  --action: #c7c8f0;
+  --action-hover: #fff;
+  --action-fill: #fff;
+  --action-fill-hover: #cfd1e5;
+  --onaction: #20234b;
+  --hero: #3f4695; /* surface-alt im Thema Nacht */
+  --hero-dim: #e7e8f2;
+  --error: #ff8a80;
+  --tint: rgba(159, 163, 202, 0.2);
+  --tint-strong: rgba(159, 163, 202, 0.32);
+  --selected: rgba(159, 163, 202, 0.22);
+  --rail: #20234b;
+  --bar: rgba(32, 35, 75, 0.92);
+  --icon-cut: #2b2f62;
+  --focus: #9fa3ca;
+  --seg-on: #3f4695;
+  --raised: #2b2f62;
+  /* Nächster Schritt: Fläche Zunftblau, Schrift weiß (die Rolle --onaction ist hier Nachtblau für den weißen Knopf) */
+  :global(.next-step) h2 {
+    color: var(--ink);
+  }
+}
+.kitchen {
+  /* Karte: Editor links, Vorschau rechts als Seite aus Papier. Unter 1100 px über den Knopf „Vorschau“. */
+  :global(.menu-layout) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+    gap: 32px;
+    align-items: start;
+  }
+  :global(.menu-editor) {
+    container: zkmenu / inline-size;
+  }
+  :global(.menu-preview) {
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 32px);
+    overflow: auto;
+    margin-top: 16px;
+  }
+  :global(.menu-preview-head) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+    margin-bottom: 12px;
+  }
+  :global(.menu-preview-head) h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 400;
+  }
+  :global(.menu-preview-head) small {
+    flex: 1 1 160px;
+  }
+  :global(.menu-pages) svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-bottom: 16px;
+    background: #fff;
+    outline: 1px solid var(--line);
+  }
+  [data-action='menu-preview'] {
+    display: none;
+  }
+  @media (max-width: 1099px) {
+    :global(.menu-layout) {
+      display: block;
+    }
+    :global(.menu-preview) {
+      display: none;
+    }
+    :global(.sticky-actions) [data-action='menu-preview'],
+    :global(.menu-preview-head) [data-action='menu-preview'] {
+      display: inline-flex;
+    }
+    :global(.menu-layout.preview-open) :global(.menu-preview) {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      max-height: none;
+      margin: 0;
+      padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+      background: var(--bg);
+    }
+    :global(.menu-pages) {
+      max-width: 560px;
+      margin: 0 auto;
+    }
+  }
+  /* Schmale Editor-Spalte (neben der Vorschau): Zeilen wie am Telefon zweizeilig */
+  @container zkmenu (max-width: 899px) {
+    :global(.menu-head) {
+      grid-template-columns: 1fr;
+    }
+    :global(.menu-cols),
+    :global(.menu-cols.numbered.producer) {
+      display: none;
+    }
+    :global(.menu-line),
+    :global(.menu-line.numbered.producer) {
+      grid-template-columns: 36px 1fr 1fr;
+      padding: 12px 0;
+    }
+    :global(.menu-grip) {
+      grid-column: 1;
+      grid-row: 1 / span 5;
+    }
+    :global(.menu-line) :global(.menu-number) {
+      order: 1;
+      grid-column: 2;
+    }
+    :global(.menu-line) :global(.menu-price) {
+      order: 2;
+      grid-column: 3;
+    }
+    :global(.menu-line:not(.numbered)) :global(.menu-price) {
+      grid-column: 2 / -1;
+    }
+    :global(.menu-line) :global(.menu-label) {
+      order: 3;
+      grid-column: 2 / -1;
+    }
+    :global(.menu-line) :global(.menu-detail) {
+      order: 4;
+      grid-column: 2 / -1;
+    }
+    :global(.menu-line) :global(.menu-size) {
+      order: 5;
+      grid-column: 2;
+    }
+    :global(.menu-line) :global(.menu-producer) {
+      order: 6;
+      grid-column: 3;
+    }
+    :global(.menu-line-actions) {
+      order: 7;
+      grid-column: 2 / -1;
+    }
   }
 }

@@ -33,6 +33,15 @@ Sieben Punkte in der Seitenleiste: Übersicht, Bestellungen, Lieferanten, Speise
 
 Stammdaten: ein Preis je Artikel und Lieferant. Preisänderungen entstehen als Preisliste mit Datum (im Profil des Lieferanten unter „Preise ändern“ oder beim Bestätigen einer Rechnung). Alte Bestellungen behalten ihre Preise.
 
+## Aussehen seit 1.25 (Zunft-Design-System, freigegeben 16.11.2026)
+
+- Farben und Schrift kommen aus dem Design-System der Zunft: Nachtblau, Zunftblau, Schiefer, Nebel, Hauch; Montserrat (Light, Regular, Medium) als Hausschrift. Thema Papier hell, Thema Nacht dunkel. Die Schlussschicht „1.25.0 Zunft-Design-System“ am Ende des Stylesheets setzt nur Rollen.
+- Montserrat liegt im Paket (`src/kitchen/fonts`, woff2) und wird in `fonts.ts` per FontFace angemeldet. Keine SemiBold/Bold-Schnitte: angefragtes Fett fällt auf Medium, `font-synthesis: none`.
+- Bedienregeln aus build-like-apple bleiben (44 px, ein Hauptknopf, Symbole in der Navigation, Statusfarben). Keine Schlagschatten mehr, schwebende Flächen tragen eine feine Linie.
+- Wappen: Fassung „Wappen allein, blau“ aus der Gruppe Logos, unverändert; dunkel als weiße Maske.
+- Karte: `menu-layout.ts` setzt die Seite einmal (pt, A4). Daraus zeichnen `menu-export.ts` das PDF (Montserrat als TrueType eingebettet, Breiten in `menu-font-metrics.ts`) und `menu-preview.ts` die Live-Vorschau als SVG. Word baut dieselbe Optik als Tabelle und bettet die Schriften verschleiert ein (ECMA-376 17.8.1). Schriften für PDF/Word: `menu-assets/montserrat-*.ttf`, auf WinAnsi beschnitten.
+- Vorschau: am Rechner ab 1100 px rechts neben dem Editor, darunter über den Knopf „Vorschau“. Editorzeilen werden über eine Container-Abfrage zweizeilig, sobald die Spalte schmal wird.
+
 ## Aussehen seit 1.24 (Zunft-Standard build-like-apple)
 
 - Schrift ist die System-Schrift (`-apple-system`, auf Windows Segoe UI). Textstile: Seitentitel 28 fett, Abschnitt 20, Zwischentitel 17, Fließtext 16, Listen 15 oder 14, Nebentext 13. Fett ist nur der Seitentitel, sonst höchstens 600.

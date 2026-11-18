@@ -23,7 +23,7 @@ export const MENU_SECTIONS: Array<{
 export const MENU_FOOTER =
   'Allergene Stoffe können nicht ausgeschlossen werden (Wein und Sekt enthalten Sulfite).\nDie vollständige Liste an Allergenen und Zusatzstoffen kann an der Theke eingesehen werden.';
 export const menuId = (seasonId: string): string => 'menu-' + seasonId;
-export const menuTitle = (year: number): string => '-Staufener Zunftabend ' + year + '-';
+export const menuTitle = (year: number): string => 'Staufener Zunftabend ' + year;
 
 type Seed = [MenuSection, string, string, string, string, string, number | null];
 /** Karte 2025 aus der Vorlage „Preislistezunft25 neues Design“. */
@@ -198,7 +198,8 @@ export function menuEditor(card: MenuCard, state: Workspace, saved: boolean): st
   const open = card.lines.filter(l => l.priceGross === null).length;
   return (
     `<div class="page-heading"><div><h1>Karte</h1><p>${h(card.name)} · ${count} ${count === 1 ? 'Eintrag' : 'Einträge'}${open ? ' · ' + open + ' ohne Preis' : ''}${saved ? '' : ' · noch nicht gespeichert'}</p></div><div class="actions">${count ? button('menu-pdf', 'Als PDF') + button('menu-docx', 'Als Word') : ''}</div></div>` +
-    `<form data-form="menu" class="menu-editor">${start}<div class="menu-head">${'<label>Untertitel im Kopf<input name="title" value="' + h(card.title) + '" maxlength="160" /></label>'}<label>Hinweis unten auf der Karte<textarea name="footer" rows="3" maxlength="600">${h(card.footer)}</textarea></label></div>${sections.join('')}<div class="actions sticky-actions"><button type="submit" class="primary">Karte speichern</button></div></form>`
+    `<div class="menu-layout"><form data-form="menu" class="menu-editor">${start}<div class="menu-head">${'<label>Titel im Kopf<input name="title" value="' + h(card.title) + '" maxlength="160" /></label>'}<label>Hinweis unten auf der Karte<textarea name="footer" rows="3" maxlength="600">${h(card.footer)}</textarea></label></div>${sections.join('')}<div class="actions sticky-actions"><button type="submit" class="primary">Karte speichern</button>${button('menu-preview', 'Vorschau')}</div></form>` +
+    `<aside class="menu-preview" aria-labelledby="menu-preview-title"><div class="menu-preview-head"><h2 id="menu-preview-title">Vorschau</h2><small>So wird gedruckt, ändert sich beim Tippen.</small>${button('menu-preview', 'Schließen')}</div><div class="menu-pages" data-menu-preview></div></aside></div>`
   );
 }
 /** Liest die Eingaben in eine neue Fassung der Karte. */

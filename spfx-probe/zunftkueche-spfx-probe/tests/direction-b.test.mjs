@@ -29,9 +29,10 @@ test('symbols are drawn inline, without an icon font, and the navigation has a f
  assert.ok(svg.querySelector('.zk-line')&&svg.querySelector('.zk-solid'),'line and filled form');
  assert.equal(page(icon('check')).querySelector('.zk-solid'),null,'small symbols only need the line form');
  const css=readFileSync(new URL('../src/webparts/kitchen/KitchenWebPart.module.scss',import.meta.url),'utf8').replace(/\s+/g,' ').replace(/\s*([{};:,>])\s*/g,'$1').replace(/\s*!important/g,'!important');
- assert.doesNotMatch(css,/ui-icons|Montserrat/,'old fonts are no longer bundled');
- assert.doesNotMatch(css,/@font-face|Archivo/,'no bundled font any more, the system font is used');
- assert.match(css,/font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui/);
+ assert.doesNotMatch(css,/ui-icons|Archivo/,'old fonts are no longer bundled');
+ assert.doesNotMatch(css,/@font-face/,'the house font is registered from the bundle at start, not by a stylesheet rule');
+ // Seit 1.25.0 Hausschrift der Zunft (Montserrat), System-Schrift nur als Ersatz.
+ assert.match(css,/font-family:ZKMontserrat,'Segoe UI',system-ui,Arial,sans-serif;font-synthesis:none/);
 });
 
 test('the crest appears on the overview only, the sidebar keeps the name',()=>{

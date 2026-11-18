@@ -1,5 +1,7 @@
 // Kleiner PDF-Baukasten: PDF 1.4, eingebaute Schriften Helvetica und Helvetica-Bold, WinAnsi-Zeichen.
 // Kein Netz, kein fremder Dienst. Genutzt für Bestellungen und den Abendabschluss auf Papier.
+// Die Karte bettet zusätzlich Montserrat als TrueType ein (pdfDocument, Parameter trueType).
+import type { FontMetrics } from './menu-font-metrics';
 
 /** Zeichen auf WinAnsi abbilden. Nicht darstellbare Zeichen werden zu „?“. */
 export function pdfBytes(value: string): Uint8Array {
@@ -88,8 +90,20 @@ export interface PdfImage {
   width: number;
   height: number;
 }
+/** TrueType-Schrift mit WinAnsi-Kodierung, Breiten für die Zeichen 32 bis 255 in 1/1000 em. */
+export interface PdfTrueType {
+  key: string;
+  metrics: FontMetrics;
+  file: Uint8Array | null;
+}
 /** Setzt die Seiten zu einer PDF-Datei zusammen. Querformat A4 ist 842 × 595, Hochformat 595 × 842. */
-export function pdfDocument(pages: string[], width = 842, height = 595, images: PdfImage[] = []): Uint8Array {
+export function pdfDocument(
+  pages: string[],
+  width = 842,
+  height = 595,
+  images: PdfImage[] = [],
+  trueType: PdfTrueType[] = []
+): Uint8Array {
   const objects: Array<string | Uint8Array[]> = [
     '',
     '<< /Type /Catalog /Pages 2 0 R >>',
@@ -112,7 +126,28 @@ export function pdfDocument(pages: string[], width = 842, height = 595, images: 
     ]);
     return '/' + image.name + ' ' + id + ' 0 R';
   });
-  const resources = `<< /Font << ${fonts} >>${xobjects.length ? ' /XObject << ' + xobjects.join(' ') + ' >>' : ''} >>`;
+  // Eingebettete TrueType-Schriften (Karte in Montserrat). Ohne Datei bleibt die Schrift nur benannt, mit denselben Breiten.
+  const embedded = trueType.map(font => {
+    const m = font.metrics;
+    let descriptor = `<< /Type /FontDescriptor /FontName /ZKAAAA+${m.name} /Flags 32 /FontBBox [${m.bbox.join(' ')}] /ItalicAngle 0 /Ascent ${m.ascent} /Descent ${m.descent} /CapHeight ${m.capHeight} /StemV 80`;
+    if (font.file) {
+      const fileId = objects.length;
+      objects.push([
+        pdfBytes(`<< /Length ${font.file.length} /Length1 ${font.file.length} >>\nstream\n`),
+        font.file,
+        pdfBytes('\nendstream')
+      ]);
+      descriptor += ` /FontFile2 ${fileId} 0 R`;
+    }
+    const descriptorId = objects.length;
+    objects.push(descriptor + ' >>');
+    const id = objects.length;
+    objects.push(
+      `<< /Type /Font /Subtype /TrueType /BaseFont /${font.file ? 'ZKAAAA+' : ''}${m.name} /FirstChar 32 /LastChar 255 /Widths [${m.widths.join(' ')}] /Encoding /WinAnsiEncoding /FontDescriptor ${descriptorId} 0 R >>`
+    );
+    return '/' + font.key + ' ' + id + ' 0 R';
+  });
+  const resources = `<< /Font << ${[fonts, ...embedded].join(' ')} >>${xobjects.length ? ' /XObject << ' + xobjects.join(' ') + ' >>' : ''} >>`;
   const kids: number[] = [];
   for (const content of pages) {
     const id = objects.length;
