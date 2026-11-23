@@ -33,6 +33,15 @@ Sieben Punkte in der Seitenleiste: Übersicht, Bestellungen, Lieferanten, Speise
 
 Stammdaten: ein Preis je Artikel und Lieferant. Preisänderungen entstehen als Preisliste mit Datum (im Profil des Lieferanten unter „Preise ändern“ oder beim Bestätigen einer Rechnung). Alte Bestellungen behalten ihre Preise.
 
+## Bedienung seit 1.26
+
+- **Zurück**: jede Unterseite hat oben links ein Zurück mit dem Namen der Seite, von der man kam. Das setzt `placeBack()` in `view.ts` zentral; einzelne Seiten bauen keinen eigenen Rückweg mehr. Hauptseiten (Reiter der Navigation, Seiten mit Umschalter) haben keines.
+- Zurück verwirft nichts stillschweigend: bei offenen Eingaben fragt `askLeave()` mit einem Dialog („Weiter bearbeiten“ / „Verwerfen“). Nach der Rückkehr steht man wieder dort, wo man die Unterseite geöffnet hat (`places`, `returnTo()`): Abschnitt offen, Fokus auf dem Knopf.
+- **Lieferanten zusammenlegen**: `supplier-merge.ts` rechnet aus, was geschieht (`planMerge`, ändert nichts), `actions/merge-actions.ts` zeigt die Vorschau und führt aus. Nach vorn Wirkendes wechselt (Artikel mit Gebinde und Preis, Bestellentwürfe, Vorlagen, Bestellschluss), Geschehenes bleibt beim alten Namen (aufgegebene Bestellungen, Rechnungen, frühere Preislisten). Der alte Lieferant wird inaktiv und merkt sich das Ziel (`mergedInto`). Jeder Schritt hat eine feste Kennung: bricht es ab, setzt ein neuer Versuch dort fort.
+- **Artikel** stehen nach Kategorie gruppiert, mit Filter. Im Lieferantenprofil ist die Preisliste ebenso sortiert.
+- **Rechnungen lesen**: `imports/bill-proposal.ts` bleibt die strenge Erkennung. `imports/bill-loose.ts` greift nur, wenn sie nichts findet (Scans, unübliche Belege): Beschriftung mitten in der Zeile, Nummer in der Folgezeile, zweistelliges Jahr, Beträge mit Punkt, verlorene Kommas. Ein Betrag wird nur übernommen, wenn er sich nachrechnen lässt (Netto × Satz = Steuer, Netto + Steuer = Brutto, Menge × Preis = Betrag, Zeilensumme = Belegsumme). Was errechnet oder aus dem Dateinamen übernommen wurde, steht als Hinweis über dem Formular (`BillProposal.notes`). Neue Regeln immer mit einem Test in `tests/bedienung-1-26.test.mjs` und gegen echte Belege prüfen.
+- Rechnungsformular: zwei Wege zum Abschluss, „Rechnung bestätigen“ und „Als Entwurf speichern“. Das versteckte Feld `confirmed` trägt nur den Zustand.
+
 ## Aussehen seit 1.25 (Zunft-Design-System, freigegeben 16.11.2026)
 
 - Farben und Schrift kommen aus dem Design-System der Zunft: Nachtblau, Zunftblau, Schiefer, Nebel, Hauch; Montserrat (Light, Regular, Medium) als Hausschrift. Thema Papier hell, Thema Nacht dunkel. Die Schlussschicht „1.25.0 Zunft-Design-System“ am Ende des Stylesheets setzt nur Rollen.

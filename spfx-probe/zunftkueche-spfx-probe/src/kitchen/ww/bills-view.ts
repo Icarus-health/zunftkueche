@@ -116,6 +116,14 @@ export function billLinkForm(bill: Bill, s: Workspace): string {
     '</form>'
   );
 }
+/** Was beim Auslesen der Datei erkannt wurde. */
+export interface BillReadInfo {
+  /** Rechnungsdatum stand lesbar im Beleg (sonst steht das Feld noch auf heute). */
+  date: boolean;
+  /** Hinweise der Erkennung: errechnete Summen, Nummer aus dem Dateinamen, unvollständige Positionen. */
+  notes: string[];
+  usedOcr: boolean;
+}
 export function billForm(
   b: Bill,
   s: Workspace,
@@ -125,7 +133,8 @@ export function billForm(
   previewImage?: { image: string; pages: number },
   fromInbox = false,
   queue = '',
-  hasNext = false
+  hasNext = false,
+  readInfo?: BillReadInfo
 ): string {
   if (b.scanNumberReview?.status === 'open') {
     const original = previewUrl
@@ -179,10 +188,13 @@ export function billForm(
   const supplierName = s.suppliers.find(r => r.value.id === b.supplierId)?.value.name;
   // Was die App aus der Datei übernommen hat, in einem Satz. Leere Felder nennt der zweite Satz.
   const mapped = b.lines.filter(l => l.articleId).length;
+  const dateRead = !readInfo || readInfo.date;
   const read = [
     supplierName ? 'Lieferant ' + supplierName : '',
     b.number ? 'Nummer ' + b.number : '',
+    readInfo?.date && b.date ? 'Datum ' + b.date.split('-').reverse().join('.') : '',
     b.gross !== null ? 'Brutto ' + euro(b.gross) : '',
+    b.net !== null && b.tax !== null ? 'Netto ' + euro(b.net) + ' und Steuer ' + euro(b.tax) : '',
     b.lines.length
       ? count(b.lines.length, 'Position', 'Positionen') + (mapped ? ', ' + mapped + ' mit Artikel' : '')
       : '',
@@ -191,8 +203,11 @@ export function billForm(
   const missing = [
     b.supplierId ? '' : 'Lieferant',
     b.number ? '' : 'Rechnungsnummer',
-    b.gross === null ? 'Bruttobetrag' : ''
+    dateRead ? '' : 'Rechnungsdatum (steht noch auf heute)',
+    b.gross === null ? 'Bruttobetrag' : '',
+    b.gross !== null && (b.net === null || b.tax === null) ? 'Netto und Steuer' : ''
   ].filter(Boolean);
+  const hints = (readInfo?.notes || []).map(note => '<li>' + h(note) + '</li>').join('');
   const summary =
     sourceText && (read.length || missing.length)
       ? '<div class="bill-read" role="status">' +
@@ -200,6 +215,7 @@ export function billForm(
         (missing.length
           ? '<p><strong>Bitte ergänzen:</strong> ' + h(missing.join(', ')) + '</p>'
           : '<p>Bitte kurz mit dem Original vergleichen, dann bestätigen.</p>') +
+        (hints ? '<ul class="bill-read-notes">' + hints + '</ul>' : '') +
         '</div>'
       : '';
   const lineSum = b.lines.every(l => l.totalNet !== null)
@@ -360,14 +376,17 @@ export function billForm(
       ? `<details class="form-more"><summary>Ausgelesener Text der Datei</summary><pre class="ww-original">${h(sourceText)}</pre></details>`
       : '') +
     retry +
+    // Zwei klare Wege: bestätigen (zählt ab dann) oder als Entwurf liegen lassen. Das Häkchen dazwischen ist entfallen.
     '<div class="actions sticky-actions">' +
     (b.needsSeparateFiles
-      ? ''
-      : check('confirmed', credit ? 'Geprüft, Gutschrift bestätigen' : 'Geprüft, Rechnung bestätigen', b.confirmed)) +
-    `<button type="submit" class="primary">${b.needsSeparateFiles ? 'Zur Prüfung speichern' : 'Speichern'}</button>` +
-    (fromInbox && hasNext && !b.needsSeparateFiles
-      ? button('ww-bill-save-next', 'Bestätigen und nächste Rechnung')
-      : '') +
+      ? '<button type="submit" class="primary">Zur Prüfung speichern</button>'
+      : '<input type="checkbox" name="confirmed" hidden tabindex="-1" aria-hidden="true"' +
+        (b.confirmed ? ' checked' : '') +
+        ' />' +
+        (fromInbox && hasNext
+          ? button('ww-bill-save-next', 'Bestätigen und nächste Rechnung', '', true)
+          : button('ww-bill-confirm', credit ? 'Gutschrift bestätigen' : 'Rechnung bestätigen', '', true)) +
+        '<button type="submit">Als Entwurf speichern</button>') +
     button('ww-cancel', fromInbox ? 'Zurück zu den Rechnungen' : 'Abbrechen') +
     '</div></form>'
   );

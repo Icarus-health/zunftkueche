@@ -6933,3 +6933,220 @@
     }
   }
 }
+
+/* 1.26.0 Bedienung: einheitliches Zurück, Rückfrage vor dem Verwerfen, Artikel nach Kategorien, Lieferanten zusammenlegen. */
+.kitchen {
+  --scrim: rgba(32, 35, 75, 0.4);
+  /* Rückfrage: mittig, sichere Wahl gefüllt, Verwerfen rot und ohne Fläche */
+  dialog:global(.leave-dialog),
+  dialog:global(.ask-dialog) {
+    width: min(400px, calc(100vw - 32px));
+    padding: 24px;
+    border: 0;
+    border-radius: 20px;
+    background: var(--raised);
+    color: var(--ink);
+    box-shadow: 0 0 0 1px var(--control);
+  }
+  dialog:global(.leave-dialog)::backdrop,
+  dialog:global(.ask-dialog)::backdrop {
+    background: var(--scrim);
+  }
+  dialog:global(.leave-dialog) h2,
+  dialog:global(.ask-dialog) h2 {
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 500;
+  }
+  dialog:global(.leave-dialog) p,
+  dialog:global(.ask-dialog) p {
+    margin: 0 0 20px;
+    color: var(--dim);
+  }
+  dialog:global(.leave-dialog) :global(.actions),
+  dialog:global(.ask-dialog) :global(.actions) {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  /* Artikel nach Kategorien: je Kategorie eine Gruppe mit Überschrift und Anzahl */
+  :global(.article-toolbar) {
+    display: grid;
+    gap: 12px;
+  }
+  :global(.article-toolbar) > :global(.search-label) {
+    max-width: none;
+  }
+  :global(.article-toolbar) :global(.segmented) {
+    display: flex;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  :global(.article-toolbar) :global(.segmented) span {
+    white-space: nowrap;
+  }
+  /* Viele Kategorien auf dem Telefon: Einträge behalten ihre Breite, die Leiste lässt sich seitlich schieben. */
+  :global(.article-toolbar) :global(.segmented) label {
+    flex: 0 0 auto;
+  }
+  :global(.article-toolbar) :global(.segmented) label span {
+    padding-inline: 12px;
+  }
+  :global(.supplier-profile) > summary > span:last-child {
+    flex: none;
+    white-space: nowrap;
+  }
+  /* Bestellblatt auf dem Telefon: Suche in eigener Zeile, die Liefertage darunter lassen sich seitlich schieben. */
+  @media (max-width: 640px) {
+    :global(.order-sheet) :global(.calm-toolbar) :global(.search-label) {
+      flex: 1 1 100%;
+    }
+    :global(.order-sheet) :global(.calm-toolbar) :global(.segmented) {
+      display: flex;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    :global(.order-sheet) :global(.calm-toolbar) :global(.segmented) label {
+      flex: 0 0 auto;
+    }
+    :global(.order-sheet) :global(.calm-toolbar) :global(.segmented) label span {
+      padding-inline: 12px;
+      white-space: nowrap;
+    }
+  }
+  :global(.article-group) > h2 {
+    margin: 24px 0 8px;
+    padding: 0 16px;
+    font-size: 17px;
+    font-weight: 500;
+  }
+  :global(.article-group) > h2 small {
+    display: inline;
+    margin-left: 4px;
+    color: var(--dim);
+    font-size: 13px;
+    font-weight: 400;
+  }
+  :global(.article-group):first-child > h2 {
+    margin-top: 8px;
+  }
+  :global(.article-group) :global(.article-list-row) > summary {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 0.7fr) minmax(0, 1.4fr);
+  }
+  :global(.article-group) :global(.article-list-row):first-child::before {
+    display: none;
+  }
+  :global(.price-table) :global(.price-group) th {
+    padding: 16px 0 4px;
+    border: 0;
+    color: var(--dim);
+    font-size: 13px;
+    font-weight: 400;
+  }
+  /* Inaktive Lieferanten stehen eingeklappt unter der Liste */
+  :global(.inactive-suppliers) {
+    margin-top: 16px;
+  }
+  :global(.inactive-suppliers) > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 16px;
+    color: var(--action);
+    cursor: pointer;
+  }
+  :global(.inactive-suppliers) > summary small {
+    display: inline;
+    color: var(--dim);
+  }
+  :global(.profile-content) > :global(.actions) {
+    align-items: center;
+  }
+  /* Lieferanten zusammenlegen */
+  :global(.merge-form) > label {
+    display: block;
+    max-width: 480px;
+    margin: 16px 0;
+  }
+  :global(.merge-preview) h2 {
+    margin: 24px 0 8px;
+    font-size: 17px;
+    font-weight: 500;
+  }
+  :global(.merge-preview) ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  :global(.merge-preview) li {
+    padding: 12px 0;
+    border-top: 0.5px solid var(--line);
+  }
+  :global(.merge-preview) li:first-child {
+    border-top: 0;
+  }
+  :global(.merge-preview) li strong {
+    font-weight: 500;
+  }
+  :global(.merge-preview) li small {
+    margin-top: 4px;
+    color: var(--dim);
+  }
+  :global(.merge-note) {
+    margin: 20px 0 0;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: var(--fill-3);
+    color: var(--dim);
+  }
+  @media (max-width: 600px) {
+    :global(.article-group) :global(.article-list-row) > summary {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+  }
+  /* Zurück sieht überall gleich aus, auch in der Kopfzeile der Aufgaben-Seiten */
+  :global(.calm-heading) > div > button:global(.back-link) {
+    justify-self: start;
+    min-height: 44px;
+    margin: 0 0 0 -8px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--action);
+    font-size: 16px;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+  button:global(.back-link):hover {
+    background: var(--fill-3);
+  }
+  button:global(.back-link) {
+    font-weight: 400;
+  }
+  button:global(.danger) {
+    background: transparent;
+    color: var(--error);
+  }
+  button:global(.danger):hover {
+    background: var(--errbg);
+  }
+}
+.kitchen[data-dark='true'] {
+  --scrim: rgba(0, 0, 0, 0.5);
+}
+
+.kitchen {
+  /* Hinweise der Rechnungserkennung: was errechnet oder aus dem Dateinamen übernommen wurde. */
+  :global(.bill-read-notes) {
+    margin: 8px 0 0;
+    padding-left: 20px;
+    color: var(--dim);
+    font-size: 0.86rem;
+  }
+  :global(.bill-read-notes) li + li {
+    margin-top: 2px;
+  }
+}

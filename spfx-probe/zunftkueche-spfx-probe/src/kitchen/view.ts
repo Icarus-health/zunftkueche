@@ -18,6 +18,7 @@ import { menuEditor, readMenu } from './menu-card.ts';
 import { menuPreview } from './menu-preview.ts';
 import { WAPPEN } from './menu-assets.ts';
 import { registerFonts } from './fonts.ts';
+import { mergeAction, mergeForm, saveMerge } from './actions/merge-actions.ts';
 import type { MenuCard, WwDocument } from './ww/model';
 import type {
   Area,
@@ -39,7 +40,7 @@ import { SharePointStore } from './sharepoint.ts';
 import type { ImportKind } from './csv';
 import { masterForm, orderForm, copyForm } from './forms.ts';
 import type { Editing } from './forms';
-import { h, button, panel } from './markup.ts';
+import { h, button, panel, backLink } from './markup.ts';
 import { sidebar, contextSwitch, dashboard, stockOverview, reportsOverview, stamp } from './workspace.ts';
 import { receiptForm, inventoryForm, assessmentLabel } from './operation-forms.ts';
 import { uuid, message, ownEntry } from './view-support.ts';
@@ -228,12 +229,16 @@ export class KitchenView {
   countEdits = new Map<string, string>();
   query = '';
   statusFilter = '';
+  /** Gewählte Kategorie der Artikelliste. Leer zeigt alle, „-“ steht für Artikel ohne Kategorie. */
+  articleCategory = '';
   quickIngredient?: IngredientDraft;
   copyPicker = false;
   reorderPicker = false;
   overviewPicker = false;
   menuDraft?: MenuCard;
   menuPrevious?: Stored<WwDocument>;
+  /** Lieferanten zusammenlegen: wer aufgeht und in wem. */
+  merging?: { sourceId: string; targetId: string };
   /** Ungeprüfte Rechnungen je offener Saison, nach jedem Laden einmal im Hintergrund gelesen. */
   openBills: OpenBills[] = [];
   private billsFor?: Workspace;
@@ -258,6 +263,18 @@ export class KitchenView {
   private trigger?: HTMLElement;
   /** Identifies the page currently shown, so a new page starts at the top while redraws of the same page keep their place. */
   private shownPage?: string;
+  /** Ob die gezeigte Seite eine Hauptseite ist (Tab oder Abschnitt eines Tabs). Unterseiten bekommen oben links ein Zurück. */
+  private shownTop = true;
+  /** Stelle auf einer Hauptseite, von der eine Unterseite geöffnet wurde: offene Abschnitte und der auslösende Knopf. */
+  private readonly places = new Map<string, { open: Set<string>; trigger: string }>();
+  private triggerKey = '';
+  /** Ob das letzte Zeichnen an die gemerkte Stelle einer Hauptseite zurückgeführt hat (Fokus liegt dann dort). */
+  private returned = false;
+  /** Tab der zuletzt gezeigten Hauptseite. „Zurück“ und „Abbrechen“ führen dorthin, auch wenn die Unterseite zu einem anderen Tab gehört. */
+  private origin?: View;
+  /** Letzter Schritt, der wegen ungespeicherter Eingaben angehalten wurde. „Verwerfen“ führt ihn aus. */
+  private intent?: { action: string; id: string };
+  private held?: { action: string; id: string };
   private readonly click = (event: Event): void => {
     this.viaKeyboard = (event as MouseEvent).detail === 0;
     if (!(event.target instanceof Element && event.target.closest('.sidebar nav'))) this.closeMenu();
@@ -267,6 +284,13 @@ export class KitchenView {
       event.target instanceof Element ? event.target.closest<HTMLButtonElement>('button[data-action]') : undefined;
     if (target && !this.busy) {
       this.trigger = target;
+      if (!target.closest('dialog,.back-link'))
+        this.triggerKey =
+          'button[data-action="' +
+          target.dataset.action!.replace(/["\\]/g, '\\$&') +
+          '"][data-id="' +
+          (target.dataset.id || '').replace(/["\\]/g, '\\$&') +
+          '"]';
       this.action(target.dataset.action!, target.dataset.id || '', target).catch(e => this.showError(e));
     }
   };
@@ -298,7 +322,7 @@ export class KitchenView {
       clearFieldError(target);
       this.error = '';
     }
-    if (target.name === 'inventoryFilter' || target.name === 'deliveryView' || target.name === 'receiptDelivery')
+    if (['inventoryFilter', 'deliveryView', 'receiptDelivery', 'mergeTarget', 'articleCategory'].includes(target.name))
       return;
     if (target.name === 'sheetSearch') {
       const q = target.value.toLocaleLowerCase('de-DE').trim();
@@ -361,6 +385,7 @@ export class KitchenView {
     this.trigger = target;
     try {
       if (target.name === 'seasonContext' || target.name === 'areaContext') {
+        this.intent = undefined;
         if (!this.canLeave()) {
           target.value = target.name === 'seasonContext' ? this.seasonId : this.area;
           return;
@@ -395,6 +420,11 @@ export class KitchenView {
         if (split) split.hidden = target.value !== 'split';
       }
       if (target.name === 'profile') this.wwUI.profileChosen(target.value);
+      if (target.name === 'mergeTarget' && this.merging) {
+        this.merging.targetId = target.value;
+        this.render();
+        return;
+      }
       if (target.name === 'sourceSeason') {
         this.sourceSeason = target.value;
         this.render();
@@ -404,6 +434,10 @@ export class KitchenView {
         this.filterRows();
       }
       if (target.name === 'inventoryFilter') this.filterRows();
+      if (target.name === 'articleCategory') {
+        this.articleCategory = target.value;
+        this.filterRows();
+      }
       if (target.name.startsWith('assessment_')) {
         const badge = target.closest('.count-line')?.querySelector<HTMLElement>('[data-count-badge]');
         if (badge) {
@@ -425,7 +459,9 @@ export class KitchenView {
       this.wwUI.updateCosts();
       if (
         target.closest('form') &&
-        !['receiptDelivery', 'inventoryFilter', 'deliveryView', 'sourceSeason', 'orderStatus'].includes(target.name)
+        !['receiptDelivery', 'inventoryFilter', 'deliveryView', 'sourceSeason', 'orderStatus', 'mergeTarget'].includes(
+          target.name
+        )
       ) {
         this.dirty = true;
         this.rememberDraft();
@@ -537,8 +573,32 @@ export class KitchenView {
   }
   canLeave(): boolean {
     if (!this.dirty) return true;
-    this.showError(new Error('Ungespeicherte Eingaben: bitte zuerst speichern oder ausdrücklich abbrechen.'));
+    this.askLeave();
     return false;
+  }
+  /**
+   * Ungespeicherte Eingaben: fragen statt abweisen. „Weiter bearbeiten“ ist die sichere Vorgabe, „Verwerfen“ führt den
+   * angehaltenen Schritt aus. Ohne Dialog-Unterstützung des Browsers bleibt der Hinweis in der Statuszeile.
+   */
+  private askLeave(): void {
+    const intent = this.intent,
+      doc = this.root.ownerDocument,
+      dialog = doc.createElement('dialog') as HTMLDialogElement & { showModal?: () => void };
+    if (!intent || typeof dialog.showModal !== 'function') {
+      this.showError(new Error('Ungespeicherte Eingaben: bitte zuerst speichern oder ausdrücklich abbrechen.'));
+      return;
+    }
+    this.root.querySelector('dialog.leave-dialog')?.remove();
+    this.held = intent;
+    dialog.className = 'leave-dialog';
+    dialog.setAttribute('aria-labelledby', 'zk-leave-title');
+    dialog.innerHTML =
+      '<h2 id="zk-leave-title">Eingaben verwerfen?</h2><p>Auf dieser Seite sind Eingaben noch nicht gespeichert.</p><div class="actions">' +
+      button('leave-stay', 'Weiter bearbeiten', '', true) +
+      '<button type="button" data-action="leave-discard" data-id="" class="danger">Verwerfen</button></div>';
+    dialog.addEventListener('close', () => dialog.remove());
+    this.root.append(dialog);
+    dialog.showModal();
   }
   clearEditor(): void {
     this.wwUI?.clear();
@@ -558,6 +618,7 @@ export class KitchenView {
     this.overviewPicker = false;
     this.menuDraft = undefined;
     this.menuPrevious = undefined;
+    this.merging = undefined;
     this.deliveryPicker = false;
     this.importKind = undefined;
     this.importItems = undefined;
@@ -775,6 +836,7 @@ export class KitchenView {
         Object.fromEntries(s.articles.map(a => [a.value.id, a.value.storagePlace || ''])),
         Object.fromEntries(s.articles.map(a => [a.value.id, a.value.category || '']))
       );
+    else if (this.merging) body = mergeForm(this);
     else if (this.editing) body = masterForm(this.editing, s);
     else if (this.mailOrder)
       body = orderMailView(this.mailOrder, supplierFor(this, this.mailOrder), canShareFiles(this));
@@ -806,10 +868,15 @@ export class KitchenView {
       samePage = page === this.shownPage,
       opened = samePage ? this.openSections() : undefined,
       focus = this.focusKey() || this.focusMemo;
+    /* Von einer Hauptseite in eine Unterseite: merken, was offen war und welcher Knopf dorthin geführt hat. */
+    if (!samePage && this.shownPage && this.shownTop)
+      this.places.set(this.shownPage, { open: this.openSections(), trigger: this.triggerKey });
+    const fromSub = !samePage && !!this.shownPage && !this.shownTop;
     this.root.innerHTML = `<div class="app-layout">${sidebar(season, this.view)}<div class="workspace-main">${this.store.testMode ? '<p class="test-banner">Abnahme mit künstlichen Daten · vom Vereinsbestand getrennt</p>' : ''}<p data-status class="status" aria-live="polite"></p><main tabindex="-1">${contextSwitch(s, season, this.area, this.seasonId)}${season?.archived ? '<p class="archive">Archiv: Bestellungen und Bestandsmeldungen dieser Saison sind schreibgeschützt.</p>' : ''}${this.recovery ? '<section class="resume"><h2>Unterbrochene Eingaben fortsetzen</h2><p>' + h(this.recovery.context.area) + ' · ' + h(this.state?.seasons.find(x => x.value.id === this.recovery!.context.seasonId)?.value.name || 'Saison nicht mehr verfügbar') + ' · ' + h(stamp(this.recovery.at)) + ' · nur auf diesem Gerät gespeichert</p><div class="actions">' + button('draft-resume', 'Entwurf fortsetzen', '', true) + button('draft-download', 'Eingaben herunterladen') + button('draft-discard', 'Entwurf verwerfen') + '</div></section>' : ''}${body}</main><footer>Angemeldet: ${h(this.user.split(' · ')[0])} · Speicherung in SharePoint${this.store.testMode ? ' · Testdaten' : ''}</footer></div></div>`;
     this.root
       .querySelector('.app-layout')
       ?.classList.toggle('task-mode', !!this.root.querySelector('main form.calm-workflow .calm-heading button'));
+    const top = this.placeBack(page);
     this.placeContextSwitch();
     this.drawMenuPreview();
     const phone = !!this.root.ownerDocument.defaultView?.matchMedia?.('(max-width:600px)').matches,
@@ -825,8 +892,12 @@ export class KitchenView {
     if (!samePage) {
       const first = this.shownPage === undefined || this.shownPage === 'setup';
       this.shownPage = page;
-      if (!first) this.scrollToTop();
-    }
+      this.shownTop = top;
+      const place = top && fromSub ? this.places.get(page) : undefined;
+      if (top) this.places.delete(page);
+      this.returned = !!(place && this.returnTo(place));
+      if (!this.returned && !first) this.scrollToTop();
+    } else this.returned = false;
     if (this.importStarted) {
       for (const el of Array.from(
         this.root.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLTextAreaElement>(
@@ -880,6 +951,7 @@ export class KitchenView {
     }
     const task = !this.pageKey().startsWith('view:');
     if (!task && this.view === 'heute') return;
+    this.intent = { action: 'back', id: '' };
     if (!this.canLeave()) {
       this.syncHistory();
       return;
@@ -952,6 +1024,61 @@ export class KitchenView {
     if (focus) sheet.querySelector<HTMLElement>('summary')?.focus();
     return true;
   }
+  /**
+   * Jede Unterseite hat oben links ein Zurück, das die Seite nennt, auf die es führt. Hauptseiten sind die Tabs der
+   * Seitenleiste und ihre Abschnitte (Umschalter). Bringt eine Unterseite kein eigenes Zurück mit, übernimmt es den Weg
+   * ihres Knopfs „Abbrechen“ oder „Zurück“; fehlt auch der, führt es zur Hauptseite. Gibt zurück, ob die Seite eine Hauptseite ist.
+   */
+  private placeBack(page: string): boolean {
+    const main = this.root.querySelector<HTMLElement>('main');
+    if (!main || !this.state) return true;
+    if (page.startsWith('view:') || main.querySelector('nav.seg-tabs')) return true;
+    if (main.querySelector('.back-link')) return false;
+    const exit = Array.from(main.querySelectorAll<HTMLButtonElement>('button[data-action]')).find(
+      b => /^(Abbrechen|Zurück|Schließen)/.test((b.textContent || '').trim()) && !b.closest('details,.listrow,table')
+    );
+    const own = main.querySelector<HTMLButtonElement>('.calm-heading > div:first-child > button[data-action]');
+    const tabs: Record<string, string> = {
+      heute: 'Übersicht',
+      orders: 'Bestellungen',
+      suppliers: 'Lieferanten',
+      articles: 'Artikel',
+      planning: 'Speisen & Getränke',
+      menu: 'Karte',
+      reports: 'Auswertung',
+      stock: 'Bestand',
+      management: 'Einstellungen'
+    };
+    const label =
+      this.quickIngredient || (this.editing && this.draft)
+        ? 'Bestellung'
+        : this.orderReview && this.draft
+          ? 'Mengen'
+          : this.wwUI.backLabel() || tabs[this.origin || this.view] || tabs[this.view] || 'Zurück';
+    /* Aufgaben-Seiten (Bestellblatt, Warenannahme, Abendabschluss) haben ihr Zurück in der eigenen Kopfzeile: gleiche Form, gleiches Wort. */
+    if (own) {
+      own.className = 'back-link';
+      own.innerHTML = '<span aria-hidden="true">‹</span> ' + h(label);
+      return false;
+    }
+    main.insertAdjacentHTML('afterbegin', backLink(exit?.dataset.action || 'back', label, exit?.dataset.id || ''));
+    return false;
+  }
+  /** Zurück auf der Hauptseite: die Abschnitte wieder öffnen und zu dem Knopf gehen, über den die Unterseite geöffnet wurde. */
+  private returnTo(place: { open: Set<string>; trigger: string }): boolean {
+    this.reopenSections(place.open);
+    let origin: HTMLElement | null = null;
+    try {
+      origin = place.trigger ? this.root.querySelector<HTMLElement>('main ' + place.trigger) : null;
+    } catch {
+      origin = null;
+    }
+    if (!origin) return false;
+    for (let d = origin.closest('details'); d; d = d.parentElement?.closest('details') || null) d.open = true;
+    origin.scrollIntoView?.({ block: 'center' });
+    origin.focus?.({ preventScroll: true });
+    return true;
+  }
   /** Die Kapsel für Bereich und Saison gehört in die Kopfzeile der Seite, neben die Überschrift. Seiten ohne Kopfzeile behalten sie oben rechts. */
   private placeContextSwitch(): void {
     const main = this.root.querySelector<HTMLElement>('main');
@@ -968,7 +1095,7 @@ export class KitchenView {
     const bar = this.root.ownerDocument.createElement('div');
     bar.className = 'topbar';
     sheet.before(bar);
-    const back = main.querySelector<HTMLElement>('.back-link');
+    const back = Array.from(main.querySelectorAll<HTMLElement>('.back-link')).find(el => !el.closest('.calm-heading'));
     if (back) bar.append(back);
     bar.append(sheet);
   }
@@ -988,6 +1115,7 @@ export class KitchenView {
     if (this.wwUI.screen) return 'ww:' + this.wwUI.pageKey();
     if (this.receiving) return 'receipt:' + this.receiving.previous.value.id;
     if (this.inventory) return 'inventory:' + this.inventory.id;
+    if (this.merging) return 'merge:' + this.merging.sourceId;
     if (this.editing) return 'edit:' + this.editing.kind + ':' + this.editing.id;
     if (this.mailOrder) return 'mail:' + this.mailOrder.id;
     if (this.draft) return (this.orderReview ? 'order-review:' : 'order-form:') + this.draft.id;
@@ -1045,7 +1173,18 @@ export class KitchenView {
     const result: OpenBills[] = [];
     for (const s of state.seasons.map(r => r.value).filter(v => !v.archived && v.year)) {
       const folder = await inbox.list('bill', s.year);
-      result.push({ seasonId: s.id, name: s.name, count: openBillFiles(folder, state, s.id) });
+      // Geladen sind nur die Belege der gezeigten Saison. Für eine andere Saison ihre Belege nachladen,
+      // sonst zählen dort auch die schon bestätigten Rechnungen als offen.
+      let scope = state;
+      if (s.id !== this.seasonId && folder.exists && folder.files.length) {
+        if (!this.store.ww) continue;
+        try {
+          scope = { ...state, ww: await this.store.ww.load(s.id) };
+        } catch {
+          continue; // Lieber kein Hinweis als ein falscher.
+        }
+      }
+      result.push({ seasonId: s.id, name: s.name, count: openBillFiles(folder, scope, s.id) });
     }
     if (this.state !== state) return;
     const before = JSON.stringify(this.openBills);
@@ -1066,6 +1205,30 @@ export class KitchenView {
   }
 
   async action(action: string, id: string, target?: HTMLElement): Promise<void> {
+    if (action === 'leave-stay' || action === 'leave-discard') {
+      const held = this.held;
+      this.held = undefined;
+      this.root.querySelector<HTMLDialogElement>('dialog.leave-dialog')?.close();
+      if (action === 'leave-discard' && held) {
+        this.dirty = false;
+        this.local.remove('draft');
+        await this.action(held.action, held.id);
+      }
+      return;
+    }
+    this.intent = { action, id };
+    if (this.shownTop && this.state) this.origin = this.view;
+    /* Zurück oben links verwirft nichts stillschweigend. Der Knopf „Abbrechen“ unten im Formular bleibt das ausdrückliche Verwerfen. */
+    if (target?.classList.contains('back-link') && !this.canLeave()) return;
+    if (action === 'back') {
+      if (this.orderReview && this.draft) action = 'order-edit-sheet';
+      else if (this.wwUI.inTask()) action = 'ww-cancel';
+      else if (this.wwUI.screen === 'bills') {
+        action = 'ww-open';
+        id = 'inbox';
+      } else action = 'cancel';
+    }
+    if (action === 'nav') this.places.clear();
     if (await uiAction(this, action, id, target)) return;
     // Eine Erfolgsmeldung gilt dem letzten Schritt. Mit dem nächsten Schritt verschwindet sie, sonst steht
     // „Gespeichert.“ noch über Seiten, auf denen nichts gespeichert wurde.
@@ -1155,13 +1318,14 @@ export class KitchenView {
         this.view = id as View;
         this.query = '';
         this.statusFilter = '';
-      }
+      } else if (this.origin) this.view = this.origin;
       this.render();
-      this.root.querySelector<HTMLElement>('main')?.focus({ preventScroll: true });
+      if (!this.returned) this.root.querySelector<HTMLElement>('main')?.focus({ preventScroll: true });
       return;
     }
     if (await receiptAction(this, action, id, target)) return;
     if (await inventoryAction(this, action, id, target)) return;
+    if (mergeAction(this, action, id)) return;
     if (await masterAction(this, action, id, target)) return;
     if (overviewAction(this, action)) return;
     if (await menuAction(this, action, id)) return;
@@ -1186,13 +1350,19 @@ export class KitchenView {
             : this.statusFilter === 'ordered'
               ? row.dataset.orderStatus !== 'Bestellt'
               : !['Abgeschlossen', 'Storniert'].includes(row.dataset.orderStatus))) ||
-        (planned && row.dataset.relevant === 'false');
+        (planned && row.dataset.relevant === 'false') ||
+        (this.view === 'articles' &&
+          !!this.articleCategory &&
+          row.dataset.category !== undefined &&
+          row.dataset.category !== (this.articleCategory === '-' ? '' : this.articleCategory));
       if (!row.hidden) shown++;
     }
     const emptyState = this.root.querySelector<HTMLElement>('[data-filter-empty]');
     if (emptyState) emptyState.hidden = !rows.length || shown > 0;
     for (const group of Array.from(this.root.querySelectorAll<HTMLElement>('[data-count-group]'))) {
-      const lines = group.querySelectorAll('.count-line:not([hidden]),.inventory-overview-row:not([hidden])').length,
+      const lines = group.querySelectorAll(
+          '.count-line:not([hidden]),.inventory-overview-row:not([hidden]),.article-list-row:not([hidden])'
+        ).length,
         count = group.querySelector('[data-group-count]');
       group.hidden = !lines;
       if (count) count.textContent = String(lines);
@@ -1246,6 +1416,10 @@ export class KitchenView {
     }
     if (form.dataset.form?.startsWith('ww-')) {
       await this.wwUI.save(form);
+      return;
+    }
+    if (form.dataset.form === 'merge') {
+      await saveMerge(this);
       return;
     }
     if (form.dataset.form === 'menu') {

@@ -57,6 +57,20 @@ if(['fasnet-inbox','fasnet-payments','fasnet-review'].includes(trial)){
   server.inboxFiles.set(root+'/'+path+'/'+name,{metadata,bytes});
  }
 }
+if(trial==='fasnet-2026'){
+ // Historische Vorschau: optional echte Rechnungs-PDFs aus einem lokalen Ordner als Eingang (siehe preview-server).
+ const listing=await (await fetch('/preview-inbox.json')).json();
+ if(listing.names.length){
+  const root='/sites/kitchen/Shared Documents';
+  for(const path of ['/03_Rechnungen','/03_Rechnungen/'+listing.year,'/01_Zunftjahr','/01_Zunftjahr/'+listing.year,'/01_Zunftjahr/'+listing.year+'/Kasse'])server.inboxFolders.add(root+path);
+  for(const [i,name] of listing.names.entries()){
+   const bytes=new Uint8Array(await (await fetch('/preview-inbox/'+encodeURIComponent(name))).arrayBuffer());
+   const known=listing.ids?.[name];
+   const metadata={UniqueId:known?.id||'00000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),ETag:known?.version||'"1"',Name:name,Length:String(bytes.length),TimeLastModified:'2026-11-04T09:00:00Z'};
+   server.inboxFiles.set(root+'/03_Rechnungen/'+listing.year+'/'+name,{metadata,bytes});
+  }
+ }
+}
 const store=new SharePointStore('https://example.sharepoint.com/sites/kitchen',request,false);
 if(!localStorage.getItem(storage+'-ready')){
  if(trial==='fasnet-2026'){

@@ -1,7 +1,21 @@
 /* eslint-disable @rushstack/no-new-null -- Missing proposals remain explicitly unknown. */
 import type { BillLine } from '../ww/model';
 import { importedNumber } from './preview.ts';
+import {
+  beveragePairTotals,
+  beverageScanLines,
+  fileNameNumber,
+  looseDates,
+  looseNumbers,
+  numberKey,
+  rateRowTotals,
+  receiptScanLines,
+  sumRowTotals,
+  taxLineTotals
+} from './bill-loose.ts';
 export interface BillProposal {
+  /** Hinweise für die Prüfung: was errechnet oder aus dem Dateinamen übernommen wurde. */
+  notes?: string[];
   billType?: 'credit';
   needsSeparateFiles?: true;
   scanNumberConflict?: true;
@@ -534,7 +548,8 @@ function marketLines(text: string): BillLine[] {
 }
 function scanHints(
   text: string,
-  usedOcr: boolean
+  usedOcr: boolean,
+  fileKey = ''
 ): Pick<BillProposal, 'needsSeparateFiles' | 'scanNumberConflict' | 'costAreas'> {
   const pages = text.split(/^[ \t]*Seite \d+[ \t]*$/im);
   const identifiers = new Set<string>();
@@ -576,6 +591,14 @@ function scanHints(
   if (usedOcr)
     for (const id of [...identifiers])
       if (!/\d/.test(id) || [...identifiers].some(o => o !== id && o.startsWith(id))) identifiers.delete(id);
+  // Verlesene Nummern auf einem einzelnen Beleg: nennt der Dateiname eine der gelesenen Nummern, gilt diese.
+  if (usedOcr && fileKey && identifiers.size > 1 && documentKinds.size < 2 && finalTotalPages < 2) {
+    const named = [...identifiers].filter(id => numberKey(id) === fileKey);
+    if (named.length === 1) {
+      identifiers.clear();
+      identifiers.add(named[0]);
+    }
+  }
   return {
     ...(identifiers.size > 1 || documentKinds.size > 1 ? { needsSeparateFiles: true as const } : {}),
     ...(usedOcr && identifiers.size > 1 && documentKinds.size < 2 && finalTotalPages < 2
@@ -584,8 +607,11 @@ function scanHints(
     ...(labels.size ? { costAreas: [...labels] } : {})
   };
 }
-export function billProposal(text: string, { usedOcr = false } = {}): BillProposal {
-  const hints = scanHints(text, usedOcr);
+export function billProposal(text: string, { usedOcr = false, fileName = '' } = {}): BillProposal {
+  const named = fileNameNumber(fileName),
+    fileKey = numberKey(named);
+  const hints = scanHints(text, usedOcr, fileKey);
+  const notes: string[] = [];
   if (hints.needsSeparateFiles) return { ...hints, number: '', date: '', net: null, tax: null, gross: null, lines: [] };
   const only = (values: string[]): string => (new Set(values).size === 1 ? values[0] : '');
   const unique = (pattern: RegExp): string => only([...text.matchAll(pattern)].map(m => m[1].trim()));
@@ -595,9 +621,32 @@ export function billProposal(text: string, { usedOcr = false } = {}): BillPropos
   const block = text.match(
     /^[ \t]*Rechnungsnummer[ \t]*:[ \t]*\r?\n[ \t]*Rechnungsdatum[ \t]*:[ \t]*\r?\n[ \t]*([A-Z0-9][A-Z0-9_.\/-]*)[ \t]*\r?\n[ \t]*(\d{1,2}\.\d{1,2}\.\d{4})[ \t]*$/im
   );
-  const number =
-    only(usedOcr ? numbers.filter(n => /\d/.test(n) && !numbers.some(o => o !== n && o.startsWith(n))) : numbers) ||
-    (!numbers.length && block ? block[1] : '');
+  const whole = (values: string[]): string[] =>
+    usedOcr ? values.filter(n => /\d/.test(n) && !values.some(o => o !== n && o.startsWith(n))) : values;
+  let number = only(whole(numbers)) || (!numbers.length && block ? block[1] : '');
+  if (!number) {
+    // Nachsichtig: Beschriftung mitten in der Zeile, Nummer in der nächsten Zeile oder in der Überschrift.
+    const loose = whole([...new Set([...numbers, ...looseNumbers(text)])]);
+    number = only(loose) || (fileKey ? loose.find(n => numberKey(n) === fileKey) || '' : '');
+  }
+  if (named) {
+    // Steht die Nummer des Dateinamens auch im Beleg? Vergleich ohne Trennzeichen („2026-33“ gleich „2026/33“).
+    const inText =
+      (text.match(/[A-Z0-9][A-Z0-9_.\/-]*/gi) || []).some(token => numberKey(token) === fileKey) ||
+      looseNumbers(text).some(found => numberKey(found) === fileKey);
+    if (!number) {
+      number = named;
+      notes.push(
+        inText
+          ? 'Rechnungsnummer aus dem Dateinamen, sie steht auch im Beleg.'
+          : 'Rechnungsnummer aus dem Dateinamen übernommen, im Beleg nicht lesbar.'
+      );
+    } else if (usedOcr && numberKey(number) !== fileKey && inText) {
+      // Die Texterkennung hat die beschriftete Nummer verlesen; der Dateiname nennt eine Nummer, die im Beleg steht.
+      notes.push('Rechnungsnummer aus dem Dateinamen (im Beleg gelesen: ' + number + ').');
+      number = named;
+    }
+  }
   const dateLabels =
     /(?:\bRechnungsdatum|\bBelegdatum|^[ \t]*(?:Proforma-Lieferschein[ \t]+)?Datum)[ \t]*:?\s*(\d{1,2}\.\d{1,2}\.\d{4})/gim;
   const rawDate = only([
@@ -606,24 +655,70 @@ export function billProposal(text: string, { usedOcr = false } = {}): BillPropos
       ...(block ? [block[2]] : [])
     ]),
     parts = rawDate.split('.');
-  const date = rawDate ? parts[2] + '-' + parts[1].padStart(2, '0') + '-' + parts[0].padStart(2, '0') : '';
-  const scanTotals = scannedTaxTotals(text);
+  const loose = rawDate ? [] : looseDates(text);
+  const date = rawDate
+    ? parts[2] + '-' + parts[1].padStart(2, '0') + '-' + parts[0].padStart(2, '0')
+    : loose.length === 1
+      ? loose[0]
+      : '';
+  const withNotes = (): Pick<BillProposal, 'notes'> => (notes.length ? { notes } : {});
+  const strictTotals = scannedTaxTotals(text);
+  const rateTotals = rateRowTotals(text);
+  const scanTotals =
+    (!strictTotals || strictTotals.gross === null) && rateTotals
+      ? { net: rateTotals.net, tax: rateTotals.tax, gross: rateTotals.gross }
+      : strictTotals;
   const billType =
     /^[ \t]*Gutschrift(?:[ \t]+(?:Nr\.?|Nummer)[^\r\n]*)?[ \t]*$/im.test(text) ||
     hasScannedCredit(text, scanTotals?.gross)
       ? 'credit'
       : undefined;
-  if (scanTotals)
+  if (scanTotals) {
+    // Positionen mit Preisen, wenn jeder Lieferschein seine Summe trifft; sonst wie bisher ohne Preise.
+    const priced = scanTotals.gross !== null && rateTotals ? receiptScanLines(text, rateTotals.rates) : undefined;
+    const lines = scanTotals.gross === null ? [] : priced?.goodsComplete ? priced.lines : scannedReceiptLines(text);
+    if (priced?.goodsComplete)
+      notes.push(
+        'Positionen: Bruttopreise der Lieferscheine in Netto umgerechnet, je Steuersatz mit dem Beleg abgeglichen.'
+      );
+    else if (lines.length)
+      notes.push('Positionen ohne Preise: die Lieferscheine ließen sich nicht sicher nachrechnen.');
+    return { ...hints, ...(billType ? { billType } : {}), ...withNotes(), number, date, ...scanTotals, lines };
+  }
+  let beverage = beverageTotals(text, usedOcr);
+  if (beverage) {
+    if (beverage.gross === null && usedOcr) {
+      const pairs = beveragePairTotals(text);
+      if (pairs) {
+        beverage = { net: pairs.net, tax: pairs.tax, gross: pairs.gross };
+        notes.push(
+          pairs.confirmed
+            ? 'Summen aus den Teilsummen für Ware und Pfand errechnet, der Rechnungsbetrag passt dazu.'
+            : 'Summen aus den Teilsummen für Ware und Pfand errechnet. Rechnungsbetrag war nicht lesbar: bitte am Original prüfen.'
+        );
+      }
+    }
+    const scanned = usedOcr
+      ? beverageScanLines(text, singleRate(beverage.net, beverage.gross))
+      : { lines: [], goodsComplete: false, unread: 0 };
+    if (scanned.lines.length)
+      notes.push(
+        scanned.goodsComplete
+          ? 'Positionen nachgerechnet, die Warensumme passt zum Beleg.'
+          : 'Positionen unvollständig' +
+              (scanned.unread ? ' (' + scanned.unread + ' Zeilen nicht lesbar)' : '') +
+              ': fehlende Zeilen vom Original ergänzen.'
+      );
     return {
       ...hints,
       ...(billType ? { billType } : {}),
+      ...withNotes(),
       number,
       date,
-      ...scanTotals,
-      lines: scanTotals.gross === null ? [] : scannedReceiptLines(text)
+      ...beverage,
+      lines: scanned.lines
     };
-  const beverage = beverageTotals(text, usedOcr);
-  if (beverage) return { ...hints, ...(billType ? { billType } : {}), number, date, ...beverage, lines: [] };
+  }
   let net = parse(
     unique(
       /(?:Nettobetrag|Summe[ \t]*Netto|Gesamt[ \t]*Netto|Gesamtsumme[ \t]*\(Netto\)|Zwischensumme[ \t]*\(Netto\))[ \t]*:?[ \t]*(-?[\d.]+,\d{2})/gi
@@ -692,9 +787,28 @@ export function billProposal(text: string, { usedOcr = false } = {}): BillPropos
     if (tax === null) tax = candidates[0].tax;
     if (gross === null) gross = total;
   }
+  if (net === null || tax === null || gross === null) {
+    // Summenblock ohne Beschriftung der Beträge (Netto über der Steuerzeile, Brutto darunter).
+    const block3 = taxLineTotals(text);
+    if (
+      block3 &&
+      (net === null || close(net, block3.net)) &&
+      (tax === null || close(tax, block3.tax)) &&
+      (gross === null || close(gross, block3.gross))
+    )
+      ({ net, tax, gross } = block3);
+  }
+  if (net === null && tax === null && gross === null && usedOcr) {
+    const row = sumRowTotals(text);
+    if (row) {
+      ({ net, tax, gross } = row);
+      notes.push('Summen aus der Summenzeile der Tabelle (Netto und Steuer): Brutto bitte am Original prüfen.');
+    }
+  }
   return {
     ...hints,
     ...(billType ? { billType } : {}),
+    ...withNotes(),
     number,
     date,
     net,

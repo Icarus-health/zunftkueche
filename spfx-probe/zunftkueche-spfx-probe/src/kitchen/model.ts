@@ -34,6 +34,8 @@ export interface Supplier {
   reviewStatus?: 'offen' | 'geprueft';
   reviewDate?: string;
   reviewReason?: string;
+  /** Mit diesem Lieferanten zusammengelegt. Der Eintrag bleibt für alte Bestellungen und Rechnungen, ist aber inaktiv. */
+  mergedInto?: string;
 }
 export interface Article {
   id: string;

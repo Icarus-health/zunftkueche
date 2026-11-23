@@ -58,6 +58,7 @@ import { TableWizard } from './table-wizard.ts';
 import { billsOverview, billForm, billLine, billDetail, billLinkForm } from './bills-view.ts';
 import { relatedBills, returnMovements, billTypeLabel, linkedBill } from './bill-accounting.ts';
 import { billProposal } from '../imports/bill-proposal.ts';
+import type { BillReadInfo } from './bills-view';
 import { billArea, billTerms } from '../imports/bill-hints.ts';
 import { guessSupplier, withArticles } from './bill-suggest.ts';
 import { unitName } from '../units.ts';
@@ -92,6 +93,7 @@ export interface WwDraftSnapshot {
   operationId: string;
   sourceText: string;
   billProposals: BillLine[];
+  billRead?: BillReadInfo;
   procurementPlan?: Plan;
   procurementMode?: ProcurementMode;
   useTemplate?: Template;
@@ -127,6 +129,8 @@ export class WwController {
   private previewUrl = '';
   private previewImage?: { image: string; pages: number };
   private billProposals: BillLine[] = [];
+  /** Was beim Auslesen der Datei erkannt wurde; steuert die Hinweise über dem Formular. */
+  private billRead?: BillReadInfo;
   private billReadSequence = 0;
   private billUpload?: {
     bytes: Uint8Array;
@@ -138,6 +142,38 @@ export class WwController {
   /** True while a form was opened from a page outside the workflow screens; cancelling returns there. */
   private openedFromOverview = false;
   public constructor(private readonly p: Ports) {}
+  /** Ob gerade ein Formular oder ein Zwischenschritt offen ist, aus dem „Zurück“ zur Liste dieses Bereichs führt. */
+  public inTask(): boolean {
+    return !!(
+      this.draft ||
+      this.billViewing ||
+      this.billLinking ||
+      this.ingredient ||
+      this.wizard ||
+      this.demand ||
+      this.procurementPlan ||
+      this.useTemplate ||
+      this.inboxPending ||
+      this.preparedOrderIds.length
+    );
+  }
+  /** Name der Seite, auf die „Zurück“ führt. Leer, wenn es die Hauptseite des Tabs ist. */
+  public backLabel(): string {
+    if (!this.screen) return '';
+    const lists: Partial<Record<Screen, string>> = {
+      recipes: 'Rezepte',
+      plans: 'Portionen',
+      bills: 'Rechnungen',
+      inbox: this.inboxKind === 'bill' ? 'Rechnungen' : 'Kassendateien',
+      systems: 'Kassendaten',
+      journal: 'Bestandsbewegungen',
+      templates: 'Bestellvorlagen',
+      prices: 'Frühere Preise',
+      equipment: 'Arbeitsmittel'
+    };
+    if (this.inTask()) return this.openedFromOverview ? '' : this.inboxPage ? lists.inbox! : lists[this.screen] || '';
+    return this.screen === 'bills' ? 'Rechnungen' : '';
+  }
   public clear(): void {
     if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
     this.previewUrl = '';
@@ -156,6 +192,7 @@ export class WwController {
     this.preparedOrderIds = [];
     this.sourceText = '';
     this.billProposals = [];
+    this.billRead = undefined;
     this.billReadSequence++;
     this.billUpload = undefined;
     this.billLinking = undefined;
@@ -172,6 +209,7 @@ export class WwController {
       operationId: this.operationId,
       sourceText: this.sourceText,
       billProposals: this.billProposals,
+      billRead: this.billRead,
       procurementPlan: this.procurementPlan,
       procurementMode: this.procurementMode,
       useTemplate: this.useTemplate
@@ -185,6 +223,7 @@ export class WwController {
     this.operationId = value.operationId;
     this.sourceText = value.sourceText;
     this.billProposals = value.billProposals;
+    this.billRead = value.billRead;
     this.procurementPlan = value.procurementPlan;
     this.procurementMode = value.procurementMode || 'planning';
     this.useTemplate = value.useTemplate;
@@ -238,7 +277,8 @@ export class WwController {
         this.previewImage,
         !!this.inboxPage,
         this.billQueue().label,
-        !!this.billQueue().nextId
+        !!this.billQueue().nextId,
+        this.billRead
       );
     if (this.screen === 'bills') return billsOverview(this.p.state(), this.p.area());
     if (this.screen === 'systems') return this.systems();
@@ -732,6 +772,7 @@ export class WwController {
       delete this.draft.scanNumberReview;
     }
     this.billProposals = [];
+    this.billRead = undefined;
     this.billUpload = { bytes, hash };
     if (source) this.draft.sourceFile = source;
     else delete this.draft.sourceFile;
@@ -786,7 +827,12 @@ export class WwController {
       /* Original remains available as PDF even without a renderable page. */
     }
     if (reading !== this.billReadSequence || this.draft?.kind !== 'bill') return;
-    const proposal = billProposal(text, { usedOcr });
+    const proposal = billProposal(text, { usedOcr, fileName });
+    this.billRead = {
+      date: !!proposal.date || dateEdited || this.draft.date !== today(),
+      notes: proposal.notes || [],
+      usedOcr
+    };
     if (
       proposal.needsSeparateFiles &&
       !(proposal.scanNumberConflict && this.draft.scanNumberReview?.status === 'reviewed')
@@ -912,7 +958,8 @@ export class WwController {
       return;
     }
     if (action === 'ww-bill-view') {
-      this.screen = 'bills';
+      /* Aus dem Rechnungseingang geöffnet: Zurück führt wieder dorthin, nicht in die Liste der bestätigten Rechnungen. */
+      if (this.screen !== 'inbox') this.screen = 'bills';
       if (!this.p.canLeave()) return;
       this.billViewing = this.p.state().ww?.records.find(r => r.value.id === id && r.value.kind === 'bill') as
         Stored<Bill> | undefined;
@@ -1040,13 +1087,18 @@ export class WwController {
       }
       return;
     }
-    if (action === 'ww-bill-save-next') {
+    if (action === 'ww-bill-save-next' || action === 'ww-bill-confirm') {
       const form = this.p.root.querySelector<HTMLFormElement>('form[data-form=ww-bill]');
       if (!form || this.draft?.kind !== 'bill') return;
-      const nextId = this.billQueue().nextId;
+      const nextId = action === 'ww-bill-save-next' ? this.billQueue().nextId : '';
       const confirm = form.querySelector<HTMLInputElement>('[name=confirmed]');
       if (confirm) confirm.checked = true;
-      await this.save(form);
+      try {
+        await this.save(form);
+      } finally {
+        // Scheitert das Bestätigen an einer Angabe, darf „Als Entwurf speichern“ danach nicht doch bestätigen.
+        if (confirm?.isConnected) confirm.checked = false;
+      }
       // Nur weitergehen, wenn wirklich gespeichert wurde: dann ist der Entwurf geschlossen.
       if (nextId && !this.draft && this.inboxPage) await this.openInboxFile('bill|' + nextId);
       return;

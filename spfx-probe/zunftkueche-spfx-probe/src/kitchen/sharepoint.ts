@@ -361,7 +361,9 @@ export class SharePointStore {
     kind: K,
     value: EntityMap[K],
     previous: Stored<EntityMap[K]> | undefined,
-    operationId: string
+    operationId: string,
+    /** Beim Zusammenlegen von Lieferanten wechselt ein Gebinde samt heutigem Preis den Lieferanten; frühere Preislisten bleiben beim alten. */
+    transfer = false
   ): Promise<Stored<EntityMap[K]>> {
     validateEntity(kind, value);
     if (kind === 'counts' && previous)
@@ -374,9 +376,10 @@ export class SharePointStore {
       const prior = state.offers.find(o => o.value.id === offer.id)?.value;
       if (
         prior &&
-        ['articleId', 'supplierId', 'code', 'packName', 'packSize'].some(
-          k => prior[k as keyof Offer] !== offer[k as keyof Offer]
-        )
+        (transfer
+          ? ['articleId', 'code', 'packName', 'packSize']
+          : ['articleId', 'supplierId', 'code', 'packName', 'packSize']
+        ).some(k => prior[k as keyof Offer] !== offer[k as keyof Offer])
       ) {
         const journal = await this.ww.load('global');
         if (

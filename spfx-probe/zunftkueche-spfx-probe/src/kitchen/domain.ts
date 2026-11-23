@@ -121,6 +121,10 @@ export function validateEntity(kind: MasterKind, value: unknown): void {
     if (v.contactPerson !== undefined) text(v.contactPerson, 'Ansprechpartner', true, 160);
     if (v.address !== undefined) text(v.address, 'Adresse', true, 400);
     bool(v.active);
+    if (v.mergedInto !== undefined) {
+      id(v.mergedInto);
+      if (v.mergedInto === v.id || v.active) throw new Error('Zusammengelegte Lieferanten bleiben inaktiv.');
+    }
   }
   if (kind === 'offers') {
     if (v.priceStatus !== undefined && !['offen', 'angefragt', 'erhalten', 'geprueft'].includes(String(v.priceStatus)))

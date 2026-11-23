@@ -12,7 +12,7 @@ test('settings provide existing season, delivery configuration, safe backup and 
  assert.match(root.textContent,/Impressum/);assert.equal(root.querySelector('a[href="https://schelmenzunft.de/impressum/"]')?.textContent,'Impressum');
  assert.match(root.textContent,/Datenschutzerklärung der Website/);assert.match(root.textContent,/Neue Kassen- und Menüimporte.*Originaldatei/);
 });
-test('article rows visibly communicate that they open details',async()=>{const {view,root}=setup();await view.start();await view.action('nav','articles');const summary=root.querySelector('.article-list-row summary');assert.match(summary.textContent,/Lieferant ansehen/);const details=summary.closest('details');assert.ok(details.querySelector('[data-action=article-edit]'));assert.ok(details.querySelector('[data-action=offer-new]'));});
+test('article rows visibly communicate that they open details',async()=>{const {view,root}=setup();await view.start();await view.action('nav','articles');const summary=root.querySelector('.article-list-row summary');assert.match(summary.textContent,/Getränkemarkt\s*ansehen/,'Lieferant steht in der Zeile, „ansehen“ für Vorlesehilfen');const details=summary.closest('details');assert.ok(details.querySelector('[data-action=article-edit]'));assert.ok(details.querySelector('[data-action=offer-new]'));});
 test('the selected workspace exposes task navigation and real receiving work',async()=>{
  const {view,root}=setup();await view.start();assert.ok(root.querySelector('aside'));assert.match(root.textContent,/Bestellungen/);assert.ok(root.querySelector('[data-action=delivery-list]'));assert.match(root.textContent,/0 von 1 Artikeln zuletzt gezählt/);await view.action('delivery-list','');assert.ok(root.querySelector('[data-action=receipt-new]'));
 });
