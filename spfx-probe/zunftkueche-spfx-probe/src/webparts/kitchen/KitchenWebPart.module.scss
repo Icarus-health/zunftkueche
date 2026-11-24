@@ -7150,3 +7150,81 @@
     margin-top: 2px;
   }
 }
+
+/* 1.26.1 KI-Probe: Prüfseite unter Einstellungen (Foto, Diktat, Verbindung, Beleg lesen, Messlauf). */
+.kitchen {
+  :global(.probe) :global(.settings-row) > div:first-child {
+    flex: 1;
+    /* Am Telefon stehen die Zeilen untereinander: ohne feste Breite schiebt eine breite Tabelle die Seite auf. */
+    align-self: stretch;
+    min-width: 0;
+    max-width: none;
+  }
+  :global(.probe-fields) {
+    display: grid;
+    gap: 12px;
+    max-width: 560px;
+  }
+  :global(.probe-fields) p {
+    margin: 0;
+  }
+  /* Zustand steht immer als Wort da, die Farbe kommt nur dazu. */
+  :global(.probe-ok) {
+    color: var(--ok);
+  }
+  :global(.probe-bad) {
+    color: var(--error);
+  }
+  :global(.probe-open) {
+    color: var(--dim);
+  }
+  :global(.probe-list) {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  :global(.probe-facts) {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+  }
+  :global(.probe-facts) > div {
+    display: grid;
+    grid-template-columns: minmax(120px, 200px) 1fr;
+    gap: 12px;
+  }
+  :global(.probe-facts) dt {
+    color: var(--dim);
+  }
+  :global(.probe-facts) dd {
+    margin: 0;
+  }
+  :global(.probe-scroll) {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  :global(.probe-table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  :global(.probe-table) th,
+  :global(.probe-table) td {
+    padding: 8px 12px 8px 0;
+    border-bottom: 0.5px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+  }
+  :global(.probe-table) th {
+    color: var(--dim);
+    font-weight: 400;
+  }
+  @media (max-width: 600px) {
+    :global(.probe-facts) > div {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+  }
+}
