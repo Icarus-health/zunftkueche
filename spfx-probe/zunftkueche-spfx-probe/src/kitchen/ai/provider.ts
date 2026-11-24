@@ -55,6 +55,12 @@ export const PROVIDER_NAME: Record<Provider, string> = {
   // Die Europa-Adresse nimmt OpenRouter nur im Business-Tarif an (Stand November 2026).
   'openrouter-eu': 'OpenRouter Europa (nur Business-Tarif)'
 };
+/** Modellnamen sehen je Anbieter anders aus: bei Claude direkt ohne Schrägstrich, bei OpenRouter „Hersteller/Modell“. */
+export function modelFits(provider: Provider, model: string): boolean {
+  return provider === 'anthropic'
+    ? /^[A-Za-z0-9._:-]{3,100}$/.test(model)
+    : /^[a-z0-9-]{1,40}\/[A-Za-z0-9._:-]{1,90}$/.test(model);
+}
 const ANTHROPIC = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2026-10-21';
 const openRouterBase = (provider: Provider): string =>
@@ -153,6 +159,24 @@ function failure(status: number, body: string): AiError {
     /* Antwort ist kein JSON: die Statusnummer muss reichen. */
   }
   const detail = status + (message ? ' · ' + message : '');
+  if (/CORS requests are not allowed/i.test(message))
+    return new AiError(
+      'Dieses Konto beim Anbieter lässt Aufrufe aus dem Browser nicht zu. Der Schlüssel selbst kann gültig sein.',
+      'request',
+      detail
+    );
+  if (/not scoped to a workspace/i.test(message))
+    return new AiError(
+      'Dieser Schlüssel gilt für mehrere Arbeitsbereiche. Bitte beim Anbieter einen Schlüssel für genau einen Arbeitsbereich anlegen.',
+      'request',
+      detail
+    );
+  if ((status === 400 || status === 404) && /model/i.test(message))
+    return new AiError(
+      'Dieses Modell kennt der Anbieter nicht. Der Schlüssel ist in Ordnung, bitte in der Einrichtung den Modellnamen prüfen.',
+      'request',
+      detail
+    );
   if (status === 401 || status === 403)
     return new AiError('Der Schlüssel wird nicht angenommen. Bitte prüfen oder neu anlegen.', 'key', detail);
   if (status === 402 || /credit|balance|billing|quota/i.test(message))

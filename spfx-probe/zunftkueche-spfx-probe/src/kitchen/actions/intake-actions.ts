@@ -10,7 +10,8 @@ import { parseDecimal } from '../domain.ts';
 import { countQuantity } from '../operations.ts';
 import { unitName } from '../units.ts';
 import { uuid } from '../view-support.ts';
-import { AiError, DEFAULT_MODEL, PROVIDER_NAME } from '../ai/provider.ts';
+import { AiError, DEFAULT_MODEL, PROVIDER_NAME, modelFits, toBase64 } from '../ai/provider.ts';
+import { fromBase64, openWithKey, openWithPassword, seal } from '../ai/vault.ts';
 import type { AiFile, Provider } from '../ai/provider';
 import { fitPhoto } from '../ai/photo.ts';
 import { readIntake } from '../ai/intake.ts';
@@ -68,6 +69,8 @@ export interface AiStatus {
   /** Liste „Einstellungen“ ist angelegt. */
   ready: boolean;
   row?: Stored<AiSettings>;
+  /** Aus 1.27.0: in der Liste steht noch ein lesbarer Schlüssel. Er wird nicht benutzt, nur beim Speichern überschrieben. */
+  legacy?: Stored<AiSettings>;
   /** Diese Person darf einrichten (Besitzer der Seite). */
   manager: boolean;
 }
@@ -84,11 +87,13 @@ const num = (value: number | undefined): string => (value === undefined ? '' : S
 export async function loadAi(app: KitchenView, force = false): Promise<AiStatus> {
   if (app.ai && !force) return app.ai;
   let ready = false,
-    row: Stored<AiSettings> | undefined;
+    row: Stored<AiSettings> | undefined,
+    legacy: Stored<AiSettings> | undefined;
   try {
     const settings = await app.store.aiSettings();
     ready = settings.ready;
     row = settings.row;
+    legacy = settings.legacy;
   } catch {
     /* Ohne lesbare Einstellungen bleibt der Eingang zu. */
   }
@@ -99,11 +104,34 @@ export async function loadAi(app: KitchenView, force = false): Promise<AiStatus>
     } catch {
       manager = false;
     }
-  const status: AiStatus = { ready, row, manager };
+  const status: AiStatus = { ready, row, legacy, manager };
   // Zwei gleichzeitige Abfragen liefern dasselbe: die spätere Antwort darf die frühere ersetzen.
   // eslint-disable-next-line require-atomic-updates
   app.ai = status;
   return status;
+}
+
+interface DeviceUnlock {
+  salt: string;
+  key: string;
+}
+/** Merkt auf diesem Gerät den Arbeitsschlüssel, damit das Kennwort nur einmal nötig ist. */
+function rememberUnlock(app: KitchenView, row: Stored<AiSettings>, key: Uint8Array): void {
+  app.local.write('ai-unlock', { salt: row.value.sealed.salt, key: toBase64(key) } satisfies DeviceUnlock);
+}
+/** War dieses Gerät schon freigeschaltet, wird der Schlüssel ohne Kennwort geöffnet. Passt es nicht mehr, wird neu gefragt. */
+async function unlockFromDevice(app: KitchenView): Promise<void> {
+  const row = app.ai?.row;
+  if (!row || app.aiKey) return;
+  const saved = app.local.read<DeviceUnlock>('ai-unlock');
+  if (!saved || saved.salt !== row.value.sealed.salt || typeof saved.key !== 'string') return;
+  try {
+    const secret = await openWithKey(row.value.sealed, fromBase64(saved.key));
+    // eslint-disable-next-line require-atomic-updates -- Nur eine Aktion läuft zugleich (busy), die Ansicht besitzt diesen Zustand allein.
+    app.aiKey = secret;
+  } catch {
+    app.local.remove('ai-unlock');
+  }
 }
 
 /** Hinweis auf der Übersicht. Helfer sehen den Eingang erst, wenn er eingerichtet ist. */
@@ -130,10 +158,12 @@ export function aiSettingsSection(app: KitchenView): string {
     (ai.row
       ? h(PROVIDER_NAME[ai.row.value.provider] + ' · ' + ai.row.value.model) +
         ' · Schlüssel endet auf ' +
-        h(ai.row.value.key.slice(-4)) +
+        h(ai.row.value.tail) +
         ' · zuletzt geändert von ' +
         h(ai.row.value.updatedBy.split(' · ')[0])
-      : 'Noch nicht eingerichtet. Ohne Zugang bleibt der Eingang für alle verborgen.') +
+      : ai.legacy
+        ? 'Der bisherige Schlüssel stand lesbar in der Liste und wird nicht mehr benutzt. Bitte beim Anbieter löschen und hier einen neuen eintragen.'
+        : 'Noch nicht eingerichtet. Ohne Zugang bleibt der Eingang für alle verborgen.') +
     '</p></div>' +
     button('ai-setup', ai.row ? 'Zugang ändern' : 'KI einrichten') +
     '</div></section>'
@@ -347,6 +377,15 @@ export function intakeView(app: KitchenView): string {
       (ai?.manager ? button('ai-setup', 'KI einrichten', '', true) : '') +
       '</section></div>'
     );
+  if (!app.aiKey)
+    return (
+      head +
+      '<section class="intake-compose" aria-label="Freischalten"><label>Kennwort für den Eingang<input type="password" name="intakePassword" autocomplete="off" spellcheck="false" autocapitalize="off" /></label><p class="muted">Einmal je Gerät. Das Kennwort bekommt ihr von ' +
+      h(ai.row.value.updatedBy.split(' · ')[0]) +
+      '.</p><div class="actions">' +
+      button('intake-unlock', 'Freischalten', '', true) +
+      '</div></section></div>'
+    );
   if (!app.writable())
     return (
       head +
@@ -433,11 +472,21 @@ export function aiSetupView(app: KitchenView): string {
       'password',
       'spellcheck="false" autocapitalize="off"'
     ) +
+    field(
+      'aiPassword',
+      saved ? 'Neues Kennwort für den Eingang (leer lassen: das bisherige bleibt)' : 'Kennwort für den Eingang',
+      '',
+      false,
+      'password',
+      'spellcheck="false" autocapitalize="off"'
+    ) +
     '<p class="muted">' +
     (saved
-      ? 'Gespeichert ist ein Schlüssel, der auf ' + h(saved.key.slice(-4)) + ' endet.'
-      : 'Noch kein Schlüssel gespeichert.') +
-    ' Er liegt in der Liste „Einstellungen“ dieser Seite. Technisch lesen kann ihn jedes Mitglied der Seite, deshalb das Ausgabenlimit. Zum Sperren den Schlüssel beim Anbieter löschen.</p></div><div class="actions">' +
+      ? 'Gespeichert ist ein Schlüssel, der auf ' + h(saved.tail) + ' endet.'
+      : ai.legacy
+        ? 'Der bisherige Schlüssel stand lesbar in der Liste und wird nicht mehr benutzt. Bitte beim Anbieter löschen und hier einen neuen eintragen.'
+        : 'Noch kein Schlüssel gespeichert.') +
+    ' In SharePoint steht der Schlüssel nur verschlüsselt. Lesbar wird er erst mit dem Kennwort, mindestens zehn Zeichen, gut sind drei oder vier Wörter. Das Kennwort gebt ihr nur an Leute weiter, die den Eingang nutzen sollen. Sie tragen es einmal je Gerät ein. Wer es kennt, könnte den Schlüssel mit Fachwissen auslesen: deshalb beim Anbieter ein Ausgabenlimit setzen.</p></div><div class="actions">' +
     '<button type="button" class="primary" data-action="ai-save" data-id=""' +
     (setup.busy ? ' disabled' : '') +
     '>Speichern</button></div></div></section>' +
@@ -523,6 +572,18 @@ export function intakeInput(app: KitchenView, target: HTMLInputElement | HTMLTex
 
 /** Auswahl geändert, abgehakt oder Foto gewählt. */
 export async function intakeChange(app: KitchenView, target: HTMLInputElement | HTMLSelectElement): Promise<void> {
+  if (app.aiSetup && target.name === 'aiProvider' && isProvider(target.value)) {
+    // Der Modellname hängt am Anbieter. Er wechselt mit, solange dort kein eigener, passender Name steht.
+    const model = app.root.querySelector<HTMLInputElement>('[data-intake] [name=aiModel]');
+    app.aiSetup.provider = target.value;
+    if (
+      model &&
+      (!modelFits(target.value, model.value.trim()) || Object.values(DEFAULT_MODEL).includes(model.value.trim()))
+    )
+      model.value = DEFAULT_MODEL[target.value];
+    if (model) app.aiSetup.model = model.value.trim();
+    return;
+  }
   const state = app.intake;
   if (!state) return;
   if (target.name === 'intakePhoto') {
@@ -603,6 +664,7 @@ export async function intakeAction(app: KitchenView, action: string, id: string)
   if (action === 'intake-open' || action === 'ai-setup') {
     if (!app.canLeave()) return true;
     const ai = await loadAi(app);
+    if (action === 'intake-open') await unlockFromDevice(app);
     app.clearEditor();
     if (action === 'intake-open') {
       app.intake = { turns: [], text: '', photoInfo: '', busy: false };
@@ -617,6 +679,22 @@ export async function intakeAction(app: KitchenView, action: string, id: string)
   const state = app.intake;
   if (!state) return true;
   readCards(app);
+  if (action === 'intake-unlock') {
+    const row = app.ai?.row;
+    if (!row) throw new Error('Der Eingang ist noch nicht eingerichtet.');
+    const field = app.root.querySelector<HTMLInputElement>('[data-intake] [name=intakePassword]');
+    const password = field?.value || '';
+    if (!password) throw new Error('Bitte das Kennwort für den Eingang eintragen.');
+    const opened = await openWithPassword(row.value.sealed, password);
+    // eslint-disable-next-line require-atomic-updates -- Nur eine Aktion läuft zugleich (busy), die Ansicht besitzt diesen Zustand allein.
+    app.aiKey = opened.secret;
+    rememberUnlock(app, row, opened.key);
+    // Eine frühere Meldung „Kennwort stimmt nicht“ soll nicht stehen bleiben.
+    app.error = '';
+    app.info = 'Dieses Gerät ist freigeschaltet.';
+    app.render();
+    return true;
+  }
   if (action === 'intake-photo-clear') {
     state.photo = undefined;
     state.photoInfo = '';
@@ -628,6 +706,8 @@ export async function intakeAction(app: KitchenView, action: string, id: string)
     if (state.busy) return true;
     const ai = await loadAi(app);
     if (!ai.row) throw new Error('Der Eingang ist noch nicht eingerichtet.');
+    const key = app.aiKey;
+    if (!key) throw new Error('Bitte zuerst das Kennwort für den Eingang eintragen.');
     if (!app.writable()) throw new Error('Bitte eine aktive Saison wählen.');
     const text = state.text.trim(),
       photo = state.photo;
@@ -642,7 +722,7 @@ export async function intakeAction(app: KitchenView, action: string, id: string)
     try {
       const context = intakeContext(app.state, app.seasonId, app.area, today());
       const result = await readIntake(
-        { provider: ai.row.value.provider, key: ai.row.value.key, model: ai.row.value.model },
+        { provider: ai.row.value.provider, key, model: ai.row.value.model },
         context,
         text,
         photo
@@ -808,23 +888,73 @@ async function setupAction(app: KitchenView, action: string): Promise<boolean> {
   if (isProvider(provider)) setup.provider = provider;
   setup.model = value('aiModel') || setup.model;
   if (action === 'ai-save') {
-    const key = value('aiKey') || ai.row?.value.key || '';
-    if (!key) throw new Error('Bitte den Schlüssel eintragen.');
+    const typed = value('aiKey');
+    // Das Kennwort wird nicht gekürzt: Leerzeichen zwischen Wörtern gehören dazu.
+    const password =
+      app.root.querySelector<HTMLInputElement>('[data-intake] [name=aiPassword]')?.value.replace(/^\s+|\s+$/g, '') ||
+      '';
+    const model = setup.model || DEFAULT_MODEL[setup.provider];
+    if (!modelFits(setup.provider, model))
+      throw new Error(
+        setup.provider === 'anthropic'
+          ? 'Modell bitte prüfen. Bei Claude direkt heißt es zum Beispiel claude-haiku-5-5.'
+          : 'Modell bitte prüfen. Bei OpenRouter heißt es zum Beispiel anthropic/claude-haiku-5.5.'
+      );
+    let sealed = ai.row?.value.sealed,
+      tail = ai.row?.value.tail || '',
+      plain = app.aiKey,
+      derived: Uint8Array | undefined;
+    if (typed) {
+      if (!/^[\x21-\x7e]{20,400}$/.test(typed))
+        throw new Error('Schlüssel bitte prüfen: mindestens 20 Zeichen, ohne Leerzeichen.');
+      if (!password)
+        throw new Error('Bitte ein Kennwort für den Eingang vergeben. Mit ihm wird der Schlüssel verschlüsselt.');
+      const result = await seal(typed, password);
+      sealed = result.sealed;
+      derived = result.key;
+      tail = typed.slice(-4);
+      plain = typed;
+    } else if (password) {
+      // Nur das Kennwort wechseln: geht ohne den Schlüssel neu einzutippen, wenn dieses Gerät freigeschaltet ist.
+      if (!ai.row) throw new Error('Bitte den Schlüssel eintragen.');
+      if (!app.aiKey)
+        throw new Error(
+          'Für ein neues Kennwort bitte auch den Schlüssel eintragen, oder zuerst den Eingang auf diesem Gerät freischalten.'
+        );
+      const result = await seal(app.aiKey, password);
+      sealed = result.sealed;
+      derived = result.key;
+    }
+    if (!sealed) throw new Error('Bitte den Schlüssel eintragen.');
     const next: AiSettings = {
       id: 'ki',
       provider: setup.provider,
-      model: setup.model || DEFAULT_MODEL[setup.provider],
-      key,
+      model,
+      sealed,
+      tail,
       updatedAt: new Date().toISOString(),
       updatedBy: app.user
     };
     const operation = uuid();
-    await app.run(() => app.store.saveAiSettings(next, ai.row, operation), 'Zugang gespeichert.');
+    await app.run(() => app.store.saveAiSettings(next, ai.row || ai.legacy, operation), 'Zugang gespeichert.');
     await reopen();
+    // Nur wenn wirklich gespeichert wurde, gilt dieses Gerät als freigeschaltet.
+    const stored = app.ai?.row;
+    if (stored && stored.value.sealed.cipher === sealed.cipher) {
+      // eslint-disable-next-line require-atomic-updates -- Nur eine Aktion läuft zugleich (busy), die Ansicht besitzt diesen Zustand allein.
+      app.aiKey = plain;
+      if (derived) rememberUnlock(app, stored, derived);
+    }
     return true;
   }
   if (action === 'ai-test') {
     if (!ai.row) throw new Error('Bitte zuerst den Zugang speichern.');
+    await unlockFromDevice(app);
+    const key = app.aiKey;
+    if (!key)
+      throw new Error(
+        'Dieses Gerät ist noch nicht freigeschaltet. Bitte den Eingang öffnen und das Kennwort eintragen.'
+      );
     setup.busy = true;
     setup.test = undefined;
     app.render();
@@ -852,7 +982,7 @@ async function setupAction(app: KitchenView, action: string): Promise<boolean> {
         ]
       };
       const result = await readIntake(
-        { provider: ai.row.value.provider, key: ai.row.value.key, model: ai.row.value.model },
+        { provider: ai.row.value.provider, key, model: ai.row.value.model },
         context,
         'Pils noch drei Kisten, Spezi ist leer'
       );

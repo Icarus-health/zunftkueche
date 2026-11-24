@@ -256,6 +256,8 @@ export class KitchenView {
   aiSetup?: AiSetupState;
   /** Ob die KI eingerichtet ist und wer einrichten darf. Wird einmal je Sitzung geladen. */
   ai?: AiStatus;
+  /** Entschlüsselter Schlüssel zur KI, nur im Arbeitsspeicher dieser Sitzung. Wird nie gezeichnet und nie gespeichert. */
+  aiKey?: string;
   /** Vom Rahmen gemeldet: diese Person ist Besitzer der Seite. */
   managerHint = false;
   private aiAsked = false;

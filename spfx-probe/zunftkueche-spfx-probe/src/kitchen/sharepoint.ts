@@ -1,3 +1,6 @@
+import { modelFits } from './ai/provider.ts';
+import { validSealed } from './ai/vault.ts';
+import type { Sealed } from './ai/vault';
 import { SharePointInbox } from './ww/inbox.ts';
 import { WwStore } from './ww/store.ts';
 import { validateEntity, validateOrder } from './domain.ts';
@@ -30,22 +33,32 @@ export interface HttpOptions {
 }
 export type HttpRequest = (url: string, options: HttpOptions) => Promise<HttpResponse>;
 type ListKind = MasterKind | 'orders' | 'positions' | 'inventories' | 'settings';
-/** Zugang zur KI für den Eingang. Ein einziger Datensatz in der Liste „Einstellungen“. */
+/**
+ * Zugang zur KI für den Eingang. Ein einziger Datensatz in der Liste „Einstellungen“.
+ * Der Schlüssel steht nie lesbar darin: gespeichert wird nur der Geheimtext, verschlüsselt mit dem Kennwort für den Eingang.
+ */
 export interface AiSettings {
   id: 'ki';
   provider: 'anthropic' | 'openrouter' | 'openrouter-eu';
   model: string;
-  key: string;
+  sealed: Sealed;
+  /** Die letzten vier Zeichen des Schlüssels, damit Besitzer ihn wiedererkennen. */
+  tail: string;
   updatedAt: string;
   updatedBy: string;
 }
 export function validateAiSettings(value: AiSettings): void {
   if (!value || value.id !== 'ki') throw new Error('Einstellung ist ungültig.');
+  if ('key' in value) throw new Error('Ein Schlüssel im Klartext wird nicht gespeichert.');
   if (!['anthropic', 'openrouter', 'openrouter-eu'].includes(value.provider)) throw new Error('Anbieter bitte wählen.');
-  if (typeof value.model !== 'string' || !/^[A-Za-z0-9._:/-]{3,100}$/.test(value.model))
-    throw new Error('Modell bitte prüfen: nur Buchstaben, Ziffern, Punkt, Strich und Schrägstrich.');
-  if (typeof value.key !== 'string' || !/^[\x21-\x7e]{20,400}$/.test(value.key))
-    throw new Error('Schlüssel bitte prüfen: mindestens 20 Zeichen, ohne Leerzeichen.');
+  if (typeof value.model !== 'string' || !modelFits(value.provider, value.model))
+    throw new Error(
+      value.provider === 'anthropic'
+        ? 'Modell bitte prüfen. Bei Claude direkt heißt es zum Beispiel claude-haiku-5-5.'
+        : 'Modell bitte prüfen. Bei OpenRouter heißt es zum Beispiel anthropic/claude-haiku-5.5.'
+    );
+  if (!validSealed(value.sealed)) throw new Error('Der verschlüsselte Schlüssel ist unvollständig.');
+  if (typeof value.tail !== 'string' || value.tail.length > 4) throw new Error('Einstellung ist ungültig.');
   if (typeof value.updatedAt !== 'string' || Number.isNaN(Date.parse(value.updatedAt)))
     throw new Error('Zeitpunkt ist ungültig.');
   if (typeof value.updatedBy !== 'string' || !value.updatedBy.trim() || value.updatedBy.length > 200)
@@ -578,7 +591,7 @@ export class SharePointStore {
     return this.put('inventories', value, previous, operationId);
   }
   /** Ist die Liste „Einstellungen“ da, und was steht drin? Fehlt die Liste, ist die KI noch nicht eingerichtet. */
-  public async aiSettings(): Promise<{ ready: boolean; row?: Stored<AiSettings> }> {
+  public async aiSettings(): Promise<{ ready: boolean; row?: Stored<AiSettings>; legacy?: Stored<AiSettings> }> {
     const check = await this.request(this.list('settings') + '?$select=Description', {
       method: 'GET',
       headers: { Accept: 'application/json;odata=nometadata', 'odata-version': '' }
@@ -588,7 +601,11 @@ export class SharePointStore {
     const meta = (await check.json()) as { Description?: string };
     if (!meta.Description?.includes('[ZK-V1]')) throw new Error('Eine gleichnamige fremde Liste wird nicht verwendet.');
     const row = await this.one<AiSettings>('settings', 'ki');
-    if (row) validateAiSettings(row.value);
+    if (!row) return { ready: true };
+    // Aus Version 1.27.0 kann ein lesbarer Schlüssel in der Liste stehen. Er wird nicht mehr benutzt und nicht weitergereicht:
+    // zurück geht nur, was zum Überschreiben nötig ist.
+    if ('key' in row.value) return { ready: true, legacy: { ...row, value: { id: 'ki' } as AiSettings } };
+    validateAiSettings(row.value);
     return { ready: true, row };
   }
   public async saveAiSettings(
