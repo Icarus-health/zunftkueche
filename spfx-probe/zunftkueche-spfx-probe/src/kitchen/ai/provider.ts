@@ -52,7 +52,8 @@ export const DEFAULT_MODEL: Record<Provider, string> = {
 export const PROVIDER_NAME: Record<Provider, string> = {
   anthropic: 'Claude direkt (Anthropic)',
   openrouter: 'OpenRouter',
-  'openrouter-eu': 'OpenRouter, Verarbeitung in Europa'
+  // Die Europa-Adresse nimmt OpenRouter nur im Business-Tarif an (Stand November 2026).
+  'openrouter-eu': 'OpenRouter Europa (nur Business-Tarif)'
 };
 const ANTHROPIC = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2026-10-21';

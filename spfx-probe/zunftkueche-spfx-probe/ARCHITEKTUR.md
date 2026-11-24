@@ -47,7 +47,7 @@ Stammdaten: ein Preis je Artikel und Lieferant. Preisänderungen entstehen als P
 
 Grundsatz für alles, was folgt: das Modell schlägt vor, die App prüft, ein Mensch bestätigt. Das Modell schreibt nie selbst in die Listen und rechnet keine Auswertung.
 
-- **Weg zum Modell**: `ai/provider.ts`, direkt aus dem Browser, ohne eigenen Server. Zwei Anbieter: Claude (`api.anthropic.com`) und OpenRouter (auch mit Verarbeitung in Europa). Die Antwort kommt als JSON nach festem Schema (`output_config.format` bei Claude, `response_format` bei OpenRouter). Fehler werden zu Sätzen für die Person am Gerät (`AiError`), die Rohmeldung bleibt in `detail`.
+- **Weg zum Modell**: `ai/provider.ts`, direkt aus dem Browser, ohne eigenen Server. Zwei Anbieter: Claude (`api.anthropic.com`) und OpenRouter (Verarbeitung in Europa nur im Business-Tarif von OpenRouter). Die Antwort kommt als JSON nach festem Schema (`output_config.format` bei Claude, `response_format` bei OpenRouter). Fehler werden zu Sätzen für die Person am Gerät (`AiError`), die Rohmeldung bleibt in `detail`.
 - **Schlüssel**: liegt in der Probe nur im Browser des Geräts (`LocalState`, Eintrag `ai`), nie in SharePoint, nie im Ergebnistext. Für den Betrieb kommt er später in eine Liste der Seite.
 - **Beleg lesen**: `ai/bill-reader.ts`. Das Schema verlangt alle Zahlen als Text „wie gedruckt“; `checkReading()` rechnet nach (Menge × Preis, Rückgaben, Pfand, Netto + Steuer = Brutto, Zeilensumme gegen Belegsumme). Text auf dem Beleg gilt nie als Anweisung.
 - **Fotos**: `ai/photo.ts` verkleinert auf 2.576 Pixel an der langen Kante und packt als JPEG. Mehr liest das Modell nicht, über 8.000 Pixel lehnt der Anbieter ab.
