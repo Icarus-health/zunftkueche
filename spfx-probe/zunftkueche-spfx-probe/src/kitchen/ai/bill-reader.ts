@@ -275,7 +275,7 @@ export function checkReading(reading: BillReading): ReadingCheck {
   };
 }
 
-/** Preis je Million Zeichenanteile (Eingabe, Ausgabe) in US-Dollar. Nur für die Kostenanzeige der Probe. */
+/** Preis je Million Zeichenanteile (Eingabe, Ausgabe) in US-Dollar. Nur für eine Kostenschätzung, nie für eine Abrechnung. */
 const PRICE: Array<[RegExp, number, number]> = [
   [/haiku-5[-.]5/, 0.1, 0.5],
   [/sonnet-5[-.]5/, 2, 10]
@@ -313,3 +313,31 @@ export async function readBill(
     result: { ms: result.ms, usage: result.usage, model: result.model, stop: result.stop }
   };
 }
+
+/** Was die Rechenprüfung zu einem gelesenen Beleg sagt, in einem Satz. */
+export function checkWords(read: BillRead): string {
+  const c = read.check;
+  const parts = [
+    c.header ? 'Nummer und Datum da' : 'Nummer oder Datum fehlt',
+    c.totals === 'ok'
+      ? 'Netto + Steuer = Brutto'
+      : c.totals === 'off'
+        ? 'Summen passen nicht zusammen'
+        : 'Summen unvollständig',
+    !c.lines
+      ? 'keine Positionen'
+      : c.lineSumMatches === 'net'
+        ? 'Zeilen ergeben das Netto'
+        : c.lineSumMatches === 'gross'
+          ? 'Zeilen ergeben das Brutto'
+          : c.lineSumMatches === 'none'
+            ? 'Zeilen ergeben die Summe nicht'
+            : 'Zeilen unvollständig'
+  ];
+  return parts.join(' · ');
+}
+/** Rechnerisch bestätigt: Kopf da, Summen stimmen, Zeilen ergeben die Belegsumme. */
+export const verified = (read: BillRead): boolean =>
+  read.check.header &&
+  read.check.totals === 'ok' &&
+  (read.check.lineSumMatches === 'net' || read.check.lineSumMatches === 'gross');

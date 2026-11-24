@@ -1,4 +1,4 @@
-# Zunftküche: Aufbau des Codes (Stand 1.26.1)
+# Zunftküche: Aufbau des Codes (Stand 1.26.0)
 
 Für alle, die die App später pflegen. Kurz: Daten und Rechenregeln sind von der Oberfläche getrennt, jede Oberfläche hat ihr eigenes Modul, und für fast jede Regel gibt es einen Test.
 
@@ -25,8 +25,8 @@ Für alle, die die App später pflegen. Kurz: Daten und Rechenregeln sind von de
 | `src/kitchen/ww/delivery-days.ts` | Einsatztage der Saison als Liefertage. Früher angelegte Liefertermine gelten weiter. |
 | `src/kitchen/ww/bill-suggest.ts`, `invoice-prices.ts` | Rechnung prüfen: Artikel je Zeile (auch aus früher bestätigten Rechnungen), Lieferant, Preise für die Preisliste. |
 | `src/kitchen/imports/` | Lesen von PDF (auch Scans per Texterkennung), CSV und Excel. `bill-proposal.ts` liest Kopf, Summen und Positionen einer Rechnung, `bill-hints.ts` Lieferant, Lieferdatum, Zahlungsziel, Skonto und Bereich. Alles sind Vorschläge: passt eine Summe nicht, bleibt das Feld leer. |
-| `src/kitchen/ai/` | KI-Baustein seit 1.26.1. `provider.ts` spricht mit dem Sprachmodell (Claude direkt oder OpenRouter) und kennt keine Küchendaten. `bill-reader.ts` lässt einen Beleg abschreiben und rechnet ihn nach. `photo.ts` verkleinert Telefonfotos vor dem Senden. `probe.ts` ist die Seite „KI-Probe“ unter Einstellungen. |
-| `tests/` | Rund 520 Tests mit Node und jsdom. `tests/preview-server.mjs` startet eine lokale Vorschau mit künstlichen Daten. |
+| `src/kitchen/ai/` | KI-Baustein, noch ohne Oberfläche. `provider.ts` spricht mit dem Sprachmodell (Claude direkt oder OpenRouter) und kennt keine Küchendaten. `bill-reader.ts` lässt einen Beleg abschreiben und rechnet ihn nach. `photo.ts` verkleinert Telefonfotos vor dem Senden. |
+| `tests/` | Rund 500 Tests mit Node und jsdom. `tests/preview-server.mjs` startet eine lokale Vorschau mit künstlichen Daten. |
 
 ## Aufbau der Oberfläche seit 1.23
 
@@ -43,15 +43,14 @@ Stammdaten: ein Preis je Artikel und Lieferant. Preisänderungen entstehen als P
 - **Rechnungen lesen**: `imports/bill-proposal.ts` bleibt die strenge Erkennung. `imports/bill-loose.ts` greift nur, wenn sie nichts findet (Scans, unübliche Belege): Beschriftung mitten in der Zeile, Nummer in der Folgezeile, zweistelliges Jahr, Beträge mit Punkt, verlorene Kommas. Ein Betrag wird nur übernommen, wenn er sich nachrechnen lässt (Netto × Satz = Steuer, Netto + Steuer = Brutto, Menge × Preis = Betrag, Zeilensumme = Belegsumme). Was errechnet oder aus dem Dateinamen übernommen wurde, steht als Hinweis über dem Formular (`BillProposal.notes`). Neue Regeln immer mit einem Test in `tests/bedienung-1-26.test.mjs` und gegen echte Belege prüfen.
 - Rechnungsformular: zwei Wege zum Abschluss, „Rechnung bestätigen“ und „Als Entwurf speichern“. Das versteckte Feld `confirmed` trägt nur den Zustand.
 
-## KI seit 1.26.1 (Schritt 0: Probe)
+## KI-Baustein (Vorarbeit für den Eingang)
 
 Grundsatz für alles, was folgt: das Modell schlägt vor, die App prüft, ein Mensch bestätigt. Das Modell schreibt nie selbst in die Listen und rechnet keine Auswertung.
 
 - **Weg zum Modell**: `ai/provider.ts`, direkt aus dem Browser, ohne eigenen Server. Zwei Anbieter: Claude (`api.anthropic.com`) und OpenRouter (Verarbeitung in Europa nur im Business-Tarif von OpenRouter). Die Antwort kommt als JSON nach festem Schema (`output_config.format` bei Claude, `response_format` bei OpenRouter). Fehler werden zu Sätzen für die Person am Gerät (`AiError`), die Rohmeldung bleibt in `detail`.
-- **Schlüssel**: liegt in der Probe nur im Browser des Geräts (`LocalState`, Eintrag `ai`), nie in SharePoint, nie im Ergebnistext. Für den Betrieb kommt er später in eine Liste der Seite.
-- **Beleg lesen**: `ai/bill-reader.ts`. Das Schema verlangt alle Zahlen als Text „wie gedruckt“; `checkReading()` rechnet nach (Menge × Preis, Rückgaben, Pfand, Netto + Steuer = Brutto, Zeilensumme gegen Belegsumme). Text auf dem Beleg gilt nie als Anweisung.
+- **Beleg lesen**: `ai/bill-reader.ts`. Das Schema verlangt alle Zahlen als Text „wie gedruckt“; `checkReading()` rechnet nach (Menge × Preis, Rückgaben, Pfand, Netto + Steuer = Brutto, Zeilensumme gegen Belegsumme), `verified()` sagt, ob ein Beleg rechnerisch bestätigt ist. Text auf dem Beleg gilt nie als Anweisung.
 - **Fotos**: `ai/photo.ts` verkleinert auf 2.576 Pixel an der langen Kante und packt als JPEG. Mehr liest das Modell nicht, über 8.000 Pixel lehnt der Anbieter ab.
-- **KI-Probe** (Einstellungen): prüft auf dem Gerät Foto, Diktat und Verbindung, liest einen Beleg und fährt den Messlauf über die PDF im Rechnungsordner der gewählten Saison. Ergebnis als Text und als JSON-Datei zum Auswerten. Die Seite speichert nichts in SharePoint.
+- **Prüfen gehört nicht in die App**: Messläufe gegen echte Belege und Diktate laufen als Prüfstand außerhalb des Pakets. In der App gibt es keine Prüf- oder Testseiten. Eine frühere Probe-Seite (Zweig 1.26.1) wurde deshalb nie ausgeliefert und wieder entfernt.
 
 ## Aussehen seit 1.25 (Zunft-Design-System, freigegeben 16.11.2026)
 

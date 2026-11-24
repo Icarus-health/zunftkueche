@@ -1,13 +1,8 @@
-// 1.26.1: KI-Anbindung als Baustein (Claude direkt, OpenRouter) und die Probe-Seite unter Einstellungen.
+// KI-Baustein: Anbindung an das Sprachmodell (Claude direkt, OpenRouter), Beleg lesen mit Rechenprüfung, Fotos passend machen.
 import {test} from 'node:test';import assert from 'node:assert/strict';
-import {JSDOM} from 'jsdom';
-import {KitchenView} from '../src/kitchen/view.ts';
-import {buildRequest,parseResponse,callModel,reachable,toBase64,AiError,DEFAULT_MODEL} from '../src/kitchen/ai/provider.ts';
-import {BILL_SCHEMA,normalizeReading,checkReading,printedNumber,costUsd,readBill} from '../src/kitchen/ai/bill-reader.ts';
-import {probeSummary,checkWords} from '../src/kitchen/ai/probe.ts';
+import {buildRequest,parseResponse,callModel,toBase64,AiError,DEFAULT_MODEL} from '../src/kitchen/ai/provider.ts';
+import {BILL_SCHEMA,normalizeReading,checkReading,checkWords,verified,printedNumber,costUsd,readBill} from '../src/kitchen/ai/bill-reader.ts';
 import {fitPhoto,targetSize,needsFit,MAX_EDGE} from '../src/kitchen/ai/photo.ts';
-import {settingsView} from '../src/kitchen/settings-view.ts';
-import {workspace} from './support/kitchen-data.mjs';
 
 const pdf={name:'beleg.pdf',mediaType:'application/pdf',bytes:new Uint8Array([37,80,68,70,45,49])};
 const photo={name:'foto.jpg',mediaType:'image/jpeg',bytes:new Uint8Array([255,216,255,224])};
@@ -63,20 +58,12 @@ test('Fehler der Anbieter werden zu verständlichen Meldungen, die Rohantwort bl
  assert.deepEqual([ok.json,ok.usage],[{a:1},{input:10,output:5}]);
  assert.throws(()=>parseResponse('openrouter',200,JSON.stringify({choices:[{finish_reason:'length',message:{content:'{'}}]})),/abgeschnitten/);
 });
-test('Aufruf: ohne Schlüssel kein Netzverkehr, Netzfehler wird benannt, Erreichbarkeit ohne Schlüssel',async()=>{
+test('Aufruf: ohne Schlüssel kein Netzverkehr, Netzfehler wird benannt',async()=>{
  let calls=0;const never=async()=>{calls++;throw new Error('darf nicht laufen');};
  await assert.rejects(callModel({...base,key:' ',provider:'anthropic',model:'m'},never),e=>e.kind==='key');assert.equal(calls,0);
  await assert.rejects(callModel({...base,provider:'anthropic',model:'m'},async()=>{throw new TypeError('Failed to fetch');}),e=>e.kind==='network'&&/Failed to fetch/.test(e.detail));
  const sent=[];const fake=async(url,init)=>{sent.push([url,init]);return new Response(JSON.stringify({stop_reason:'end_turn',content:[{type:'text',text:'{"ok":true}'}],usage:{}}),{status:200});};
  assert.deepEqual((await callModel({...base,provider:'anthropic',model:'m'},fake)).json,{ok:true});assert.equal(sent.length,1);
- // Anthropic antwortet ohne Schlüssel mit 401: das Gerät kommt durch
- const probe=[];
- assert.deepEqual(await reachable('anthropic',async(url,init)=>{probe.push(init);return new Response('{}',{status:401});}),{ok:true,detail:'erreichbar'});
- assert.ok(!('x-api-key' in probe[0].headers),'die Erreichbarkeit braucht keinen Schlüssel');
- assert.equal((await reachable('anthropic',async()=>new Response('{}',{status:200}))).ok,false);
- assert.equal((await reachable('openrouter',async url=>new Response('{}',{status:url.endsWith('/models')?200:500}))).ok,true);
- const blocked=await reachable('openrouter-eu',async()=>{throw new TypeError('blocked');});
- assert.equal(blocked.ok,false);assert.match(blocked.detail,/gesperrt oder kein Netz/);
 });
 
 // ---------- Beleg: Schema, Zahlen, Rechenprüfung ----------
@@ -143,98 +130,6 @@ test('Beleg lesen: Datei und Regeln gehen hinaus, zurück kommt Gelesenes samt P
  assert.equal(checkWords(r),'Nummer und Datum da · Netto + Steuer = Brutto · Zeilen ergeben die Summe nicht');
 });
 
-// ---------- Probe-Seite ----------
-function live(extra={}){
- const state=workspace();
- const dom=new JSDOM('<div id="app"></div>',{url:'https://example.test/kueche'});
- for(const name of ['document','Element','HTMLFormElement','HTMLSelectElement','HTMLInputElement','HTMLTextAreaElement','FormData'])globalThis[name]=dom.window[name]||dom.window.document;
- const root=document.getElementById('app');
- const store={testMode:false,load:async()=>structuredClone(state),...extra};
- return {dom,root,store,view:new KitchenView(root,store,'TEST Person')};
-}
-const wait=(ms=0)=>new Promise(r=>setTimeout(r,ms));
-const answer=()=>new Response(JSON.stringify({model:'claude-haiku-5-5',stop_reason:'end_turn',usage:{input_tokens:5000,output_tokens:800},content:[{type:'text',text:JSON.stringify(reading())}]}),{status:200});
-
-test('Einstellungen führen zur KI-Probe, die Seite hat ein Zurück und speichert nichts in SharePoint',async()=>{
- assert.match(settingsView(undefined,'Küche'),/data-action="probe-open"/);
- const {root,view}=live();await view.start();await view.action('nav','management');
- await view.action('probe-open','');
- assert.equal(root.querySelector('h1').textContent,'KI-Probe');assert.match(root.querySelector('.back-link').textContent,/Einstellungen/);
- assert.deepEqual([...root.querySelectorAll('[data-probe] h2')].map(h=>h.textContent),['1 Foto','2 Diktat','3 Verbindung','4 Zugang zur KI','5 Einen Beleg lesen','6 Messlauf','Ergebnis der Probe']);
- const camera=root.querySelector('[name=probePhoto]');
- assert.equal(camera.type,'file');assert.equal(camera.getAttribute('capture'),'environment');assert.equal(camera.accept,'image/*');
- assert.equal(root.querySelector('[name=probeKey]').type,'password');
- assert.equal(root.querySelector('[data-action=probe-read]').disabled,true,'ohne Datei und Schlüssel kein Lesen');
- assert.equal(root.querySelector('[data-action=probe-run]').disabled,true);
- await view.action('back','');assert.equal(root.querySelector('h1').textContent,'Einstellungen');assert.equal(view.probe,undefined);
-});
-test('Diktat zählt beim Tippen mit, ohne die Seite neu zu zeichnen und ohne „ungespeichert“',async()=>{
- const {dom,root,view}=live();await view.start();await view.action('probe-open','');
- const box=root.querySelector('[name=probeDictation]');
- box.value='Pils noch drei Kästen, Spezi ist leer';box.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
- assert.equal(root.querySelector('[name=probeDictation]'),box,'Feld bleibt, die Tastatur bleibt offen');
- assert.match(root.querySelector('[data-probe-dictation]').textContent,/geht 37 Zeichen angekommen/);
- assert.equal(view.dirty,false);assert.match(probeSummary(view),/Diktat: ok \(37 Zeichen\)/);
-});
-test('Schlüssel: nur auf dem Gerät gemerkt, nie im Ergebnistext, löschen räumt auf',async()=>{
- const {root,view}=live();await view.start();await view.action('probe-open','');
- root.querySelector('[name=probeKey]').value='sk-geheim-123';
- await view.action('probe-remember','');
- assert.deepEqual(view.local.read('ai'),{provider:'anthropic',model:'claude-haiku-5-5',key:'sk-geheim-123'});
- assert.match(root.textContent,/Auf diesem Gerät gemerkt/);assert.doesNotMatch(probeSummary(view),/sk-geheim/);
- // Anbieterwechsel zieht das Standardmodell nach
- const provider=root.querySelector('[name=probeProvider]');provider.value='openrouter';provider.dispatchEvent(new root.ownerDocument.defaultView.Event('change',{bubbles:true}));await wait();
- assert.equal(root.querySelector('[name=probeModel]').value,'anthropic/claude-haiku-5.5');assert.equal(root.querySelector('[name=probeKey]').value,'sk-geheim-123');
- await view.action('probe-forget','');
- assert.equal(view.local.read('ai'),undefined);assert.equal(root.querySelector('[name=probeKey]').value,'');
- await assert.rejects(view.action('probe-remember',''),/zuerst den Schlüssel/);
-});
-test('Foto wählen und lesen lassen: Ergebnis mit Rechenprüfung, Fehler mit Rohmeldung',async()=>{
- const {dom,root,view}=live();await view.start();await view.action('probe-open','');
- const input=root.querySelector('[name=probePhoto]');
- Object.defineProperty(input,'files',{value:[{name:'IMG_0042.jpg',type:'image/jpeg',arrayBuffer:async()=>new Uint8Array([255,216,255]).buffer}]});
- input.dispatchEvent(new dom.window.Event('change',{bubbles:true}));await wait(5);
- assert.match(root.querySelector('[data-probe-file]').textContent,/geht IMG_0042\.jpg · image\/jpeg · 1 KB · Kamera/);
- root.querySelector('[name=probeKey]').value='sk-test';
- const before=globalThis.fetch;const calls=[];
- try{
-  globalThis.fetch=async(url,init)=>{calls.push([url,JSON.parse(init.body)]);return answer();};
-  await view.action('probe-read','');
-  assert.equal(calls[0][1].messages[0].content[0].type,'image');
-  const facts=root.querySelector('.probe-facts').textContent;
-  assert.match(facts,/Nummer455924/);assert.match(facts,/993,91\s*€ · 188,84\s*€ · 1\.182,75\s*€/);assert.match(facts,/Positionen6, davon 5 nachgerechnet/);
-  assert.equal(root.querySelectorAll('.probe-table tbody tr').length,6);
-  assert.match(probeSummary(view),/Foto: ok \(Kamera, image\/jpeg, 1 KB\)/);assert.match(probeSummary(view),/Beleg lesen: ok \(claude-haiku-5-5/);
-  globalThis.fetch=async()=>new Response(JSON.stringify({type:'error',error:{message:'invalid x-api-key'}}),{status:401});
-  await view.action('probe-read','');
-  assert.match(root.querySelector('.probe-result [role=alert]').textContent,/Schlüssel wird nicht angenommen.*401 · invalid x-api-key/);
- }finally{globalThis.fetch=before;}
-});
-test('Messlauf: liest die PDF des Rechnungsordners der Reihe nach, bricht bei ungültigem Schlüssel ab, Ergebnis als Datei',async()=>{
- const files=[{id:'a',version:'1',name:'B.pdf',size:6,modifiedAt:'2026-02-21T10:00:00Z'},{id:'b',version:'1',name:'A.pdf',size:6,modifiedAt:'2026-02-22T10:00:00Z'},{id:'c',version:'1',name:'liste.xlsx',size:6,modifiedAt:'2026-02-22T10:00:00Z'}];
- const read=[];
- const inbox={list:async(kind,year)=>({path:'03_Rechnungen/'+year,href:'',exists:true,files}),read:async(kind,year,f)=>{read.push(f.name);return pdf.bytes;}};
- const {root,view}=live({inbox});await view.start();await view.action('probe-open','');
- root.querySelector('[name=probeKey]').value='sk-test';
- const before=globalThis.fetch,saved=[];const realCreate=URL.createObjectURL;
- try{
-  URL.createObjectURL=blob=>{saved.push(blob);return 'blob:test';};
-  globalThis.fetch=async()=>answer();
-  await view.action('probe-run','');
-  assert.deepEqual(read,['A.pdf','B.pdf'],'nur PDF, nach Namen');
-  assert.match(root.querySelector('.probe-result [role=status]').textContent,/2 von 2 gelesen, 0 davon rechnerisch bestätigt/);
-  assert.equal(root.querySelectorAll('.probe-table tbody tr').length,2);
-  await view.action('probe-download','');
-  const payload=JSON.parse(await saved[0].text());
-  assert.equal(payload.year,2027);assert.equal(payload.entries.length,2);assert.equal(payload.entries[0].reading.number,'455924');assert.equal(payload.entries[0].check.totals,'ok');
-  assert.doesNotMatch(JSON.stringify(payload),/sk-test/,'kein Schlüssel in der Ergebnisdatei');
-  read.length=0;globalThis.fetch=async()=>new Response(JSON.stringify({error:{message:'invalid x-api-key'}}),{status:401});
-  await view.action('probe-run','');
-  assert.deepEqual(read,['A.pdf'],'nach dem ersten Schlüsselfehler ist Schluss');
-  assert.match(root.querySelector('.probe-result [role=status]').textContent,/Abgebrochen: Der Schlüssel wird nicht angenommen/);
- }finally{globalThis.fetch=before;URL.createObjectURL=realCreate;}
-});
-
 // Foto passend machen
 function fakeDoc(width,height,out=1200){
  const drawn=[];
@@ -277,31 +172,12 @@ test('Telefonfoto wird vor dem Senden verkleinert und als JPEG gepackt, PDF und 
  // Browser ohne Zwischenadressen (z. B. der Testbrowser): unverändert, kein Absturz.
  assert.equal((await fitPhoto(big,{defaultView:{URL:{}}})).file,big);
 });
-test('Saisonwechsel lässt die KI-Probe offen: der Messlauf zeigt den Rechnungsordner der neuen Saison',async()=>{
- const state=workspace();state.seasons.push({itemId:2,etag:'"1"',operationId:'seed',value:{id:'s2026',name:'Fasnet 2026',year:2026,archived:true}});
- const {root,view,dom}=live({load:async()=>structuredClone(state)});await view.start();await view.action('nav','management');await view.action('probe-open','');
- assert.match(root.querySelector('[data-probe]').textContent,/Saison: Fasnet 2027 · Ordner 03_Rechnungen\/2027/);
- view.probe.run={season:'Fasnet 2027',year:2027,total:0,current:'',entries:[],stop:false,finished:true,note:'alt'};
- const season=root.querySelector('select[name=seasonContext]');season.value='s2026';season.dispatchEvent(new dom.window.Event('change',{bubbles:true}));await wait(20);
- assert.equal(root.querySelector('h1').textContent,'KI-Probe');
- assert.match(root.querySelector('[data-probe]').textContent,/Saison: Fasnet 2026 · Ordner 03_Rechnungen\/2026/);
- assert.equal(view.probe.run,undefined,'das Ergebnis der alten Saison bleibt nicht stehen');
- // Ein Bereichswechsel schließt die Probe wie jede andere Unterseite.
- const area=root.querySelector('select[name=areaContext]');area.value='Zunftscheuer';area.dispatchEvent(new dom.window.Event('change',{bubbles:true}));await wait(20);
- assert.equal(view.probe,undefined);
-});
-
-test('Schlüssel eintippen schaltet Lesen und Messlauf sofort frei, ohne die Seite neu zu zeichnen',async()=>{
- const {root,view,dom}=live({inbox:{list:async()=>({path:'',href:'',exists:true,files:[]}),read:async()=>new Uint8Array()}});await view.start();await view.action('nav','management');await view.action('probe-open','');
- view.probe.file=photo;view.render();
- const key=root.querySelector('[name=probeKey]');
- assert.equal(root.querySelector('[data-action=probe-read]').disabled,true);
- key.value='sk-test-1';key.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
- assert.equal(root.querySelector('[name=probeKey]'),key,'das Feld bleibt dasselbe, der Cursor geht nicht verloren');
- assert.equal(root.querySelector('[data-action=probe-read]').disabled,false);
- assert.equal(root.querySelector('[data-action=probe-run]').disabled,false);
- assert.match(root.querySelector('[data-probe-kept]').textContent,/Nicht gemerkt/);
- key.value='';key.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
- assert.equal(root.querySelector('[data-action=probe-read]').disabled,true);
- assert.equal(root.querySelector('[data-action=probe-run]').disabled,true);
+test('rechnerisch bestätigt heißt: Kopf da, Summen stimmen und die Zeilen ergeben die Belegsumme',()=>{
+ const whole=reading();whole.net='633,46';whole.tax='120,36';whole.gross='753,82';whole.taxGroups=[];
+ const good={reading:whole,check:checkReading(whole)};
+ assert.equal(good.check.lineSumMatches,'net');assert.equal(verified(good),true);
+ const noNumber=reading();Object.assign(noNumber,{net:'633,46',tax:'120,36',gross:'753,82',taxGroups:[],number:''});
+ assert.equal(verified({reading:noNumber,check:checkReading(noNumber)}),false,'ohne Belegnummer nie bestätigt');
+ const off=reading();off.gross='1.192,75';
+ assert.equal(verified({reading:off,check:checkReading(off)}),false,'Summen, die nicht aufgehen, nie bestätigt');
 });

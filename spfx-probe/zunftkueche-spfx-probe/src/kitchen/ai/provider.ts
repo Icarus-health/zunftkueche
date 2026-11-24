@@ -231,36 +231,3 @@ export async function callModel(request: AiRequest, fetcher: Fetcher = fetch): P
   }
   return parseResponse(request.provider, response.status, await response.text(), Date.now() - started);
 }
-
-/**
- * Prüft ohne Schlüssel, ob das Gerät den Anbieter überhaupt erreicht.
- * Anthropic antwortet auf eine Anfrage ohne Schlüssel mit 401: das ist hier das gute Zeichen.
- */
-export async function reachable(
-  provider: Provider,
-  fetcher: Fetcher = fetch
-): Promise<{ ok: boolean; detail: string }> {
-  try {
-    if (provider === 'anthropic') {
-      const response = await fetcher(ANTHROPIC, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'anthropic-version': ANTHROPIC_VERSION,
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({ model: DEFAULT_MODEL.anthropic, max_tokens: 1, messages: [] })
-      });
-      return response.status === 401
-        ? { ok: true, detail: 'erreichbar' }
-        : { ok: false, detail: 'unerwartete Antwort ' + response.status };
-    }
-    const response = await fetcher(openRouterBase(provider) + '/models');
-    return response.ok ? { ok: true, detail: 'erreichbar' } : { ok: false, detail: 'Antwort ' + response.status };
-  } catch (error) {
-    return {
-      ok: false,
-      detail: 'gesperrt oder kein Netz (' + (error instanceof Error ? error.message : 'Fehler') + ')'
-    };
-  }
-}

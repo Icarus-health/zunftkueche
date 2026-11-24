@@ -6,8 +6,6 @@ import { LocalState, formFields, restoreFields } from './local-state.ts';
 import type { LocalDraft, ContextChoice } from './local-state';
 import { clearFieldError } from './field-errors.ts';
 import { settingsView } from './settings-view.ts';
-import { probeAction, probeFields, probeChange, probeInput, probeView } from './ai/probe.ts';
-import type { ProbeState } from './ai/probe';
 import { ingredientForm, readIngredient } from './ingredient-form.ts';
 import type { IngredientDraft } from './ingredient-form';
 import { withSchedule, copyScheduledOrder } from './supplier-orders.ts';
@@ -257,8 +255,6 @@ export class KitchenView {
   hint = '';
   private busy = false;
   operationId = uuid();
-  /** Offene KI-Probe unter Einstellungen. */
-  probe?: ProbeState;
   info = '';
   error = '';
   private needsSetup = false;
@@ -321,10 +317,6 @@ export class KitchenView {
     if (!(event.target instanceof Element)) return;
     this.trigger = undefined;
     const target = event.target as HTMLInputElement;
-    if (target.closest('[data-probe]')) {
-      probeInput(this, target);
-      return;
-    }
     target.dataset.userEdited = 'true';
     if (target.dataset.fieldErrorId) {
       clearFieldError(target);
@@ -387,10 +379,6 @@ export class KitchenView {
   }
   private readonly change = (event: Event): void => {
     const origin = event.target;
-    if (origin instanceof Element && origin.closest('[data-probe]')) {
-      probeChange(this, origin as HTMLInputElement).catch(e => this.showError(e));
-      return;
-    }
     if (!(origin instanceof HTMLSelectElement) && !(origin instanceof Element && origin.matches('input[type=radio]')))
       return;
     const target = origin as HTMLSelectElement;
@@ -402,25 +390,13 @@ export class KitchenView {
           target.value = target.name === 'seasonContext' ? this.seasonId : this.area;
           return;
         }
-        // Die KI-Probe bleibt beim Saisonwechsel offen: der Messlauf braucht die Saison mit den Belegen.
-        const probe = target.name === 'seasonContext' && this.probe && !this.probe.busy ? this.probe : undefined;
-        if (probe) probeFields(this);
-        const keepProbe = probe
-          ? (): void => {
-              probe.run = undefined;
-              this.probe = probe;
-            }
-          : undefined;
         this.clearEditor();
         if (target.name === 'seasonContext') this.seasonId = target.value;
         else this.area = target.value as Area;
         this.rememberContext();
         if (this.store.ww) {
-          this.run(async () => {}, '', keepProbe, false).catch(e => this.showError(e));
-        } else {
-          keepProbe?.();
-          this.render();
-        }
+          this.run(async () => {}, '', undefined, false).catch(e => this.showError(e));
+        } else this.render();
       }
       if (target.name === 'receiptDelivery' && this.receiving) {
         if (this.dirty) {
@@ -643,7 +619,6 @@ export class KitchenView {
     this.menuDraft = undefined;
     this.menuPrevious = undefined;
     this.merging = undefined;
-    this.probe = undefined;
     this.deliveryPicker = false;
     this.importKind = undefined;
     this.importItems = undefined;
@@ -861,7 +836,6 @@ export class KitchenView {
         Object.fromEntries(s.articles.map(a => [a.value.id, a.value.storagePlace || ''])),
         Object.fromEntries(s.articles.map(a => [a.value.id, a.value.category || '']))
       );
-    else if (this.probe) body = probeView(this);
     else if (this.merging) body = mergeForm(this);
     else if (this.editing) body = masterForm(this.editing, s);
     else if (this.mailOrder)
@@ -1141,7 +1115,6 @@ export class KitchenView {
     if (this.wwUI.screen) return 'ww:' + this.wwUI.pageKey();
     if (this.receiving) return 'receipt:' + this.receiving.previous.value.id;
     if (this.inventory) return 'inventory:' + this.inventory.id;
-    if (this.probe) return 'probe';
     if (this.merging) return 'merge:' + this.merging.sourceId;
     if (this.editing) return 'edit:' + this.editing.kind + ':' + this.editing.id;
     if (this.mailOrder) return 'mail:' + this.mailOrder.id;
@@ -1352,7 +1325,6 @@ export class KitchenView {
     }
     if (await receiptAction(this, action, id, target)) return;
     if (await inventoryAction(this, action, id, target)) return;
-    if (await probeAction(this, action)) return;
     if (mergeAction(this, action, id)) return;
     if (await masterAction(this, action, id, target)) return;
     if (overviewAction(this, action)) return;
