@@ -7150,3 +7150,184 @@
     margin-top: 2px;
   }
 }
+
+/* 1.27 Eingang: Meldung diktieren, tippen oder fotografieren; Karte prüfen, dann speichern. */
+.kitchen {
+  :global(.intake-entry) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px 24px;
+    flex-wrap: wrap;
+    padding: 20px;
+    margin-bottom: 24px;
+    border: 0.5px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface);
+  }
+  :global(.intake-entry) h2 {
+    margin: 0 0 4px;
+  }
+  :global(.intake-entry) p {
+    margin: 0;
+    color: var(--dim);
+    max-width: 60ch;
+  }
+  :global(.intake-thread) {
+    display: grid;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+  :global(.intake-turn) {
+    display: grid;
+    gap: 12px;
+  }
+  /* Was gesagt wurde, steht rechts wie die eigene Nachricht in einem Gespräch. */
+  :global(.intake-said) {
+    justify-self: end;
+    max-width: min(60ch, 88%);
+    margin: 0;
+    padding: 12px 16px;
+    border-radius: 14px 14px 6px 14px;
+    background: var(--tint);
+    overflow-wrap: anywhere;
+  }
+  :global(.intake-said) small {
+    display: block;
+    color: var(--dim);
+  }
+  :global(.intake-note) {
+    margin: 0;
+    color: var(--dim);
+  }
+  :global(.intake-ok) {
+    margin: 0;
+    color: var(--ok);
+    font-weight: 600;
+  }
+  :global(.intake-bad) {
+    margin: 0;
+    color: var(--error);
+  }
+  :global(.intake-card),
+  :global(.intake-done),
+  :global(.intake-compose) {
+    display: grid;
+    gap: 16px;
+    padding: 20px;
+    border: 0.5px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface);
+  }
+  :global(.intake-card) h3,
+  :global(.intake-done) h3 {
+    margin: 0;
+  }
+  :global(.intake-line) {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+    margin: 0;
+    padding: 16px;
+    border: 0.5px solid var(--line);
+    border-radius: 10px;
+  }
+  /* Markierte Zeilen heben sich durch den Rand ab. Der Grund steht immer als Satz dabei. */
+  :global(.intake-line.flagged) {
+    border: 1.5px solid var(--warnline);
+  }
+  :global(.intake-line) legend {
+    padding: 0 8px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  /* Der Artikel bekommt die ganze Breite, Gebinde und Mengen teilen sich die Zeile darunter, auch am Telefon. */
+  :global(.intake-line) :global(.intake-fields) > label:first-child {
+    grid-column: 1 / -1;
+  }
+  :global(.intake-fields) {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    gap: 12px;
+    align-items: end;
+    min-width: 0;
+  }
+  :global(.intake-fields) select,
+  :global(.intake-fields) input:not([type='checkbox']) {
+    width: 100%;
+    min-width: 0;
+  }
+  :global(.intake-fields) p {
+    margin: 0;
+    grid-column: 1 / -1;
+  }
+  /* Einrichtung: Felder untereinander, damit Erklärung und Schlüssel nicht nebeneinander quetschen. */
+  :global(.intake-fields.single) {
+    grid-template-columns: minmax(0, 560px);
+  }
+  @media (max-width: 600px) {
+    /* Am Telefon bekommt jede Auswahl die ganze Breite, die Mengen stehen nebeneinander. */
+    :global(.intake-line) :global(.intake-fields) > label:has(select) {
+      grid-column: 1 / -1;
+    }
+  }
+  :global(.intake-total) {
+    margin: 0;
+    color: var(--dim);
+  }
+  :global(.intake-foot) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 24px;
+  }
+  /* „Zeile entfernen“ steht rechts außen, weg von den Mengen. */
+  :global(.intake-foot) > button {
+    margin-left: auto;
+  }
+  :global(.intake-saved) {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding-left: 20px;
+  }
+  :global(.intake-flags) {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding-left: 20px;
+  }
+  :global(.intake-open) {
+    margin: 0;
+    color: var(--dim);
+  }
+  :global(.intake-message) {
+    display: grid;
+    gap: 8px;
+  }
+  :global(.intake-message) p {
+    margin: 0;
+  }
+  :global(.intake-message) pre {
+    margin: 0;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: var(--bg);
+    font: inherit;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    user-select: all;
+  }
+  :global(.intake-compose) textarea {
+    width: 100%;
+  }
+  :global(.intake-compose) p {
+    margin: 0;
+  }
+  :global(.intake) :global(.settings-row) > div:first-child {
+    flex: 1;
+    align-self: stretch;
+    min-width: 0;
+    max-width: none;
+  }
+}

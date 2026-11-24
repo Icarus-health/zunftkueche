@@ -19,6 +19,17 @@ import { menuPreview } from './menu-preview.ts';
 import { WAPPEN } from './menu-assets.ts';
 import { registerFonts } from './fonts.ts';
 import { mergeAction, mergeForm, saveMerge } from './actions/merge-actions.ts';
+import {
+  aiSettingsSection,
+  aiSetupView,
+  intakeAction,
+  intakeChange,
+  intakeEntry,
+  intakeInput,
+  intakeView,
+  loadAi
+} from './actions/intake-actions.ts';
+import type { AiSetupState, AiStatus, IntakeState } from './actions/intake-actions';
 import type { MenuCard, WwDocument } from './ww/model';
 import type {
   Area,
@@ -239,6 +250,15 @@ export class KitchenView {
   menuPrevious?: Stored<WwDocument>;
   /** Lieferanten zusammenlegen: wer aufgeht und in wem. */
   merging?: { sourceId: string; targetId: string };
+  /** Offener Eingang: Verlauf der Meldungen mit ihren Karten. Bleibt nur, solange die Seite offen ist. */
+  intake?: IntakeState;
+  /** Offene Seite „KI für den Eingang“ (nur Besitzer). */
+  aiSetup?: AiSetupState;
+  /** Ob die KI eingerichtet ist und wer einrichten darf. Wird einmal je Sitzung geladen. */
+  ai?: AiStatus;
+  /** Vom Rahmen gemeldet: diese Person ist Besitzer der Seite. */
+  managerHint = false;
+  private aiAsked = false;
   /** Ungeprüfte Rechnungen je offener Saison, nach jedem Laden einmal im Hintergrund gelesen. */
   openBills: OpenBills[] = [];
   private billsFor?: Workspace;
@@ -317,6 +337,10 @@ export class KitchenView {
     if (!(event.target instanceof Element)) return;
     this.trigger = undefined;
     const target = event.target as HTMLInputElement;
+    if (target.closest('[data-intake]')) {
+      intakeInput(this, target);
+      return;
+    }
     target.dataset.userEdited = 'true';
     if (target.dataset.fieldErrorId) {
       clearFieldError(target);
@@ -379,6 +403,10 @@ export class KitchenView {
   }
   private readonly change = (event: Event): void => {
     const origin = event.target;
+    if (origin instanceof Element && origin.closest('[data-intake]')) {
+      intakeChange(this, origin as HTMLInputElement).catch(e => this.showError(e));
+      return;
+    }
     if (!(origin instanceof HTMLSelectElement) && !(origin instanceof Element && origin.matches('input[type=radio]')))
       return;
     const target = origin as HTMLSelectElement;
@@ -473,8 +501,10 @@ export class KitchenView {
   public constructor(
     public readonly root: HTMLElement,
     public readonly store: SharePointStore,
-    public readonly user: string
+    public readonly user: string,
+    options: { manager?: boolean } = {}
   ) {
+    this.managerHint = !!options.manager;
     this.local = new LocalState(root, store.storageScope || root.ownerDocument.baseURI, user);
     const choice = this.local.read<ContextChoice>('context');
     if (choice && isArea(choice.area)) {
@@ -619,6 +649,8 @@ export class KitchenView {
     this.menuDraft = undefined;
     this.menuPrevious = undefined;
     this.merging = undefined;
+    this.intake = undefined;
+    this.aiSetup = undefined;
     this.deliveryPicker = false;
     this.importKind = undefined;
     this.importItems = undefined;
@@ -836,6 +868,8 @@ export class KitchenView {
         Object.fromEntries(s.articles.map(a => [a.value.id, a.value.storagePlace || ''])),
         Object.fromEntries(s.articles.map(a => [a.value.id, a.value.category || '']))
       );
+    else if (this.intake) body = intakeView(this);
+    else if (this.aiSetup) body = aiSetupView(this);
     else if (this.merging) body = mergeForm(this);
     else if (this.editing) body = masterForm(this.editing, s);
     else if (this.mailOrder)
@@ -858,8 +892,13 @@ export class KitchenView {
     else if (this.view === 'stock') body = stockOverview(s, season, this.area, this.query);
     else if (this.view === 'planning') body = this.wwUI.renderPlanning();
     else if (this.view === 'reports') body = reportsOverview(s, season, this.area);
-    else if (this.view === 'management') body = settingsView(season, this.area);
-    else if (this.view === 'menu')
+    else if (this.view === 'management') {
+      this.askAi();
+      body = settingsView(season, this.area).replace(
+        '<section class="settings-section"><div class="settings-heading"><h2>Datensicherung',
+        aiSettingsSection(this) + '<section class="settings-section"><div class="settings-heading"><h2>Datensicherung'
+      );
+    } else if (this.view === 'menu')
       body =
         '<div class="page-heading"><div><h1>Karte</h1></div></div><p>Bitte zuerst eine Saison wählen. Die Karte wird je Saison gespeichert.</p>';
     else body = orders(this);
@@ -1115,6 +1154,8 @@ export class KitchenView {
     if (this.wwUI.screen) return 'ww:' + this.wwUI.pageKey();
     if (this.receiving) return 'receipt:' + this.receiving.previous.value.id;
     if (this.inventory) return 'inventory:' + this.inventory.id;
+    if (this.intake) return 'intake';
+    if (this.aiSetup) return 'ai-setup';
     if (this.merging) return 'merge:' + this.merging.sourceId;
     if (this.editing) return 'edit:' + this.editing.kind + ':' + this.editing.id;
     if (this.mailOrder) return 'mail:' + this.mailOrder.id;
@@ -1165,7 +1206,24 @@ export class KitchenView {
         /* Nur ein Hinweis auf der Übersicht. Fehlt der Zugriff, bleibt er einfach weg. */
       });
     }
-    return dashboard(this.state!, this.season(), this.area, undefined, this.openBills);
+    this.askAi();
+    return dashboard(this.state!, this.season(), this.area, undefined, this.openBills).replace(
+      '<section class="workflow-starts"',
+      intakeEntry(this) + '<section class="workflow-starts"'
+    );
+  }
+  /** Fragt einmal je Sitzung nach, ob der Eingang eingerichtet ist. Erst danach erscheint er auf der Übersicht. */
+  private askAi(): void {
+    if (this.aiAsked || !this.state) return;
+    this.aiAsked = true;
+    loadAi(this)
+      .then(() => {
+        if (!this.pageKey().startsWith('view:')) return;
+        if (this.view === 'heute' || this.view === 'management') this.render();
+      })
+      .catch(() => {
+        /* Ohne Antwort bleibt der Eingang verborgen. */
+      });
   }
   private async checkBills(state: Workspace): Promise<void> {
     const inbox = this.store.inbox;
@@ -1325,6 +1383,7 @@ export class KitchenView {
     }
     if (await receiptAction(this, action, id, target)) return;
     if (await inventoryAction(this, action, id, target)) return;
+    if (await intakeAction(this, action, id)) return;
     if (mergeAction(this, action, id)) return;
     if (await masterAction(this, action, id, target)) return;
     if (overviewAction(this, action)) return;

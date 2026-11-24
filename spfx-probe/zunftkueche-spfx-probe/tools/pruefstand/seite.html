@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zunftküche Prüfstand</title>
+<style>
+:root{--bg:#f4f4f8;--card:#fff;--ink:#1c1c2e;--dim:#5b5b70;--line:#d6d6e0;--action:#2f2f6b;--good:#1f6b3a;--bad:#a12626;--warn:#8a5a00}
+@media (prefers-color-scheme:dark){:root{--bg:#15151f;--card:#1f1f2c;--ink:#ececf4;--dim:#a6a6b8;--line:#3a3a4c;--action:#b9b9ff;--good:#7fd69a;--bad:#ff9a9a;--warn:#f0c060}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:28px;margin:0 0 4px}h2{font-size:20px;margin:0 0 8px}
+p{margin:0 0 12px}.dim{color:var(--dim)}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:20px}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+label{display:grid;gap:4px;font-weight:600}
+input,select,button{font:inherit;min-height:44px;border-radius:10px;border:1px solid var(--line);padding:8px 12px;background:var(--card);color:var(--ink)}
+button{cursor:pointer;border-radius:980px;padding:8px 20px;color:var(--action);font-weight:600}
+button.primary{background:var(--action);color:var(--card);border-color:var(--action)}
+button:disabled{opacity:.5;cursor:default}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:12px}
+th,td{text-align:left;vertical-align:top;padding:8px 12px 8px 0;border-bottom:1px solid var(--line)}
+.v{display:inline-block;white-space:nowrap;font-weight:600;color:var(--dim)}
+.v0{color:var(--good)}.v1{color:var(--good)}.v2{color:var(--warn)}.v3,.err{color:var(--bad)}
+.good{color:var(--good);font-weight:600}.bad{color:var(--bad);font-weight:600}
+details{margin-top:4px;color:var(--dim)}hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+#status{min-height:24px;font-weight:600}
+</style>
+</head>
+<body>
+<main>
+<h1>Zunftküche Prüfstand</h1>
+<p class="dim"><span id="title"></span> · <span id="counts"></span></p>
+<p class="dim">Diese Seite gehört nicht zur App. Sie schickt Testdiktate und Belege an die KI, auf demselben Weg wie später der Eingang, und vergleicht die Antworten mit Sollwerten. Der Schlüssel bleibt in diesem Fenster und wird nirgends gespeichert.</p>
+<section>
+<h2>1 Zugang</h2>
+<div class="fields">
+<label>Anbieter<select id="provider"></select></label>
+<label>Modell<input id="model" spellcheck="false" autocapitalize="off" autocomplete="off"></label>
+<label>Schlüssel<input id="key" type="password" spellcheck="false" autocapitalize="off" autocomplete="off"></label>
+</div>
+<p id="status" role="status" style="margin-top:12px"></p>
+</section>
+<section>
+<h2>2 Diktate</h2>
+<p class="dim">Jedes Diktat wird zweimal gelesen, wie in der App. Dauer: wenige Minuten.</p>
+<div class="actions"><button id="run-dictations" class="primary" type="button">Diktate prüfen</button><button id="stop" type="button" hidden>Abbrechen</button></div>
+<div id="dictation-summary" style="margin-top:12px"></div>
+<div class="scroll"><table><thead><tr><th>Nr.</th><th>Diktat</th><th>Urteil</th><th>Abweichung</th></tr></thead><tbody id="dictation-rows"></tbody></table></div>
+</section>
+<section>
+<h2>3 Belege</h2>
+<p class="dim">Die Rechnungs-PDF von 2026 wählen (alle auf einmal). Sie gehen an den gewählten Anbieter.</p>
+<label>Rechnungs-PDF<input id="bill-files" type="file" accept="application/pdf" multiple></label>
+<div class="actions"><button id="run-bills" class="primary" type="button">Belege prüfen</button></div>
+<div id="bill-summary" style="margin-top:12px"></div>
+<div class="scroll"><table><thead><tr><th>Datei</th><th>Nummer · Datum</th><th>Netto · Steuer · Brutto</th><th>Positionen</th><th>Urteil</th><th>Abweichung</th></tr></thead><tbody id="bill-rows"></tbody></table></div>
+</section>
+<section>
+<h2>4 Ergebnis</h2>
+<p class="dim">Die Ergebnisdatei enthält alle Antworten der KI und die Urteile, aber keinen Schlüssel. Bitte an Claude geben.</p>
+<div class="actions"><button id="save" type="button">Ergebnisdatei speichern</button></div>
+</section>
+</main>
+<script>
+/*DATA*/
+</script>
+<script>
+/*CODE*/
+</script>
+</body>
+</html>

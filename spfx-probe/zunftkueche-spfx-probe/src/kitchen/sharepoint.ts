@@ -29,7 +29,28 @@ export interface HttpOptions {
   body?: string | ArrayBuffer;
 }
 export type HttpRequest = (url: string, options: HttpOptions) => Promise<HttpResponse>;
-type ListKind = MasterKind | 'orders' | 'positions' | 'inventories';
+type ListKind = MasterKind | 'orders' | 'positions' | 'inventories' | 'settings';
+/** Zugang zur KI für den Eingang. Ein einziger Datensatz in der Liste „Einstellungen“. */
+export interface AiSettings {
+  id: 'ki';
+  provider: 'anthropic' | 'openrouter' | 'openrouter-eu';
+  model: string;
+  key: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+export function validateAiSettings(value: AiSettings): void {
+  if (!value || value.id !== 'ki') throw new Error('Einstellung ist ungültig.');
+  if (!['anthropic', 'openrouter', 'openrouter-eu'].includes(value.provider)) throw new Error('Anbieter bitte wählen.');
+  if (typeof value.model !== 'string' || !/^[A-Za-z0-9._:/-]{3,100}$/.test(value.model))
+    throw new Error('Modell bitte prüfen: nur Buchstaben, Ziffern, Punkt, Strich und Schrägstrich.');
+  if (typeof value.key !== 'string' || !/^[\x21-\x7e]{20,400}$/.test(value.key))
+    throw new Error('Schlüssel bitte prüfen: mindestens 20 Zeichen, ohne Leerzeichen.');
+  if (typeof value.updatedAt !== 'string' || Number.isNaN(Date.parse(value.updatedAt)))
+    throw new Error('Zeitpunkt ist ungültig.');
+  if (typeof value.updatedBy !== 'string' || !value.updatedBy.trim() || value.updatedBy.length > 200)
+    throw new Error('Person ist ungültig.');
+}
 interface Envelope<T> {
   schema: number;
   operationId: string;
@@ -53,7 +74,8 @@ const names: Record<ListKind, string> = {
   orders: 'Bestellungen',
   positions: 'Bestellpositionen',
   counts: 'Bestandsmeldungen',
-  inventories: 'Inventuren'
+  inventories: 'Inventuren',
+  settings: 'Einstellungen'
 };
 const kinds = Object.keys(names) as ListKind[];
 const conflict = (): Error =>
@@ -554,5 +576,54 @@ export class SharePointStore {
         throw new Error('Artikel oder Einheit wurde geändert. Bitte neu laden und erneut zählen.');
     }
     return this.put('inventories', value, previous, operationId);
+  }
+  /** Ist die Liste „Einstellungen“ da, und was steht drin? Fehlt die Liste, ist die KI noch nicht eingerichtet. */
+  public async aiSettings(): Promise<{ ready: boolean; row?: Stored<AiSettings> }> {
+    const check = await this.request(this.list('settings') + '?$select=Description', {
+      method: 'GET',
+      headers: { Accept: 'application/json;odata=nometadata', 'odata-version': '' }
+    });
+    if (check.status === 404) return { ready: false };
+    if (!check.ok) throw new Error(`Einstellungen nicht lesbar (${check.status}). Bitte Verbindung und Rechte prüfen.`);
+    const meta = (await check.json()) as { Description?: string };
+    if (!meta.Description?.includes('[ZK-V1]')) throw new Error('Eine gleichnamige fremde Liste wird nicht verwendet.');
+    const row = await this.one<AiSettings>('settings', 'ki');
+    if (row) validateAiSettings(row.value);
+    return { ready: true, row };
+  }
+  public async saveAiSettings(
+    value: AiSettings,
+    previous: Stored<AiSettings> | undefined,
+    operationId: string
+  ): Promise<Stored<AiSettings>> {
+    validateAiSettings(value);
+    return this.put('settings', value, previous, operationId);
+  }
+  /**
+   * Darf diese Person die App einrichten? Ja für Websiteadministratoren und für alle mit dem Recht „Website verwalten“,
+   * also die Besitzer der Seite. Lässt sich das nicht klären, gilt Nein.
+   */
+  public async canManage(): Promise<boolean> {
+    const get = async (path: string): Promise<Record<string, unknown>> => {
+      const result = await this.request(this.site + path, {
+        method: 'GET',
+        headers: { Accept: 'application/json;odata=nometadata', 'odata-version': '' }
+      });
+      return result.ok ? ((await result.json()) as Record<string, unknown>) : {};
+    };
+    try {
+      if ((await get('/_api/web/currentuser?$select=IsSiteAdmin')).IsSiteAdmin === true) return true;
+    } catch {
+      /* Zweiter Weg folgt. */
+    }
+    try {
+      const raw = await get('/_api/web/effectiveBasePermissions');
+      const mask = (raw.EffectiveBasePermissions || raw) as { Low?: unknown };
+      const low = Number(mask.Low);
+      // „Website verwalten“ ist das 31. Recht: Bit 30 im unteren Teil der Maske.
+      return Number.isFinite(low) && Math.floor(low / 0x40000000) % 2 === 1;
+    } catch {
+      return false;
+    }
   }
 }

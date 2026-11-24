@@ -52,11 +52,31 @@ export default class KitchenWebPart extends BaseClientSideWebPart<Record<string,
       testMode
     );
     const user = this.context.pageContext.user;
-    this.view = new KitchenView(this.domElement, store, user.displayName + ' · ' + (user.email || user.loginName));
+    this.view = new KitchenView(this.domElement, store, user.displayName + ' · ' + (user.email || user.loginName), {
+      manager: this.isManager()
+    });
     this.view.start().catch(error => {
       this.domElement.textContent =
         error instanceof Error ? error.message : 'Verbindung nicht möglich. Bitte neu laden.';
     });
+  }
+  /**
+   * Besitzer der Seite dürfen die App einrichten. Der Rahmen meldet das ohne eigene Abfrage:
+   * Websiteadministrator oder das Recht „Website verwalten“ (Bit 30 der unteren Rechtemaske).
+   * Meldet der Rahmen nichts, fragt die App später selbst bei SharePoint nach.
+   */
+  private isManager(): boolean {
+    try {
+      const page = this.context.pageContext as unknown as {
+        legacyPageContext?: { isSiteAdmin?: boolean };
+        web?: { permissions?: { value?: { Low?: number } } };
+      };
+      if (page.legacyPageContext?.isSiteAdmin === true) return true;
+      const low = Number(page.web?.permissions?.value?.Low);
+      return Number.isFinite(low) && Math.floor((low >>> 0) / 0x40000000) % 2 === 1;
+    } catch {
+      return false;
+    }
   }
   protected onDispose(): void {
     this.view?.dispose();

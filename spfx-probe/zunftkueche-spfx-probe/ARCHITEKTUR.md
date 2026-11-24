@@ -1,4 +1,4 @@
-# Zunftküche: Aufbau des Codes (Stand 1.26.0)
+# Zunftküche: Aufbau des Codes (Stand 1.27.0)
 
 Für alle, die die App später pflegen. Kurz: Daten und Rechenregeln sind von der Oberfläche getrennt, jede Oberfläche hat ihr eigenes Modul, und für fast jede Regel gibt es einen Test.
 
@@ -25,8 +25,10 @@ Für alle, die die App später pflegen. Kurz: Daten und Rechenregeln sind von de
 | `src/kitchen/ww/delivery-days.ts` | Einsatztage der Saison als Liefertage. Früher angelegte Liefertermine gelten weiter. |
 | `src/kitchen/ww/bill-suggest.ts`, `invoice-prices.ts` | Rechnung prüfen: Artikel je Zeile (auch aus früher bestätigten Rechnungen), Lieferant, Preise für die Preisliste. |
 | `src/kitchen/imports/` | Lesen von PDF (auch Scans per Texterkennung), CSV und Excel. `bill-proposal.ts` liest Kopf, Summen und Positionen einer Rechnung, `bill-hints.ts` Lieferant, Lieferdatum, Zahlungsziel, Skonto und Bereich. Alles sind Vorschläge: passt eine Summe nicht, bleibt das Feld leer. |
-| `src/kitchen/ai/` | KI-Baustein, noch ohne Oberfläche. `provider.ts` spricht mit dem Sprachmodell (Claude direkt oder OpenRouter) und kennt keine Küchendaten. `bill-reader.ts` lässt einen Beleg abschreiben und rechnet ihn nach. `photo.ts` verkleinert Telefonfotos vor dem Senden. |
-| `tests/` | Rund 500 Tests mit Node und jsdom. `tests/preview-server.mjs` startet eine lokale Vorschau mit künstlichen Daten. |
+| `src/kitchen/ai/` | KI-Baustein. `provider.ts` spricht mit dem Sprachmodell (Claude direkt oder OpenRouter) und kennt keine Küchendaten. `intake.ts` versteht eine Meldung (Bestand, Nachbestellung), prüft sie gegen die Stammdaten und vergleicht zwei Lesungen. `bill-reader.ts` lässt einen Beleg abschreiben und rechnet ihn nach. `photo.ts` verkleinert Telefonfotos vor dem Senden. |
+| `src/kitchen/intake-records.ts`, `actions/intake-actions.ts` | Eingang: aus bestätigten Kartenzeilen werden Bestandsmeldungen und Bestellentwürfe (über die vorhandenen Speicherwege), dazu die Seite „Eingang“ und die Einrichtung für Besitzer. |
+| `tools/pruefstand/` | Prüfstand außerhalb der App: eine eigenständige Seite, die Testdiktate und Belege an die echte KI schickt und mit Sollwerten vergleicht. Nicht im Paket. |
+| `tests/` | Rund 530 Tests mit Node und jsdom. `tests/preview-server.mjs` startet eine lokale Vorschau mit künstlichen Daten. |
 
 ## Aufbau der Oberfläche seit 1.23
 
@@ -43,14 +45,17 @@ Stammdaten: ein Preis je Artikel und Lieferant. Preisänderungen entstehen als P
 - **Rechnungen lesen**: `imports/bill-proposal.ts` bleibt die strenge Erkennung. `imports/bill-loose.ts` greift nur, wenn sie nichts findet (Scans, unübliche Belege): Beschriftung mitten in der Zeile, Nummer in der Folgezeile, zweistelliges Jahr, Beträge mit Punkt, verlorene Kommas. Ein Betrag wird nur übernommen, wenn er sich nachrechnen lässt (Netto × Satz = Steuer, Netto + Steuer = Brutto, Menge × Preis = Betrag, Zeilensumme = Belegsumme). Was errechnet oder aus dem Dateinamen übernommen wurde, steht als Hinweis über dem Formular (`BillProposal.notes`). Neue Regeln immer mit einem Test in `tests/bedienung-1-26.test.mjs` und gegen echte Belege prüfen.
 - Rechnungsformular: zwei Wege zum Abschluss, „Rechnung bestätigen“ und „Als Entwurf speichern“. Das versteckte Feld `confirmed` trägt nur den Zustand.
 
-## KI-Baustein (Vorarbeit für den Eingang)
+## Eingang seit 1.27 (KI schlägt vor, App prüft, Mensch bestätigt)
 
-Grundsatz für alles, was folgt: das Modell schlägt vor, die App prüft, ein Mensch bestätigt. Das Modell schreibt nie selbst in die Listen und rechnet keine Auswertung.
+Der Eingang nimmt eine diktierte, getippte oder fotografierte Meldung und macht daraus eine Karte zum Bestätigen. In 1.27 kennt er zwei Vorgänge: Bestand melden und Nachbestellen. Alles andere weist er an die vorhandenen Seiten.
 
-- **Weg zum Modell**: `ai/provider.ts`, direkt aus dem Browser, ohne eigenen Server. Zwei Anbieter: Claude (`api.anthropic.com`) und OpenRouter (Verarbeitung in Europa nur im Business-Tarif von OpenRouter). Die Antwort kommt als JSON nach festem Schema (`output_config.format` bei Claude, `response_format` bei OpenRouter). Fehler werden zu Sätzen für die Person am Gerät (`AiError`), die Rohmeldung bleibt in `detail`.
-- **Beleg lesen**: `ai/bill-reader.ts`. Das Schema verlangt alle Zahlen als Text „wie gedruckt“; `checkReading()` rechnet nach (Menge × Preis, Rückgaben, Pfand, Netto + Steuer = Brutto, Zeilensumme gegen Belegsumme), `verified()` sagt, ob ein Beleg rechnerisch bestätigt ist. Text auf dem Beleg gilt nie als Anweisung.
-- **Fotos**: `ai/photo.ts` verkleinert auf 2.576 Pixel an der langen Kante und packt als JPEG. Mehr liest das Modell nicht, über 8.000 Pixel lehnt der Anbieter ab.
-- **Prüfen gehört nicht in die App**: Messläufe gegen echte Belege und Diktate laufen als Prüfstand außerhalb des Pakets. In der App gibt es keine Prüf- oder Testseiten. Eine frühere Probe-Seite (Zweig 1.26.1) wurde deshalb nie ausgeliefert und wieder entfernt.
+- **Ablauf**: `actions/intake-actions.ts` schickt die Meldung zweimal unabhängig an das Modell (`ai/intake.ts`, `readIntake`). `checkIntake()` prüft jede Lesung gegen die Stammdaten, `mergeReadings()` legt beide übereinander. Jede Unsicherheit steht als Satz an der Zeile (`flags`): Artikel mehrdeutig, Einheit nicht genannt, Menge unlesbar, zwei Lesungen uneins, ungewöhnlich große Menge. Markierte Zeilen müssen abgehakt sein, sonst wird nicht gespeichert.
+- **Das Modell schreibt nur ab**: Zahlen kommen als Text, den Tag („morgen“, „Samstag“) löst `resolveDay()` in der App auf, Gebinde mal Größe rechnet die App. Text in der Meldung gilt nie als Anweisung.
+- **Speichern**: `intake-records.ts` baut aus den bestätigten Zeilen Bestandsmeldungen (`buildCounts`) und Bestellentwürfe je Lieferant und Liefertag (`buildOrders`) und prüft sie mit denselben Regeln wie die übrige App. Gespeichert wird über `saveMaster('counts')` und `saveOrder`. Der Wortlaut der Meldung steht im Hinweis des Datensatzes. Nachbestellungen sind Entwürfe: „aufgegeben“ markiert ein Mensch wie bisher unter Bestellungen.
+- **Zugang zur KI**: ein Datensatz in der Liste `ZK_V1_Einstellungen` (`AiSettings` in `sharepoint.ts`). Einrichten können nur Besitzer der Seite (`canManage()`: Websiteadministrator oder Recht „Website verwalten“; der Rahmen meldet es zusätzlich über `managerHint`). Der Schlüssel wird nie gezeichnet und ist nicht Teil der Datensicherung. Lesen kann ihn technisch jedes Mitglied der Seite, weil die App ohne eigenen Server direkt beim Anbieter anfragt: deshalb gehört ein Ausgabenlimit an den Schlüssel.
+- **Weg zum Modell**: `ai/provider.ts`, direkt aus dem Browser. Zwei Anbieter: Claude (`api.anthropic.com`) und OpenRouter (Verarbeitung in Europa nur im Business-Tarif von OpenRouter). Antwort als JSON nach festem Schema. Fehler werden zu Sätzen für die Person am Gerät (`AiError`), die Rohmeldung bleibt in `detail`.
+- **Belege und Fotos**: `ai/bill-reader.ts` (Beleg abschreiben, nachrechnen) und `ai/photo.ts` (Foto auf 2.576 Pixel verkleinern) sind gebaut; Rechnung und Lieferschein kommen als nächste Vorgänge in den Eingang.
+- **Prüfen gehört nicht in die App**: `tools/pruefstand/` baut eine eigenständige Seite (`node tools/pruefstand/bauen.mjs daten.json ausgabe.html`). Sie nutzt denselben Code wie die App und urteilt je Fall: richtig, richtig mit Rückfrage, abgefangen, falsch ohne Hinweis. Die letzte Zahl muss null sein, bevor ein Paket hinausgeht. Echte Prüfdaten liegen nicht im Repo.
 
 ## Aussehen seit 1.25 (Zunft-Design-System, freigegeben 16.11.2026)
 
